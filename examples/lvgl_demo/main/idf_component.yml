@@ -1,0 +1,11 @@
+## IDF Component Manager Manifest File
+dependencies:
+  idf: ">=5.0"
+  espressif/esp_lvgl_port:
+    public: true
+    version: ^1
+  espressif/esp_lcd_gc9a01:
+    version: ^2.0.0
+  lvgl/lvgl:
+    version: ^8
+  
