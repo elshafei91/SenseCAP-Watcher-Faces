@@ -57,13 +57,13 @@ extern "C"
          * @brief Get available size of data
          *
          * @param[in] io SCCMA client IO handle
-         * @param[out] len Available size
+         * @param[out] ret_avail Available size
          * @return
          *          - ESP_ERR_INVALID_ARG   if parameter is invalid
          *          - ESP_ERR_NOT_SUPPORTED if read is not supported by transport
          *          - ESP_OK
          */
-        esp_err_t (*available)(sscma_client_io_t *io, size_t *len);
+        esp_err_t (*available)(sscma_client_io_t *io, size_t *ret_avail);
     };
 
 #ifdef __cplusplus

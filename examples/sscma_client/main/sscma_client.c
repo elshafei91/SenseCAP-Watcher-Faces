@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "sscma_client_io.h"
+#include "sscma_client_ops.h"
 #include <driver/usb_serial_jtag.h>
 static const char *TAG = "main";
 
@@ -19,11 +20,13 @@ static const char *TAG = "main";
 #define EXAMPLE_SSCMA_SPI_CLK_HZ (4 * 1000 * 1000)
 
 /* SPI pins */
-#define EXAMPLE_SSCMA_GPIO_SCLK (7)
-#define EXAMPLE_SSCMA_GPIO_MOSI (8)
-#define EXAMPLE_SSCMA_GPIO_MISO (9)
-#define EXAMPLE_SSCMA_GPIO_CS (2)
-#define EXAMPLE_SSCMA_GPIO_SYNC (1)
+#define EXAMPLE_SSCMA_SPI_SCLK (7)
+#define EXAMPLE_SSCMA_SPI_MOSI (8)
+#define EXAMPLE_SSCMA_SPI_MISO (9)
+#define EXAMPLE_SSCMA_SPI_CS (2)
+#define EXAMPLE_SSCMA_SPI_SYNC (1)
+
+#define EXAMPLE_SSCMA_RESET (4)
 
 /* I2C settings */
 #define EXAMPLE_SSCMA_I2C_NUM (0)
@@ -36,6 +39,7 @@ static const char *TAG = "main";
 char usb_buf[2 * 1024];
 char sscma_buf[64 * 1024];
 sscma_client_io_handle_t io = NULL;
+sscma_client_handle_t client = NULL;
 
 void app_main(void)
 {
@@ -82,9 +86,9 @@ void app_main(void)
     // sscma_client_new_io_i2c_bus((sscma_client_i2c_bus_handle_t)0, &io_i2c_config, &io);
 
     const spi_bus_config_t buscfg = {
-        .sclk_io_num = EXAMPLE_SSCMA_GPIO_SCLK,
-        .mosi_io_num = EXAMPLE_SSCMA_GPIO_MOSI,
-        .miso_io_num = EXAMPLE_SSCMA_GPIO_MISO,
+        .sclk_io_num = EXAMPLE_SSCMA_SPI_SCLK,
+        .mosi_io_num = EXAMPLE_SSCMA_SPI_MOSI,
+        .miso_io_num = EXAMPLE_SSCMA_SPI_MISO,
         .quadwp_io_num = GPIO_NUM_NC,
         .quadhd_io_num = GPIO_NUM_NC,
         .max_transfer_sz = 4095,
@@ -93,8 +97,8 @@ void app_main(void)
     ESP_ERROR_CHECK(spi_bus_initialize(EXAMPLE_SSCMA_SPI_NUM, &buscfg, SPI_DMA_CH_AUTO));
 
     const sscma_client_io_spi_config_t spi_io_config = {
-        .sync_gpio_num = EXAMPLE_SSCMA_GPIO_SYNC,
-        .cs_gpio_num = EXAMPLE_SSCMA_GPIO_CS,
+        .sync_gpio_num = EXAMPLE_SSCMA_SPI_SYNC,
+        .cs_gpio_num = EXAMPLE_SSCMA_SPI_CS,
         .pclk_hz = EXAMPLE_SSCMA_SPI_CLK_HZ,
         .spi_mode = 0,
         .wait_delay = 2,
@@ -114,6 +118,21 @@ void app_main(void)
 
     printf("proxy start...\n");
 
+    const sscma_client_config_t sscma_client_config = {
+        .reset_gpio_num = EXAMPLE_SSCMA_RESET,
+        .task_stack = 4096,
+        .task_priority = 5,
+        .task_affinity = -1,
+        .tx_buffer_size = 4096,
+        .rx_buffer_size = 64 * 1024,
+        .user_ctx = NULL,
+        .flags.reset_active_high = 0,
+    };
+
+    ESP_ERROR_CHECK(sscma_client_new(io, &sscma_client_config, &client));
+
+    sscma_client_init(client);
+
     while (1)
     {
         do
@@ -121,19 +140,19 @@ void app_main(void)
             rlen = usb_serial_jtag_read_bytes(rbuf, sizeof(rbuf), 1 / portTICK_PERIOD_MS);
             if (rlen)
             {
-                usb_serial_jtag_write_bytes(rbuf, rlen, portMAX_DELAY);
-                sscma_client_io_write(io, rbuf, rlen);
+                // usb_serial_jtag_write_bytes(rbuf, rlen, portMAX_DELAY);
+                sscma_client_write(client, rbuf, rlen);
             }
         } while (rlen > 0);
 
-        if (sscma_client_io_available(io, &rlen) == ESP_OK && rlen)
+        if (sscma_client_available(client, &rlen) == ESP_OK && rlen)
         {
             if (rlen > sizeof(sscma_buf))
             {
                 rlen = sizeof(sscma_buf);
             }
             // printf("len:%d\n", rlen);
-            sscma_client_io_read(io, sscma_buf, rlen);
+            sscma_client_read(client, sscma_buf, rlen);
             usb_serial_jtag_write_bytes(sscma_buf, rlen, portMAX_DELAY);
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);

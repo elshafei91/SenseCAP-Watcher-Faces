@@ -22,8 +22,8 @@ esp_err_t sscma_client_io_read(sscma_client_io_t *io, void *data, size_t len)
     return io->read(io, data, len);
 }
 
-esp_err_t sscma_client_io_available(sscma_client_io_t *io, size_t *len)
+esp_err_t sscma_client_io_available(sscma_client_io_t *io, size_t *ret_avail)
 {
     ESP_RETURN_ON_FALSE(io, ESP_ERR_INVALID_ARG, TAG, "invalid argument");
-    return io->available(io, len);
+    return io->available(io, ret_avail);
 }

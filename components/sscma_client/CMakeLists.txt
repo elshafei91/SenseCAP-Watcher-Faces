@@ -1,4 +1,4 @@
-set(srcs "src/sscma_client_common.c"
+set(srcs "src/sscma_client_ops.c"
          "src/sscma_client_io.c"
          "src/sscma_client_io_i2c.c"
          "src/sscma_client_io_spi.c"
