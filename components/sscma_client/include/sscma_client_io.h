@@ -19,12 +19,20 @@ extern "C"
      */
     typedef struct
     {
-        int cs_gpio_num;                                                                             /*!< GPIO used for CS line */
-        int sync_gpio_num;                                                                           /*!< GPIO used for SYNC line */
-        int spi_mode;                                                                                /*!< Traditional SPI mode (0~3) */
+        int cs_gpio_num;   /*!< GPIO used for CS line */
+        int sync_gpio_num; /*!< GPIO used for SYNC line */
+        int spi_mode;
+        int wait_delay;                                                                              /*!< Traditional SPI mode (0~3) */
         unsigned int pclk_hz;                                                                        /*!< Frequency of pixel clock */
         size_t trans_queue_depth;                                                                    /*!< Size of internal transaction queue */
         void *user_ctx; /*!< User private data, passed directly to on_color_trans_done's user_ctx */ /*!< Extra flags to fine-tune the SPI device */
+        struct
+        {
+            unsigned int octal_mode : 1;     /*!< transmit with octal mode (8 data lines), this mode is used to simulate Intel 8080 timing */
+            unsigned int sio_mode : 1;       /*!< Read and write through a single data line (MOSI) */
+            unsigned int lsb_first : 1;      /*!< transmit LSB bit first */
+            unsigned int cs_high_active : 1; /*!< CS line is high active */
+        } flags;                             /*!< Extra flags to fine-tune the SPI device */
     } sscma_client_io_spi_config_t;
 
     /**
@@ -39,7 +47,7 @@ extern "C"
      *          - ESP_OK                on success
      */
 
-    esp_err_t sscma_client_new_io_spi(sscma_client_spi_bus_handle_t bus, sscma_client_io_spi_config_t *io_config, sscma_client_io_handle_t *ret_io);
+    esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, sscma_client_io_spi_config_t *io_config, sscma_client_io_handle_t *ret_io);
 
     /**
      * @brief Client IO configuration structure, for I2C interface
@@ -48,7 +56,8 @@ extern "C"
     typedef struct
     {
         uint32_t dev_addr; /*!< I2C device address */
-        void *user_ctx;    /*!< User private data, passed directly to user_ctx */
+        int wait_delay;
+        void *user_ctx; /*!< User private data, passed directly to user_ctx */
     } sscma_client_io_i2c_config_t;
 
     /**
