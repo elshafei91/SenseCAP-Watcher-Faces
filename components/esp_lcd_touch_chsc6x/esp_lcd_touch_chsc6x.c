@@ -132,7 +132,6 @@ static esp_err_t esp_lcd_touch_chsc6x_read_data(esp_lcd_touch_handle_t tp)
     /* Get report data length */
     err = touch_chsc6x_i2c_read(tp, (uint8_t *)&data, sizeof(data));
     ESP_RETURN_ON_ERROR(err, TAG, "I2C read error %d!", err);
-
     /* Save data */
     portENTER_CRITICAL(&tp->data.lock);
     if (data[0])
@@ -166,6 +165,21 @@ static bool esp_lcd_touch_chsc6x_get_xy(esp_lcd_touch_handle_t tp, uint16_t *x, 
     {
         x[i] = tp->data.coords[i].x;
         y[i] = tp->data.coords[i].y;
+
+        if (tp->config.flags.mirror_x)
+        {
+            x[i] = tp->config.x_max - x[i];
+        }
+        if (!tp->config.flags.mirror_y)
+        {
+            y[i] = tp->config.y_max - y[i];
+        }
+        if (!tp->config.flags.swap_xy)
+        {
+            uint16_t tmp = x[i];
+            x[i] = y[i];
+            y[i] = tmp;
+        }
 
         if (strength)
         {
