@@ -14,18 +14,38 @@ extern "C"
      */
     typedef struct
     {
-        int reset_gpio_num; /*!< GPIO number of reset pin */
-        int tx_buffer_size; /*!< Size of TX buffer */
-        int rx_buffer_size; /*!< Size of RX buffer */
-        int task_priority;  /* SSCMA task priority */
-        int task_stack;     /* SSCMA task stack size */
-        int task_affinity;  /* SSCMA task pinned to core (-1 is no affinity) */
-        void *user_ctx;     /* User context */
+        int reset_gpio_num;        /*!< GPIO number of reset pin */
+        int tx_buffer_size;        /*!< Size of TX buffer */
+        int rx_buffer_size;        /*!< Size of RX buffer */
+        int process_task_priority; /* SSCMA process task priority */
+        int process_task_stack;    /* SSCMA process task stack size */
+        int process_task_affinity; /* SSCMA process task pinned to core (-1 is no affinity) */
+        int monitor_task_priority; /* SSCMA monitor task priority */
+        int monitor_task_stack;    /* SSCMA monitor task stack size */
+        int monitor_task_affinity; /* SSCMA monitor task pinned to core (-1 is no affinity) */
+        void *user_ctx;            /* User context */
         struct
         {
             unsigned int reset_active_high : 1; /*!< Setting this if the panel reset is high level active */
         } flags;                                /*!< SSCMA client config flags */
     } sscma_client_config_t;
+
+#define SSCMA_CLIENT_CONFIG_DEFAULT()   \
+    {                                   \
+        .reset_gpio_num = -1,           \
+        .tx_buffer_size = 4096,         \
+        .rx_buffer_size = 65536,        \
+        .process_task_priority = 5,     \
+        .process_task_stack = 4096,     \
+        .process_task_affinity = -1,    \
+        .monitor_task_priority = 4,     \
+        .monitor_task_stack = 10240,    \
+        .monitor_task_affinity = -1,    \
+        .user_ctx = NULL,               \
+        .flags = {                      \
+            .reset_active_high = false, \
+        }                               \
+    }
 
     /**
      * @brief Create new SCCMA client
@@ -103,6 +123,35 @@ extern "C"
      */
     esp_err_t sscma_client_available(sscma_client_handle_t client, size_t *ret_avail);
 
+    /**
+     * @brief Register callback
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] callback SCCMA client callback
+     * @param[in] user_ctx User context
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const sscma_client_callback_t *callback, void *user_ctx);
+
+    /**
+     * @brief Send request to SCCMA client
+     *
+     * @param[in] client SCCMA client handle
+     *
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_request(sscma_client_handle_t client, const char *cmd, sscma_client_reply_t *reply, bool wait, TickType_t timeout);
+
+    /**
+     * @brief Clear reply
+     *
+     * @param[in] reply Reply
+     * @return void
+     */
+    void sscma_client_reply_clear(sscma_client_reply_t *reply);
+    
 #ifdef __cplusplus
 }
 #endif

@@ -17,7 +17,7 @@ static const char *TAG = "main";
 
 /* SPI settings */
 #define EXAMPLE_SSCMA_SPI_NUM (SPI2_HOST)
-#define EXAMPLE_SSCMA_SPI_CLK_HZ (4 * 1000 * 1000)
+#define EXAMPLE_SSCMA_SPI_CLK_HZ (12 * 1000 * 1000)
 
 /* SPI pins */
 #define EXAMPLE_SSCMA_SPI_SCLK (7)
@@ -40,6 +40,26 @@ char usb_buf[2 * 1024];
 char sscma_buf[64 * 1024];
 sscma_client_io_handle_t io = NULL;
 sscma_client_handle_t client = NULL;
+
+void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
+{
+    if (reply->len >= 100)
+    {
+        strcpy(&reply->data[100 - 4], "...");
+    }
+    // Note: reply is automatically recycled after exiting the function.
+    printf("event: %s\n", reply->data);
+}
+
+void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
+{
+    if (reply->len >= 100)
+    {
+        strcpy(&reply->data[100 - 4], "...");
+    }
+    // Note: reply is automatically recycled after exiting the function.
+    printf("log: %s\n", reply->data);
+}
 
 void app_main(void)
 {
@@ -66,7 +86,7 @@ void app_main(void)
         .user_ctx = NULL,
     };
 
-    // sscma_client_new_io_uart_bus((sscma_client_uart_bus_handle_t)0, &io_config, &io);
+    // sscma_client_new_io_uart_bus((sscma_client_uart_bus_handle_t)0, &io_uart_config, &io);
 
     const i2c_config_t i2c_conf = {
         .mode = I2C_MODE_MASTER,
@@ -116,21 +136,20 @@ void app_main(void)
     size_t rlen = 0;
     char rbuf[32] = {0};
 
-    printf("proxy start...\n");
-
-    const sscma_client_config_t sscma_client_config = {
-        .reset_gpio_num = EXAMPLE_SSCMA_RESET,
-        .task_stack = 4096,
-        .task_priority = 5,
-        .task_affinity = -1,
-        .tx_buffer_size = 4096,
-        .rx_buffer_size = 64 * 1024,
-        .user_ctx = NULL,
-        .flags.reset_active_high = 0,
-    };
+    sscma_client_config_t sscma_client_config = SSCMA_CLIENT_CONFIG_DEFAULT();
+    sscma_client_config.reset_gpio_num = EXAMPLE_SSCMA_RESET;
 
     ESP_ERROR_CHECK(sscma_client_new(io, &sscma_client_config, &client));
+    const sscma_client_callback_t callback = {
+        .on_event = on_event,
+        .on_log = on_log,
+    };
 
+    if (sscma_client_register_callback(client, &callback, NULL) != ESP_OK)
+    {
+        printf("set callback failed\n");
+        abort();
+    }
     sscma_client_init(client);
 
     while (1)
@@ -140,21 +159,31 @@ void app_main(void)
             rlen = usb_serial_jtag_read_bytes(rbuf, sizeof(rbuf), 1 / portTICK_PERIOD_MS);
             if (rlen)
             {
-                // usb_serial_jtag_write_bytes(rbuf, rlen, portMAX_DELAY);
-                sscma_client_write(client, rbuf, rlen);
+                // sscma_client_write(client, rbuf, rlen);
+                sscma_client_reply_t reply;
+                // Notice: Requested reply need to be manually recycled
+                sscma_client_request(client, "AT+ID?\r\n", &reply, true, portMAX_DELAY);
+                sscma_client_reply_clear(&reply);
+                sscma_client_request(client, "AT+INFO=\"asdf\"\r\n", &reply, true, portMAX_DELAY);
+                sscma_client_reply_clear(&reply);
+                sscma_client_request(client, "AT+ID1?\r\n", &reply, true, portMAX_DELAY);
+                sscma_client_reply_clear(&reply);
+                sscma_client_request(client, "AT+INVOKE=-1,0,0\r\n", &reply, true, portMAX_DELAY);
+                sscma_client_reply_clear(&reply);
             }
         } while (rlen > 0);
 
-        if (sscma_client_available(client, &rlen) == ESP_OK && rlen)
-        {
-            if (rlen > sizeof(sscma_buf))
-            {
-                rlen = sizeof(sscma_buf);
-            }
-            // printf("len:%d\n", rlen);
-            sscma_client_read(client, sscma_buf, rlen);
-            usb_serial_jtag_write_bytes(sscma_buf, rlen, portMAX_DELAY);
-        }
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        // if (sscma_client_available(client, &rlen) == ESP_OK && rlen)
+        // {
+        //     if (rlen > sizeof(sscma_buf))
+        //     {
+        //         rlen = sizeof(sscma_buf);
+        //     }
+        //     // printf("len:%d\n", rlen);
+        //     sscma_client_read(client, sscma_buf, rlen);
+        //     usb_serial_jtag_write_bytes(sscma_buf, rlen, portMAX_DELAY);
+        // }
+        printf("free_heap_size = %ld\n", esp_get_free_heap_size());
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

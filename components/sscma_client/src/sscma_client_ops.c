@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <sys/cdefs.h>
 #include "sdkconfig.h"
 #if CONFIG_SSCMA_ENABLE_DEBUG_LOG
@@ -8,6 +9,9 @@
 #endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
+#include "freertos/list.h"
+#include "cJSON.h"
 #include "sscma_client_types.h"
 #include "sscma_client_io.h"
 #include "sscma_client_commands.h"
@@ -17,6 +21,215 @@
 #include "esp_check.h"
 
 static const char *TAG = "sscma_client";
+
+void sscma_client_reply_clear(sscma_client_reply_t *reply)
+{
+    if (reply->payload)
+    {
+        cJSON_Delete(reply->payload);
+        reply->payload = NULL;
+    }
+    if (reply->data)
+    {
+        free(reply->data);
+        reply->data = NULL;
+    }
+    reply->len = 0;
+}
+
+static void sscma_client_monitor(void *arg)
+{
+    sscma_client_handle_t client = (sscma_client_handle_t)arg;
+    sscma_client_reply_t reply;
+    while (true)
+    {
+        xQueueReceive(client->reply_queue, &reply, portMAX_DELAY);
+        if (reply.len >= 100)
+        {
+            strcpy(&reply.data[100 - 4], "...");
+        }
+        cJSON *type = cJSON_GetObjectItem(reply.payload, "type");
+        if (type->valueint == CMD_TYPE_EVENT)
+        {
+            if (client->on_event)
+            {
+                client->on_event(client, &reply, client->user_ctx);
+            }
+        }
+        else
+        {
+            if (client->on_log)
+            {
+                client->on_log(client, &reply, client->user_ctx);
+            }
+        }
+        sscma_client_reply_clear(&reply);
+    }
+}
+
+static void sscma_client_process(void *arg)
+{
+    size_t rlen = 0;
+    char *suffix = NULL;
+    char *prefix = NULL;
+    sscma_client_handle_t client = (sscma_client_handle_t)arg;
+    sscma_client_reply_t reply;
+    while (true)
+    {
+        if (sscma_client_available(client, &rlen) == ESP_OK && rlen)
+        {
+            if (rlen + client->rx_buffer.pos > client->rx_buffer.len)
+            {
+                client->rx_buffer.pos = 0;
+                ESP_LOGW(TAG, "rx buffer overflow");
+            }
+            sscma_client_read(client, client->rx_buffer.data + client->rx_buffer.pos, rlen);
+            client->rx_buffer.pos += rlen;
+            client->rx_buffer.data[client->rx_buffer.pos] = 0;
+
+            while ((suffix = strnstr(client->rx_buffer.data, RESPONSE_SUFFIX, client->rx_buffer.pos)) != NULL)
+            {
+                if ((prefix = strnstr(client->rx_buffer.data, RESPONSE_PREFIX, suffix - client->rx_buffer.data)) != NULL)
+                {
+                    int len = suffix - prefix + RESPONSE_SUFFIX_LEN;
+                    reply.data = (char *)malloc(len);
+                    if (reply.data != NULL)
+                    {
+                        reply.len = len - 1;
+                        memcpy(reply.data, prefix + 1, len - 1); // remove "\r" and "\n"
+                        reply.data[len - 1] = 0;
+                        reply.payload = cJSON_Parse(reply.data);
+                        if (reply.payload != NULL)
+                        {
+                            cJSON *type = cJSON_GetObjectItem(reply.payload, "type");
+                            cJSON *name = cJSON_GetObjectItem(reply.payload, "name");
+
+                            if (type == NULL || name == NULL)
+                            {
+                                ESP_LOGW(TAG, "invalid reply: %s", reply.data);
+                                sscma_client_reply_clear(&reply);
+                                continue;
+                            }
+
+                            if (type->valueint == CMD_TYPE_RESPONSE)
+                            {
+                                sscma_client_request_t *first_req, *next_req = NULL;
+                                bool found = false;
+                                if (listCURRENT_LIST_LENGTH(client->request_list) > (UBaseType_t)0)
+                                {
+                                    listGET_OWNER_OF_NEXT_ENTRY(first_req, client->request_list);
+                                    do
+                                    {
+                                        listGET_OWNER_OF_NEXT_ENTRY(next_req, client->request_list);
+                                        if (strncmp(next_req->cmd, name->valuestring, sizeof(next_req->cmd)) == 0)
+                                        {
+                                            if (next_req->reply)
+                                            {
+                                                found = true;
+                                                if (xQueueSend(next_req->reply, &reply, 0) != pdTRUE)
+                                                {
+                                                    sscma_client_reply_clear(&reply); // discard this reply
+                                                }
+                                            }
+                                        }
+                                    } while (next_req != first_req);
+
+                                    if (!found)
+                                    {
+                                        ESP_LOGW(TAG, "request not found: %s", name->valuestring);
+                                        sscma_client_reply_clear(&reply);
+                                    }
+                                }
+                                else
+                                {
+                                    ESP_LOGW(TAG, "request list is empty");
+                                    sscma_client_reply_clear(&reply);
+                                }
+                            }
+                            else if (type->valueint == CMD_TYPE_LOG)
+                            {
+                                cJSON *code = cJSON_GetObjectItem(reply.payload, "code");
+                                if (code == NULL)
+                                {
+                                    ESP_LOGW(TAG, "invalid log: %s", reply.data);
+                                    sscma_client_reply_clear(&reply);
+                                    continue;
+                                }
+                                if (code->valueint == CMD_EINVAL)
+                                { // unkown command
+                                    cJSON *data = cJSON_GetObjectItem(reply.payload, "data");
+                                    if (data == NULL)
+                                    {
+                                        ESP_LOGW(TAG, "invalid log: %s", reply.data);
+                                        sscma_client_reply_clear(&reply);
+                                        continue;
+                                    }
+                                    sscma_client_request_t *first_req, *next_req = NULL;
+                                    bool found = false;
+                                    if (listCURRENT_LIST_LENGTH(client->request_list) > (UBaseType_t)0)
+                                    {
+                                        listGET_OWNER_OF_NEXT_ENTRY(first_req, client->request_list);
+                                        do
+                                        {
+                                            listGET_OWNER_OF_NEXT_ENTRY(next_req, client->request_list);
+                                            if (strnstr(data->valuestring, next_req->cmd, strlen(next_req->cmd)) == 0)
+                                            {
+                                                if (next_req->reply)
+                                                {
+                                                    found = true;
+                                                    if (xQueueSend(next_req->reply, &reply, 0) != pdTRUE)
+                                                    {
+                                                        sscma_client_reply_clear(&reply); // discard this reply
+                                                    }
+                                                }
+                                            }
+                                        } while (next_req != first_req);
+
+                                        if (!found)
+                                        {
+                                            ESP_LOGW(TAG, "request not found: %s", name->valuestring);
+                                            sscma_client_reply_clear(&reply);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        ESP_LOGW(TAG, "request list is empty");
+                                        sscma_client_reply_clear(&reply);
+                                    }
+                                }
+                                else
+                                {
+                                    if (client->on_log == NULL || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
+                                    {
+                                        sscma_client_reply_clear(&reply); // discard this reply
+                                    }
+                                }
+                            }
+                            else if (type->valueint == CMD_TYPE_EVENT)
+                            {
+                                if (client->on_event == NULL || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
+                                {
+                                    sscma_client_reply_clear(&reply); // discard this reply
+                                }
+                            }
+                        }
+                    }
+                    // delete this reply from rx buffer
+                    memmove(client->rx_buffer.data, suffix + RESPONSE_SUFFIX_LEN, len);
+                    client->rx_buffer.pos -= len;
+                }
+                else
+                {
+                    // discard this reply
+                    memmove(client->rx_buffer.data, suffix + RESPONSE_SUFFIX_LEN, client->rx_buffer.pos - (suffix - client->rx_buffer.data) - RESPONSE_PREFIX_LEN);
+                    client->rx_buffer.pos -= suffix - client->rx_buffer.data + RESPONSE_SUFFIX_LEN;
+                    client->rx_buffer.data[client->rx_buffer.pos] = 0;
+                }
+            }
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
 
 esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client_config_t *config, sscma_client_handle_t *ret_client)
 {
@@ -40,18 +253,50 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
         ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "configure GPIO for RST line failed");
     }
 
-    client->rx_buffer.data = (uint8_t *)malloc(config->rx_buffer_size);
+    client->rx_buffer.data = (char *)malloc(config->rx_buffer_size);
     ESP_GOTO_ON_FALSE(client->rx_buffer.data, ESP_ERR_NO_MEM, err, TAG, "no mem for rx buffer");
     client->rx_buffer.pos = 0;
     client->rx_buffer.len = config->rx_buffer_size;
 
-    client->tx_buffer.data = (uint8_t *)malloc(config->tx_buffer_size);
+    client->tx_buffer.data = (char *)malloc(config->tx_buffer_size);
     ESP_GOTO_ON_FALSE(client->tx_buffer.data, ESP_ERR_NO_MEM, err, TAG, "no mem for tx buffer");
     client->tx_buffer.pos = 0;
     client->tx_buffer.len = config->tx_buffer_size;
 
     client->reset_gpio_num = config->reset_gpio_num;
     client->reset_level = config->flags.reset_active_high;
+
+    client->user_ctx = config->user_ctx;
+
+    client->request_list = (List_t *)malloc(sizeof(List_t));
+    ESP_GOTO_ON_FALSE(client->request_list, ESP_ERR_NO_MEM, err, TAG, "no mem for request list");
+
+    client->reply_queue = xQueueCreate(10, sizeof(sscma_client_reply_t));
+    ESP_GOTO_ON_FALSE(client->reply_queue, ESP_ERR_NO_MEM, err, TAG, "no mem for reply queue");
+
+    vListInitialise(client->request_list);
+
+    BaseType_t res;
+
+    if (config->process_task_affinity < 0)
+    {
+        res = xTaskCreate(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task);
+    }
+    else
+    {
+        res = xTaskCreatePinnedToCore(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task, config->process_task_affinity);
+    }
+    ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create process task failed");
+
+    if (config->monitor_task_affinity < 0)
+    {
+        res = xTaskCreate(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task);
+    }
+    else
+    {
+        res = xTaskCreatePinnedToCore(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task, config->monitor_task_affinity);
+    }
+    ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create monitor task failed");
 
     *ret_client = client;
 
@@ -74,6 +319,22 @@ err:
         {
             gpio_reset_pin(client->reset_gpio_num);
         }
+        if (client->reply_queue)
+        {
+            vQueueDelete(client->reply_queue);
+        }
+        if (client->request_list)
+        {
+            free(client->request_list);
+        }
+        if (client->process_task)
+        {
+            vTaskDelete(client->process_task);
+        }
+        if (client->monitor_task)
+        {
+            vTaskDelete(client->monitor_task);
+        }
         free(client);
     }
     return ret;
@@ -87,8 +348,26 @@ esp_err_t sscma_client_del(sscma_client_handle_t client)
         {
             gpio_reset_pin(client->reset_gpio_num);
         }
+        vQueueDelete(client->reply_queue);
+
+        sscma_client_request_t *first_req, *next_req = NULL;
+        if (listCURRENT_LIST_LENGTH(client->request_list) > (UBaseType_t)0)
+        {
+            listGET_OWNER_OF_NEXT_ENTRY(first_req, client->request_list);
+            do
+            {
+                listGET_OWNER_OF_NEXT_ENTRY(next_req, client->request_list);
+                uxListRemove(&(next_req->item));
+                vQueueDelete(next_req->reply);
+                free(next_req);
+            } while (next_req != first_req);
+        }
+
+        free(client->request_list);
         free(client->rx_buffer.data);
         free(client->tx_buffer.data);
+        vTaskDelete(client->process_task);
+        vTaskDelete(client->monitor_task);
         free(client);
     }
     return ESP_OK;
@@ -134,4 +413,75 @@ esp_err_t sscma_client_write(sscma_client_handle_t client, const void *data, siz
 esp_err_t sscma_client_available(sscma_client_handle_t client, size_t *ret_avail)
 {
     return sscma_client_io_available(client->io, ret_avail);
+}
+
+esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const sscma_client_callback_t *callback, void *user_ctx)
+{
+    if (client->on_event != NULL)
+    {
+        ESP_LOGW(TAG, "callback on_event already registered, overriding it");
+    }
+    if (client->on_log != NULL)
+    {
+        ESP_LOGW(TAG, "callback on_log already registered, overriding it");
+    }
+
+    client->on_event = callback->on_event;
+    client->on_log = callback->on_log;
+    client->user_ctx = user_ctx;
+
+    return ESP_OK;
+}
+
+esp_err_t sscma_client_request(sscma_client_handle_t client, const char *cmd, sscma_client_reply_t *reply, bool wait, TickType_t timeout)
+{
+    esp_err_t ret = ESP_OK;
+
+    sscma_client_request_t *request = NULL;
+
+    if (wait)
+    {
+        request = (sscma_client_request_t *)malloc(sizeof(sscma_client_request_t));
+        ESP_GOTO_ON_FALSE(request, ESP_ERR_NO_MEM, err, TAG, "no mem for request");
+        request->reply = xQueueCreate(1, sizeof(sscma_client_reply_t));
+        strncpy(request->cmd, &cmd[CMD_PREFIX_LEN], sizeof(request->cmd) - 1);
+        request->cmd[sizeof(request->cmd) - 1] = '\0';
+        for (int i = 0; i < sizeof(request->cmd); i++)
+        {
+            if (request->cmd[i] == '\n' || request->cmd[i] == '\r' || request->cmd[i] == '=')
+            {
+                request->cmd[i] = '\0';
+            }
+        }
+        ESP_GOTO_ON_FALSE(request->reply, ESP_ERR_NO_MEM, err, TAG, "no mem for reply");
+        vListInitialiseItem(&(request->item));
+        listSET_LIST_ITEM_OWNER(&(request->item), request);
+        vListInsertEnd(client->request_list, &(request->item));
+    }
+
+    ESP_GOTO_ON_ERROR(sscma_client_write(client, cmd, strlen(cmd)), err, TAG, "write command failed");
+
+    if (wait)
+    {
+        if (xQueueReceive(request->reply, reply, timeout) == pdTRUE)
+        {
+            ret = ESP_OK;
+        }
+        else
+        {
+            ret = ESP_ERR_TIMEOUT;
+        }
+    }
+
+err:
+    if (listIS_CONTAINED_WITHIN(client->request_list, &(request->item)))
+    {
+        uxListRemove(&(request->item));
+    }
+    if (request)
+    {
+        vQueueDelete(request->reply);
+        free(request);
+    }
+    return ret;
 }

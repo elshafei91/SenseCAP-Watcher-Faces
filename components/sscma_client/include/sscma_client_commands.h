@@ -3,8 +3,18 @@
 #define RESPONSE_PREFIX "\r{"
 #define RESPONSE_SUFFIX "}\n"
 
+#define RESPONSE_PREFIX_LEN (sizeof(RESPONSE_PREFIX) - 1)
+#define RESPONSE_SUFFIX_LEN (sizeof(RESPONSE_SUFFIX) - 1)
+
+#define CMD_TYPE_RESPONSE 0
+#define CMD_TYPE_EVENT 1
+#define CMD_TYPE_LOG 2
+
 #define CMD_PREFIX "AT+"
 #define CMD_SUFFIX "\r\n"
+
+#define CMD_PREFIX_LEN (sizeof(CMD_PREFIX) - 1)
+#define CMD_SUFFIX_LEN (sizeof(CMD_SUFFIX) - 1)
 
 const char CMD_AT_ID[] = "ID?";
 const char CMD_AT_NAME[] = "NAME?";
@@ -50,10 +60,3 @@ typedef enum
     CMD_EPERM = 9,
     CMD_EUNKNOWN = 10
 } sscma_client_error_t;
-
-typedef enum
-{
-    CMD_TYPE_RESPONSE = 0,
-    CMD_TYPE_EVENT = 1,
-    CMD_TYPE_LOG = 2
-} sscma_client_cmd_type_t;

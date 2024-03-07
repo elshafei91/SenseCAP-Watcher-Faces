@@ -18,9 +18,9 @@ extern "C"
     {
 
         /**
-         * @brief Destory SCCMA client
+         * @brief Destory SCCMA client 
          *
-         * @param[in] io SCCMA client handle
+         * @param[in] io SCCMA client handle]
          * @return
          *          - ESP_OK on success
          */
