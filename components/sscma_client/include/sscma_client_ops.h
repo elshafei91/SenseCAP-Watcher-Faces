@@ -135,6 +135,14 @@ extern "C"
     esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const sscma_client_callback_t *callback, void *user_ctx);
 
     /**
+     * @brief Clear reply
+     *
+     * @param[in] reply Reply
+     * @return void
+     */
+    void sscma_client_reply_clear(sscma_client_reply_t *reply);
+
+    /**
      * @brief Send request to SCCMA client
      *
      * @param[in] client SCCMA client handle
@@ -145,13 +153,27 @@ extern "C"
     esp_err_t sscma_client_request(sscma_client_handle_t client, const char *cmd, sscma_client_reply_t *reply, bool wait, TickType_t timeout);
 
     /**
-     * @brief Clear reply
+     * @brief Get SCCMA client info
      *
-     * @param[in] reply Reply
-     * @return void
+     * @param[in] client SCCMA client handle
+     * @param[in] info pointer to sscma_client_info_t
+     * @param[in] cached true if info is cached
+     * @return
+     *          - ESP_OK on success
      */
-    void sscma_client_reply_clear(sscma_client_reply_t *reply);
-    
+    esp_err_t sscma_client_get_info(sscma_client_handle_t client, sscma_client_info_t **info, bool cached);
+
+    /**
+     * @brief Send request to SCCMA clien
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] model pointer to sscma_client_model_t
+     * @param[in] cached true if model is cached
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_model_t **model, bool cached);
+
 #ifdef __cplusplus
 }
 #endif

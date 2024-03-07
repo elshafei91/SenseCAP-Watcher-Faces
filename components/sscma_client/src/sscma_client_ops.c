@@ -12,6 +12,7 @@
 #include "freertos/queue.h"
 #include "freertos/list.h"
 #include "cJSON.h"
+#include "mbedtls/base64.h"
 #include "sscma_client_types.h"
 #include "sscma_client_io.h"
 #include "sscma_client_commands.h"
@@ -21,6 +22,64 @@
 #include "esp_check.h"
 
 static const char *TAG = "sscma_client";
+
+static inline void sscma_client_get_string_from_object(cJSON *object, const char *field_name, char **target)
+{
+    if (object == NULL || !cJSON_IsObject(object))
+    {
+        *target = NULL;
+        return;
+    }
+
+    cJSON *field = cJSON_GetObjectItem(object, field_name);
+    if (field == NULL || !cJSON_IsString(field))
+    {
+        *target = NULL;
+        return;
+    }
+
+    if (*target != NULL)
+    {
+        free(*target);
+    }
+
+    *target = malloc(strlen(field->valuestring) + 1);
+    if (*target != NULL)
+    {
+        strcpy(*target, field->valuestring);
+    }
+
+    return;
+}
+
+static inline void sscma_client_get_string_from_array(cJSON *object, int index, char **target)
+{
+    if (object == NULL || !cJSON_IsArray(object))
+    {
+        *target = NULL;
+        return;
+    }
+
+    cJSON *field = cJSON_GetArrayItem(object, index);
+    if (field == NULL || !cJSON_IsString(field))
+    {
+        *target = NULL;
+        return;
+    }
+
+    if (*target != NULL)
+    {
+        free(*target);
+    }
+
+    *target = malloc(strlen(field->valuestring) + 1);
+    if (*target != NULL)
+    {
+        strcpy(*target, field->valuestring);
+    }
+
+    return;
+}
 
 void sscma_client_reply_clear(sscma_client_reply_t *reply)
 {
@@ -298,6 +357,8 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     }
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create monitor task failed");
 
+    client->on_event = NULL;
+    client->on_log = NULL;
     *ret_client = client;
 
     ESP_LOGD(TAG, "new sscma client @%p", client);
@@ -368,6 +429,78 @@ esp_err_t sscma_client_del(sscma_client_handle_t client)
         free(client->tx_buffer.data);
         vTaskDelete(client->process_task);
         vTaskDelete(client->monitor_task);
+
+        if (client->info.id != NULL)
+        {
+            free(client->info.id);
+        }
+
+        if (client->info.name != NULL)
+        {
+            free(client->info.name);
+        }
+
+        if (client->info.hw_ver != NULL)
+        {
+            free(client->info.hw_ver);
+        }
+
+        if (client->info.sw_ver != NULL)
+        {
+            free(client->info.sw_ver);
+        }
+
+        if (client->info.fw_ver != NULL)
+        {
+            free(client->info.fw_ver);
+        }
+
+        if (client->model.id != NULL)
+        {
+            free(client->model.id);
+        }
+
+        if (client->model.name != NULL)
+        {
+            free(client->model.name);
+        }
+        if (client->model.category != NULL)
+        {
+            free(client->model.category);
+        }
+
+        if (client->model.manufacturer != NULL)
+        {
+            free(client->model.manufacturer);
+        }
+
+        if (client->model.description != NULL)
+        {
+            free(client->model.description);
+        }
+
+        if (client->model.url != NULL)
+        {
+            free(client->model.url);
+        }
+
+        if (client->model.algorithm != NULL)
+        {
+            free(client->model.algorithm);
+        }
+
+        if (client->model.token != NULL)
+        {
+            free(client->model.token);
+        }
+        for (int i = 0; i < sizeof(client->model.classes) / sizeof(client->model.classes[0]); i++)
+        {
+            if (client->model.classes[i] != NULL)
+            {
+                free(client->model.classes[i]);
+            }
+        }
+
         free(client);
     }
     return ESP_OK;
@@ -380,6 +513,10 @@ esp_err_t sscma_client_init(sscma_client_handle_t client)
         sscma_client_reset(client);
         client->inited = true;
     }
+
+    memset(&client->info, 0, sizeof(sscma_client_info_t));
+    memset(&client->model, 0, sizeof(sscma_client_model_t));
+
     return ESP_OK;
 }
 
@@ -483,5 +620,111 @@ err:
         vQueueDelete(request->reply);
         free(request);
     }
+    return ret;
+}
+
+esp_err_t sscma_client_get_info(sscma_client_handle_t client, sscma_client_info_t **info, bool cached)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+
+    *info = &client->info;
+
+    if (cached && client->info.id != NULL)
+    {
+        return ret;
+    }
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_ID CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request id failed");
+
+    if (reply.payload != NULL)
+    {
+        sscma_client_get_string_from_object(reply.payload, "data", &client->info.id);
+
+        sscma_client_reply_clear(&reply);
+    }
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_NAME CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request name failed");
+
+    if (reply.payload != NULL)
+    {
+        sscma_client_get_string_from_object(reply.payload, "data", &(client->info.name));
+
+        sscma_client_reply_clear(&reply);
+    }
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_VERSION CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request version failed");
+
+    if (reply.payload != NULL)
+    {
+        cJSON *data = cJSON_GetObjectItem(reply.payload, "data");
+        if (data != NULL)
+        {
+            sscma_client_get_string_from_object(data, "hardware", &(client->info.hw_ver));
+            sscma_client_get_string_from_object(data, "software", &(client->info.fw_ver));
+            sscma_client_get_string_from_object(data, "at_api", &(client->info.sw_ver));
+        }
+
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_model_t **model, bool cached)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+    char *model_raw = NULL;
+    size_t len = 0;
+    *model = &client->model;
+
+    if (cached && client->model.id != NULL)
+    {
+        return ret;
+    }
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_INFO CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request model failed");
+
+    if (reply.payload != NULL)
+    {
+        cJSON *data = cJSON_GetObjectItem(reply.payload, "data");
+        if (data != NULL)
+        {
+            cJSON *info = cJSON_GetObjectItem(data, "info");
+            if (info != NULL && cJSON_IsString(info))
+            {
+                model_raw = malloc(strlen(info->valuestring));
+                if (mbedtls_base64_decode((unsigned char *)model_raw, strlen(info->valuestring), &len, (unsigned char *)info->valuestring, strlen(info->valuestring)) == 0)
+                {
+                    cJSON *root = cJSON_Parse(model_raw);
+                    if (root != NULL)
+                    {
+                        sscma_client_get_string_from_object(root, "uuid", &client->model.id);
+                        sscma_client_get_string_from_object(root, "name", &client->model.name);
+                        sscma_client_get_string_from_object(root, "version", &client->model.ver);
+                        sscma_client_get_string_from_object(root, "category", &client->model.category);
+                        sscma_client_get_string_from_object(root, "algorithm", &client->model.algorithm);
+                        sscma_client_get_string_from_object(root, "url", &client->model.url);
+                        sscma_client_get_string_from_object(root, "key", &client->model.token);
+                        sscma_client_get_string_from_object(root, "author", &client->model.manufacturer);
+                        sscma_client_get_string_from_object(root, "description", &client->model.description);
+                        cJSON *classes = cJSON_GetObjectItem(root, "classes");
+                        if (classes != NULL && cJSON_IsArray(classes))
+                        {
+                            for (int i = 0; i < cJSON_GetArraySize(classes); i++)
+                            {
+                                sscma_client_get_string_from_array(classes, i, &client->model.classes[i]);
+                            }
+                        }
+                    }
+                    cJSON_Delete(root);
+                }
+                free(model_raw);
+            }
+        }
+        sscma_client_reply_clear(&reply);
+    }
+
     return ret;
 }

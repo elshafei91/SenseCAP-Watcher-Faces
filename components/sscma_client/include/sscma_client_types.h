@@ -35,6 +35,32 @@ extern "C"
     } sscma_client_request_t;
 
     /**
+     *
+     */
+    typedef struct
+    {
+        char *id;     /* !< ID */
+        char *name;   /* !< Name */
+        char *hw_ver; /* !< Hardware version */
+        char *sw_ver; /* !< Software version */
+        char *fw_ver; /* !< Firmware version */
+    } sscma_client_info_t;
+
+    typedef struct
+    {
+        char *id;           /*!< ID */
+        char *name;         /*!< Name */
+        char *ver;          /*!< Version */
+        char *category;     /*!< Category */
+        char *algorithm;    /*!< Algorithm */
+        char *description;  /*!< Description */
+        char *classes[80];  /*!< Classes */
+        char *token;        /*!< Token */
+        char *url;          /*!< URL */
+        char *manufacturer; /*!< Manufacturer */
+    } sscma_client_model_t;
+
+    /**
      * @brief Callback function of SCCMA client
      * @param[in] client SCCMA client handle
      * @param[in] reply Reply message
@@ -58,6 +84,8 @@ extern "C"
         int reset_gpio_num;               /* !< GPIO number of reset pin */
         bool reset_level;                 /* !< Level of reset pin */
         bool inited;                      /* !< Whether inited */
+        sscma_client_info_t info;         /* !< Info */
+        sscma_client_model_t model;       /* !< Model */
         sscma_client_event_cb_t on_event; /* !< Callback function */
         sscma_client_event_cb_t on_log;   /* !< Callback function */
         void *user_ctx;                   /* !< User context */
