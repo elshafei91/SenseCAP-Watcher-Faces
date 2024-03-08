@@ -3,38 +3,53 @@
 #define RESPONSE_PREFIX "\r{"
 #define RESPONSE_SUFFIX "}\n"
 
+#define RESPONSE_PREFIX_LEN (sizeof(RESPONSE_PREFIX) - 1)
+#define RESPONSE_SUFFIX_LEN (sizeof(RESPONSE_SUFFIX) - 1)
+
+#define CMD_TYPE_RESPONSE 0
+#define CMD_TYPE_EVENT 1
+#define CMD_TYPE_LOG 2
+
 #define CMD_PREFIX "AT+"
+#define CMD_QUERY "?"
+#define CMD_SET "="
 #define CMD_SUFFIX "\r\n"
 
-const char CMD_AT_ID[] = "ID?";
-const char CMD_AT_NAME[] = "NAME?";
-const char CMD_AT_VERSION[] = "VER?";
-const char CMD_AT_STATS[] = "STAT";
-const char CMD_AT_BREAK[] = "BREAK";
-const char CMD_AT_RESET[] = "RST";
-const char CMD_AT_WIFI[] = "WIFI";
-const char CMD_AT_MQTTSERVER[] = "MQTTSERVER";
-const char CMD_AT_MQTTPUBSUB[] = "MQTTPUBSUB";
-const char CMD_AT_INVOKE[] = "INVOKE";
-const char CMD_AT_SAMPLE[] = "SAMPLE";
-const char CMD_AT_INFO[] = "INFO";
-const char CMD_AT_TSCORE[] = "TSCORE";
-const char CMD_AT_TIOU[] = "TIOU";
-const char CMD_AT_ALGOS[] = "ALGOS";
-const char CMD_AT_MODELS[] = "MODELS";
-const char CMD_AT_MODEL[] = "MODEL";
-const char CMD_AT_SENSORS[] = "SENSORS";
-const char CMD_AT_ACTION[] = "ACTION";
-const char CMD_AT_LED[] = "LED";
+#define CMD_PREFIX_LEN (sizeof(CMD_PREFIX) - 1)
+#define CMD_SUFFIX_LEN (sizeof(CMD_SUFFIX) - 1)
 
-const char EVENT_INVOKE[] = "INVOKE";
-const char EVENT_SAMPLE[] = "SAMPLE";
-const char EVENT_WIFI[] = "WIFI";
-const char EVENT_MQTT[] = "MQTT";
-const char EVENT_SUPERVISOR[] = "SUPERVISOR";
+#define CMD_WAIT_DELAY 5000 // ms
 
-const char LOG_AT[] = "AT";
-const char LOG_LOG[] = "LOG";
+#define CMD_AT_ID "ID"
+#define CMD_AT_NAME "NAME"
+#define CMD_AT_VERSION "VER"
+#define CMD_AT_STATS "STAT"
+#define CMD_AT_BREAK "BREAK"
+#define CMD_AT_RESET "RST"
+#define CMD_AT_WIFI "WIFI"
+#define CMD_AT_MQTTSERVER "MQTTSERVER"
+#define CMD_AT_MQTTPUBSUB "MQTTPUBSUB"
+#define CMD_AT_INVOKE "INVOKE"
+#define CMD_AT_SAMPLE "SAMPLE"
+#define CMD_AT_INFO "INFO"
+#define CMD_AT_TSCORE "TSCORE"
+#define CMD_AT_TIOU "TIOU"
+#define CMD_AT_ALGOS "ALGOS"
+#define CMD_AT_MODELS "MODELS"
+#define CMD_AT_MODEL "MODEL"
+#define CMD_AT_SENSORS "SENSORS"
+#define CMD_AT_SENSOR "SENSOR"
+#define CMD_AT_ACTION "ACTION"
+#define CMD_AT_LED "LED"
+
+#define EVENT_INVOKE "INVOKE"
+#define EVENT_SAMPLE "SAMPLE"
+#define EVENT_WIFI "WIFI"
+#define EVENT_MQTT "MQTT"
+#define EVENT_SUPERVISOR "SUPERVISOR"
+
+#define LOG_AT "AT"
+#define LOG_LOG "LOG"
 
 typedef enum
 {
@@ -50,10 +65,3 @@ typedef enum
     CMD_EPERM = 9,
     CMD_EUNKNOWN = 10
 } sscma_client_error_t;
-
-typedef enum
-{
-    CMD_TYPE_RESPONSE = 0,
-    CMD_TYPE_EVENT = 1,
-    CMD_TYPE_LOG = 2
-} sscma_client_cmd_type_t;

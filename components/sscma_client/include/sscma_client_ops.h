@@ -14,18 +14,38 @@ extern "C"
      */
     typedef struct
     {
-        int reset_gpio_num; /*!< GPIO number of reset pin */
-        int tx_buffer_size; /*!< Size of TX buffer */
-        int rx_buffer_size; /*!< Size of RX buffer */
-        int task_priority;  /* SSCMA task priority */
-        int task_stack;     /* SSCMA task stack size */
-        int task_affinity;  /* SSCMA task pinned to core (-1 is no affinity) */
-        void *user_ctx;     /* User context */
+        int reset_gpio_num;        /*!< GPIO number of reset pin */
+        int tx_buffer_size;        /*!< Size of TX buffer */
+        int rx_buffer_size;        /*!< Size of RX buffer */
+        int process_task_priority; /* SSCMA process task priority */
+        int process_task_stack;    /* SSCMA process task stack size */
+        int process_task_affinity; /* SSCMA process task pinned to core (-1 is no affinity) */
+        int monitor_task_priority; /* SSCMA monitor task priority */
+        int monitor_task_stack;    /* SSCMA monitor task stack size */
+        int monitor_task_affinity; /* SSCMA monitor task pinned to core (-1 is no affinity) */
+        void *user_ctx;            /* User context */
         struct
         {
             unsigned int reset_active_high : 1; /*!< Setting this if the panel reset is high level active */
         } flags;                                /*!< SSCMA client config flags */
     } sscma_client_config_t;
+
+#define SSCMA_CLIENT_CONFIG_DEFAULT()   \
+    {                                   \
+        .reset_gpio_num = -1,           \
+        .tx_buffer_size = 4096,         \
+        .rx_buffer_size = 65536,        \
+        .process_task_priority = 5,     \
+        .process_task_stack = 4096,     \
+        .process_task_affinity = -1,    \
+        .monitor_task_priority = 4,     \
+        .monitor_task_stack = 10240,    \
+        .monitor_task_affinity = -1,    \
+        .user_ctx = NULL,               \
+        .flags = {                      \
+            .reset_active_high = false, \
+        }                               \
+    }
 
     /**
      * @brief Create new SCCMA client
@@ -102,6 +122,171 @@ extern "C"
      *          - ESP_OK on success
      */
     esp_err_t sscma_client_available(sscma_client_handle_t client, size_t *ret_avail);
+
+    /**
+     * @brief Register callback
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] callback SCCMA client callback
+     * @param[in] user_ctx User context
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const sscma_client_callback_t *callback, void *user_ctx);
+
+    /**
+     * @brief Clear reply
+     *
+     * @param[in] reply Reply
+     * @return void
+     */
+    void sscma_client_reply_clear(sscma_client_reply_t *reply);
+
+    /**
+     * @brief Send request to SCCMA client
+     *
+     * @param[in] client SCCMA client handle
+     *
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_request(sscma_client_handle_t client, const char *cmd, sscma_client_reply_t *reply, bool wait, TickType_t timeout);
+
+    /**
+     * @brief Get SCCMA client info
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] info pointer to sscma_client_info_t
+     * @param[in] cached true if info is cached
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_get_info(sscma_client_handle_t client, sscma_client_info_t **info, bool cached);
+
+    /**
+     * @brief Send request to SCCMA clien
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] model pointer to sscma_client_model_t
+     * @param[in] cached true if model is cached
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_model_t **model, bool cached);
+
+    /**
+     * @brief Set sensor
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] id sensor id
+     * @param[in] opt_id sensor config
+     * @param[in] bool true if enable
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_set_sensor(sscma_client_handle_t client, int id, int opt_id, bool enable);
+
+    /**
+     * @brief Get sensor
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] sensor pointer to sscma_client_sensor_t
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_get_sensor(sscma_client_handle_t client, sscma_client_sensor_t *sensor);
+
+    /**
+     * @brief SSCMA client sample
+     * @param[in] client SCCMA client handle
+     * @param[in] times Number of times
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_sample(sscma_client_handle_t client, int times);
+
+    /**
+     * @brief SSCMA client invoke
+     * @param[in] client SCCMA client handle
+     * @param[in] times Number of times
+     * @param[in] fliter true if fliter
+     * @param[in] show true if show
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_invoke(sscma_client_handle_t client, int times, bool fliter, bool show);
+
+    /**
+     * @brief SSCMA client break
+     * @param[in] client SCCMA client handle
+     * @return
+     *          - ESP_OK on success
+     */
+
+    esp_err_t sscma_client_break(sscma_client_handle_t client);
+
+    /**
+     * Fetch boxes and classes from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] boxes sscma client boxes
+     * @param[out] num_boxes number of boxes
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_fetch_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t **boxes, int *num_boxes);
+
+    /**
+     * Prase boxes from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] boxes sscma client boxes
+     * @param[in] max_boxes max number of boxes
+     * @param[out] num_boxes number of boxes
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_prase_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t *boxes, int max_boxes, int *num_boxes);
+
+    /**
+     * Fetch classes from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] classes sscma client classes
+     * @param[out] num_classes number of classes
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_fetch_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t **classes, int *num_classes);
+
+    /**
+     * Prase classes from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] classes sscma client classes
+     * @param[in] max_classes max number of classes
+     * @param[out] num_classes number of classes
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_prase_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes);
+
+    /**
+     * Fetch image from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] image sscma client image
+     * @param[out] image_size size of image
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_fetch_image_from_reply(sscma_client_reply_t *reply, char **image, int *image_size);
+
+    /**
+     * Prase image from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] image sscma client image
+     * @param[in] max_image_size max size of image
+     * @param[out] image_size size of image
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_prase_image_from_reply(sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size);
 
 #ifdef __cplusplus
 }
