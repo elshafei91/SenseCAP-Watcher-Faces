@@ -6,6 +6,8 @@ dependencies:
     version: ^1
   espressif/esp_lcd_gc9a01:
     version: ^2.0.0
+  esp_lcd_touch_chsc6x:
+    override_path: "../../../components/esp_lcd_touch_chsc6x"
   lvgl/lvgl:
     version: ^8
   
