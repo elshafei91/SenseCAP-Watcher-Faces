@@ -225,6 +225,69 @@ extern "C"
 
     esp_err_t sscma_client_break(sscma_client_handle_t client);
 
+    /**
+     * Fetch boxes and classes from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] boxes sscma client boxes
+     * @param[out] num_boxes number of boxes
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_fetch_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t **boxes, int *num_boxes);
+
+    /**
+     * Prase boxes from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] boxes sscma client boxes
+     * @param[in] max_boxes max number of boxes
+     * @param[out] num_boxes number of boxes
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_prase_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t *boxes, int max_boxes, int *num_boxes);
+
+    /**
+     * Fetch classes from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] classes sscma client classes
+     * @param[out] num_classes number of classes
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_fetch_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t **classes, int *num_classes);
+
+    /**
+     * Prase classes from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] classes sscma client classes
+     * @param[in] max_classes max number of classes
+     * @param[out] num_classes number of classes
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_prase_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes);
+
+    /**
+     * Fetch image from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] image sscma client image
+     * @param[out] image_size size of image
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_fetch_image_from_reply(sscma_client_reply_t *reply, char **image, int *image_size);
+
+    /**
+     * Prase image from sscma client reply
+     * @param[in] reply sscma client reply
+     * @param[out] image sscma client image
+     * @param[in] max_image_size max size of image
+     * @param[out] image_size size of image
+     * @return
+     *    - ESP_OK
+     */
+    esp_err_t sscma_utils_prase_image_from_reply(sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size);
+
 #ifdef __cplusplus
 }
 #endif

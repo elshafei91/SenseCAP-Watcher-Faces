@@ -69,6 +69,31 @@ extern "C"
         char *opt_detail;
     } sscma_client_sensor_t;
 
+    typedef struct
+    {
+        uint16_t x;
+        uint16_t y;
+        uint16_t w;
+        uint16_t h;
+        uint8_t score;
+        uint8_t target;
+    } sscma_client_box_t;
+
+    typedef struct
+    {
+        uint8_t target;
+        uint8_t score;
+    } sscma_client_class_t;
+
+    typedef struct
+    {
+        uint16_t x;
+        uint16_t y;
+        uint16_t z;
+        uint8_t score;
+        uint8_t target;
+    } sscma_client_point_t;
+
     /**
      * @brief Callback function of SCCMA client
      * @param[in] client SCCMA client handle

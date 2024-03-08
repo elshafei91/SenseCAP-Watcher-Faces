@@ -38,15 +38,8 @@ const int error_map[] = {
 
 #define SSCMA_CLIENT_CMD_ERROR_CODE(err) (error_map[(err & 0x0F) > (CMD_EUNKNOWN - 1) ? (CMD_EUNKNOWN - 1) : (err & 0x0F)])
 
-static inline void sscma_client_get_string_from_object(cJSON *object, const char *field_name, char **target)
+static void fetch_string_common(cJSON *object, cJSON *field, char **target)
 {
-    if (object == NULL || !cJSON_IsObject(object))
-    {
-        *target = NULL;
-        return;
-    }
-
-    cJSON *field = cJSON_GetObjectItem(object, field_name);
     if (field == NULL || !cJSON_IsString(field))
     {
         *target = NULL;
@@ -58,16 +51,22 @@ static inline void sscma_client_get_string_from_object(cJSON *object, const char
         free(*target);
     }
 
-    *target = malloc(strlen(field->valuestring) + 1);
-    if (*target != NULL)
-    {
-        strcpy(*target, field->valuestring);
-    }
-
-    return;
+    *target = strdup(field->valuestring);
 }
 
-static inline void sscma_client_get_string_from_array(cJSON *object, int index, char **target)
+static inline void fetch_string_from_object(cJSON *object, const char *field_name, char **target)
+{
+    if (object == NULL || !cJSON_IsObject(object))
+    {
+        *target = NULL;
+        return;
+    }
+
+    cJSON *field = cJSON_GetObjectItem(object, field_name);
+    fetch_string_common(object, field, target);
+}
+
+static inline void fetch_string_from_array(cJSON *object, int index, char **target)
 {
     if (object == NULL || !cJSON_IsArray(object))
     {
@@ -76,27 +75,9 @@ static inline void sscma_client_get_string_from_array(cJSON *object, int index, 
     }
 
     cJSON *field = cJSON_GetArrayItem(object, index);
-    if (field == NULL || !cJSON_IsString(field))
-    {
-        *target = NULL;
-        return;
-    }
-
-    if (*target != NULL)
-    {
-        free(*target);
-    }
-
-    *target = malloc(strlen(field->valuestring) + 1);
-    if (*target != NULL)
-    {
-        strcpy(*target, field->valuestring);
-    }
-
-    return;
+    fetch_string_common(object, field, target);
 }
-
-static inline int sscma_client_get_int_from_object(cJSON *object, const char *field_name)
+static inline int get_int_from_object(cJSON *object, const char *field_name)
 {
     if (object == NULL || !cJSON_IsObject(object))
     {
@@ -104,6 +85,21 @@ static inline int sscma_client_get_int_from_object(cJSON *object, const char *fi
     }
 
     cJSON *field = cJSON_GetObjectItem(object, field_name);
+    if (field == NULL || !cJSON_IsNumber(field))
+    {
+        return INT_MIN;
+    }
+    return field->valueint;
+}
+
+static inline int get_int_from_array(cJSON *object, int index)
+{
+    if (object == NULL || !cJSON_IsArray(object))
+    {
+        return INT_MIN;
+    }
+
+    cJSON *field = cJSON_GetArrayItem(object, index);
     if (field == NULL || !cJSON_IsNumber(field))
     {
         return INT_MIN;
@@ -680,7 +676,7 @@ esp_err_t sscma_client_get_info(sscma_client_handle_t client, sscma_client_info_
 
     if (reply.payload != NULL)
     {
-        sscma_client_get_string_from_object(reply.payload, "data", &client->info.id);
+        fetch_string_from_object(reply.payload, "data", &client->info.id);
 
         sscma_client_reply_clear(&reply);
     }
@@ -689,7 +685,7 @@ esp_err_t sscma_client_get_info(sscma_client_handle_t client, sscma_client_info_
 
     if (reply.payload != NULL)
     {
-        sscma_client_get_string_from_object(reply.payload, "data", &(client->info.name));
+        fetch_string_from_object(reply.payload, "data", &(client->info.name));
 
         sscma_client_reply_clear(&reply);
     }
@@ -701,9 +697,9 @@ esp_err_t sscma_client_get_info(sscma_client_handle_t client, sscma_client_info_
         cJSON *data = cJSON_GetObjectItem(reply.payload, "data");
         if (data != NULL)
         {
-            sscma_client_get_string_from_object(data, "hardware", &(client->info.hw_ver));
-            sscma_client_get_string_from_object(data, "software", &(client->info.fw_ver));
-            sscma_client_get_string_from_object(data, "at_api", &(client->info.sw_ver));
+            fetch_string_from_object(data, "hardware", &(client->info.hw_ver));
+            fetch_string_from_object(data, "software", &(client->info.fw_ver));
+            fetch_string_from_object(data, "at_api", &(client->info.sw_ver));
         }
 
         sscma_client_reply_clear(&reply);
@@ -716,7 +712,7 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
 {
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
-    char *model_raw = NULL;
+    char *model_data = NULL;
     size_t len = 0;
     *model = &client->model;
 
@@ -735,33 +731,36 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
             cJSON *info = cJSON_GetObjectItem(data, "info");
             if (info != NULL && cJSON_IsString(info))
             {
-                model_raw = malloc(strlen(info->valuestring));
-                if (mbedtls_base64_decode((unsigned char *)model_raw, strlen(info->valuestring), &len, (unsigned char *)info->valuestring, strlen(info->valuestring)) == 0)
+                model_data = malloc(strlen(info->valuestring));
+                if (model_data != NULL)
                 {
-                    cJSON *root = cJSON_Parse(model_raw);
-                    if (root != NULL)
+                    if (mbedtls_base64_decode((unsigned char *)model_data, strlen(info->valuestring), &len, (unsigned char *)info->valuestring, strlen(info->valuestring)) == 0)
                     {
-                        sscma_client_get_string_from_object(root, "uuid", &client->model.id);
-                        sscma_client_get_string_from_object(root, "name", &client->model.name);
-                        sscma_client_get_string_from_object(root, "version", &client->model.ver);
-                        sscma_client_get_string_from_object(root, "category", &client->model.category);
-                        sscma_client_get_string_from_object(root, "algorithm", &client->model.algorithm);
-                        sscma_client_get_string_from_object(root, "url", &client->model.url);
-                        sscma_client_get_string_from_object(root, "key", &client->model.token);
-                        sscma_client_get_string_from_object(root, "author", &client->model.manufacturer);
-                        sscma_client_get_string_from_object(root, "description", &client->model.description);
-                        cJSON *classes = cJSON_GetObjectItem(root, "classes");
-                        if (classes != NULL && cJSON_IsArray(classes))
+                        cJSON *root = cJSON_Parse(model_data);
+                        if (root != NULL)
                         {
-                            for (int i = 0; i < cJSON_GetArraySize(classes); i++)
+                            fetch_string_from_object(root, "uuid", &client->model.id);
+                            fetch_string_from_object(root, "name", &client->model.name);
+                            fetch_string_from_object(root, "version", &client->model.ver);
+                            fetch_string_from_object(root, "category", &client->model.category);
+                            fetch_string_from_object(root, "algorithm", &client->model.algorithm);
+                            fetch_string_from_object(root, "url", &client->model.url);
+                            fetch_string_from_object(root, "key", &client->model.token);
+                            fetch_string_from_object(root, "author", &client->model.manufacturer);
+                            fetch_string_from_object(root, "description", &client->model.description);
+                            cJSON *classes = cJSON_GetObjectItem(root, "classes");
+                            if (classes != NULL && cJSON_IsArray(classes))
                             {
-                                sscma_client_get_string_from_array(classes, i, &client->model.classes[i]);
+                                for (int i = 0; i < cJSON_GetArraySize(classes); i++)
+                                {
+                                    fetch_string_from_array(classes, i, &client->model.classes[i]);
+                                }
                             }
                         }
+                        cJSON_Delete(root);
                     }
-                    cJSON_Delete(root);
                 }
-                free(model_raw);
+                free(model_data);
             }
         }
         sscma_client_reply_clear(&reply);
@@ -781,7 +780,7 @@ esp_err_t sscma_client_sample(sscma_client_handle_t client, int times)
 
     if (reply.payload != NULL)
     {
-        code = sscma_client_get_int_from_object(reply.payload, "code");
+        code = get_int_from_object(reply.payload, "code");
         ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         sscma_client_reply_clear(&reply);
     }
@@ -802,7 +801,7 @@ esp_err_t sscma_client_invoke(sscma_client_handle_t client, int times, bool flit
 
     if (reply.payload != NULL)
     {
-        code = sscma_client_get_int_from_object(reply.payload, "code");
+        code = get_int_from_object(reply.payload, "code");
         ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         sscma_client_reply_clear(&reply);
     }
@@ -822,7 +821,7 @@ esp_err_t sscma_client_set_sensor(sscma_client_handle_t client, int id, int opt_
 
     if (reply.payload != NULL)
     {
-        int code = sscma_client_get_int_from_object(reply.payload, "code");
+        int code = get_int_from_object(reply.payload, "code");
         ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         sscma_client_reply_clear(&reply);
     }
@@ -839,7 +838,7 @@ esp_err_t sscma_client_get_sensor(sscma_client_handle_t client, sscma_client_sen
 
     if (reply.payload != NULL)
     {
-        int code = sscma_client_get_int_from_object(reply.payload, "code");
+        int code = get_int_from_object(reply.payload, "code");
         ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         if (ret == ESP_OK)
         {
@@ -849,11 +848,11 @@ esp_err_t sscma_client_get_sensor(sscma_client_handle_t client, sscma_client_sen
                 cJSON *o_sensor = cJSON_GetObjectItem(data, "sensor");
                 if (sensor != NULL)
                 {
-                    sensor->id = sscma_client_get_int_from_object(o_sensor, "id");
-                    sensor->type = sscma_client_get_int_from_object(o_sensor, "type");
-                    sensor->state = sscma_client_get_int_from_object(o_sensor, "state");
-                    sensor->opt_id = sscma_client_get_int_from_object(o_sensor, "opt_id");
-                    sscma_client_get_string_from_object(o_sensor, "opt_detail", &(sensor->opt_detail));
+                    sensor->id = get_int_from_object(o_sensor, "id");
+                    sensor->type = get_int_from_object(o_sensor, "type");
+                    sensor->state = get_int_from_object(o_sensor, "state");
+                    sensor->opt_id = get_int_from_object(o_sensor, "opt_id");
+                    fetch_string_from_object(o_sensor, "opt_detail", &(sensor->opt_detail));
                 }
             }
         }
@@ -872,10 +871,239 @@ esp_err_t sscma_client_break(sscma_client_handle_t client)
 
     if (reply.payload != NULL)
     {
-        int code = sscma_client_get_int_from_object(reply.payload, "code");
+        int code = get_int_from_object(reply.payload, "code");
         ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         sscma_client_reply_clear(&reply);
     }
 
     return ret;
+}
+
+esp_err_t sscma_utils_fetch_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t **boxes, int *num_boxes)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(reply != NULL, ESP_ERR_INVALID_ARG, TAG, "reply is NULL");
+    ESP_RETURN_ON_FALSE(boxes != NULL, ESP_ERR_INVALID_ARG, TAG, "boxes is NULL");
+    ESP_RETURN_ON_FALSE(num_boxes != NULL, ESP_ERR_INVALID_ARG, TAG, "num_boxes is NULL");
+    ESP_RETURN_ON_FALSE(cJSON_IsObject(reply->payload), ESP_ERR_INVALID_ARG, TAG, "reply is not object");
+
+    *boxes = NULL;
+    *num_boxes = 0;
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (data != NULL)
+    {
+        cJSON *boxes_data = cJSON_GetObjectItem(data, "boxes");
+        if (boxes_data == NULL)
+            return ESP_OK;
+        *num_boxes = cJSON_GetArraySize(boxes_data);
+        if (*num_boxes == 0)
+            return ESP_OK;
+        *boxes = malloc(sizeof(sscma_client_box_t) * (*num_boxes));
+        ESP_RETURN_ON_FALSE(*boxes != NULL, ESP_ERR_NO_MEM, TAG, "malloc boxes failed");
+        for (int i = 0; i < *num_boxes; i++)
+        {
+            cJSON *box = cJSON_GetArrayItem(boxes_data, i);
+            if (box != NULL)
+            {
+                (*boxes)[i].x = get_int_from_array(box, 0);
+                (*boxes)[i].y = get_int_from_array(box, 1);
+                (*boxes)[i].w = get_int_from_array(box, 2);
+                (*boxes)[i].h = get_int_from_array(box, 3);
+                (*boxes)[i].score = get_int_from_array(box, 4);
+                (*boxes)[i].target = get_int_from_array(box, 5);
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_utils_prase_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t *boxes, int max_boxes, int *num_boxes)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(reply != NULL, ESP_ERR_INVALID_ARG, TAG, "reply is NULL");
+    ESP_RETURN_ON_FALSE(boxes != NULL, ESP_ERR_INVALID_ARG, TAG, "classes is NULL");
+    ESP_RETURN_ON_FALSE(num_boxes != NULL, ESP_ERR_INVALID_ARG, TAG, "num_classes is NULL");
+    ESP_RETURN_ON_FALSE(cJSON_IsObject(reply->payload), ESP_ERR_INVALID_ARG, TAG, "reply is not object");
+
+    *num_boxes = 0;
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (data != NULL)
+    {
+        cJSON *boxes_data = cJSON_GetObjectItem(data, "boxes");
+        if (boxes_data == NULL)
+            return ESP_OK;
+        *num_boxes = cJSON_GetArraySize(boxes_data) > max_boxes ? max_boxes : cJSON_GetArraySize(boxes_data);
+        if (*num_boxes == 0)
+            return ESP_OK;
+        for (int i = 0; i < *num_boxes; i++)
+        {
+            cJSON *item = cJSON_GetArrayItem(boxes_data, i);
+            if (item != NULL)
+            {
+                boxes[i].x = get_int_from_array(item, 0);
+                boxes[i].y = get_int_from_array(item, 1);
+                boxes[i].w = get_int_from_array(item, 2);
+                boxes[i].h = get_int_from_array(item, 3);
+                boxes[i].score = get_int_from_array(item, 4);
+                boxes[i].target = get_int_from_array(item, 5);
+            }
+        }
+    }
+
+    return ret;
+}
+esp_err_t sscma_utils_fetch_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t **classes, int *num_classes)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(reply != NULL, ESP_ERR_INVALID_ARG, TAG, "reply is NULL");
+    ESP_RETURN_ON_FALSE(classes != NULL, ESP_ERR_INVALID_ARG, TAG, "classes is NULL");
+    ESP_RETURN_ON_FALSE(num_classes != NULL, ESP_ERR_INVALID_ARG, TAG, "num_classes is NULL");
+    ESP_RETURN_ON_FALSE(cJSON_IsObject(reply->payload), ESP_ERR_INVALID_ARG, TAG, "reply is not object");
+
+    *classes = NULL;
+    *num_classes = 0;
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (data != NULL)
+    {
+        cJSON *classes_data = cJSON_GetObjectItem(data, "classes");
+        if (classes_data == NULL)
+            return ESP_OK;
+        *num_classes = cJSON_GetArraySize(classes_data);
+        if (*num_classes == 0)
+            return ESP_OK;
+        *classes = malloc(sizeof(sscma_client_class_t) * (*num_classes));
+        ESP_RETURN_ON_FALSE(*classes != NULL, ESP_ERR_NO_MEM, TAG, "malloc classes failed");
+        for (int i = 0; i < *num_classes; i++)
+        {
+            cJSON *item = cJSON_GetArrayItem(classes_data, i);
+            if (item != NULL)
+            {
+                (*classes)[i].target = get_int_from_array(item, 0);
+                (*classes)[i].score = get_int_from_array(item, 1);
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_utils_prase_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(reply != NULL, ESP_ERR_INVALID_ARG, TAG, "reply is NULL");
+    ESP_RETURN_ON_FALSE(classes != NULL, ESP_ERR_INVALID_ARG, TAG, "classes is NULL");
+    ESP_RETURN_ON_FALSE(num_classes != NULL, ESP_ERR_INVALID_ARG, TAG, "num_classes is NULL");
+    ESP_RETURN_ON_FALSE(cJSON_IsObject(reply->payload), ESP_ERR_INVALID_ARG, TAG, "reply is not object");
+
+    *num_classes = 0;
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (data != NULL)
+    {
+        cJSON *classes_data = cJSON_GetObjectItem(data, "classes");
+        if (classes_data == NULL)
+            return ESP_OK;
+        *num_classes = cJSON_GetArraySize(classes_data) > max_classes ? max_classes : cJSON_GetArraySize(classes_data);
+        if (*num_classes == 0)
+            return ESP_OK;
+        for (int i = 0; i < *num_classes; i++)
+        {
+            cJSON *item = cJSON_GetArrayItem(classes_data, i);
+            if (item != NULL)
+            {
+                classes[i].target = get_int_from_array(item, 0);
+                classes[i].score = get_int_from_array(item, 1);
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_utils_fetch_image_from_reply(sscma_client_reply_t *reply, char **image, int *image_size)
+{
+    ESP_RETURN_ON_FALSE(reply && image && image_size, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+
+    *image = NULL;
+    *image_size = 0;
+
+    if (!cJSON_IsObject(reply->payload))
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (!data)
+    {
+        return ESP_FAIL;
+    }
+
+    cJSON *image_data = cJSON_GetObjectItem(data, "image");
+    if (!image_data)
+    {
+        return ESP_FAIL;
+    }
+
+    const char *image_str = cJSON_GetStringValue(image_data);
+    if (!image_str)
+    {
+        return ESP_FAIL;
+    }
+
+    *image = strdup(image_str);
+    if (!(*image))
+    {
+        return ESP_ERR_NO_MEM;
+    }
+
+    *image_size = strlen(image_str);
+
+    return ESP_OK;
+}
+
+esp_err_t sscma_utils_prase_image_from_reply(sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size)
+{
+    ESP_RETURN_ON_FALSE(reply && image && image_size, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+
+    if (!cJSON_IsObject(reply->payload))
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (!data)
+    {
+        return ESP_FAIL;
+    }
+
+    cJSON *image_data = cJSON_GetObjectItem(data, "image");
+    if (!image_data)
+    {
+        return ESP_FAIL;
+    }
+
+    const char *image_str = cJSON_GetStringValue(image_data);
+    if (!image_str)
+    {
+        return ESP_FAIL;
+    }
+
+    size_t image_str_len = strlen(image_str);
+    if (image_str_len > max_image_size)
+    {
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    *image_size = image_str_len;
+    strcpy(image, image_str);
+
+    return ESP_OK;
 }

@@ -48,7 +48,82 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
         strcpy(&reply->data[100 - 4], "...");
     }
     // Note: reply is automatically recycled after exiting the function.
-    printf("event: %s\n", reply->data);
+
+    char *img = NULL;
+    int img_size = 0;
+    if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK)
+    {
+        printf("image_size: %d\n", img_size);
+        free(img);
+    }
+    sscma_client_box_t *boxes = NULL;
+    int box_count = 0;
+    if (sscma_utils_fetch_boxes_from_reply(reply, &boxes, &box_count) == ESP_OK)
+    {
+        if (box_count > 0)
+        {
+            for (int i = 0; i < box_count; i++)
+            {
+                printf("[box %d]: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\n", i, boxes[i].x, boxes[i].y, boxes[i].w, boxes[i].h, boxes[i].score, boxes[i].target);
+            }
+        }
+        free(boxes);
+    }
+
+    sscma_client_class_t *classes = NULL;
+    int class_count = 0;
+    if (sscma_utils_fetch_classes_from_reply(reply, &classes, &class_count) == ESP_OK)
+    {
+        if (class_count > 0)
+        {
+            for (int i = 0; i < class_count; i++)
+            {
+                printf("[class %d]: target=%d, score=%d\n", i, classes[i].target, classes[i].score);
+            }
+        }
+        free(classes);
+    }
+}
+
+char t_img[32 * 1024] = {0};
+sscma_client_box_t t_boxed[10];
+sscma_client_class_t t_classes[10];
+void on_event_debug(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
+{
+    if (reply->len >= 100)
+    {
+        strcpy(&reply->data[100 - 4], "...");
+    }
+    // Note: reply is automatically recycled after exiting the function.
+
+    int img_size = 0;
+    if (sscma_utils_prase_image_from_reply(reply, t_img, sizeof(t_img), &img_size) == ESP_OK)
+    {
+        printf("image_size: %d\n", img_size);
+    }
+    int box_count = 0;
+    if (sscma_utils_prase_boxes_from_reply(reply, &t_boxed, 10, &box_count) == ESP_OK)
+    {
+        if (box_count > 0)
+        {
+            for (int i = 0; i < box_count; i++)
+            {
+                printf("[box %d]: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\n", i, t_boxed[i].x, t_boxed[i].y, t_boxed[i].w, t_boxed[i].h, t_boxed[i].score, t_boxed[i].target);
+            }
+        }
+    }
+
+    int class_count = 0;
+    if (sscma_utils_prase_classes_from_reply(reply, &t_classes, 10, &class_count) == ESP_OK)
+    {
+        if (class_count > 0)
+        {
+            for (int i = 0; i < class_count; i++)
+            {
+                printf("[class %d]: target=%d, score=%d\n", i, t_classes[i].target, t_classes[i].score);
+            }
+        }
+    }
 }
 
 void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
@@ -141,7 +216,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(sscma_client_new(io, &sscma_client_config, &client));
     const sscma_client_callback_t callback = {
-        .on_event = on_event,
+        .on_event = on_event_debug,
         .on_log = on_log,
     };
 
@@ -217,14 +292,14 @@ void app_main(void)
                 }
                 sscma_client_break(client);
                 sscma_client_set_sensor(client, 1, 2, true);
-                vTaskDelay(50 / portTICK_PERIOD_MS);
+                // vTaskDelay(50 / portTICK_PERIOD_MS);
                 if (sscma_client_sample(client, 5) != ESP_OK)
                 {
                     printf("sample failed\n");
                 }
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                // vTaskDelay(1000 / portTICK_PERIOD_MS);
                 sscma_client_set_sensor(client, 1, 0, true);
-                vTaskDelay(50 / portTICK_PERIOD_MS);
+                // vTaskDelay(50 / portTICK_PERIOD_MS);
                 if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
                 {
                     printf("sample failed\n");
