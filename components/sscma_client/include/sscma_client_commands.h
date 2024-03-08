@@ -38,6 +38,7 @@
 #define CMD_AT_MODELS "MODELS"
 #define CMD_AT_MODEL "MODEL"
 #define CMD_AT_SENSORS "SENSORS"
+#define CMD_AT_SENSOR "SENSOR"
 #define CMD_AT_ACTION "ACTION"
 #define CMD_AT_LED "LED"
 

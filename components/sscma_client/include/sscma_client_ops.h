@@ -174,6 +174,57 @@ extern "C"
      */
     esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_model_t **model, bool cached);
 
+    /**
+     * @brief Set sensor
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] id sensor id
+     * @param[in] opt_id sensor config
+     * @param[in] bool true if enable
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_set_sensor(sscma_client_handle_t client, int id, int opt_id, bool enable);
+
+    /**
+     * @brief Get sensor
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] sensor pointer to sscma_client_sensor_t
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_get_sensor(sscma_client_handle_t client, sscma_client_sensor_t *sensor);
+
+    /**
+     * @brief SSCMA client sample
+     * @param[in] client SCCMA client handle
+     * @param[in] times Number of times
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_sample(sscma_client_handle_t client, int times);
+
+    /**
+     * @brief SSCMA client invoke
+     * @param[in] client SCCMA client handle
+     * @param[in] times Number of times
+     * @param[in] fliter true if fliter
+     * @param[in] show true if show
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_invoke(sscma_client_handle_t client, int times, bool fliter, bool show);
+
+    /**
+     * @brief SSCMA client break
+     * @param[in] client SCCMA client handle
+     * @return
+     *          - ESP_OK on success
+     */
+
+    esp_err_t sscma_client_break(sscma_client_handle_t client);
+
 #ifdef __cplusplus
 }
 #endif

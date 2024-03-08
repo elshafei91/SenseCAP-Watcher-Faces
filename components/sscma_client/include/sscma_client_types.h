@@ -60,6 +60,15 @@ extern "C"
         char *manufacturer; /*!< Manufacturer */
     } sscma_client_model_t;
 
+    typedef struct
+    {
+        int id;
+        int type;
+        int state;
+        int opt_id;
+        char *opt_detail;
+    } sscma_client_sensor_t;
+
     /**
      * @brief Callback function of SCCMA client
      * @param[in] client SCCMA client handle

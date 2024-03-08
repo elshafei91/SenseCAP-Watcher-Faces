@@ -23,6 +23,21 @@
 
 static const char *TAG = "sscma_client";
 
+const int error_map[] = {
+    ESP_OK,
+    ESP_ERR_NOT_FINISHED,
+    ESP_FAIL,
+    ESP_ERR_TIMEOUT,
+    ESP_ERR_INVALID_RESPONSE,
+    ESP_ERR_INVALID_ARG,
+    ESP_ERR_NO_MEM,
+    ESP_ERR_INVALID_STATE,
+    ESP_ERR_NOT_SUPPORTED,
+    ESP_FAIL,
+};
+
+#define SSCMA_CLIENT_CMD_ERROR_CODE(err) (error_map[(err & 0x0F) > (CMD_EUNKNOWN - 1) ? (CMD_EUNKNOWN - 1) : (err & 0x0F)])
+
 static inline void sscma_client_get_string_from_object(cJSON *object, const char *field_name, char **target)
 {
     if (object == NULL || !cJSON_IsObject(object))
@@ -79,6 +94,21 @@ static inline void sscma_client_get_string_from_array(cJSON *object, int index, 
     }
 
     return;
+}
+
+static inline int sscma_client_get_int_from_object(cJSON *object, const char *field_name)
+{
+    if (object == NULL || !cJSON_IsObject(object))
+    {
+        return INT_MIN;
+    }
+
+    cJSON *field = cJSON_GetObjectItem(object, field_name);
+    if (field == NULL || !cJSON_IsNumber(field))
+    {
+        return INT_MIN;
+    }
+    return field->valueint;
 }
 
 void sscma_client_reply_clear(sscma_client_reply_t *reply)
@@ -169,7 +199,6 @@ static void sscma_client_process(void *arg)
                                 sscma_client_reply_clear(&reply);
                                 continue;
                             }
-
                             if (type->valueint == CMD_TYPE_RESPONSE)
                             {
                                 sscma_client_request_t *first_req, *next_req = NULL;
@@ -274,7 +303,7 @@ static void sscma_client_process(void *arg)
                         }
                     }
                     // delete this reply from rx buffer
-                    memmove(client->rx_buffer.data, suffix + RESPONSE_SUFFIX_LEN, len);
+                    memmove(client->rx_buffer.data, suffix + RESPONSE_SUFFIX_LEN, client->rx_buffer.pos - (suffix - client->rx_buffer.data) - RESPONSE_PREFIX_LEN);
                     client->rx_buffer.pos -= len;
                 }
                 else
@@ -306,7 +335,7 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     if (config->reset_gpio_num >= 0)
     {
         gpio_config_t io_conf = {
-            .mode = GPIO_MODE_OUTPUT,
+            .mode = GPIO_MODE_INPUT,
             .pin_bit_mask = 1ULL << config->reset_gpio_num,
         };
         ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "configure GPIO for RST line failed");
@@ -522,19 +551,28 @@ esp_err_t sscma_client_init(sscma_client_handle_t client)
 
 esp_err_t sscma_client_reset(sscma_client_handle_t client)
 {
+    esp_err_t ret = ESP_OK;
     // perform hardware reset
     if (client->reset_gpio_num >= 0)
     {
+        gpio_config_t io_conf = {
+            .mode = GPIO_MODE_OUTPUT,
+            .pin_bit_mask = 1ULL << client->reset_gpio_num,
+        };
+        ESP_RETURN_ON_ERROR(gpio_config(&io_conf), TAG, "configure GPIO for RST line failed");
+
         gpio_set_level(client->reset_gpio_num, client->reset_level);
         vTaskDelay(50 / portTICK_PERIOD_MS);
         gpio_set_level(client->reset_gpio_num, !client->reset_level);
         vTaskDelay(500 / portTICK_PERIOD_MS);
+        gpio_reset_pin(client->reset_gpio_num);
     }
     else
     {
+        ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), TAG, "request reset failed");
         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for sscma to be ready
     }
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t sscma_client_read(sscma_client_handle_t client, void *data, size_t size)
@@ -611,14 +649,17 @@ esp_err_t sscma_client_request(sscma_client_handle_t client, const char *cmd, ss
     }
 
 err:
-    if (listIS_CONTAINED_WITHIN(client->request_list, &(request->item)))
+    if (wait)
     {
-        uxListRemove(&(request->item));
-    }
-    if (request)
-    {
-        vQueueDelete(request->reply);
-        free(request);
+        if (listIS_CONTAINED_WITHIN(client->request_list, &(request->item)))
+        {
+            uxListRemove(&(request->item));
+        }
+        if (request)
+        {
+            vQueueDelete(request->reply);
+            free(request);
+        }
     }
     return ret;
 }
@@ -723,6 +764,116 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
                 free(model_raw);
             }
         }
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_sample(sscma_client_handle_t client, int times)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+    int code = 0;
+    char cmd[64] = {0};
+    snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_SAMPLE CMD_SET "%d" CMD_SUFFIX, times);
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request sample failed");
+
+    if (reply.payload != NULL)
+    {
+        code = sscma_client_get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_invoke(sscma_client_handle_t client, int times, bool fliter, bool show)
+{
+    esp_err_t ret = ESP_OK;
+    char cmd[64] = {0};
+    int code = 0;
+    sscma_client_reply_t reply;
+
+    snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_INVOKE CMD_SET "%d,%d,%d" CMD_SUFFIX, times, fliter ? 1 : 0, show ? 0 : 1);
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request invoke failed");
+
+    if (reply.payload != NULL)
+    {
+        code = sscma_client_get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_set_sensor(sscma_client_handle_t client, int id, int opt_id, bool enable)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+    char cmd[64] = {0};
+
+    snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_SENSOR CMD_SET "%d,%d,%d" CMD_SUFFIX, id, enable ? 1 : 0, opt_id);
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request set sensor failed");
+
+    if (reply.payload != NULL)
+    {
+        int code = sscma_client_get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_get_sensor(sscma_client_handle_t client, sscma_client_sensor_t *sensor)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_SENSOR CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request get sensor failed");
+
+    if (reply.payload != NULL)
+    {
+        int code = sscma_client_get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
+        if (ret == ESP_OK)
+        {
+            cJSON *data = cJSON_GetObjectItem(reply.payload, "data");
+            if (data != NULL)
+            {
+                cJSON *o_sensor = cJSON_GetObjectItem(data, "sensor");
+                if (sensor != NULL)
+                {
+                    sensor->id = sscma_client_get_int_from_object(o_sensor, "id");
+                    sensor->type = sscma_client_get_int_from_object(o_sensor, "type");
+                    sensor->state = sscma_client_get_int_from_object(o_sensor, "state");
+                    sensor->opt_id = sscma_client_get_int_from_object(o_sensor, "opt_id");
+                    sscma_client_get_string_from_object(o_sensor, "opt_detail", &(sensor->opt_detail));
+                }
+            }
+        }
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_break(sscma_client_handle_t client)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_BREAK CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request break failed");
+
+    if (reply.payload != NULL)
+    {
+        int code = sscma_client_get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         sscma_client_reply_clear(&reply);
     }
 

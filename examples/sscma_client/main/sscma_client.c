@@ -215,6 +215,20 @@ void app_main(void)
                 {
                     printf("get model failed\n");
                 }
+                sscma_client_break(client);
+                sscma_client_set_sensor(client, 1, 2, true);
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+                if (sscma_client_sample(client, 5) != ESP_OK)
+                {
+                    printf("sample failed\n");
+                }
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                sscma_client_set_sensor(client, 1, 0, true);
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+                if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
+                {
+                    printf("sample failed\n");
+                }
             }
         } while (rlen > 0);
 
