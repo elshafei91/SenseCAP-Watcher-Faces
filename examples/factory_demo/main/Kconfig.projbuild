@@ -1,0 +1,13 @@
+menu "Example Configuration"
+    config VOICE_ID
+        string "Speaker Id"
+        default "qiumum_0gushi"
+        help
+            speaker id from https://czyt.tech/post/a-free-tts-api/?from_wecom=1
+    config VOLUME_LEVEL
+        int "volume level"
+        default "90"
+        range 1 100
+        help
+            speaker volume
+endmenu
