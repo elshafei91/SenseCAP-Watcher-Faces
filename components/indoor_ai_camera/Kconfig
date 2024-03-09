@@ -1,0 +1,22 @@
+menu "Indoor AI Camera BSP"
+
+    config LVGL_DRAW_BUFF_HEIGHT
+        int "LVGL DRAW BUFF HEIGHT(ROWS)"
+        range 10 100
+        default 50
+        help
+            "LVGL draw buffer height(rows)"
+
+    config LVGL_INPUT_DEVICE_USE_KNOB
+        bool "LVGL INPUT DEVICE USE KNOB"
+        default y
+        help
+            "Enable to use knob as LVGL input device"
+
+    config LVGL_INPUT_DEVICE_USE_TP
+        bool "LVGL INPUT DEVICE USE TP"
+        default y
+        help
+            "Enable to use touchpad as LVGL input device"
+
+endmenu
