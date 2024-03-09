@@ -2,7 +2,7 @@ menu "Indoor AI Camera BSP"
 
     config LVGL_DRAW_BUFF_HEIGHT
         int "LVGL DRAW BUFF HEIGHT(ROWS)"
-        range 10 100
+        range 10 240
         default 50
         help
             "LVGL draw buffer height(rows)"
