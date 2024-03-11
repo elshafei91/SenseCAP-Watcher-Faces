@@ -10,7 +10,7 @@
 
 #define IMAGE_640_480_BUF_SIZE 80*1024
 #define IMAGE_240_240_BUF_SIZE 50*1024
-#define SCENE_ID_DEFAULT 1
+#define SCENE_ID_DEFAULT 3
 
 
 #ifdef __cplusplus
@@ -18,6 +18,10 @@ extern "C" {
 #endif
 
 int app_sensecraft_init(void);
+
+int app_sensecraft_image_upload(struct view_data_image *p_data);
+
+int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data);
 
 #ifdef __cplusplus
 }

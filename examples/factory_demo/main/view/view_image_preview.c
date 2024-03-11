@@ -69,6 +69,14 @@ int view_image_preview_flush(struct view_data_image_invoke *p_invoke)
             x = x - w / 2;
             y = y - h / 2;
 
+            if(x < 0){
+                x = 0;
+            }
+
+            if (y < 0) {
+                y = 0;
+            }
+            
             lv_obj_set_pos(ui_rectangle[i], x, y);
             lv_obj_set_size(ui_rectangle[i], w, h);
             lv_obj_set_style_border_color(ui_rectangle[i], RECTANGLE_COLOR, 0);

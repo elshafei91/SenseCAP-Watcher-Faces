@@ -9,6 +9,7 @@
 #include <mbedtls/base64.h>
 #include "view_image_preview.h"
 #include "indoor_ai_camera.h"
+#include "app_sensecraft.h"
 
 static const char *TAG = "sscma-client";
 
@@ -48,7 +49,7 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) != ESP_OK) {
                 break;
             }
-            ESP_LOGI(TAG, "image_size: %d\n", img_size);
+            // ESP_LOGI(TAG, "image_size: %d\n", img_size);
 
             if (sscma_utils_fetch_boxes_from_reply(reply, &boxes, &box_count) != ESP_OK)
             {
@@ -78,6 +79,8 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             view_image_preview_flush(&invoke);
             lvgl_port_unlock();
 
+            app_sensecraft_image_invoke_check(&invoke);
+
             free(boxes);
             free(img);
             break;
@@ -88,11 +91,13 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) != ESP_OK) {
                 break;
             }
-            ESP_LOGI(TAG, "image_size: %d\n", img_size);
+            ESP_LOGI(TAG, "640 480image_size: %d\n", img_size);
             image.p_buf = (uint8_t *)img;
             image.len = img_size;
             image.time = time(NULL);
-            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480, &image, sizeof(image), portMAX_DELAY);
+
+            app_sensecraft_image_upload(&image);
+            
             free(img);
             
             break;

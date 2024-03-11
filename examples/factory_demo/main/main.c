@@ -58,12 +58,14 @@ int board_init(void)
 
 int app_init(void)
 {
+    app_sensecraft_init();
     app_sscma_client_init();
+
     // app_sr_start(false);
-    // app_sensecraft_init();
-    // app_wifi_init();
-    // app_time_init();
-    // app_cmd_init();
+
+    app_wifi_init();
+    app_time_init();
+    app_cmd_init();
     return ESP_OK;
 }
 
@@ -83,14 +85,14 @@ void app_main(void)
     };
     ESP_ERROR_CHECK(esp_event_loop_create(&view_event_task_args, &view_event_handle));
 
-    esp_event_loop_args_t ctrl_event_task_args = {
-        .queue_size = 10,
-        .task_name = "ctrl_event_task",
-        .task_priority = uxTaskPriorityGet(NULL),
-        .task_stack_size = 1024*5,
-        .task_core_id = tskNO_AFFINITY
-    };
-    ESP_ERROR_CHECK(esp_event_loop_create(&ctrl_event_task_args, &ctrl_event_handle));
+    // esp_event_loop_args_t ctrl_event_task_args = {
+    //     .queue_size = 10,
+    //     .task_name = "ctrl_event_task",
+    //     .task_priority = uxTaskPriorityGet(NULL),
+    //     .task_stack_size = 1024*5,
+    //     .task_core_id = tskNO_AFFINITY
+    // };
+    // ESP_ERROR_CHECK(esp_event_loop_create(&ctrl_event_task_args, &ctrl_event_handle));
 
    // UI init
     view_init();
@@ -108,16 +110,16 @@ void app_main(void)
     
     static char buffer[128];    /* Make sure buffer is enough for `sprintf` */
     while (1) {
-        // sprintf(buffer, "   Biggest /     Free /    Total\n"
-        //         "\t  DRAM : [%8d / %8d / %8d]\n"
-        //         "\t PSRAM : [%8d / %8d / %8d]",
-        //         heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
-        //         heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
-        //         heap_caps_get_total_size(MALLOC_CAP_INTERNAL),
-        //         heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
-        //         heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-        //         heap_caps_get_total_size(MALLOC_CAP_SPIRAM));
-        // ESP_LOGI("MEM", "%s", buffer);
+        sprintf(buffer, "   Biggest /     Free /    Total\n"
+                "\t  DRAM : [%8d / %8d / %8d]\n"
+                "\t PSRAM : [%8d / %8d / %8d]",
+                heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+                heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                heap_caps_get_total_size(MALLOC_CAP_INTERNAL),
+                heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+                heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+                heap_caps_get_total_size(MALLOC_CAP_SPIRAM));
+        ESP_LOGI("MEM", "%s", buffer);
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }

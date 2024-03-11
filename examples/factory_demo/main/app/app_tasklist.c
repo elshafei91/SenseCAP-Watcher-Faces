@@ -14,7 +14,7 @@ char* tasklist_parse(char *resp)
 
     cJSON *json = cJSON_Parse(resp);
 
-    cJSON *code, *data, *sceneId, *tasklist, *tasklist_len; 
+    cJSON *code, *data, *sceneId, *tasklist, *warnStatus, *tasklist_len; 
 
     code = cJSON_GetObjectItem(json, "code");
     if( code != NULL  && code->valueint != NULL) {
@@ -29,10 +29,15 @@ char* tasklist_parse(char *resp)
         ESP_LOGI(TAG, "sceneId: %d", sceneId->valueint);
     }
 
+    warnStatus = cJSON_GetObjectItem(data, "warnStatus");
+    if (warnStatus != NULL &&  warnStatus->valueint != NULL) {
+        ESP_LOGI(TAG, "warnStatus: %d", warnStatus->valueint);
+    }    
+
     tasklist = cJSON_GetObjectItem(data, "taskList");
     if (tasklist == NULL || !cJSON_IsArray(tasklist)) {
         ESP_LOGE(TAG, "tasklist is not array");
-        // goto end;
+        goto end;
     }
     tasklist_len = cJSON_GetArraySize(tasklist);
     for ( int i = 0; i < tasklist_len; i++)
@@ -69,10 +74,12 @@ char* tasklist_parse(char *resp)
                 {
                     cJSON  *audio = cJSON_GetObjectItem(params, "audio");
                     if( audio != NULL  && audio->valuestring != NULL) {
-                        // ESP_LOGI(TAG, "audio: %s", audio->valuestring);
+                       
                         size_t len  = 0;
                         int buf_len = strlen(audio->valuestring);
                         uint8_t * audio_bin = malloc(buf_len);
+
+                        ESP_LOGI(TAG, "audio size: %d", buf_len);
                         if(audio_bin != NULL) {
                             int len  = 0;
                             int ret= mbedtls_base64_decode(audio_bin, buf_len, (size_t *)&len, (const unsigned char *) audio->valuestring, buf_len );

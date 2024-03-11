@@ -12,6 +12,13 @@
 #include "cJSON.h"
 // #include "audio_player.h"
 
+
+#define UPLOAD_FLAG_READY      0
+#define UPLOAD_FLAG_WAITING    1
+#define UPLOAD_FLAG_UPLOADING  2
+#define UPLOAD_FLAG_DONE       3
+
+
 static const char *TAG = "app-sensecraft";
 
 static struct view_data_image_invoke image_invoke;
@@ -19,8 +26,8 @@ static struct view_data_image image_640_480;
 
 static struct view_data_record record_data; // 不需要重新buf
 
-static uint8_t image_upload_flag = 0;
-static uint8_t audio_upload_flag = 0;
+static uint8_t image_upload_flag = UPLOAD_FLAG_READY;
+static uint8_t audio_upload_flag = UPLOAD_FLAG_READY;
 static uint8_t network_connect_flag = 0;
 
 static SemaphoreHandle_t __g_data_mutex;
@@ -41,6 +48,14 @@ static uint8_t scene_id = SCENE_ID_DEFAULT;
         ESP_LOGE(TAG, "%s:%d (%s):%s", __FILE__, __LINE__, __FUNCTION__, str); \
         goto label;                                                            \
     }
+
+static void  image_upload_flag_set(uint8_t flag)
+{
+    xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+    image_upload_flag = flag;
+    xSemaphoreGive(__g_data_mutex);    
+}
+
 static char *__request(const char *base_url, const char *api_key, const char *endpoint, const char *content_type, esp_http_client_method_t method, const char *boundary, uint8_t *data, size_t len)
 {
     char *url = NULL;
@@ -181,7 +196,7 @@ static char *__https_upload_audio(uint8_t *audio_data, size_t audio_len)
     return NULL;
 }
 
-static char *__https_upload_image(uint8_t *image_data, size_t image_len, uint8_t scene_id)
+static char * __https_upload_image(uint8_t *image_data, size_t image_len, uint8_t scene_id)
 {
 
     uint8_t *p_data = NULL;
@@ -196,7 +211,7 @@ static char *__https_upload_image(uint8_t *image_data, size_t image_len, uint8_t
 
     xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
     memcpy(p_data + index, image_data, image_len);
-    image_upload_flag = 0; // 不考虑上传失败的情况
+    image_upload_flag = UPLOAD_FLAG_UPLOADING; // 不考虑上传失败的情况
     xSemaphoreGive(__g_data_mutex);
 
     index += image_len;
@@ -214,6 +229,11 @@ static char *__https_upload_image(uint8_t *image_data, size_t image_len, uint8_t
     {
         ESP_LOGE(TAG, "request failed");
     }
+
+    xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+    image_upload_flag = UPLOAD_FLAG_READY; 
+    xSemaphoreGive(__g_data_mutex);
+
     return NULL;
 }
 
@@ -222,25 +242,21 @@ void __app_sensecraft_task(void *p_arg)
     ESP_LOGI(TAG, "start");
     while (1)
     {
-
         xSemaphoreTake(__g_event_sem, pdMS_TO_TICKS(5000));
-
-        // ESP_LOGI(TAG, "__g_event_sem");
-
         if (!network_connect_flag)
         {
             continue;
         }
-
-        ESP_LOGI(TAG, "handle:%d, %d", image_upload_flag, audio_upload_flag);
-        if (image_upload_flag)
+        if (image_upload_flag == UPLOAD_FLAG_WAITING)
         {
+            ESP_LOGI(TAG, "image upload: %ld", image_640_480.len);
             __https_upload_image(image_640_480.p_buf, image_640_480.len, scene_id);
         }
+
         if (audio_upload_flag)
         {
+            ESP_LOGI(TAG, "audio upload: %ld", record_data.len);
             __https_upload_audio(record_data.p_buf, record_data.len);
-            ESP_LOGE(TAG, "%ld", record_data.len);
         }
     }
 }
@@ -262,68 +278,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
         {
             network_connect_flag = 0;
         }
-        break;
-    }
-    case VIEW_EVENT_IMAGE_240_240:
-    {
-
-        ESP_LOGI(TAG, "event: VIEW_EVENT_IMAGE_240_240");
-        struct view_data_image_invoke *p_data = (struct view_data_image_invoke *)event_data;
-
-        static time_t last_image_upload_time = 0;
-        time_t now = 0;
-
-        // 未检测到目标
-        if (p_data->boxes_cnt <= 0)
-        {
-            break;
-        }
-
-        // 无网络
-        if (!network_connect_flag)
-        {
-            break;
-        }
-
-        // 有缓存数据未上传
-        if (image_upload_flag)
-        {
-            break;
-        }
-
-        // 上报间隔需要大于 IMAGE_UPLOAD_TIME_INTERVAL
-        now = time(NULL);
-        if ((now - last_image_upload_time) < IMAGE_UPLOAD_TIME_INTERVAL)
-        {
-            break;
-        }
-        last_image_upload_time = now;
-
-        xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
-        image_invoke.boxes_cnt = p_data->boxes_cnt;
-        memcpy(image_invoke.boxes, p_data->boxes, p_data->boxes_cnt * sizeof(struct view_data_boxes));
-        memcpy(image_invoke.image.p_buf, p_data->image.p_buf, p_data->image.len);
-        image_invoke.image.len = p_data->image.len;
-        xSemaphoreGive(__g_data_mutex);
-
-        // sample 640*480 image
-        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, NULL, 0, portMAX_DELAY);
-
-        break;
-    }
-    case VIEW_EVENT_IMAGE_640_480:
-    {
-        ESP_LOGI(TAG, "event: VIEW_EVENT_IMAGE_640_480");
-        struct view_data_image *p_data = (struct view_data_image *)event_data;
-
-        xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
-        image_640_480.len = p_data->len;
-        memcpy(image_640_480.p_buf, p_data->p_buf, p_data->len);
-        image_upload_flag = 1;
-        xSemaphoreGive(__g_data_mutex);
-
-        xSemaphoreGive(__g_event_sem); // notify task right now
-
         break;
     }
     case VIEW_EVENT_AUDIO_WAKE:
@@ -377,13 +331,69 @@ int app_sensecraft_init(void)
                                                              VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,
                                                              __view_event_handler, NULL, NULL));
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
-                                                             VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480,
-                                                             __view_event_handler, NULL, NULL));
+    return 0;
+}
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
-                                                             VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_240_240,
-                                                             __view_event_handler, NULL, NULL));
+int app_sensecraft_image_upload(struct view_data_image *p_data)
+{
+    ESP_LOGI(TAG, "waitting upload image!");
+
+    xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+    image_640_480.len = p_data->len;
+    memcpy(image_640_480.p_buf, p_data->p_buf, p_data->len);
+    image_upload_flag = UPLOAD_FLAG_WAITING;
+    xSemaphoreGive(__g_data_mutex);
+
+    xSemaphoreGive(__g_event_sem); // notify task right now
+
+    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_240_240_REQ, NULL, 0, portMAX_DELAY);
 
     return 0;
+}
+
+int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
+{
+    static time_t last_image_upload_time = 0;
+    time_t now = 0;
+
+    printf( "check: %d, %d, %d, %lld\r\n", p_data->boxes_cnt, network_connect_flag, image_upload_flag, time(NULL) - last_image_upload_time);
+    // 未检测到目标
+    if (p_data->boxes_cnt <= 0)
+    {
+        return 0;
+    }
+
+    // 无网络
+    if (!network_connect_flag)
+    {
+        return 0;
+    }
+
+    // 上次的数据是否上传完
+    if (image_upload_flag != UPLOAD_FLAG_READY)
+    {
+        return 0;
+    }
+
+    // 上报间隔需要大于 IMAGE_UPLOAD_TIME_INTERVAL
+    now = time(NULL);
+    // if ((now - last_image_upload_time) < IMAGE_UPLOAD_TIME_INTERVAL)
+    // {
+    //     return 0;
+    // }
+    last_image_upload_time = now;
+
+    xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+    image_invoke.boxes_cnt = p_data->boxes_cnt;
+    memcpy(image_invoke.boxes, p_data->boxes, p_data->boxes_cnt * sizeof(struct view_data_boxes));
+    memcpy(image_invoke.image.p_buf, p_data->image.p_buf, p_data->image.len);
+    image_invoke.image.len = p_data->image.len;
+    xSemaphoreGive(__g_data_mutex);
+
+    ESP_LOGI(TAG, "Need upload image!");
+
+    // sample 640*480 image
+    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, NULL, 0, portMAX_DELAY);
+
+    return 1;
 }
