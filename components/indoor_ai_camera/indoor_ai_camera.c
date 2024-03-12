@@ -257,8 +257,8 @@ lv_disp_t *bsp_lvgl_init(void)
         .buffer_size = DRV_LCD_H_RES * LVGL_DRAW_BUFF_HEIGHT,
         .double_buffer = LVGL_DRAW_BUFF_DOUBLE,
         .flags = {
-            .buff_dma = true,
-            .buff_spiram = false,
+            .buff_dma = false,
+            .buff_spiram = true,
         }
     };
     return bsp_lvgl_init_with_cfg(&cfg);
