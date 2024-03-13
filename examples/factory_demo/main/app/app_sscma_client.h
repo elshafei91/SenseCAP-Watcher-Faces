@@ -13,9 +13,9 @@
 #define EXAMPLE_SSCMA_SPI_MOSI (5)
 #define EXAMPLE_SSCMA_SPI_MISO (6)
 #define EXAMPLE_SSCMA_SPI_CS (21)
-#define EXAMPLE_SSCMA_SPI_SYNC (14)
+#define EXAMPLE_SSCMA_SPI_SYNC (-1)
 
-#define EXAMPLE_SSCMA_RESET (20)
+#define EXAMPLE_SSCMA_RESET (-1)
 
 
 #ifdef __cplusplus

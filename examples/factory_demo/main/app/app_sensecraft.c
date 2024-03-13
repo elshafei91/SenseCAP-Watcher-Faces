@@ -68,7 +68,7 @@ static char *__request(const char *base_url, const char *api_key, const char *en
     esp_http_client_config_t config = {
         .url = url,
         .method = method,
-        .timeout_ms = 30000,
+        .timeout_ms = 10000,
         .crt_bundle_attach = esp_crt_bundle_attach,
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -357,13 +357,24 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     static time_t last_image_upload_time = 0;
     time_t now = 0;
 
-    printf( "check: %d, %d, %d, %lld\r\n", p_data->boxes_cnt, network_connect_flag, image_upload_flag, time(NULL) - last_image_upload_time);
+
+    // printf( "check: %d, %d, %d, %lld\r\n", p_data->boxes_cnt, network_connect_flag, image_upload_flag, time(NULL) - last_image_upload_time);
+    
     // 未检测到目标
     if (p_data->boxes_cnt <= 0)
     {
         return 0;
     }
 
+    uint8_t max_score = 0;
+    for (size_t i = 0; i < p_data->boxes_cnt; i++)
+    {
+        max_score =  p_data->boxes[i].score  > max_score ? p_data->boxes[i].score: max_score;
+    }
+    if( max_score < 60) {
+        return 0;
+    }
+    
     // 无网络
     if (!network_connect_flag)
     {

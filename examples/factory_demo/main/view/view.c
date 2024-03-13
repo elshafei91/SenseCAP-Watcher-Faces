@@ -126,10 +126,10 @@ int view_init(void)
 {
     lvgl_port_lock(0);
     
-    // ui_init();
+    ui_init();
     view_alarm_init(lv_layer_top());
     view_alarm_off();
-    view_image_preview_init(lv_scr_act()); //ui_ui_preview
+    view_image_preview_init( lv_scr_act()); 
 
     lvgl_port_unlock();
     

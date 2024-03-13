@@ -1,0 +1,52 @@
+#include "app_rgb.h"
+#include "esp_timer.h"
+
+
+static esp_timer_handle_t     rgb_timer_handle;
+
+static void __timer_callback(void* arg)
+{
+
+}
+
+static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+{
+    switch (id)
+    {
+        case VIEW_EVENT_ALARM_ON:
+        {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_ON");
+            ESP_ERROR_CHECK(esp_timer_start_periodic(rgb_timer_handle, 1000000 * 1));
+
+            break;
+        }
+        case VIEW_EVENT_ALARM_OFF:
+        {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
+            ESP_ERROR_CHECK(esp_timer_stop(rgb_timer_handle));
+            break;
+        }
+    default:
+        break;
+    }
+}
+
+int app_rgb_init(void)
+{
+
+    const esp_timer_create_args_t timer_args = {
+            .callback = &__timer_callback,
+            /* argument specified here will be passed to timer callback function */
+            .arg = (void*) rgb_timer_handle,
+            .name = "rgb timer"
+    };
+    ESP_ERROR_CHECK( esp_timer_create(&timer_args, &rgb_timer_handle));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, 
+                                                            __view_event_handler, NULL, NULL));   
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, 
+                                                            __view_event_handler, NULL, NULL));    
+}

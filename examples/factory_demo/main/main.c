@@ -47,10 +47,15 @@ esp_event_loop_handle_t ctrl_event_handle;
 int board_init(void)
 {
     storage_init();
+    
+    bsp_io_expander_init();
 
     lv_disp_t *lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
-    bsp_lcd_brightness_set(100);
+
+    bsp_rgb_init();
+    
+    // bsp_lcd_brightness_set(100);
 
 
     return ESP_OK;

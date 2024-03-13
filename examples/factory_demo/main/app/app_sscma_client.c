@@ -28,7 +28,7 @@ static void save_image_invoke(struct view_data_image_invoke *p_data)
         return;
     }
     xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
-    image_invoke.boxes_cnt = p_data->boxes_cnt;
+    image_invoke.boxes_cnt = 0; //p_data->boxes_cnt;
     memcpy(image_invoke.boxes, p_data->boxes, p_data->boxes_cnt * sizeof(struct view_data_boxes));
     memcpy(image_invoke.image.p_buf, p_data->image.p_buf, p_data->image.len);
     image_invoke.image.len = p_data->image.len;
@@ -104,7 +104,7 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             if( invoke.boxes_cnt > 0) {
                 for (size_t i = 0; i < invoke.boxes_cnt ; i++)
                 {
-                    ESP_LOGI(TAG, "[box %d]: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\n", i, boxes[i].x, boxes[i].y, boxes[i].w, boxes[i].h, boxes[i].score, boxes[i].target);
+                    // ESP_LOGI(TAG, "[box %d]: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\n", i, boxes[i].x, boxes[i].y, boxes[i].w, boxes[i].h, boxes[i].score, boxes[i].target);
                     invoke.boxes[i].x = boxes[i].x;
                     invoke.boxes[i].y = boxes[i].y;
                     invoke.boxes[i].w = boxes[i].w;
