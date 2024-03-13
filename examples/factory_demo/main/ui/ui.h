@@ -10,36 +10,48 @@
 extern "C" {
 #endif
 
-    #include "lvgl/lvgl.h"
+    #include "lvgl.h"
 
 #include "ui_helpers.h"
 #include "ui_events.h"
+#include "ui_theme_manager.h"
+#include "ui_themes.h"
 
-// SCREEN: ui_ui_startup
-void ui_ui_startup_screen_init(void);
-extern lv_obj_t *ui_ui_startup;
-extern lv_obj_t *ui_logo;
-// SCREEN: ui_ui_preview
-void ui_ui_preview_screen_init(void);
-extern lv_obj_t *ui_ui_preview;
-extern lv_obj_t *ui_Arc2;
-// SCREEN: ui_ui_setting
-void ui_ui_setting_screen_init(void);
-extern lv_obj_t *ui_ui_setting;
+// SCREEN: ui_screen_startup
+void ui_screen_startup_screen_init(void);
+void ui_event_screen_startup( lv_event_t * e);
+extern lv_obj_t *ui_screen_startup;
+extern lv_obj_t *ui_Image2;
+// SCREEN: ui_screen_preview
+void ui_screen_preview_screen_init(void);
+void ui_event_screen_preview( lv_event_t * e);
+extern lv_obj_t *ui_screen_preview;
+// SCREEN: ui_screen_setting
+void ui_screen_setting_screen_init(void);
+void ui_event_screen_setting( lv_event_t * e);
+extern lv_obj_t *ui_screen_setting;
 extern lv_obj_t *ui_setting;
-// SCREEN: ui_ui_shutdown
-void ui_ui_shutdown_screen_init(void);
-extern lv_obj_t *ui_ui_shutdown;
+// SCREEN: ui_screen_shutdown
+void ui_screen_shutdown_screen_init(void);
+void ui_event_screen_shutdown( lv_event_t * e);
+extern lv_obj_t *ui_screen_shutdown;
+void ui_event_Image7( lv_event_t * e);
 extern lv_obj_t *ui_Image7;
-// SCREEN: ui_ui_shutdown_confirm
-void ui_ui_shutdown_confirm_screen_init(void);
-extern lv_obj_t *ui_ui_shutdown_confirm;
+// SCREEN: ui_screen_shutdown_confirm
+void ui_screen_shutdown_confirm_screen_init(void);
+extern lv_obj_t *ui_screen_shutdown_confirm;
+void ui_event_Image8( lv_event_t * e);
 extern lv_obj_t *ui_Image8;
+void ui_event_confirm( lv_event_t * e);
 extern lv_obj_t *ui_confirm;
 extern lv_obj_t *ui_Label1;
+// SCREEN: ui_screen_shutdown_wait
+void ui_screen_shutdown_wait_screen_init(void);
+extern lv_obj_t *ui_screen_shutdown_wait;
+extern lv_obj_t *ui_Spinner1;
 extern lv_obj_t *ui____initial_actions0;
 
-LV_IMG_DECLARE( ui_img_ui_img_logo_png);   // assets/ui_img_logo.png
+LV_IMG_DECLARE( ui_img_948016297);   // assets/切图 1.png
 LV_IMG_DECLARE( ui_img_ui_img_setting_png);   // assets/ui_img_setting.png
 LV_IMG_DECLARE( ui_img_ui_img_shutdown_png);   // assets/ui_img_shutdown.png
 LV_IMG_DECLARE( ui_img_ui_img__cancel_png);   // assets/ui_img_ cancel.png

@@ -5,17 +5,19 @@
 
 #include "../ui.h"
 
-void ui_ui_setting_screen_init(void)
+void ui_screen_setting_screen_init(void)
 {
-ui_ui_setting = lv_obj_create(NULL);
-lv_obj_clear_flag( ui_ui_setting, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
+ui_screen_setting = lv_obj_create(NULL);
+lv_obj_clear_flag( ui_screen_setting, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
-ui_setting = lv_img_create(ui_ui_setting);
+ui_setting = lv_img_create(ui_screen_setting);
 lv_img_set_src(ui_setting, &ui_img_ui_img_setting_png);
 lv_obj_set_width( ui_setting, LV_SIZE_CONTENT);  /// 1
 lv_obj_set_height( ui_setting, LV_SIZE_CONTENT);   /// 1
 lv_obj_set_align( ui_setting, LV_ALIGN_CENTER );
 lv_obj_add_flag( ui_setting, LV_OBJ_FLAG_ADV_HITTEST );   /// Flags
 lv_obj_clear_flag( ui_setting, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
+
+lv_obj_add_event_cb(ui_screen_setting, ui_event_screen_setting, LV_EVENT_ALL, NULL);
 
 }
