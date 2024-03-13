@@ -166,21 +166,6 @@ static bool esp_lcd_touch_chsc6x_get_xy(esp_lcd_touch_handle_t tp, uint16_t *x, 
         x[i] = tp->data.coords[i].x;
         y[i] = tp->data.coords[i].y;
 
-        if (tp->config.flags.mirror_x)
-        {
-            x[i] = tp->config.x_max - x[i];
-        }
-        if (!tp->config.flags.mirror_y)
-        {
-            y[i] = tp->config.y_max - y[i];
-        }
-        if (!tp->config.flags.swap_xy)
-        {
-            uint16_t tmp = x[i];
-            x[i] = y[i];
-            y[i] = tmp;
-        }
-
         if (strength)
         {
             strength[i] = tp->data.coords[i].strength;

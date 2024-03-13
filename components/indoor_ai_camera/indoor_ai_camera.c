@@ -119,8 +119,8 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
     ESP_ERROR_CHECK(esp_lcd_panel_reset(*ret_panel));
     ESP_ERROR_CHECK(esp_lcd_panel_init(*ret_panel));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(*ret_panel, true));
-    ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(*ret_panel, true));
-    ESP_ERROR_CHECK(esp_lcd_panel_mirror(*ret_panel, false, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(*ret_panel, DRV_LCD_SWAP_XY));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(*ret_panel, DRV_LCD_MIRROR_X, DRV_LCD_MIRROR_Y));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(*ret_panel, true));
 
     return ret;
@@ -166,9 +166,9 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
         .vres = DRV_LCD_V_RES,
         .monochrome = false,
         .rotation = {
-            .swap_xy = true,
-            .mirror_x = false,
-            .mirror_y = false,
+            .swap_xy = DRV_LCD_SWAP_XY,
+            .mirror_x = DRV_LCD_MIRROR_X,
+            .mirror_y = DRV_LCD_MIRROR_Y,
         },
         .flags = {
             .buff_dma = cfg->flags.buff_dma,
@@ -234,9 +234,9 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
             .interrupt = 0,
         },
         .flags = {
-            .swap_xy = true,
-            .mirror_x = false,
-            .mirror_y = false,
+            .swap_xy = DRV_LCD_SWAP_XY,
+            .mirror_x = !DRV_LCD_MIRROR_X,
+            .mirror_y = DRV_LCD_MIRROR_Y,
         },
     };
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CHSC6X_CONFIG();
@@ -276,7 +276,7 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
 #if CONFIG_LVGL_INPUT_DEVICE_USE_KNOB
         bsp_knob_indev_init(disp);
 #endif
-#if CONFIG_LVGL_INPUT_DEVICE_USE_TOUCH
+#if CONFIG_LVGL_INPUT_DEVICE_USE_TP
         bsp_touch_indev_init(disp);
 #endif
     }
@@ -302,10 +302,11 @@ esp_io_expander_handle_t bsp_io_expander_init()
 
     esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_expander_handle);
 
-    esp_io_expander_set_dir(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, IO_EXPANDER_OUTPUT);
-    esp_io_expander_set_level(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, 0);
+    esp_io_expander_set_dir(io_expander_handle, 0x00ff, IO_EXPANDER_INPUT);
+    esp_io_expander_set_dir(io_expander_handle, 0xff00, IO_EXPANDER_OUTPUT);
+    esp_io_expander_set_level(io_expander_handle, 0xff00, 0);
     vTaskDelay(50 / portTICK_PERIOD_MS);
-    esp_io_expander_set_level(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, 1);
+    esp_io_expander_set_level(io_expander_handle, 0xff00, 1);
 
     esp_io_expander_print_state(io_expander_handle);
     return &io_expander_handle;

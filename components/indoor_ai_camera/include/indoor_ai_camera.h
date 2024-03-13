@@ -26,7 +26,7 @@
 #include "esp_io_expander_pca95xx_16bit.h"
 
 /* RGB LED */
-#define BSP_RGB_CTRL       (GPIO_NUM_4)
+#define BSP_RGB_CTRL       (GPIO_NUM_40)
 
 /* Knob */
 #define BSP_KNOB_A         (GPIO_NUM_41)
@@ -72,6 +72,10 @@
 #define DRV_LCD_PARAM_BITS     (8)
 #define DRV_LCD_COLOR_SPACE    (ESP_LCD_COLOR_SPACE_BGR)
 #define DRV_LCD_BITS_PER_PIXEL (16)
+
+#define DRV_LCD_SWAP_XY        (1)
+#define DRV_LCD_MIRROR_X       (0)
+#define DRV_LCD_MIRROR_Y       (0)
 
 #define DRV_LCD_BL_ON_LEVEL    (1)
 #define DRV_LCD_LEDC_DUTY_RES  (LEDC_TIMER_10_BIT)
