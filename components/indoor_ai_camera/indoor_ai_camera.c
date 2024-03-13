@@ -303,6 +303,8 @@ esp_io_expander_handle_t bsp_io_expander_init()
     esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_expander_handle);
 
     esp_io_expander_set_dir(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, IO_EXPANDER_OUTPUT);
+    esp_io_expander_set_level(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, 0);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
     esp_io_expander_set_level(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, 1);
 
     esp_io_expander_print_state(io_expander_handle);
