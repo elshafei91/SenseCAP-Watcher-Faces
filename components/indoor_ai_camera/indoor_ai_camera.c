@@ -120,7 +120,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
     ESP_ERROR_CHECK(esp_lcd_panel_init(*ret_panel));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(*ret_panel, true));
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(*ret_panel, true));
-    ESP_ERROR_CHECK(esp_lcd_panel_mirror(*ret_panel, true, true));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(*ret_panel, false, false));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(*ret_panel, true));
 
     return ret;
@@ -167,8 +167,8 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
         .monochrome = false,
         .rotation = {
             .swap_xy = true,
-            .mirror_x = true,
-            .mirror_y = true,
+            .mirror_x = false,
+            .mirror_y = false,
         },
         .flags = {
             .buff_dma = cfg->flags.buff_dma,
@@ -235,8 +235,8 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         },
         .flags = {
             .swap_xy = true,
-            .mirror_x = true,
-            .mirror_y = true,
+            .mirror_x = false,
+            .mirror_y = false,
         },
     };
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CHSC6X_CONFIG();
@@ -300,42 +300,11 @@ esp_io_expander_handle_t bsp_io_expander_init()
         return NULL;
     }
 
-    for (int address = 0x03; address <= 0x77; address++)
-    { // 扫描的I2C地址从0x03到0x77
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (address << 1 | I2C_MASTER_WRITE), true);
-        i2c_master_stop(cmd);
-        esp_err_t ret = i2c_master_cmd_begin(BSP_GENERAL_I2C_NUM, cmd, 100);
-        if (ret == ESP_OK)
-        { // 发送给当前地址成功，表示设备的地址是当前的地址
-            printf("Device found at address 0x%02X\n", address);
-        }
-        i2c_cmd_link_delete(cmd);
-        vTaskDelay(10);
-    }
-
     esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_expander_handle);
 
     esp_io_expander_set_dir(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, IO_EXPANDER_OUTPUT);
     esp_io_expander_set_level(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, 1);
 
     esp_io_expander_print_state(io_expander_handle);
-
-    for (int address = 0x03; address <= 0x77; address++)
-    { // 扫描的I2C地址从0x03到0x77
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (address << 1 | I2C_MASTER_WRITE), true);
-        i2c_master_stop(cmd);
-        esp_err_t ret = i2c_master_cmd_begin(BSP_GENERAL_I2C_NUM, cmd, 100);
-        if (ret == ESP_OK)
-        { // 发送给当前地址成功，表示设备的地址是当前的地址
-            printf("Device found at address 0x%02X\n", address);
-        }
-        i2c_cmd_link_delete(cmd);
-        vTaskDelay(10);
-    }
-
     return &io_expander_handle;
 }
