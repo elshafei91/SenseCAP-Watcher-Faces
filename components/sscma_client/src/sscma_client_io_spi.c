@@ -426,10 +426,15 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
 
     xSemaphoreTake(spi_client_io->lock, portMAX_DELAY);
 
-    if (gpio_get_level(spi_client_io->sync_gpio_num) == 0)
+    if (spi_client_io->sync_gpio_num >= 0)
     {
-        xSemaphoreGive(spi_client_io->lock);
-        return ESP_OK;
+        if (gpio_get_level(spi_client_io->sync_gpio_num) == 0)
+        {
+            xSemaphoreGive(spi_client_io->lock);
+            return ESP_OK;
+        }
+    }else{
+        vTaskDelay(pdMS_TO_TICKS(spi_client_io->wait_delay));
     }
 
     if (spi_device_acquire_bus(spi_client_io->spi_dev, portMAX_DELAY) != ESP_OK)
@@ -487,6 +492,9 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
     }
     ret = spi_device_transmit(spi_client_io->spi_dev, &spi_trans);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
+    for(int i = 0; i < 2; i++){
+        ESP_LOGI(TAG, "%02x ", spi_client_io->buffer[i]);
+    }
     *len = (spi_client_io->buffer[0] << 8) | spi_client_io->buffer[1];
 err:
     spi_device_release_bus(spi_client_io->spi_dev);
