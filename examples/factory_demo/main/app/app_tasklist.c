@@ -9,6 +9,10 @@ char* tasklist_parse(char *resp)
 {
     int ret = 0;
     char * result = NULL;
+    int warnStatus_flag = 0;
+
+    char text_str[128];
+    memset(text_str, 0, sizeof(text_str));
 
     ESP_LOGI(TAG, "RESP:%s", resp);
 
@@ -32,6 +36,7 @@ char* tasklist_parse(char *resp)
     warnStatus = cJSON_GetObjectItem(data, "warnStatus");
     if (warnStatus != NULL &&  warnStatus->valueint != NULL) {
         ESP_LOGI(TAG, "warnStatus: %d", warnStatus->valueint);
+        warnStatus_flag = warnStatus->valueint;
     }    
 
     tasklist = cJSON_GetObjectItem(data, "taskList");
@@ -66,7 +71,7 @@ char* tasklist_parse(char *resp)
                     cJSON  *text = cJSON_GetObjectItem(params, "text");
                     if( text != NULL  && text->valuestring != NULL) {
                         ESP_LOGI(TAG, "text: %s", text->valuestring);
-                        //todo
+                        snprintf(text_str, sizeof(text_str)-1, "%s", text->valuestring);
                     }
                     break;
                 }
@@ -103,9 +108,16 @@ char* tasklist_parse(char *resp)
         }
 
     }
+
+    if( warnStatus_flag ) {
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, text_str, sizeof(text_str), portMAX_DELAY);
+    }
+   
     
 end:
     cJSON_Delete(json);
+
+
     return result;
 }
 

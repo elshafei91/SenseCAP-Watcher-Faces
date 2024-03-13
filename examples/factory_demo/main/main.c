@@ -108,17 +108,22 @@ void app_main(void)
     // esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
 
     
-    static char buffer[128];    /* Make sure buffer is enough for `sprintf` */
+    static char buffer[254];    /* Make sure buffer is enough for `sprintf` */
     while (1) {
         sprintf(buffer, "   Biggest /     Free /    Total\n"
                 "\t  DRAM : [%8d / %8d / %8d]\n"
-                "\t PSRAM : [%8d / %8d / %8d]",
+                "\t  PSRAM : [%8d / %8d / %8d]\n"
+                "\t  DMA : [%8d / %8d / %8d]",
                 heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
                 heap_caps_get_total_size(MALLOC_CAP_INTERNAL),
                 heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
                 heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-                heap_caps_get_total_size(MALLOC_CAP_SPIRAM));
+                heap_caps_get_total_size(MALLOC_CAP_SPIRAM),
+                heap_caps_get_largest_free_block(MALLOC_CAP_DMA),
+                heap_caps_get_free_size(MALLOC_CAP_DMA),
+                heap_caps_get_total_size(MALLOC_CAP_DMA));
+
         ESP_LOGI("MEM", "%s", buffer);
         vTaskDelay(pdMS_TO_TICKS(10000));
     }

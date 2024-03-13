@@ -10,13 +10,48 @@
 #include "view_image_preview.h"
 #include "indoor_ai_camera.h"
 #include "app_sensecraft.h"
+#include "esp_timer.h"
 
 static const char *TAG = "sscma-client";
 
-sscma_client_io_handle_t io = NULL;
-sscma_client_handle_t client = NULL;
+static sscma_client_io_handle_t io = NULL;
+static sscma_client_handle_t client = NULL;
+static uint8_t alarm_flag = 0;
 
-static SemaphoreHandle_t   __g_event_sem;
+static SemaphoreHandle_t __g_event_sem;
+static SemaphoreHandle_t   __g_data_mutex;
+static struct view_data_image_invoke image_invoke;
+static esp_timer_handle_t     alarm_timer_handle;
+static void save_image_invoke(struct view_data_image_invoke *p_data)
+{
+    if( alarm_flag ) {
+        return;
+    }
+    xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+    image_invoke.boxes_cnt = p_data->boxes_cnt;
+    memcpy(image_invoke.boxes, p_data->boxes, p_data->boxes_cnt * sizeof(struct view_data_boxes));
+    memcpy(image_invoke.image.p_buf, p_data->image.p_buf, p_data->image.len);
+    image_invoke.image.len = p_data->image.len;
+    xSemaphoreGive(__g_data_mutex);
+}
+static void __timer_callback(void* arg)
+{
+    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, NULL, 0, portMAX_DELAY);
+}
+
+static void __timer_start( int s)
+{
+    const esp_timer_create_args_t timer_args = {
+            .callback = &__timer_callback,
+            /* argument specified here will be passed to timer callback function */
+            .arg = (void*) alarm_timer_handle,
+            .name = "timer mode"
+    };
+    ESP_ERROR_CHECK( esp_timer_create(&timer_args, &alarm_timer_handle));
+    
+    ESP_ERROR_CHECK(esp_timer_start_once(alarm_timer_handle, (uint64_t) s * 1000000 ));
+}
+
 
 void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
 {
@@ -25,6 +60,9 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
     int32_t event_id = 0;
     cJSON *name = NULL;
     
+    if( alarm_flag ) {
+        return;
+    }
     // printf("on_event: %s", reply->data);
 
     name = cJSON_GetObjectItem(reply->payload, "name");
@@ -79,8 +117,9 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             view_image_preview_flush(&invoke);
             lvgl_port_unlock();
 
-            app_sensecraft_image_invoke_check(&invoke);
-
+            if( app_sensecraft_image_invoke_check(&invoke) ) {
+                save_image_invoke(&invoke);
+            }
             free(boxes);
             free(img);
             break;
@@ -240,6 +279,44 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             }
             break;
         }
+
+        case VIEW_EVENT_ALARM_ON:
+        {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_ON");
+
+            sscma_client_break(client);
+
+            xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+            alarm_flag =  true;
+            xSemaphoreGive(__g_data_mutex);
+
+            
+            xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+            lvgl_port_lock(0);
+            view_image_preview_flush(&image_invoke);
+            lvgl_port_unlock();
+            xSemaphoreGive(__g_data_mutex);
+
+            __timer_start(30);
+
+            break;
+        }
+        case VIEW_EVENT_ALARM_OFF:
+        {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
+
+            xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+            alarm_flag =  false;
+            xSemaphoreGive(__g_data_mutex);
+
+            sscma_client_set_sensor(client, 1, 0, true);
+            if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
+            {
+                ESP_LOGI(TAG, "sample failed\n");
+            }
+
+            break;
+        }
     default:
         break;
     }
@@ -248,7 +325,15 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
 int app_sscma_client_init()
 {
+    memset(&image_invoke, 0, sizeof(image_invoke));
+    image_invoke.image.p_buf = (uint8_t *)malloc(IMAGE_640_480_BUF_SIZE);
+    assert(image_invoke.image.p_buf);
+
     __init();
+    
+
+    __g_data_mutex = xSemaphoreCreateMutex();
+
     // __g_event_sem = xSemaphoreCreateBinary();
     // xTaskCreate(&__app_sscma_client_task, "__app_sscma_client_task", 1024 * 5, NULL, 10, NULL);
 
@@ -257,7 +342,15 @@ int app_sscma_client_init()
                                                             __view_event_handler, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, 
-                                                            __view_event_handler, NULL, NULL));                                                     
+                                                            __view_event_handler, NULL, NULL)); 
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, 
+                                                            __view_event_handler, NULL, NULL));   
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, 
+                                                            __view_event_handler, NULL, NULL));                                                                                                        
     return 0;
 }
 

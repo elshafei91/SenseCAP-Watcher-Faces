@@ -10,6 +10,10 @@
 #include "esp_crt_bundle.h"
 #include "app_tasklist.h"
 #include "cJSON.h"
+
+#include "view_image_preview.h"
+#include "indoor_ai_camera.h"
+
 // #include "audio_player.h"
 
 
@@ -21,7 +25,6 @@
 
 static const char *TAG = "app-sensecraft";
 
-static struct view_data_image_invoke image_invoke;
 static struct view_data_image image_640_480;
 
 static struct view_data_record record_data; // 不需要重新buf
@@ -313,9 +316,6 @@ int app_sensecraft_init(void)
     __g_data_mutex = xSemaphoreCreateMutex();
     __g_event_sem = xSemaphoreCreateBinary();
 
-    memset(&image_invoke, 0, sizeof(image_invoke));
-    image_invoke.image.p_buf = (uint8_t *)malloc(IMAGE_640_480_BUF_SIZE);
-    assert(image_invoke.image.p_buf);
 
     image_640_480.len = 0;
     image_640_480.p_buf = (uint8_t *)malloc(IMAGE_240_240_BUF_SIZE);
@@ -351,6 +351,7 @@ int app_sensecraft_image_upload(struct view_data_image *p_data)
     return 0;
 }
 
+
 int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
 {
     static time_t last_image_upload_time = 0;
@@ -383,15 +384,8 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     // }
     last_image_upload_time = now;
 
-    xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
-    image_invoke.boxes_cnt = p_data->boxes_cnt;
-    memcpy(image_invoke.boxes, p_data->boxes, p_data->boxes_cnt * sizeof(struct view_data_boxes));
-    memcpy(image_invoke.image.p_buf, p_data->image.p_buf, p_data->image.len);
-    image_invoke.image.len = p_data->image.len;
-    xSemaphoreGive(__g_data_mutex);
 
     ESP_LOGI(TAG, "Need upload image!");
-
     // sample 640*480 image
     esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, NULL, 0, portMAX_DELAY);
 

@@ -23,6 +23,8 @@ int app_sensecraft_image_upload(struct view_data_image *p_data);
 
 int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data);
 
+struct view_data_image_invoke * app_sensecraft_image_invoke_get(void);
+
 #ifdef __cplusplus
 }
 #endif
