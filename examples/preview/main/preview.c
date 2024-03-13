@@ -25,7 +25,7 @@ static const char *TAG = "main";
 #define EXAMPLE_SSCMA_SPI_MOSI (5)
 #define EXAMPLE_SSCMA_SPI_MISO (6)
 #define EXAMPLE_SSCMA_SPI_CS (21)
-#define EXAMPLE_SSCMA_SPI_SYNC (14)
+#define EXAMPLE_SSCMA_SPI_SYNC (-1)
 
 #define EXAMPLE_SSCMA_RESET (-1)
 
@@ -151,6 +151,7 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
 
 void app_main(void)
 {
+    bsp_io_expander_init();
     lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
 
@@ -242,21 +243,21 @@ void app_main(void)
         printf("get model failed\n");
     }
 
-    sscma_client_break(client);
-    sscma_client_set_sensor(client, 1, 2, true);
-    // vTaskDelay(50 / portTICK_PERIOD_MS);
-    if (sscma_client_sample(client, 5) != ESP_OK)
-    {
-        printf("sample failed\n");
-    }
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    sscma_client_set_sensor(client, 1, 0, true);
-    // vTaskDelay(50 / portTICK_PERIOD_MS);
+    // sscma_client_break(client);
+    // sscma_client_set_sensor(client, 1, 2, true);
+    // // vTaskDelay(50 / portTICK_PERIOD_MS);
+    // if (sscma_client_sample(client, 5) != ESP_OK)
+    // {
+    //     printf("sample failed\n");
+    // }
+    // vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // sscma_client_set_sensor(client, 1, 0, true);
+    // // vTaskDelay(50 / portTICK_PERIOD_MS);
 
-    if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
-    {
-        printf("sample failed\n");
-    }
+    // if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
+    // {
+    //     printf("sample failed\n");
+    // }
 
     while (1)
     {

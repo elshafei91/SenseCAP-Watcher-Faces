@@ -28,6 +28,7 @@ static char jpg_buf[32 * 1024] = {0};
 
 void app_main(void)
 {
+    bsp_io_expander_init();
     lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
 
@@ -88,11 +89,17 @@ void app_main(void)
     // esp_vfs_spiffs_unregister(NULL);
     // ESP_LOGI(TAG, "SPIFFS unmounted");
 
-    lv_obj_t * wp;
+    lv_obj_t *wp;
     wp = lv_img_create(lv_scr_act());
     // lv_img_set_src(wp, &img_dsc);
     // lv_img_set_src(wp, "A:/spiffs/image.jpg");
     lv_img_set_src(wp, &image);
+
+    while (1)
+    {
+        printf("1hello world\n");
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 
     // lv_demo_keypad_encoder();
 }
