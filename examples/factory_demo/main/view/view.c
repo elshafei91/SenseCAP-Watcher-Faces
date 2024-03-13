@@ -1,5 +1,7 @@
 #include "view.h"
 #include "view_image_preview.h"
+#include "view_alarm.h"
+#include "indoor_ai_camera.h"
 
 // #include "app_wifi.h"
 
@@ -15,7 +17,7 @@ static const char *TAG = "view";
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
-    // lvgl_port_lock(0); //todo
+    lvgl_port_lock(0);
     switch (id)
     {
         case VIEW_EVENT_SCREEN_START: {
@@ -100,26 +102,37 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             // lv_img_set_src(ui_wifi_st_2 , (void *)p_src);
             break;
         }
-        case VIEW_EVENT_IMAGE_240_240: {
-            ESP_LOGI(TAG, "event: VIEW_EVENT_IMAGE_240_240");
-            struct view_data_image_invoke *p_data = ( struct view_data_image_invoke *)event_data;
-
-            view_image_preview_flush(p_data);
+        case VIEW_EVENT_ALARM_ON: {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_ON");
+            char *p_data = ( char *)event_data;
+            view_alarm_on(p_data);
+            
+            break;
+        }
+        case VIEW_EVENT_ALARM_OFF: {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
+            view_alarm_off();
             break;
         }
         default:
             break;
     }
-    // lvgl_port_unlock();  //todo
+    lvgl_port_unlock();
 }
 
 
 
 int view_init(void)
 {
+    lvgl_port_lock(0);
+    
     // ui_init();
+    view_alarm_init(lv_layer_top());
+    view_alarm_off();
+    view_image_preview_init(lv_scr_act()); //ui_ui_preview
 
-    view_image_preview_init(lv_scr_act()); //todo
+    lvgl_port_unlock();
+    
 
     int i  = 0;
     for( i = 0; i < VIEW_EVENT_ALL; i++ ) {

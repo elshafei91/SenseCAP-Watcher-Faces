@@ -156,13 +156,16 @@ enum {
     VIEW_EVENT_AUDIO_VAD_TIMEOUT,   //struct view_data_record
     VIEW_EVENT_AUDIO_PALY, //struct view_data_audio_play_data
 
+
     VIEW_EVENT_IMAGE_240_240,  // struct view_data_image_invoke
     VIEW_EVENT_IMAGE_640_480,  // struct view_data_image
     VIEW_EVENT_IMAGE_240_240_REQ,  //NULL
     VIEW_EVENT_IMAGE_640_480_REQ,  //NULL
+    VIEW_EVENT_IMAGE_STOP,  //NULL
 
+    
     VIEW_EVENT_ALARM_OFF,  //NULL
-    VIEW_EVENT_ALARM_ON,  //NULL
+    VIEW_EVENT_ALARM_ON,  // char str[128]
 
     VIEW_EVENT_ALL,
 };

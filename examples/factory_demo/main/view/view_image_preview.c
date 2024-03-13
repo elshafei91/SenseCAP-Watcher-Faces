@@ -42,6 +42,9 @@ int view_image_preview_flush(struct view_data_image_invoke *p_invoke)
     int ret = 0;
     size_t output_len = 0;
 
+    if( ui_image == NULL ) {
+        return -1;
+    }
     ret = mbedtls_base64_decode(image_buf, IMG_240_240_BUF_SIZE, &output_len, p_invoke->image.p_buf, p_invoke->image.len);    
     if( ret != 0 ) {
         ESP_LOGI("", "mbedtls_base64_decode failed: %d", ret);
