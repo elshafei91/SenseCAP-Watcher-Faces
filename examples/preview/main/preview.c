@@ -99,7 +99,6 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
     int img_size = 0;
     if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK)
     {
-        printf("image_size: %d\n", img_size);
         if (img_size < 8 * 1024)
         {
             // lv_obj_clean(image);
@@ -243,21 +242,21 @@ void app_main(void)
         printf("get model failed\n");
     }
 
-    // sscma_client_break(client);
-    // sscma_client_set_sensor(client, 1, 2, true);
-    // // vTaskDelay(50 / portTICK_PERIOD_MS);
-    // if (sscma_client_sample(client, 5) != ESP_OK)
-    // {
-    //     printf("sample failed\n");
-    // }
-    // vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // sscma_client_set_sensor(client, 1, 0, true);
-    // // vTaskDelay(50 / portTICK_PERIOD_MS);
+    sscma_client_break(client);
+    sscma_client_set_sensor(client, 1, 2, true);
+    // vTaskDelay(50 / portTICK_PERIOD_MS);
+    if (sscma_client_sample(client, 5) != ESP_OK)
+    {
+        printf("sample failed\n");
+    }
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    sscma_client_set_sensor(client, 1, 0, true);
+    // vTaskDelay(50 / portTICK_PERIOD_MS);
 
-    // if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
-    // {
-    //     printf("sample failed\n");
-    // }
+    if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
+    {
+        printf("sample failed\n");
+    }
 
     while (1)
     {
