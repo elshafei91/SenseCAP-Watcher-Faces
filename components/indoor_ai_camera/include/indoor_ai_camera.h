@@ -22,6 +22,8 @@
 #include "esp_lcd_panel_ops.h"
 #include "lvgl.h"
 #include "esp_lvgl_port.h"
+#include "esp_io_expander.h"
+#include "esp_io_expander_pca95xx_16bit.h"
 
 /* RGB LED */
 #define BSP_RGB_CTRL       (GPIO_NUM_4)
@@ -37,12 +39,20 @@
 #define BSP_LCD_SPI_CS     (GPIO_NUM_45)
 #define BSP_LCD_GPIO_RST   (GPIO_NUM_NC)
 #define BSP_LCD_GPIO_DC    (GPIO_NUM_1)
-#define BSP_LCD_GPIO_BL    (GPIO_NUM_13)
+#define BSP_LCD_GPIO_BL    (GPIO_NUM_NC)
 
 /* Touch */
+#define BSP_TOUCH_I2C_NUM  (1)
+#define BSP_TOUCH_GPIO_INT (GPIO_NUM_46)
 #define BSP_TOUCH_I2C_SDA  (GPIO_NUM_39)
 #define BSP_TOUCH_I2C_SCL  (GPIO_NUM_38)
-#define BSP_TOUCH_GPIO_INT (GPIO_NUM_46)
+#define BSP_TOUCH_I2C_CLK  (400000)
+
+/* General */
+#define BSP_GENERAL_I2C_NUM (0)
+#define BSP_GENERAL_I2C_SDA (GPIO_NUM_47)
+#define BSP_GENERAL_I2C_SCL (GPIO_NUM_48)
+#define BSP_GENERAL_I2C_CLK  (400000)
 
 /* audio */
 #define BSP_AUDIO_I2S_NUM   (0)
@@ -67,8 +77,9 @@
 #define DRV_LCD_LEDC_DUTY_RES  (LEDC_TIMER_10_BIT)
 #define DRV_LCD_LEDC_CH        (1)
 
-#define DRV_TOUCH_I2C_NUM      (0)
-#define DRV_TOUCH_I2C_CLK_HZ   (400000)
+#define DRV_TOUCH_I2C_NUM      (1)
+
+#define DRV_IO_EXPANDER_I2C_NUM (0)
 
 #define LVGL_DRAW_BUFF_DOUBLE  (1)
 #define LVGL_DRAW_BUFF_HEIGHT  (CONFIG_LVGL_DRAW_BUFF_HEIGHT)
@@ -94,6 +105,9 @@ esp_err_t bsp_lcd_brightness_set(int brightness_percent);
 
 lv_disp_t *bsp_lvgl_init(void);
 lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg);
+
+esp_io_expander_handle_t bsp_io_expander_init();
+
 
 #ifdef __cplusplus
 }

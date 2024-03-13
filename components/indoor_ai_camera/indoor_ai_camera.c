@@ -9,6 +9,7 @@
 static const char *TAG = "BSP";
 
 static led_strip_handle_t rgb_led_handle = NULL;
+static esp_io_expander_handle_t io_expander_handle = NULL;
 
 esp_err_t bsp_rgb_init()
 {
@@ -25,7 +26,7 @@ esp_err_t bsp_rgb_init()
         .resolution_hz = 10 * 1000 * 1000,
         .flags.with_dma = false,
     };
-    
+
     ESP_ERROR_CHECK(led_strip_new_rmt_device(&bsp_strip_config, &bsp_rmt_config, &rgb_led_handle));
     led_strip_set_pixel(rgb_led_handle, 0, 0x00, 0x00, 0x00);
     led_strip_refresh(rgb_led_handle);
@@ -45,37 +46,37 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
 
 static esp_err_t bsp_lcd_backlight_init()
 {
-    const ledc_channel_config_t backlight_channel = {
-        .gpio_num = BSP_LCD_GPIO_BL,
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .channel = DRV_LCD_LEDC_CH,
-        .intr_type = LEDC_INTR_DISABLE,
-        .timer_sel = LEDC_TIMER_1,
-        .duty = BIT(DRV_LCD_LEDC_DUTY_RES),
-        .hpoint = 0
-    };
-    const ledc_timer_config_t backlight_timer = {
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .duty_resolution = DRV_LCD_LEDC_DUTY_RES,
-        .timer_num = LEDC_TIMER_1,
-        .freq_hz = 5000,
-        .clk_cfg = LEDC_AUTO_CLK
-    };
+    // const ledc_channel_config_t backlight_channel = {
+    //     .gpio_num = BSP_LCD_GPIO_BL,
+    //     .speed_mode = LEDC_LOW_SPEED_MODE,
+    //     .channel = DRV_LCD_LEDC_CH,
+    //     .intr_type = LEDC_INTR_DISABLE,
+    //     .timer_sel = LEDC_TIMER_1,
+    //     .duty = BIT(DRV_LCD_LEDC_DUTY_RES),
+    //     .hpoint = 0};
+    // const ledc_timer_config_t backlight_timer = {
+    //     .speed_mode = LEDC_LOW_SPEED_MODE,
+    //     .duty_resolution = DRV_LCD_LEDC_DUTY_RES,
+    //     .timer_num = LEDC_TIMER_1,
+    //     .freq_hz = 5000,
+    //     .clk_cfg = LEDC_AUTO_CLK};
 
-    ESP_ERROR_CHECK(ledc_timer_config(&backlight_timer));
-    ESP_ERROR_CHECK(ledc_channel_config(&backlight_channel));
+    // ESP_ERROR_CHECK(ledc_timer_config(&backlight_timer));
+    // ESP_ERROR_CHECK(ledc_channel_config(&backlight_channel));
 
-    ESP_ERROR_CHECK(bsp_lcd_brightness_set(10));
+    // ESP_ERROR_CHECK(bsp_lcd_brightness_set(10));
 
     return ESP_OK;
 }
 
 esp_err_t bsp_lcd_brightness_set(int brightness_percent)
 {
-    if (brightness_percent > 100) {
+    if (brightness_percent > 100)
+    {
         brightness_percent = 100;
     }
-    if (brightness_percent < 0) {
+    if (brightness_percent < 0)
+    {
         brightness_percent = 0;
     }
 
@@ -103,7 +104,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .spi_mode = 0,
         .trans_queue_depth = 10,
     };
-    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi(DRV_LCD_SPI_NUM, &io_config, ret_io), err, 
+    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi(DRV_LCD_SPI_NUM, &io_config, ret_io), err,
                       TAG, "New panel IO failed");
 
     ESP_LOGD(TAG, "Install LCD driver");
@@ -112,7 +113,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .color_space = DRV_LCD_COLOR_SPACE,
         .bits_per_pixel = DRV_LCD_BITS_PER_PIXEL,
     };
-    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_gc9a01(*ret_io, &panel_config, ret_panel), err, 
+    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_gc9a01(*ret_io, &panel_config, ret_panel), err,
                       TAG, "New panel failed");
 
     ESP_ERROR_CHECK(esp_lcd_panel_reset(*ret_panel));
@@ -124,8 +125,10 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
 
     return ret;
 err:
-    if (*ret_panel) esp_lcd_panel_del(*ret_panel);
-    if (*ret_io) esp_lcd_panel_io_del(*ret_io);
+    if (*ret_panel)
+        esp_lcd_panel_del(*ret_panel);
+    if (*ret_io)
+        esp_lcd_panel_io_del(*ret_io);
     spi_bus_free(DRV_LCD_SPI_NUM);
     return ret;
 }
@@ -170,8 +173,7 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
         .flags = {
             .buff_dma = cfg->flags.buff_dma,
             .buff_spiram = cfg->flags.buff_spiram,
-        }
-    };
+        }};
 
     return lvgl_port_add_disp(&disp_cfg);
 }
@@ -189,15 +191,14 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
         .long_press_time = 1000,
         .short_press_time = 200,
         .gpio_button_config = {
-            .gpio_num  = BSP_KNOB_BTN,
+            .gpio_num = BSP_KNOB_BTN,
             .active_level = 0,
         },
     };
     const lvgl_port_encoder_cfg_t encoder = {
         .disp = disp,
         .encoder_a_b = &knob_cfg,
-        .encoder_enter = &btn_config
-    };
+        .encoder_enter = &btn_config};
     return lvgl_port_add_encoder(&encoder);
 }
 
@@ -211,13 +212,13 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_io_num = BSP_TOUCH_I2C_SCL,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = DRV_TOUCH_I2C_CLK_HZ
-    };
-     if ((i2c_param_config(DRV_TOUCH_I2C_NUM, &i2c_conf) != ESP_OK) ||
-         (i2c_driver_install(DRV_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, 0) != ESP_OK)) {
-         ESP_LOGE(TAG, "I2C initialization failed");
-         return NULL;
-     }
+        .master.clk_speed = BSP_TOUCH_I2C_CLK};
+    if ((i2c_param_config(BSP_TOUCH_I2C_NUM, &i2c_conf) != ESP_OK) ||
+        (i2c_driver_install(BSP_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, 0) != ESP_OK))
+    {
+        ESP_LOGE(TAG, "I2C initialization failed");
+        return NULL;
+    }
 
     /* Initialize touch HW */
     ESP_LOGI(TAG, "Initialize touch panel");
@@ -259,8 +260,7 @@ lv_disp_t *bsp_lvgl_init(void)
         .flags = {
             .buff_dma = false,
             .buff_spiram = true,
-        }
-    };
+        }};
     return bsp_lvgl_init_with_cfg(&cfg);
 }
 
@@ -271,7 +271,7 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
     if (bsp_lcd_backlight_init() != ESP_OK)
         return NULL;
     lv_disp_t *disp = bsp_display_lcd_init(cfg);
-    if (disp != NULL) 
+    if (disp != NULL)
     {
 #if CONFIG_LVGL_INPUT_DEVICE_USE_KNOB
         bsp_knob_indev_init(disp);
@@ -281,4 +281,61 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
 #endif
     }
     return disp;
+}
+
+esp_io_expander_handle_t bsp_io_expander_init()
+{
+    ESP_LOGI(TAG, "Initialize IO I2C bus");
+    const i2c_config_t i2c_conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = BSP_GENERAL_I2C_SDA,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_io_num = BSP_GENERAL_I2C_SCL,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = BSP_GENERAL_I2C_CLK};
+    if ((i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf) != ESP_OK) ||
+        (i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, 0) != ESP_OK))
+    {
+        ESP_LOGE(TAG, "I2C initialization failed");
+        return NULL;
+    }
+
+    for (int address = 0x03; address <= 0x77; address++)
+    { // 扫描的I2C地址从0x03到0x77
+        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, (address << 1 | I2C_MASTER_WRITE), true);
+        i2c_master_stop(cmd);
+        esp_err_t ret = i2c_master_cmd_begin(BSP_GENERAL_I2C_NUM, cmd, 100);
+        if (ret == ESP_OK)
+        { // 发送给当前地址成功，表示设备的地址是当前的地址
+            printf("Device found at address 0x%02X\n", address);
+        }
+        i2c_cmd_link_delete(cmd);
+        vTaskDelay(10);
+    }
+
+    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_expander_handle);
+
+    esp_io_expander_set_dir(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, IO_EXPANDER_OUTPUT);
+    esp_io_expander_set_level(io_expander_handle, IO_EXPANDER_PIN_NUM_7 | 0xFFFFFF00, 1);
+
+    esp_io_expander_print_state(io_expander_handle);
+
+    for (int address = 0x03; address <= 0x77; address++)
+    { // 扫描的I2C地址从0x03到0x77
+        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, (address << 1 | I2C_MASTER_WRITE), true);
+        i2c_master_stop(cmd);
+        esp_err_t ret = i2c_master_cmd_begin(BSP_GENERAL_I2C_NUM, cmd, 100);
+        if (ret == ESP_OK)
+        { // 发送给当前地址成功，表示设备的地址是当前的地址
+            printf("Device found at address 0x%02X\n", address);
+        }
+        i2c_cmd_link_delete(cmd);
+        vTaskDelay(10);
+    }
+
+    return &io_expander_handle;
 }

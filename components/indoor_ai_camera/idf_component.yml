@@ -15,7 +15,10 @@ dependencies:
   espressif/esp_lcd_gc9a01:
     version: ^2.0.0
     public: true
-
+  
+  esp_io_expander_pca95xx_16bit:
+    override_path: "../esp_io_expander_pca95xx_16bit"
+    
   esp_lcd_touch_chsc6x:
     override_path: "../esp_lcd_touch_chsc6x"
   
