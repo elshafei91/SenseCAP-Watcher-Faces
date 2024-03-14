@@ -45,6 +45,23 @@ esp_event_loop_handle_t view_event_handle;
 ESP_EVENT_DEFINE_BASE(CTRL_EVENT_BASE);
 esp_event_loop_handle_t ctrl_event_handle;
 
+static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+{
+    switch (id)
+    {
+        case VIEW_EVENT_SHUTDOWN:
+        {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            fflush(stdout);
+            esp_restart();
+            break;
+        }
+    default:
+        break;
+    }
+}
+
 int board_init(void)
 {
     storage_init();
@@ -72,7 +89,8 @@ int app_init(void)
     // app_sr_start(false);
 
     app_wifi_init();
-    app_time_init();
+
+    // app_time_init();
     app_cmd_init();
     return ESP_OK;
 }
@@ -85,7 +103,7 @@ void app_main(void)
     ESP_ERROR_CHECK(board_init());
 
     esp_event_loop_args_t view_event_task_args = {
-        .queue_size = 10,
+        .queue_size = 20,
         .task_name = "view_event_task",
         .task_priority =1, // uxTaskPriorityGet(NULL),
         .task_stack_size = 10240,
@@ -108,14 +126,14 @@ void app_main(void)
     // app init
     app_init();
 
-   
-    // static struct view_data_wifi_config cfg;
-    // cfg.have_password = true;
-    // strcpy( cfg.ssid, "TP-LINK_CS" );
-    // strcpy( cfg.password, "Emo8568..");
-    // esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                        VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, 
+                                                        __view_event_handler, NULL, NULL));
 
     
+    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
+
     static char buffer[254];    /* Make sure buffer is enough for `sprintf` */
     while (1) {
         sprintf(buffer, "   Biggest /     Free /    Total\n"

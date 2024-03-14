@@ -275,7 +275,7 @@ static void __ping_start(void)
     esp_ping_config_t config = ESP_PING_DEFAULT_CONFIG();
 
     ip_addr_t target_addr;
-    ipaddr_aton("8.8.8.8", &target_addr);
+    ipaddr_aton(PING_TEST_IP, &target_addr);
 
     config.target_addr = target_addr;
 

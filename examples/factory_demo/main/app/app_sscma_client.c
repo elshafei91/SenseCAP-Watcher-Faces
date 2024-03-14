@@ -197,6 +197,8 @@ void __init(void)
     }
     sscma_client_init(client);
 
+    vTaskDelay(pdMS_TO_TICKS(500));
+
     sscma_client_info_t *info;
     if (sscma_client_get_info(client, &info, true) == ESP_OK)
     {
@@ -264,6 +266,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
     {
         case VIEW_EVENT_IMAGE_240_240_REQ: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_IMAGE_240_240_REQ");
+            sscma_client_break(client);
             sscma_client_set_sensor(client, 1, 0, true);
             if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
             {
@@ -273,6 +276,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         }
         case VIEW_EVENT_IMAGE_640_480_REQ: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_IMAGE_640_480_REQ");
+            sscma_client_break(client);
             sscma_client_set_sensor(client, 1, 2, true);
             if (sscma_client_sample(client, 1) != ESP_OK)
             {
@@ -328,6 +332,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             alarm_flag =  false;
             xSemaphoreGive(__g_data_mutex);
 
+            sscma_client_break(client);
             sscma_client_set_sensor(client, 1, 0, true);
             if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
             {

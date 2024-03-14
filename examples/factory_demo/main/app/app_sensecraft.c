@@ -18,9 +18,10 @@
 
 
 #define UPLOAD_FLAG_READY      0
-#define UPLOAD_FLAG_WAITING    1
-#define UPLOAD_FLAG_UPLOADING  2
-#define UPLOAD_FLAG_DONE       3
+#define UPLOAD_FLAG_REQ        1
+#define UPLOAD_FLAG_WAITING    2
+#define UPLOAD_FLAG_UPLOADING  3
+#define UPLOAD_FLAG_DONE       4
 
 
 static const char *TAG = "app-sensecraft";
@@ -242,7 +243,7 @@ static char * __https_upload_image(uint8_t *image_data, size_t image_len, uint8_
 
 void __app_sensecraft_task(void *p_arg)
 {
-    ESP_LOGI(TAG, "start");
+    ESP_LOGI(TAG, "start:%s", SENSECRAFT_HTTPS_URL );
     while (1)
     {
         xSemaphoreTake(__g_event_sem, pdMS_TO_TICKS(5000));
@@ -321,7 +322,7 @@ int app_sensecraft_init(void)
     image_640_480.p_buf = (uint8_t *)malloc(IMAGE_240_240_BUF_SIZE);
     assert(image_640_480.p_buf);
 
-    xTaskCreate(&__app_sensecraft_task, "__app_sensecraft_task", 1024 * 5, NULL, 10, NULL);
+    xTaskCreate(&__app_sensecraft_task, "__app_sensecraft_task", 1024 * 10, NULL, 2, NULL);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_VAD_TIMEOUT,
@@ -386,6 +387,10 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     {
         return 0;
     }
+
+    xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+    image_upload_flag = UPLOAD_FLAG_REQ;
+    xSemaphoreGive(__g_data_mutex);
 
     // 上报间隔需要大于 IMAGE_UPLOAD_TIME_INTERVAL
     now = time(NULL);

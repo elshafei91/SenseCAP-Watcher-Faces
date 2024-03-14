@@ -112,9 +112,9 @@ char* tasklist_parse(char *resp)
                         size_t len  = 0;
                         image_len = strlen(image->valuestring);
 
-                        // if (buf_len <=0 ) {
-                        //     break;
-                        // }
+                        if (image_len <=0 ) {
+                            break;
+                        }
 
                         ESP_LOGI(TAG, "image size: %d", image_len);
                         if( p_image_buf ) {

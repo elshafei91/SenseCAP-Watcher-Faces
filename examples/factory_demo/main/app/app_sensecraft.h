@@ -4,7 +4,7 @@
 #include "config.h"
 #include "view_data.h"
 
-#define SENSECRAFT_HTTPS_URL  "http://192.168.8.105:8888"
+#define SENSECRAFT_HTTPS_URL  "http://192.168.100.10:8888"
 
 #define IMAGE_UPLOAD_TIME_INTERVAL  10
 

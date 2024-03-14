@@ -16,6 +16,7 @@ extern "C" {
 #include "ui_events.h"
 #include "ui_theme_manager.h"
 #include "ui_themes.h"
+#include "config.h"
 
 // SCREEN: ui_screen_startup
 void ui_screen_startup_screen_init(void);

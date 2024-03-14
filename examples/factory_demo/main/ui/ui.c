@@ -120,6 +120,7 @@ void ui_event_confirm( lv_event_t * e) {
     lv_event_code_t event_code = lv_event_get_code(e);lv_obj_t * target = lv_event_get_target(e);
 if ( event_code == LV_EVENT_CLICKED) {
       _ui_screen_change( &ui_screen_shutdown_wait, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_screen_shutdown_wait_screen_init);
+      esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, portMAX_DELAY);
 }
 }
 

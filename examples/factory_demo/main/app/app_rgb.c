@@ -6,9 +6,10 @@ static const char *TAG = "rgb";
 
 static esp_timer_handle_t     rgb_timer_handle;
 
+static uint8_t flag = 0;
 static void __timer_callback(void* arg)
 {
-    static uint8_t flag = 0;
+    
     if( flag ) {
         bsp_rgb_set(0, 0, 0);
     } else {
@@ -35,6 +36,15 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             bsp_rgb_set(0, 0, 0);
             break;
         }
+        case VIEW_EVENT_IMAGE_640_480_REQ:
+        {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_IMAGE_640_480_REQ");
+            // ESP_ERROR_CHECK(esp_timer_stop(rgb_timer_handle));
+            flag=1;
+            bsp_rgb_set(255, 0, 0);
+            ESP_ERROR_CHECK(esp_timer_start_once(rgb_timer_handle, (uint64_t) 0.5 * 1000000 ));
+            break;
+        }
     default:
         break;
     }
@@ -59,5 +69,8 @@ int app_rgb_init(void)
                                                             VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, 
                                                             __view_event_handler, NULL, NULL));
     
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, 
+                                                            __view_event_handler, NULL, NULL));
     return 0;
 }

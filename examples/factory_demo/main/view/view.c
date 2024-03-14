@@ -22,6 +22,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
     {
         case VIEW_EVENT_SCREEN_START: {
             uint8_t screen = *( uint8_t *)event_data;
+            lv_disp_load_scr( ui_screen_preview);
             //todo
         }
         case VIEW_EVENT_TIME: {
@@ -126,15 +127,29 @@ int view_init(void)
     ui_init();
     view_alarm_init(lv_layer_top());
     view_alarm_off();
-    view_image_preview_init( ui_screen_preview); 
+    view_image_preview_init(ui_screen_preview);
+    // view_image_preview_init(lv_scr_act());
+
     lvgl_port_unlock();
     
 
-    int i  = 0;
-    for( i = 0; i < VIEW_EVENT_ALL; i++ ) {
-        ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
-                                                                VIEW_EVENT_BASE, i, 
-                                                                __view_event_handler, NULL, NULL));
-    }
+    // int i  = 0;
+    // for( i = 0; i < VIEW_EVENT_ALL; i++ ) {
+    //     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    //                                                             VIEW_EVENT_BASE, i, 
+    //                                                             __view_event_handler, NULL, NULL));
+    // }
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, 
+                                                            __view_event_handler, NULL, NULL));   
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, 
+                                                            __view_event_handler, NULL, NULL));  
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, 
+                                                            __view_event_handler, NULL, NULL)); 
     return 0;
 }
