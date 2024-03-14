@@ -11,6 +11,38 @@ static const char *TAG = "BSP";
 static led_strip_handle_t rgb_led_handle = NULL;
 static esp_io_expander_handle_t io_exp_handle = NULL;
 
+static uint16_t io_exp_val = 0;
+static volatile bool io_exp_update = false;
+static void io_exp_isr_handler(void* arg) { io_exp_update = true; }
+
+uint8_t bsp_exp_io_get_level(uint16_t pin_mask)
+{
+    if (io_exp_update && (io_exp_handle != NULL)) {
+        uint32_t pin_val = 0;
+        esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
+        io_exp_val = (io_exp_val & (~DRV_IO_EXP_INPUT_MASK)) | pin_val;
+        io_exp_update = false;
+    }
+    
+    pin_mask &= DRV_IO_EXP_INPUT_MASK;
+    return (uint8_t)((io_exp_val & pin_mask) ? 1 : 0);
+}
+
+esp_err_t bsp_exp_io_set_level(uint16_t pin_mask, uint8_t level)
+{
+    esp_err_t ret = ESP_OK;
+    pin_mask &= DRV_IO_EXP_OUTPUT_MASK;
+    if (pin_mask ^ (io_exp_val & DRV_IO_EXP_OUTPUT_MASK)) { // Output pins changed
+        ret = esp_io_expander_set_level(io_exp_handle, pin_mask, level);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to set output level");
+            return ret;
+        }
+        io_exp_val = (io_exp_val & (~pin_mask)) | (level ? pin_mask : 0);
+    }
+    return ret;
+}
+
 esp_err_t bsp_rgb_init()
 {
     led_strip_config_t bsp_strip_config = {
@@ -44,7 +76,7 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
     return ret;
 }
 
-static esp_err_t bsp_exp_io_btn_init(void *param)
+static esp_err_t bsp_knob_btn_init(void *param)
 {
     esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
     
@@ -56,17 +88,13 @@ static esp_err_t bsp_exp_io_btn_init(void *param)
     return ESP_OK;
 }
 
-static uint8_t bsp_exp_io_btn_get_key_value(void *param)
+static uint8_t bsp_knob_btn_get_key_value(void *param)
 {
     esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
-    uint32_t pin_val = 0;
-
-    esp_io_expander_get_level(io_exp, BSP_KNOB_BTN, &pin_val);
-
-    return (uint8_t)((pin_val & BSP_KNOB_BTN) ? 1 : 0);
+    return bsp_exp_io_get_level(BSP_KNOB_BTN);
 }
 
-static esp_err_t bsp_exp_io_btn_deinit(void *param)
+static esp_err_t bsp_knob_btn_deinit(void *param)
 {
     esp_io_expander_handle_t io_exp_handle = *((esp_io_expander_handle_t *)param);
     return esp_io_expander_del(io_exp_handle);
@@ -220,9 +248,9 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
         .short_press_time = 200,
         .custom_button_config = {
             .active_level = 0,
-            .button_custom_init = bsp_exp_io_btn_init,
-            .button_custom_deinit = bsp_exp_io_btn_deinit,
-            .button_custom_get_key_value = bsp_exp_io_btn_get_key_value,
+            .button_custom_init = bsp_knob_btn_init,
+            .button_custom_deinit = bsp_knob_btn_deinit,
+            .button_custom_get_key_value = bsp_knob_btn_get_key_value,
             .priv = &io_exp_handle,
         },
     };
@@ -260,7 +288,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         .x_max = DRV_LCD_H_RES,
         .y_max = DRV_LCD_V_RES,
         .rst_gpio_num = GPIO_NUM_NC, // Shared with LCD reset
-        .int_gpio_num = BSP_TOUCH_GPIO_INT,
+        .int_gpio_num = GPIO_NUM_NC,
         .levels = {
             .reset = 0,
             .interrupt = 0,
@@ -270,6 +298,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
             .mirror_x = !DRV_LCD_MIRROR_X,
             .mirror_y = DRV_LCD_MIRROR_Y,
         },
+        .user_data = &io_exp_val,
     };
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CHSC6X_CONFIG();
     ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle),
@@ -347,5 +376,22 @@ esp_io_expander_handle_t bsp_io_expander_init()
     esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 1);
 
     esp_io_expander_print_state(io_exp_handle);
+
+    uint32_t pin_val = 0;
+    esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
+    io_exp_val = DRV_IO_EXP_OUTPUT_MASK | (uint16_t)pin_val;
+    ESP_LOGI(TAG, "IO expander initialized: %x", io_exp_val);
+
+    const gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << BSP_IO_EXPANDER_INT),
+        .intr_type = GPIO_INTR_NEGEDGE,
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = 1,
+    };
+    gpio_config(&io_conf);
+    gpio_set_intr_type(BSP_IO_EXPANDER_INT, GPIO_INTR_NEGEDGE);
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
+
     return &io_exp_handle;
 }
