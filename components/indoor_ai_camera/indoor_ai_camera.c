@@ -9,7 +9,7 @@
 static const char *TAG = "BSP";
 
 static led_strip_handle_t rgb_led_handle = NULL;
-static esp_io_expander_handle_t io_expander_handle = NULL;
+static esp_io_expander_handle_t io_exp_handle = NULL;
 
 esp_err_t bsp_rgb_init()
 {
@@ -42,6 +42,34 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
     ret |= led_strip_set_pixel(rgb_led_handle, index, r, g, b);
     ret |= led_strip_refresh(rgb_led_handle);
     return ret;
+}
+
+static esp_err_t bsp_exp_io_btn_init(void *param)
+{
+    esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
+    
+    io_exp = bsp_io_expander_init();
+    if (io_exp == NULL) {
+        ESP_LOGE(TAG, "IO expander initialization failed");
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
+
+static uint8_t bsp_exp_io_btn_get_key_value(void *param)
+{
+    esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
+    uint32_t pin_val = 0;
+
+    esp_io_expander_get_level(io_exp, BSP_KNOB_BTN, &pin_val);
+
+    return (uint8_t)((pin_val & BSP_KNOB_BTN) ? 1 : 0);
+}
+
+static esp_err_t bsp_exp_io_btn_deinit(void *param)
+{
+    esp_io_expander_handle_t io_exp_handle = *((esp_io_expander_handle_t *)param);
+    return esp_io_expander_del(io_exp_handle);
 }
 
 static esp_err_t bsp_lcd_backlight_init()
@@ -187,18 +215,22 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
         .gpio_encoder_b = BSP_KNOB_B,
     };
     const static button_config_t btn_config = {
-        .type = BUTTON_TYPE_GPIO,
+        .type = BUTTON_TYPE_CUSTOM,
         .long_press_time = 1000,
         .short_press_time = 200,
-        .gpio_button_config = {
-            .gpio_num = BSP_KNOB_BTN,
+        .custom_button_config = {
             .active_level = 0,
+            .button_custom_init = bsp_exp_io_btn_init,
+            .button_custom_deinit = bsp_exp_io_btn_deinit,
+            .button_custom_get_key_value = bsp_exp_io_btn_get_key_value,
+            .priv = &io_exp_handle,
         },
     };
     const lvgl_port_encoder_cfg_t encoder = {
         .disp = disp,
         .encoder_a_b = &knob_cfg,
-        .encoder_enter = &btn_config};
+        .encoder_enter = &btn_config
+    };
     return lvgl_port_add_encoder(&encoder);
 }
 
@@ -240,7 +272,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         },
     };
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CHSC6X_CONFIG();
-    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c(DRV_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle),
+    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle),
                         TAG, "TP IO initialization failed");
     ESP_RETURN_ON_ERROR(esp_lcd_touch_new_i2c_chsc6x(tp_io_handle, &tp_cfg, &touch_handle),
                         TAG, "TP initialization failed");
@@ -285,6 +317,10 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
 
 esp_io_expander_handle_t bsp_io_expander_init()
 {
+    if (io_exp_handle != NULL) {
+        return io_exp_handle;
+    }
+    
     ESP_LOGI(TAG, "Initialize IO I2C bus");
     const i2c_config_t i2c_conf = {
         .mode = I2C_MODE_MASTER,
@@ -300,14 +336,16 @@ esp_io_expander_handle_t bsp_io_expander_init()
         return NULL;
     }
 
-    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_expander_handle);
+    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, 
+                                          ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, 
+                                          &io_exp_handle);
 
-    esp_io_expander_set_dir(io_expander_handle, 0x00ff, IO_EXPANDER_INPUT);
-    esp_io_expander_set_dir(io_expander_handle, 0xff00, IO_EXPANDER_OUTPUT);
-    esp_io_expander_set_level(io_expander_handle, 0xff00, 0);
+    esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
+    esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
+    esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
     vTaskDelay(50 / portTICK_PERIOD_MS);
-    esp_io_expander_set_level(io_expander_handle, 0xff00, 1);
+    esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 1);
 
-    esp_io_expander_print_state(io_expander_handle);
-    return &io_expander_handle;
+    esp_io_expander_print_state(io_exp_handle);
+    return &io_exp_handle;
 }
