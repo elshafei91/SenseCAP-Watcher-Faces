@@ -5,7 +5,8 @@
 #include <string.h>
 
 #include "knob_rgb.h"
-
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 static const char *TAG = "Knob_RGB";
 
 static led_strip_handle_t s_rgb = 0;

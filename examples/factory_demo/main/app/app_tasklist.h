@@ -16,7 +16,7 @@ extern "C" {
 
 char* tasklist_parse(char *resp);
 
-void tasklist_test(void);
+int tasklist_image_get (char ** pp_img);
 
 #ifdef __cplusplus
 }

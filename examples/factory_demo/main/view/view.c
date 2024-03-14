@@ -120,17 +120,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
     lvgl_port_unlock();
 }
 
-
-
 int view_init(void)
 {
     lvgl_port_lock(0);
-    
     ui_init();
     view_alarm_init(lv_layer_top());
     view_alarm_off();
-    view_image_preview_init( lv_scr_act()); 
-
+    view_image_preview_init( ui_screen_preview); 
     lvgl_port_unlock();
     
 

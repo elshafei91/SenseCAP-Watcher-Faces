@@ -19,6 +19,7 @@
 #include "app_sensecraft.h"
 #include "app_tasklist.h"
 #include "app_sscma_client.h"
+#include "app_rgb.h"
 
 #include "view.h"
 
@@ -54,7 +55,8 @@ int board_init(void)
     assert(lvgl_disp != NULL);
 
     bsp_rgb_init();
-    
+
+
     // bsp_lcd_brightness_set(100);
 
 
@@ -63,6 +65,7 @@ int board_init(void)
 
 int app_init(void)
 {
+    app_rgb_init();
     app_sensecraft_init();
     app_sscma_client_init();
 

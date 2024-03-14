@@ -400,8 +400,7 @@ int app_wifi_init(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_err_t ret =esp_wifi_init(&cfg);
     ESP_LOGI(TAG, "esp_wifi_init:%d, %s",ret, esp_err_to_name(ret));
-
-    // ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(ret);
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;

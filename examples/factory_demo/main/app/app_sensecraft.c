@@ -68,7 +68,7 @@ static char *__request(const char *base_url, const char *api_key, const char *en
     esp_http_client_config_t config = {
         .url = url,
         .method = method,
-        .timeout_ms = 10000,
+        .timeout_ms = 15000,
         .crt_bundle_attach = esp_crt_bundle_attach,
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);

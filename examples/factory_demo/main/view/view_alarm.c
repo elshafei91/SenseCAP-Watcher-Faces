@@ -26,7 +26,9 @@ int view_alarm_init(lv_obj_t *ui_screen)
     ui_alarm_text = lv_label_create(ui_screen);
     lv_label_set_long_mode(ui_alarm_text, LV_LABEL_LONG_SCROLL_CIRCULAR);     /*Circular scroll*/
     lv_obj_set_width(ui_alarm_text, 200);
-    // lv_label_set_text(ui_alarm_text, "warning...");
+
+    lv_obj_set_style_text_font(ui_alarm_text, &lv_font_montserrat_24, LV_PART_MAIN| LV_STATE_DEFAULT);
+    lv_label_set_text(ui_alarm_text, "warning...");
     lv_obj_align(ui_alarm_text, LV_ALIGN_CENTER, 0, 0);
     // lv_obj_set_style_border_color(ui_alarm_text, lv_palette_main(LV_PALETTE_RED), 0);
     lv_obj_set_style_text_color(ui_alarm_text, lv_palette_main(LV_PALETTE_RED), 0);

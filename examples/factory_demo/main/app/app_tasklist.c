@@ -5,6 +5,8 @@
 
 static const char *TAG = "tasklist";
 
+static char *p_image_buf = NULL;
+static int image_len =0;
 char* tasklist_parse(char *resp)
 {
     int ret = 0;
@@ -15,7 +17,8 @@ char* tasklist_parse(char *resp)
     memset(text_str, 0, sizeof(text_str));
 
     ESP_LOGI(TAG, "RESP:%s", resp);
-
+    image_len = 0;
+    
     cJSON *json = cJSON_Parse(resp);
 
     cJSON *code, *data, *sceneId, *tasklist, *warnStatus, *tasklist_len; 
@@ -77,28 +80,61 @@ char* tasklist_parse(char *resp)
                 }
                 case TASK_ACTION_HW_ID_AUTIO_PLAY:
                 {
-                    cJSON  *audio = cJSON_GetObjectItem(params, "audio");
-                    if( audio != NULL  && audio->valuestring != NULL) {
+                    // cJSON  *audio = cJSON_GetObjectItem(params, "audio");
+                    // if( audio != NULL  && audio->valuestring != NULL) {
+                       
+                    //     size_t len  = 0;
+                    //     int buf_len = strlen(audio->valuestring);
+                    //     if (buf_len <=0 ) {
+                    //         break;
+                    //     }
+                    //     uint8_t * audio_bin = malloc(buf_len);
+
+                    //     ESP_LOGI(TAG, "audio size: %d", buf_len);
+                    //     if(audio_bin != NULL) {
+                    //         int len  = 0;
+                    //         int ret= mbedtls_base64_decode(audio_bin, buf_len, (size_t *)&len, (const unsigned char *) audio->valuestring, buf_len );
+                    //         FILE *fp = fmemopen((void *)audio_bin, len, "rb");
+                    //         if (fp) {
+                    //             // audio_player_play(fp);
+                    //             // vTaskDelay(pdMS_TO_TICKS(5 * 1000)); //todo
+                    //         }
+                    //         free(audio_bin);
+                    //     }
+                    // }
+                    break;
+                }
+                case TASK_ACTION_HW_ID_PHOTOGRAPH: //todo
+                {
+                    cJSON  *image = cJSON_GetObjectItem(params, "image");
+                    if( image != NULL  && image->valuestring != NULL) {
                        
                         size_t len  = 0;
-                        int buf_len = strlen(audio->valuestring);
-                        uint8_t * audio_bin = malloc(buf_len);
+                        image_len = strlen(image->valuestring);
 
-                        ESP_LOGI(TAG, "audio size: %d", buf_len);
-                        if(audio_bin != NULL) {
-                            int len  = 0;
-                            int ret= mbedtls_base64_decode(audio_bin, buf_len, (size_t *)&len, (const unsigned char *) audio->valuestring, buf_len );
-                            FILE *fp = fmemopen((void *)audio_bin, len, "rb");
-                            if (fp) {
-                                // audio_player_play(fp);
-                                // vTaskDelay(pdMS_TO_TICKS(5 * 1000)); //todo
-                            }
-                            free(audio_bin);
+                        // if (buf_len <=0 ) {
+                        //     break;
+                        // }
+
+                        ESP_LOGI(TAG, "image size: %d", image_len);
+                        if( p_image_buf ) {
+                            free(p_image_buf);
                         }
+                        p_image_buf = malloc(image_len);
+                        if ( p_image_buf !=NULL )
+                        {
+                           memcpy(p_image_buf, image->valuestring, image_len);
+                           // 使用后释放
+                        } else {
+                            image_len = 0;
+                            ESP_LOGE(TAG, "malloc failed");
+                        }
+                        
+
+                        
                     }
                     break;
                 }
-
                 default:
                     break;
             }
@@ -121,3 +157,9 @@ end:
     return result;
 }
 
+
+int tasklist_image_get (char ** pp_img)
+{
+    *pp_img = (char *)p_image_buf;
+    return image_len;
+}
