@@ -322,7 +322,7 @@ int app_sensecraft_init(void)
     image_640_480.p_buf = (uint8_t *)malloc(IMAGE_240_240_BUF_SIZE);
     assert(image_640_480.p_buf);
 
-    xTaskCreate(&__app_sensecraft_task, "__app_sensecraft_task", 1024 * 10, NULL, 2, NULL);
+    xTaskCreate(&__app_sensecraft_task, "__app_sensecraft_task", 1024 * 10, NULL,  6, NULL);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_VAD_TIMEOUT,
@@ -385,6 +385,11 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     // 上次的数据是否上传完
     if (image_upload_flag != UPLOAD_FLAG_READY)
     {
+        now = time(NULL);
+        if ((now - last_image_upload_time) > 5)
+        {
+            image_upload_flag = UPLOAD_FLAG_READY;
+        } 
         return 0;
     }
 
@@ -392,12 +397,7 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     image_upload_flag = UPLOAD_FLAG_REQ;
     xSemaphoreGive(__g_data_mutex);
 
-    // 上报间隔需要大于 IMAGE_UPLOAD_TIME_INTERVAL
     now = time(NULL);
-    // if ((now - last_image_upload_time) < IMAGE_UPLOAD_TIME_INTERVAL)
-    // {
-    //     return 0;
-    // }
     last_image_upload_time = now;
 
 

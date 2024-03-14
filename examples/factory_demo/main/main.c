@@ -71,6 +71,7 @@ int board_init(void)
     lv_disp_t *lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
 
+
     bsp_rgb_init();
 
 
@@ -82,6 +83,7 @@ int board_init(void)
 
 int app_init(void)
 {
+    tasklist_init();
     app_rgb_init();
     app_sensecraft_init();
     app_sscma_client_init();
@@ -93,8 +95,8 @@ int app_init(void)
     // app_time_init();
     app_cmd_init();
     return ESP_OK;
-}
 
+}
 
 void app_main(void)
 {
@@ -103,11 +105,11 @@ void app_main(void)
     ESP_ERROR_CHECK(board_init());
 
     esp_event_loop_args_t view_event_task_args = {
-        .queue_size = 20,
+        .queue_size = 10,
         .task_name = "view_event_task",
-        .task_priority =1, // uxTaskPriorityGet(NULL),
+        .task_priority =6, // uxTaskPriorityGet(NULL),
         .task_stack_size = 10240,
-        .task_core_id = tskNO_AFFINITY
+        .task_core_id = 0
     };
     ESP_ERROR_CHECK(esp_event_loop_create(&view_event_task_args, &view_event_handle));
 
@@ -123,6 +125,7 @@ void app_main(void)
    // UI init
     view_init();
 
+
     // app init
     app_init();
 
@@ -134,6 +137,9 @@ void app_main(void)
     
     esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
 
+
+    // tasklist_parse(test);
+    
     static char buffer[254];    /* Make sure buffer is enough for `sprintf` */
     while (1) {
         sprintf(buffer, "   Biggest /     Free /    Total\n"

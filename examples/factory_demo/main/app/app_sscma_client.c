@@ -105,7 +105,7 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             if( invoke.boxes_cnt > 0) {
                 for (size_t i = 0; i < invoke.boxes_cnt ; i++)
                 {
-                    ESP_LOGI(TAG, "[box %d]: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\n", i, boxes[i].x, boxes[i].y, boxes[i].w, boxes[i].h, boxes[i].score, boxes[i].target);
+                    // ESP_LOGI(TAG, "[box %d]: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\n", i, boxes[i].x, boxes[i].y, boxes[i].w, boxes[i].h, boxes[i].score, boxes[i].target);
                     invoke.boxes[i].x = boxes[i].x;
                     invoke.boxes[i].y = boxes[i].y;
                     invoke.boxes[i].w = boxes[i].w;
@@ -197,7 +197,7 @@ void __init(void)
     }
     sscma_client_init(client);
 
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(1500));
 
     sscma_client_info_t *info;
     if (sscma_client_get_info(client, &info, true) == ESP_OK)
@@ -309,9 +309,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
             lvgl_port_lock(0);
             
-            if( len ) {
+            if( len > 0 ) {
                 ESP_LOGI(TAG, "display tasklist image");
-                view_image_preview_flush(&invoke); 
+                view_image_preview_flush(&invoke);
+                free(p_img);
             } else {
                 ESP_LOGI(TAG, "display cache image");
                 view_image_preview_flush(&image_invoke); 
@@ -320,7 +321,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             lvgl_port_unlock();
             xSemaphoreGive(__g_data_mutex);
 
-            __timer_start(30);
+            __timer_start(20);
 
             break;
         }

@@ -5,8 +5,13 @@
 
 static const char *TAG = "tasklist";
 
-static char *p_image_buf = NULL;
+static char p_image_buf[30*1024];
 static int image_len =0;
+static SemaphoreHandle_t __g_data_mutex;
+void tasklist_init(void)
+{
+    __g_data_mutex = xSemaphoreCreateMutex();
+}
 char* tasklist_parse(char *resp)
 {
     int ret = 0;
@@ -16,7 +21,7 @@ char* tasklist_parse(char *resp)
     char text_str[128];
     memset(text_str, 0, sizeof(text_str));
 
-    ESP_LOGI(TAG, "RESP:%s", resp);
+    // ESP_LOGI(TAG, "RESP:%s", resp);
     image_len = 0;
     
     cJSON *json = cJSON_Parse(resp);
@@ -110,25 +115,32 @@ char* tasklist_parse(char *resp)
                     if( image != NULL  && image->valuestring != NULL) {
                        
                         size_t len  = 0;
-                        image_len = strlen(image->valuestring);
+                        len = strlen(image->valuestring);
 
-                        if (image_len <=0 ) {
+                        if (len <=0 ) {
                             break;
                         }
 
-                        ESP_LOGI(TAG, "image size: %d", image_len);
-                        if( p_image_buf ) {
-                            free(p_image_buf);
-                        }
-                        p_image_buf = malloc(image_len);
-                        if ( p_image_buf !=NULL )
-                        {
-                           memcpy(p_image_buf, image->valuestring, image_len);
-                           // 使用后释放
-                        } else {
-                            image_len = 0;
-                            ESP_LOGE(TAG, "malloc failed");
-                        }
+                        ESP_LOGI(TAG, "image size: %d", len);
+                        // if( p_image_buf ) {
+                        //     free(p_image_buf);
+                        // }
+                        // p_image_buf = malloc(image_len);
+                        xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+                        len = len > 30*1024 ? 30*1024 : len;
+                        memcpy(p_image_buf, image->valuestring, len);
+                        image_len = len;
+                        xSemaphoreGive(__g_data_mutex);
+
+
+                        // if ( p_image_buf !=NULL )
+                        // {
+                        //    memcpy(p_image_buf, image->valuestring, image_len);
+                        //    // 使用后释放
+                        // } else {
+                        //     image_len = 0;
+                        //     ESP_LOGE(TAG, "malloc failed");
+                        // }
                         
 
                         
@@ -160,6 +172,26 @@ end:
 
 int tasklist_image_get (char ** pp_img)
 {
-    *pp_img = (char *)p_image_buf;
-    return image_len;
+    int len = 0;
+    if( image_len <=0) {
+        return 0 ;
+    }
+    char *p_buf = malloc(image_len);
+    if( p_buf == NULL) {
+        return 0;
+    }
+    xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+    len = image_len;
+    memcpy(p_buf, p_image_buf, len);
+    *pp_img = (char *)p_buf;
+    xSemaphoreGive(__g_data_mutex);
+
+
+    // xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+    // len = image_len;
+    // *pp_img = (char *)p_image_buf;
+    // xSemaphoreGive(__g_data_mutex);
+
+
+    return len;
 }

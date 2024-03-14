@@ -14,6 +14,9 @@ extern "C" {
 #define TASK_ACTION_HW_ID_RECORD    2     //录音
 #define TASK_ACTION_HW_ID_PHOTOGRAPH   3  // 拍照
 
+
+void tasklist_init(void);
+
 char* tasklist_parse(char *resp);
 
 int tasklist_image_get (char ** pp_img);
