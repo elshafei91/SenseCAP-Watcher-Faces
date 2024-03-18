@@ -165,8 +165,12 @@ static void sscma_client_process(void *arg)
         {
             if (rlen + client->rx_buffer.pos > client->rx_buffer.len)
             {
-                client->rx_buffer.pos = 0;
-                ESP_LOGW(TAG, "rx buffer overflow");
+                rlen = client->rx_buffer.len - client->rx_buffer.pos;
+                if (rlen <= 0)
+                {
+                    ESP_LOGW(TAG, "rx buffer is full");
+                    client->rx_buffer.pos = 0;
+                }
             }
             sscma_client_read(client, client->rx_buffer.data + client->rx_buffer.pos, rlen);
             client->rx_buffer.pos += rlen;

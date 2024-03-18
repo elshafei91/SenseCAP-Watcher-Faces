@@ -25,7 +25,7 @@ static const char *TAG = "main";
 #define EXAMPLE_SSCMA_SPI_MOSI (5)
 #define EXAMPLE_SSCMA_SPI_MISO (6)
 #define EXAMPLE_SSCMA_SPI_CS (21)
-#define EXAMPLE_SSCMA_SPI_SYNC (14)
+#define EXAMPLE_SSCMA_SPI_SYNC (-1)
 
 #define EXAMPLE_SSCMA_RESET (-1)
 
@@ -99,7 +99,6 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
     int img_size = 0;
     if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK)
     {
-        printf("image_size: %d\n", img_size);
         if (img_size < 8 * 1024)
         {
             // lv_obj_clean(image);
@@ -151,6 +150,7 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
 
 void app_main(void)
 {
+    bsp_io_expander_init();
     lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
 

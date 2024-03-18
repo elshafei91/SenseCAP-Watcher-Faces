@@ -123,9 +123,16 @@ static esp_err_t esp_lcd_touch_chsc6x_read_data(esp_lcd_touch_handle_t tp)
 
     assert(tp != NULL);
 
-    if (gpio_get_level(tp->config.int_gpio_num) != 0)
+    tp->data.points = 0;
+    if (tp->config.int_gpio_num != GPIO_NUM_NC) 
     {
-        tp->data.points = 0;
+        if (gpio_get_level(tp->config.int_gpio_num) != 0) 
+        {
+            return ESP_OK;
+        }
+    }
+    else if ((*(uint16_t *)tp->config.user_data) & (1 << 5))
+    {
         return ESP_OK;
     }
 
@@ -134,14 +141,11 @@ static esp_err_t esp_lcd_touch_chsc6x_read_data(esp_lcd_touch_handle_t tp)
     ESP_RETURN_ON_ERROR(err, TAG, "I2C read error %d!", err);
     /* Save data */
     portENTER_CRITICAL(&tp->data.lock);
-    if (data[0])
+    if (data[0] == 0x01)
     {
         tp->data.points = 1;
-        for (size_t i = 0; i < tp->data.points; i++)
-        {
-            tp->data.coords[i].x = data[2];
-            tp->data.coords[i].y = data[4];
-        }
+        tp->data.coords[0].x = data[2];
+        tp->data.coords[0].y = data[4];
     }
     portEXIT_CRITICAL(&tp->data.lock);
 
@@ -165,21 +169,6 @@ static bool esp_lcd_touch_chsc6x_get_xy(esp_lcd_touch_handle_t tp, uint16_t *x, 
     {
         x[i] = tp->data.coords[i].x;
         y[i] = tp->data.coords[i].y;
-
-        if (tp->config.flags.mirror_x)
-        {
-            x[i] = tp->config.x_max - x[i];
-        }
-        if (!tp->config.flags.mirror_y)
-        {
-            y[i] = tp->config.y_max - y[i];
-        }
-        if (!tp->config.flags.swap_xy)
-        {
-            uint16_t tmp = x[i];
-            x[i] = y[i];
-            y[i] = tmp;
-        }
 
         if (strength)
         {

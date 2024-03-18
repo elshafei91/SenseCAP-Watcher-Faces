@@ -426,10 +426,15 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
 
     xSemaphoreTake(spi_client_io->lock, portMAX_DELAY);
 
-    if (gpio_get_level(spi_client_io->sync_gpio_num) == 0)
+    if (spi_client_io->sync_gpio_num >= 0)
     {
-        xSemaphoreGive(spi_client_io->lock);
-        return ESP_OK;
+        if (gpio_get_level(spi_client_io->sync_gpio_num) == 0)
+        {
+            xSemaphoreGive(spi_client_io->lock);
+            return ESP_OK;
+        }
+    }else{
+        vTaskDelay(pdMS_TO_TICKS(spi_client_io->wait_delay));
     }
 
     if (spi_device_acquire_bus(spi_client_io->spi_dev, portMAX_DELAY) != ESP_OK)
