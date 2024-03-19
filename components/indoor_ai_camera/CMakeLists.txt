@@ -1,5 +1,5 @@
 
-set(priv_requires "driver" "esp_mm" "esp_psram" "esp_lcd")
+set(priv_requires "esp_mm" "esp_psram" "esp_lcd" "fatfs")
 set(requires "driver" "spiffs")
 
 idf_component_register(

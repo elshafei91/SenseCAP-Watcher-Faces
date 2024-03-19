@@ -141,7 +141,7 @@ static esp_err_t esp_lcd_touch_chsc6x_read_data(esp_lcd_touch_handle_t tp)
     ESP_RETURN_ON_ERROR(err, TAG, "I2C read error %d!", err);
     /* Save data */
     portENTER_CRITICAL(&tp->data.lock);
-    if (data[0] == 0x01)
+    if (data[0] == 0x01 && data[2] <= 240 && data[4] <= 240)
     {
         tp->data.points = 1;
         tp->data.coords[0].x = data[2];

@@ -24,6 +24,13 @@
 #include "esp_lvgl_port.h"
 #include "esp_io_expander.h"
 #include "esp_io_expander_pca95xx_16bit.h"
+#include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
+
+/* SPI */
+#define BSP_SPI3_HOST_SCLK (GPIO_NUM_7)
+#define BSP_SPI3_HOST_MISO (GPIO_NUM_8)
+#define BSP_SPI3_HOST_MOSI (GPIO_NUM_9)
 
 /* RGB LED */
 #define BSP_RGB_CTRL       (GPIO_NUM_40)
@@ -34,8 +41,7 @@
 #define BSP_KNOB_BTN       (IO_EXPANDER_PIN_NUM_3)
 
 /* LCD */
-#define BSP_LCD_SPI_SCLK   (GPIO_NUM_7)
-#define BSP_LCD_SPI_MOSI   (GPIO_NUM_9)
+#define BSP_LCD_SPI_NUM    (SPI3_HOST)
 #define BSP_LCD_SPI_CS     (GPIO_NUM_45)
 #define BSP_LCD_GPIO_RST   (GPIO_NUM_NC)
 #define BSP_LCD_GPIO_DC    (GPIO_NUM_1)
@@ -53,7 +59,7 @@
 #define BSP_GENERAL_I2C_SDA (GPIO_NUM_47)
 #define BSP_GENERAL_I2C_SCL (GPIO_NUM_48)
 #define BSP_IO_EXPANDER_INT (GPIO_NUM_2)
-#define BSP_GENERAL_I2C_CLK  (400000)
+#define BSP_GENERAL_I2C_CLK (400000)
 
 /* Audio */
 #define BSP_AUDIO_I2S_NUM   (0)
@@ -62,11 +68,16 @@
 #define BSP_AUDIO_I2S_LRCK  (GPIO_NUM_12)
 #define BSP_AUDIO_I2S_DATA  (GPIO_NUM_23)
 
-/* Camera */
+/* SD Card */
+#define BSP_SD_SPI_NUM      (SPI3_HOST)
+#define BSP_SD_SPI_CS       (GPIO_NUM_20)
+#define BSP_SD_GPIO_DET     (IO_EXPANDER_PIN_NUM_4)
+
+/* POWER */
+#define BSP_PWR_SDCARD      (IO_EXPANDER_PIN_NUM_8)
+#define BSP_PWR_LCD         (IO_EXPANDER_PIN_NUM_9)
 
 /* Settings */
-#define DRV_LCD_SPI_NUM        (SPI2_HOST)
-
 #define DRV_LCD_H_RES          (240)
 #define DRV_LCD_V_RES          (240)
 #define DRV_LCD_PIXEL_CLK_HZ   (40 * 1000 * 1000)
@@ -87,6 +98,9 @@
 
 #define LVGL_DRAW_BUFF_DOUBLE  (1)
 #define LVGL_DRAW_BUFF_HEIGHT  (CONFIG_LVGL_DRAW_BUFF_HEIGHT)
+
+#define DEFAULT_FD_NUM      2
+#define DEFAULT_MOUNT_POINT "/sdcard"
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,7 +125,13 @@ lv_disp_t *bsp_lvgl_init(void);
 lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg);
 
 esp_io_expander_handle_t bsp_io_expander_init();
+uint8_t bsp_exp_io_get_level(uint16_t pin_mask);
+esp_err_t bsp_exp_io_set_level(uint16_t pin_mask, uint8_t level);
 
+esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files);
+esp_err_t bsp_sdcard_init_default(void);
+esp_err_t bsp_sdcard_deinit(char *mount_point);
+esp_err_t bsp_sdcard_deinit_default(void);
 
 #ifdef __cplusplus
 }

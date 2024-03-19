@@ -11,6 +11,8 @@ static const char *TAG = "BSP";
 static led_strip_handle_t rgb_led_handle = NULL;
 static esp_io_expander_handle_t io_exp_handle = NULL;
 
+static sdmmc_card_t *card;
+
 static uint16_t io_exp_val = 0;
 static volatile bool io_exp_update = false;
 static void io_exp_isr_handler(void* arg) { io_exp_update = true; }
@@ -41,6 +43,25 @@ esp_err_t bsp_exp_io_set_level(uint16_t pin_mask, uint8_t level)
         io_exp_val = (io_exp_val & (~pin_mask)) | (level ? pin_mask : 0);
     }
     return ret;
+}
+
+esp_err_t bsp_spi_bus_init(void)
+{
+    static bool initialized = false;
+    if (initialized) {
+        return ESP_OK;
+    }
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num = BSP_SPI3_HOST_MOSI,
+        .miso_io_num = BSP_SPI3_HOST_MISO,
+        .sclk_io_num = BSP_SPI3_HOST_SCLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 4000,
+    };
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
+    initialized = true;
+    return ESP_OK;
 }
 
 esp_err_t bsp_rgb_init()
@@ -160,7 +181,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .spi_mode = 0,
         .trans_queue_depth = 10,
     };
-    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi(DRV_LCD_SPI_NUM, &io_config, ret_io), err,
+    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi(BSP_LCD_SPI_NUM, &io_config, ret_io), err,
                       TAG, "New panel IO failed");
 
     ESP_LOGD(TAG, "Install LCD driver");
@@ -185,7 +206,7 @@ err:
         esp_lcd_panel_del(*ret_panel);
     if (*ret_io)
         esp_lcd_panel_io_del(*ret_io);
-    spi_bus_free(DRV_LCD_SPI_NUM);
+    spi_bus_free(BSP_LCD_SPI_NUM);
     return ret;
 }
 
@@ -194,15 +215,7 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
     assert(cfg != NULL);
 
     ESP_LOGD(TAG, "Initialize SPI bus");
-    const spi_bus_config_t buscfg = {
-        .sclk_io_num = BSP_LCD_SPI_SCLK,
-        .mosi_io_num = BSP_LCD_SPI_MOSI,
-        .miso_io_num = GPIO_NUM_NC,
-        .quadwp_io_num = GPIO_NUM_NC,
-        .quadhd_io_num = GPIO_NUM_NC,
-        .max_transfer_sz = DRV_LCD_H_RES * LVGL_DRAW_BUFF_HEIGHT * sizeof(uint16_t),
-    };
-    if (spi_bus_initialize(DRV_LCD_SPI_NUM, &buscfg, SPI_DMA_CH_AUTO) != ESP_OK)
+    if (bsp_spi_bus_init() != ESP_OK)
         return NULL;
 
     ESP_LOGD(TAG, "Initialize LCD panel");
@@ -229,7 +242,8 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
         .flags = {
             .buff_dma = cfg->flags.buff_dma,
             .buff_spiram = cfg->flags.buff_spiram,
-        }};
+        }
+    };
 
     return lvgl_port_add_disp(&disp_cfg);
 }
@@ -394,4 +408,47 @@ esp_io_expander_handle_t bsp_io_expander_init()
     gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
 
     return &io_exp_handle;
+}
+
+esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
+{
+    ESP_ERROR_CHECK(bsp_spi_bus_init());
+
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    host.slot = BSP_SD_SPI_NUM;
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.gpio_cs = BSP_SD_SPI_CS;
+    slot_config.host_id = host.slot;
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = max_files,
+        .allocation_unit_size = 16 * 1024
+    };
+    ESP_ERROR_CHECK(esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card));
+    sdmmc_card_print_info(stdout, card);
+
+    return ESP_OK;
+}
+
+esp_err_t bsp_sdcard_init_default(void)
+{
+    return bsp_sdcard_init(DEFAULT_MOUNT_POINT, DEFAULT_FD_NUM);
+}
+
+esp_err_t bsp_sdcard_deinit(char *mount_point)
+{
+    if (NULL == mount_point) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_err_t ret_val = esp_vfs_fat_sdcard_unmount(mount_point, card);
+
+    card = NULL;
+
+    return ret_val;
+}
+
+esp_err_t bsp_sdcard_deinit_default(void)
+{
+    return bsp_sdcard_deinit(DEFAULT_MOUNT_POINT);
 }
