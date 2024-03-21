@@ -3,3 +3,5 @@ dependencies:
   idf: ">=5.0"
   indoor_ai_camera:
     override_path: "../../../components/indoor_ai_camera"
+
+  espressif/esp-sr: ">=1.6.0"
