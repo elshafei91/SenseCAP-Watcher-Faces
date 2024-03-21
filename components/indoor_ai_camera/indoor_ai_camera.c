@@ -149,6 +149,10 @@ esp_err_t bsp_knob_btn_deinit(void *param)
 
 static esp_err_t bsp_lcd_backlight_init()
 {
+    bsp_io_expander_init();
+    bsp_exp_io_set_level(BSP_PWR_LCD, 1);
+    bsp_exp_io_set_level(BSP_LCD_GPIO_BL, 1);
+    
     // const ledc_channel_config_t backlight_channel = {
     //     .gpio_num = BSP_LCD_GPIO_BL,
     //     .speed_mode = LEDC_LOW_SPEED_MODE,
@@ -401,7 +405,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
     esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
     vTaskDelay(50 / portTICK_PERIOD_MS);
-    esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 1);
+    esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
 
     esp_io_expander_print_state(io_exp_handle);
 
@@ -427,6 +431,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
 esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
 {
     ESP_ERROR_CHECK(bsp_spi_bus_init());
+    bsp_io_expander_init();
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = BSP_SD_SPI_NUM;
@@ -446,7 +451,7 @@ esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
 
 esp_err_t bsp_sdcard_init_default(void)
 {
-    return bsp_sdcard_init(DEFAULT_MOUNT_POINT, DEFAULT_FD_NUM);
+    return bsp_sdcard_init(DRV_BASE_PATH_SD, DRV_FS_MAX_FILES);
 }
 
 esp_err_t bsp_sdcard_deinit(char *mount_point)
@@ -464,7 +469,32 @@ esp_err_t bsp_sdcard_deinit(char *mount_point)
 
 esp_err_t bsp_sdcard_deinit_default(void)
 {
-    return bsp_sdcard_deinit(DEFAULT_MOUNT_POINT);
+    return bsp_sdcard_deinit(DRV_BASE_PATH_SD);
+}
+
+esp_err_t bsp_spiffs_init(char *mount_point, size_t max_files)
+{
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = mount_point,
+        .partition_label = "storage",
+        .max_files = max_files,
+        .format_if_mount_failed = false,
+    };
+    esp_vfs_spiffs_register(&conf);
+
+    size_t total = 0, used = 0;
+    esp_err_t ret_val = esp_spiffs_info(conf.partition_label, &total, &used);
+    if (ret_val != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret_val));
+    } else {
+        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+    }
+    return ret_val;
+}
+
+esp_err_t bsp_spiffs_init_default(void)
+{
+    return bsp_spiffs_init(DRV_BASE_PATH_FLASH, DRV_FS_MAX_FILES);
 }
 
 esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
@@ -481,8 +511,8 @@ esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
     BSP_ERROR_CHECK_RETURN_ERR(i2s_new_channel(&chan_cfg, &i2s_tx_chan, &i2s_rx_chan));
 
     /* Setup I2S channels */
-    const i2s_std_config_t std_cfg_default = BSP_I2S_DUPLEX_MONO_CFG(22050);
-    const i2s_std_config_t *p_i2s_cfg = &std_cfg_default;
+    i2s_std_config_t std_cfg_default = BSP_I2S_DUPLEX_MONO_CFG(DRV_AUDIO_SAMPLE_RATE);
+    i2s_std_config_t *p_i2s_cfg = &std_cfg_default;
     if (i2s_config != NULL) {
         p_i2s_cfg = i2s_config;
     }
@@ -492,6 +522,7 @@ esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
         ESP_GOTO_ON_ERROR(i2s_channel_enable(i2s_tx_chan), err, TAG, "I2S enabling failed");
     }
     if (i2s_rx_chan != NULL) {
+        p_i2s_cfg->slot_cfg.slot_mask = I2S_STD_SLOT_RIGHT;
         ESP_GOTO_ON_ERROR(i2s_channel_init_std_mode(i2s_rx_chan, p_i2s_cfg), err, TAG, "I2S channel initialization failed");
         ESP_GOTO_ON_ERROR(i2s_channel_enable(i2s_rx_chan), err, TAG, "I2S enabling failed");
     }
@@ -544,7 +575,7 @@ esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void)
     BSP_NULL_CHECK(i2c_ctrl_if, NULL);
 
     esp_codec_dev_hw_gain_t gain = {
-        .pa_voltage = 5.0,
+        .pa_voltage = 3.3,
         .codec_dac_voltage = 3.3,
     };
 
@@ -636,13 +667,15 @@ esp_err_t bsp_codec_set_fs(uint32_t rate, uint32_t bits_cfg, i2s_slot_mode_t ch)
     }
     if (record_dev_handle) {
         ret |= esp_codec_dev_close(record_dev_handle);
-        ret |= esp_codec_dev_set_in_gain(record_dev_handle, DRV_AUDIO_VOLUME);
+        ret |= esp_codec_dev_set_in_gain(record_dev_handle, DRV_AUDIO_MIC_GAIN);
     }
 
     if (play_dev_handle) {
         ret |= esp_codec_dev_open(play_dev_handle, &fs);
     }
     if (record_dev_handle) {
+        fs.channel = 2;
+        fs.channel_mask = ESP_CODEC_DEV_MAKE_CHANNEL_MASK(1);
         ret |= esp_codec_dev_open(record_dev_handle, &fs);
     }
     return ret;
@@ -682,7 +715,7 @@ esp_err_t bsp_codec_dev_resume(void)
     return bsp_codec_set_fs(DRV_AUDIO_SAMPLE_RATE, DRV_AUDIO_SAMPLE_BITS, DRV_AUDIO_CHANNELS);
 }
 
-static esp_err_t bsp_codec_init()
+esp_err_t bsp_codec_init(void)
 {
     play_dev_handle = bsp_audio_codec_speaker_init();
     assert((play_dev_handle) && "play_dev_handle not initialized");
@@ -692,4 +725,27 @@ static esp_err_t bsp_codec_init()
 
     bsp_codec_set_fs(DRV_AUDIO_SAMPLE_RATE, DRV_AUDIO_SAMPLE_BITS, DRV_AUDIO_CHANNELS);
     return ESP_OK;
+}
+
+esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer_len)
+{
+    esp_err_t ret = ESP_OK;
+    size_t bytes_read;
+    int audio_chunksize = buffer_len / (sizeof(int16_t) * DRV_AUDIO_I2S_CHANNEL);
+
+    ret = esp_codec_dev_read(record_dev_handle, (void *)buffer, buffer_len);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read data from codec device");
+    }
+    if (!is_get_raw_channel) {
+        for (int i = 0; i < audio_chunksize; i++) {
+            buffer[i] = buffer[i] << 2;
+        }
+    }
+    return ret;
+}
+
+int bsp_get_feed_channel(void)
+{
+    return DRV_AUDIO_I2S_CHANNEL;
 }

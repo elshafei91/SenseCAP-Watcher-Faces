@@ -28,6 +28,7 @@
 #include "lvgl.h"
 #include "esp_lvgl_port.h"
 #include "esp_vfs_fat.h"
+#include "esp_spiffs.h"
 #include "sdmmc_cmd.h"
 
 /* SPI */
@@ -80,11 +81,17 @@
 /* POWER */
 #define BSP_PWR_SDCARD      (IO_EXPANDER_PIN_NUM_8)
 #define BSP_PWR_LCD         (IO_EXPANDER_PIN_NUM_9)
+#define BSP_PWR_BATTERY     (IO_EXPANDER_PIN_NUM_10)
+#define BSP_PWR_AI_CHIP     (IO_EXPANDER_PIN_NUM_11)
+#define BSP_PWR_CODEC_PA    (IO_EXPANDER_PIN_NUM_12)
+#define BSP_PWR_AUDIO       (IO_EXPANDER_PIN_NUM_13)
+#define BSP_PWR_GROVE       (IO_EXPANDER_PIN_NUM_14)
+#define BSP_PWR_BAT_ADC     (IO_EXPANDER_PIN_NUM_15)
 
 /* Settings */
 #define DRV_LCD_H_RES          (240)
 #define DRV_LCD_V_RES          (240)
-#define DRV_LCD_PIXEL_CLK_HZ   (40 * 1000 * 1000)
+#define DRV_LCD_PIXEL_CLK_HZ   (80 * 1000 * 1000)
 #define DRV_LCD_CMD_BITS       (8)
 #define DRV_LCD_PARAM_BITS     (8)
 #define DRV_LCD_COLOR_SPACE    (ESP_LCD_COLOR_SPACE_BGR)
@@ -102,16 +109,29 @@
 
 #define DRV_ES8311_I2C_ADDR    (0x30)
 #define DRV_ES7243_I2C_ADDR    (0x26)
-#define DRV_AUDIO_SAMPLE_RATE  (44100)
+#define DRV_AUDIO_SAMPLE_RATE  (16000)
 #define DRV_AUDIO_SAMPLE_BITS  (16)
 #define DRV_AUDIO_CHANNELS     (1)
-#define DRV_AUDIO_VOLUME       (24.0)
+#define DRV_AUDIO_MIC_GAIN     (27.0)
+#define DRV_AUDIO_I2S_CHANNEL  (1)
 
 #define LVGL_DRAW_BUFF_DOUBLE  (1)
 #define LVGL_DRAW_BUFF_HEIGHT  (CONFIG_LVGL_DRAW_BUFF_HEIGHT)
 
-#define DEFAULT_FD_NUM      2
-#define DEFAULT_MOUNT_POINT "/sdcard"
+#define DRV_FS_MAX_FILES        (10)
+#define DRV_BASE_PATH_SD        "/sdcard"
+#define DRV_BASE_PATH_FLASH     "/spiffs"
+
+#define BSP_PWR_START_UP             \
+(                                    \
+    BSP_PWR_SDCARD |                 \
+    BSP_PWR_BATTERY |                \
+    BSP_PWR_AI_CHIP |                \
+    BSP_PWR_CODEC_PA |               \
+    BSP_PWR_AUDIO |                  \
+    BSP_PWR_GROVE |                  \
+    BSP_PWR_BAT_ADC                  \
+)
 
 #define BSP_I2S_GPIO_CFG             \
     {                                \
@@ -127,11 +147,24 @@
         },                           \
     }
 
-#define BSP_I2S_DUPLEX_MONO_CFG(_sample_rate)                                                         \
-    {                                                                                                 \
-        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(_sample_rate),                                          \
-        .slot_cfg = I2S_STD_PHILIP_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO), \
-        .gpio_cfg = BSP_I2S_GPIO_CFG,                                                                 \
+#define BSP_I2S_SLOT_CONFIG(bits_per_sample, mono_or_stereo) { \
+    .data_bit_width = bits_per_sample,                         \
+    .slot_bit_width = I2S_SLOT_BIT_WIDTH_AUTO,                 \
+    .slot_mode = mono_or_stereo,                               \
+    .slot_mask = I2S_STD_SLOT_BOTH,                            \
+    .ws_width = bits_per_sample,                               \
+    .ws_pol = false,                                           \
+    .bit_shift = true,                                         \
+    .left_align = true,                                        \
+    .big_endian = false,                                       \
+    .bit_order_lsb = false                                     \
+}
+
+#define BSP_I2S_DUPLEX_MONO_CFG(_sample_rate)                                          \
+    {                                                                                  \
+        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(_sample_rate),                           \
+        .slot_cfg = BSP_I2S_SLOT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO), \
+        .gpio_cfg = BSP_I2S_GPIO_CFG,                                                  \
     }
 
 #ifdef __cplusplus
@@ -208,6 +241,9 @@ esp_err_t bsp_sdcard_init_default(void);
 esp_err_t bsp_sdcard_deinit(char *mount_point);
 esp_err_t bsp_sdcard_deinit_default(void);
 
+esp_err_t bsp_spiffs_init(char *mount_point, size_t max_files);
+esp_err_t bsp_spiffs_init_default(void);
+
 esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config);
 const audio_codec_data_if_t *bsp_audio_get_codec_itf(void);
 esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void);
@@ -220,6 +256,9 @@ esp_err_t bsp_codec_mute_set(bool enable);
 esp_err_t bsp_codec_dev_stop(void);
 esp_err_t bsp_codec_dev_resume(void);
 
+esp_err_t bsp_codec_init(void);
+esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer_len);
+int bsp_get_feed_channel(void);
 
 #ifdef __cplusplus
 }
