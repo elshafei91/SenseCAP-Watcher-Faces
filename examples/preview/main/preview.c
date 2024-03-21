@@ -150,7 +150,6 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
 
 void app_main(void)
 {
-    bsp_io_expander_init();
     lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
 

@@ -11,6 +11,14 @@ static const char *TAG = "BSP";
 static led_strip_handle_t rgb_led_handle = NULL;
 static esp_io_expander_handle_t io_exp_handle = NULL;
 
+static sdmmc_card_t *card;
+static esp_codec_dev_handle_t play_dev_handle;
+static esp_codec_dev_handle_t record_dev_handle;
+
+static i2s_chan_handle_t i2s_tx_chan = NULL;
+static i2s_chan_handle_t i2s_rx_chan = NULL;
+static const audio_codec_data_if_t *i2s_data_if = NULL;
+
 static uint16_t io_exp_val = 0;
 static volatile bool io_exp_update = false;
 static void io_exp_isr_handler(void* arg) { io_exp_update = true; }
@@ -41,6 +49,45 @@ esp_err_t bsp_exp_io_set_level(uint16_t pin_mask, uint8_t level)
         io_exp_val = (io_exp_val & (~pin_mask)) | (level ? pin_mask : 0);
     }
     return ret;
+}
+
+esp_err_t bsp_spi_bus_init(void)
+{
+    static bool initialized = false;
+    if (initialized) {
+        return ESP_OK;
+    }
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num = BSP_SPI3_HOST_MOSI,
+        .miso_io_num = BSP_SPI3_HOST_MISO,
+        .sclk_io_num = BSP_SPI3_HOST_SCLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 4000,
+    };
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
+    initialized = true;
+    return ESP_OK;
+}
+
+esp_err_t bsp_i2c_bus_init(void)
+{
+    static bool initialized = false;
+    if (initialized) {
+        return ESP_OK;
+    }
+    const i2c_config_t i2c_conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = BSP_GENERAL_I2C_SDA,
+        .sda_pullup_en = GPIO_PULLUP_DISABLE,
+        .scl_io_num = BSP_GENERAL_I2C_SCL,
+        .scl_pullup_en = GPIO_PULLUP_DISABLE,
+        .master.clk_speed = BSP_GENERAL_I2C_CLK
+    };
+    BSP_ERROR_CHECK_RETURN_ERR(i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf));
+    BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, 0));
+    initialized = true;
+    return ESP_OK;
 }
 
 esp_err_t bsp_rgb_init()
@@ -76,11 +123,11 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
     return ret;
 }
 
-static esp_err_t bsp_knob_btn_init(void *param)
+esp_err_t bsp_knob_btn_init(void *param)
 {
-    esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
+    // esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
     
-    io_exp = bsp_io_expander_init();
+    esp_io_expander_handle_t io_exp = bsp_io_expander_init();
     if (io_exp == NULL) {
         ESP_LOGE(TAG, "IO expander initialization failed");
         return ESP_FAIL;
@@ -88,15 +135,15 @@ static esp_err_t bsp_knob_btn_init(void *param)
     return ESP_OK;
 }
 
-static uint8_t bsp_knob_btn_get_key_value(void *param)
+uint8_t bsp_knob_btn_get_key_value(void *param)
 {
-    esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
+    // esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
     return bsp_exp_io_get_level(BSP_KNOB_BTN);
 }
 
-static esp_err_t bsp_knob_btn_deinit(void *param)
+esp_err_t bsp_knob_btn_deinit(void *param)
 {
-    esp_io_expander_handle_t io_exp_handle = *((esp_io_expander_handle_t *)param);
+    // esp_io_expander_handle_t io_exp_handle = *((esp_io_expander_handle_t *)param);
     return esp_io_expander_del(io_exp_handle);
 }
 
@@ -160,7 +207,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .spi_mode = 0,
         .trans_queue_depth = 1,
     };
-    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi(DRV_LCD_SPI_NUM, &io_config, ret_io), err,
+    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi(BSP_LCD_SPI_NUM, &io_config, ret_io), err,
                       TAG, "New panel IO failed");
 
     ESP_LOGD(TAG, "Install LCD driver");
@@ -185,7 +232,7 @@ err:
         esp_lcd_panel_del(*ret_panel);
     if (*ret_io)
         esp_lcd_panel_io_del(*ret_io);
-    spi_bus_free(DRV_LCD_SPI_NUM);
+    spi_bus_free(BSP_LCD_SPI_NUM);
     return ret;
 }
 
@@ -194,15 +241,7 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
     assert(cfg != NULL);
 
     ESP_LOGD(TAG, "Initialize SPI bus");
-    const spi_bus_config_t buscfg = {
-        .sclk_io_num = BSP_LCD_SPI_SCLK,
-        .mosi_io_num = BSP_LCD_SPI_MOSI,
-        .miso_io_num = GPIO_NUM_NC,
-        .quadwp_io_num = GPIO_NUM_NC,
-        .quadhd_io_num = GPIO_NUM_NC,
-        .max_transfer_sz = DRV_LCD_H_RES * LVGL_DRAW_BUFF_HEIGHT * sizeof(uint16_t),
-    };
-    if (spi_bus_initialize(DRV_LCD_SPI_NUM, &buscfg, SPI_DMA_CH_AUTO) != ESP_OK)
+    if (bsp_spi_bus_init() != ESP_OK)
         return NULL;
 
     ESP_LOGD(TAG, "Initialize LCD panel");
@@ -229,7 +268,8 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
         .flags = {
             .buff_dma = cfg->flags.buff_dma,
             .buff_spiram = cfg->flags.buff_spiram,
-        }};
+        }
+    };
 
     return lvgl_port_add_disp(&disp_cfg);
 }
@@ -351,19 +391,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     }
     
     ESP_LOGI(TAG, "Initialize IO I2C bus");
-    const i2c_config_t i2c_conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = BSP_GENERAL_I2C_SDA,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_io_num = BSP_GENERAL_I2C_SCL,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = BSP_GENERAL_I2C_CLK};
-    if ((i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf) != ESP_OK) ||
-        (i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, 0) != ESP_OK))
-    {
-        ESP_LOGE(TAG, "I2C initialization failed");
-        return NULL;
-    }
+    ESP_ERROR_CHECK(bsp_i2c_bus_init());
 
     esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, 
                                           ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, 
@@ -394,4 +422,274 @@ esp_io_expander_handle_t bsp_io_expander_init()
     gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
 
     return &io_exp_handle;
+}
+
+esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
+{
+    ESP_ERROR_CHECK(bsp_spi_bus_init());
+
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    host.slot = BSP_SD_SPI_NUM;
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.gpio_cs = BSP_SD_SPI_CS;
+    slot_config.host_id = host.slot;
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = max_files,
+        .allocation_unit_size = 16 * 1024
+    };
+    ESP_ERROR_CHECK(esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card));
+    sdmmc_card_print_info(stdout, card);
+
+    return ESP_OK;
+}
+
+esp_err_t bsp_sdcard_init_default(void)
+{
+    return bsp_sdcard_init(DEFAULT_MOUNT_POINT, DEFAULT_FD_NUM);
+}
+
+esp_err_t bsp_sdcard_deinit(char *mount_point)
+{
+    if (NULL == mount_point) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_err_t ret_val = esp_vfs_fat_sdcard_unmount(mount_point, card);
+
+    card = NULL;
+
+    return ret_val;
+}
+
+esp_err_t bsp_sdcard_deinit_default(void)
+{
+    return bsp_sdcard_deinit(DEFAULT_MOUNT_POINT);
+}
+
+esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
+{
+    esp_err_t ret = ESP_FAIL;
+    if (i2s_tx_chan && i2s_rx_chan) {
+        /* Audio was initialized before */
+        return ESP_OK;
+    }
+
+    /* Setup I2S peripheral */
+    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(BSP_AUDIO_I2S_NUM, I2S_ROLE_MASTER);
+    chan_cfg.auto_clear = true; // Auto clear the legacy data in the DMA buffer
+    BSP_ERROR_CHECK_RETURN_ERR(i2s_new_channel(&chan_cfg, &i2s_tx_chan, &i2s_rx_chan));
+
+    /* Setup I2S channels */
+    const i2s_std_config_t std_cfg_default = BSP_I2S_DUPLEX_MONO_CFG(22050);
+    const i2s_std_config_t *p_i2s_cfg = &std_cfg_default;
+    if (i2s_config != NULL) {
+        p_i2s_cfg = i2s_config;
+    }
+
+    if (i2s_tx_chan != NULL) {
+        ESP_GOTO_ON_ERROR(i2s_channel_init_std_mode(i2s_tx_chan, p_i2s_cfg), err, TAG, "I2S channel initialization failed");
+        ESP_GOTO_ON_ERROR(i2s_channel_enable(i2s_tx_chan), err, TAG, "I2S enabling failed");
+    }
+    if (i2s_rx_chan != NULL) {
+        ESP_GOTO_ON_ERROR(i2s_channel_init_std_mode(i2s_rx_chan, p_i2s_cfg), err, TAG, "I2S channel initialization failed");
+        ESP_GOTO_ON_ERROR(i2s_channel_enable(i2s_rx_chan), err, TAG, "I2S enabling failed");
+    }
+
+    audio_codec_i2s_cfg_t i2s_cfg = {
+        .port = BSP_AUDIO_I2S_NUM,
+        .rx_handle = i2s_rx_chan,
+        .tx_handle = i2s_tx_chan,
+    };
+    i2s_data_if = audio_codec_new_i2s_data(&i2s_cfg);
+    BSP_NULL_CHECK_GOTO(i2s_data_if, err);
+
+    return ESP_OK;
+
+err:
+    if (i2s_tx_chan) {
+        i2s_del_channel(i2s_tx_chan);
+    }
+    if (i2s_rx_chan) {
+        i2s_del_channel(i2s_rx_chan);
+    }
+
+    return ret;
+}
+
+const audio_codec_data_if_t *bsp_audio_get_codec_itf(void)
+{
+    return i2s_data_if;
+}
+
+esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void)
+{
+    const audio_codec_data_if_t *i2s_data_if = bsp_audio_get_codec_itf();
+    if (i2s_data_if == NULL) {
+        /* Initilize I2C */
+        BSP_ERROR_CHECK_RETURN_NULL(bsp_i2c_bus_init());
+        /* Configure I2S peripheral and Power Amplifier */
+        BSP_ERROR_CHECK_RETURN_NULL(bsp_audio_init(NULL));
+        i2s_data_if = bsp_audio_get_codec_itf();
+    }
+    assert(i2s_data_if);
+
+    const audio_codec_gpio_if_t *gpio_if = audio_codec_new_gpio();
+
+    audio_codec_i2c_cfg_t i2c_cfg = {
+        .port = BSP_GENERAL_I2C_NUM,
+        .addr = DRV_ES8311_I2C_ADDR,
+    };
+    const audio_codec_ctrl_if_t *i2c_ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
+    BSP_NULL_CHECK(i2c_ctrl_if, NULL);
+
+    esp_codec_dev_hw_gain_t gain = {
+        .pa_voltage = 5.0,
+        .codec_dac_voltage = 3.3,
+    };
+
+    es8311_codec_cfg_t es8311_cfg = {
+        .ctrl_if = i2c_ctrl_if,
+        .gpio_if = gpio_if,
+        .codec_mode = ESP_CODEC_DEV_WORK_MODE_DAC,
+        .pa_pin = GPIO_NUM_NC,
+        .pa_reverted = false,
+        .master_mode = false,
+        .use_mclk = true,
+        .digital_mic = false,
+        .invert_mclk = false,
+        .invert_sclk = false,
+        .hw_gain = gain,
+    };
+    const audio_codec_if_t *es8311_dev = es8311_codec_new(&es8311_cfg);
+    BSP_NULL_CHECK(es8311_dev, NULL);
+
+    esp_codec_dev_cfg_t codec_dev_cfg = {
+        .dev_type = ESP_CODEC_DEV_TYPE_OUT,
+        .codec_if = es8311_dev,
+        .data_if = i2s_data_if,
+    };
+    return esp_codec_dev_new(&codec_dev_cfg);
+}
+
+esp_codec_dev_handle_t bsp_audio_codec_microphone_init(void)
+{
+    const audio_codec_data_if_t *i2s_data_if = bsp_audio_get_codec_itf();
+    if (i2s_data_if == NULL) {
+        /* Initilize I2C */
+        BSP_ERROR_CHECK_RETURN_NULL(bsp_i2c_bus_init());
+        /* Configure I2S peripheral and Power Amplifier */
+        BSP_ERROR_CHECK_RETURN_NULL(bsp_audio_init(NULL));
+        i2s_data_if = bsp_audio_get_codec_itf();
+    }
+    assert(i2s_data_if);
+
+    audio_codec_i2c_cfg_t i2c_cfg = {
+        .port = BSP_GENERAL_I2C_NUM,
+        .addr = DRV_ES7243_I2C_ADDR,
+    };
+    const audio_codec_ctrl_if_t *i2c_ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
+    BSP_NULL_CHECK(i2c_ctrl_if, NULL);
+
+    es7243_codec_cfg_t es7243_cfg = {
+        .ctrl_if = i2c_ctrl_if,
+    };
+    const audio_codec_if_t *es7243_dev = es7243_codec_new(&es7243_cfg);
+    BSP_NULL_CHECK(es7243_dev, NULL);
+
+    esp_codec_dev_cfg_t codec_es7243_dev_cfg = {
+        .dev_type = ESP_CODEC_DEV_TYPE_IN,
+        .codec_if = es7243_dev,
+        .data_if = i2s_data_if,
+    };
+    return esp_codec_dev_new(&codec_es7243_dev_cfg);
+}
+
+esp_err_t bsp_i2s_read(void *audio_buffer, size_t len, size_t *bytes_read, uint32_t timeout_ms)
+{
+    esp_err_t ret = ESP_OK;
+    ret = esp_codec_dev_read(record_dev_handle, audio_buffer, len);
+    *bytes_read = len;
+    return ret;
+}
+
+esp_err_t bsp_i2s_write(void *audio_buffer, size_t len, size_t *bytes_written, uint32_t timeout_ms)
+{
+    esp_err_t ret = ESP_OK;
+    ret = esp_codec_dev_write(play_dev_handle, audio_buffer, len);
+    *bytes_written = len;
+    return ret;
+}
+
+esp_err_t bsp_codec_set_fs(uint32_t rate, uint32_t bits_cfg, i2s_slot_mode_t ch)
+{
+    esp_err_t ret = ESP_OK;
+
+    esp_codec_dev_sample_info_t fs = {
+        .sample_rate = rate,
+        .channel = ch,
+        .bits_per_sample = bits_cfg,
+    };
+
+    if (play_dev_handle) {
+        ret = esp_codec_dev_close(play_dev_handle);
+    }
+    if (record_dev_handle) {
+        ret |= esp_codec_dev_close(record_dev_handle);
+        ret |= esp_codec_dev_set_in_gain(record_dev_handle, DRV_AUDIO_VOLUME);
+    }
+
+    if (play_dev_handle) {
+        ret |= esp_codec_dev_open(play_dev_handle, &fs);
+    }
+    if (record_dev_handle) {
+        ret |= esp_codec_dev_open(record_dev_handle, &fs);
+    }
+    return ret;
+}
+
+esp_err_t bsp_codec_volume_set(int volume, int *volume_set)
+{
+    esp_err_t ret = ESP_OK;
+    float v = volume;
+    ret = esp_codec_dev_set_out_vol(play_dev_handle, (int)v);
+    return ret;
+}
+
+esp_err_t bsp_codec_mute_set(bool enable)
+{
+    esp_err_t ret = ESP_OK;
+    ret = esp_codec_dev_set_out_mute(play_dev_handle, enable);
+    return ret;
+}
+
+esp_err_t bsp_codec_dev_stop(void)
+{
+    esp_err_t ret = ESP_OK;
+
+    if (play_dev_handle) {
+        ret = esp_codec_dev_close(play_dev_handle);
+    }
+
+    if (record_dev_handle) {
+        ret = esp_codec_dev_close(record_dev_handle);
+    }
+    return ret;
+}
+
+esp_err_t bsp_codec_dev_resume(void)
+{
+    return bsp_codec_set_fs(DRV_AUDIO_SAMPLE_RATE, DRV_AUDIO_SAMPLE_BITS, DRV_AUDIO_CHANNELS);
+}
+
+static esp_err_t bsp_codec_init()
+{
+    play_dev_handle = bsp_audio_codec_speaker_init();
+    assert((play_dev_handle) && "play_dev_handle not initialized");
+
+    record_dev_handle = bsp_audio_codec_microphone_init();
+    assert((record_dev_handle) && "record_dev_handle not initialized");
+
+    bsp_codec_set_fs(DRV_AUDIO_SAMPLE_RATE, DRV_AUDIO_SAMPLE_BITS, DRV_AUDIO_CHANNELS);
+    return ESP_OK;
 }
