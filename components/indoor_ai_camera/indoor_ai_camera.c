@@ -151,7 +151,7 @@ static esp_err_t bsp_lcd_backlight_init()
 {
     bsp_io_expander_init();
     bsp_exp_io_set_level(BSP_PWR_LCD, 1);
-    bsp_exp_io_set_level(BSP_LCD_GPIO_BL, 1);
+    // bsp_exp_io_set_level(BSP_PWR_LCD_BL, 1);
     
     // const ledc_channel_config_t backlight_channel = {
     //     .gpio_num = BSP_LCD_GPIO_BL,
@@ -641,6 +641,12 @@ esp_err_t bsp_i2s_read(void *audio_buffer, size_t len, size_t *bytes_read, uint3
     esp_err_t ret = ESP_OK;
     ret = esp_codec_dev_read(record_dev_handle, audio_buffer, len);
     *bytes_read = len;
+#if BSP_AUDIO_MIC_VALUE_GAIN > 0
+    uint16_t *buffer = (uint16_t *)audio_buffer;
+    for (size_t i = 0; i < len / 2; i++) {
+        buffer[i] = buffer[i] << BSP_AUDIO_MIC_VALUE_GAIN;
+    }
+#endif
     return ret;
 }
 
