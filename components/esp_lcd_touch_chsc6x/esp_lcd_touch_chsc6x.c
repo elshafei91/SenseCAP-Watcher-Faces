@@ -118,7 +118,7 @@ err:
 
 static esp_err_t esp_lcd_touch_chsc6x_read_data(esp_lcd_touch_handle_t tp)
 {
-    esp_err_t err;
+    esp_err_t err = ESP_OK;
     static uint8_t data[CHSC6X_READ_POINT_LEN];
 
     assert(tp != NULL);
@@ -137,7 +137,7 @@ static esp_err_t esp_lcd_touch_chsc6x_read_data(esp_lcd_touch_handle_t tp)
     }
 
     /* Get report data length */
-    err = touch_chsc6x_i2c_read(tp, (uint8_t *)&data, sizeof(data));
+    err = i2c_master_read_from_device(1, 0x2E, &data, sizeof(data), 20 / portTICK_PERIOD_MS);
     ESP_RETURN_ON_ERROR(err, TAG, "I2C read error %d!", err);
     /* Save data */
     portENTER_CRITICAL(&tp->data.lock);
