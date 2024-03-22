@@ -242,6 +242,26 @@ void app_main(void)
         printf("get model failed\n");
     }
 
+    if (sscma_client_set_iou_threshold(client, 50) != ESP_OK)
+    {
+        printf("set iou threshold failed\n");
+    }
+
+    if (sscma_client_set_confidence_threshold(client, 50) != ESP_OK)
+    {
+        printf("set confidence threshold failed\n");
+    }
+    int iou_threshold = 0;
+    if (sscma_client_get_iou_threshold(client, &iou_threshold) == ESP_OK)
+    {
+        printf("iou threshold: %d\n", iou_threshold);
+    }
+    int confidence_threshold = 0;
+    if (sscma_client_get_confidence_threshold(client, &confidence_threshold) == ESP_OK)
+    {
+        printf("confidence threshold: %d\n", confidence_threshold);
+    }
+
     sscma_client_break(client);
     sscma_client_set_sensor(client, 1, 2, true);
     // vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -324,13 +344,36 @@ void app_main(void)
     {
         printf("sample failed\n");
     }
-
+    int value = 40;
     while (1)
     {
         // if (sscma_client_invoke(client, 1, false, true) != ESP_OK)
         // {
         //     printf("sample failed\n");
         // }
+
+        if (sscma_client_set_iou_threshold(client, value++) != ESP_OK)
+        {
+            printf("set iou threshold failed\n");
+        }
+
+        if (sscma_client_set_confidence_threshold(client, value++) != ESP_OK)
+        {
+            printf("set confidence threshold failed\n");
+        }
+
+        if (sscma_client_get_iou_threshold(client, &iou_threshold) == ESP_OK)
+        {
+            printf("iou threshold: %d\n", iou_threshold);
+        }
+
+        if (sscma_client_get_confidence_threshold(client, &confidence_threshold) == ESP_OK)
+        {
+            printf("confidence threshold: %d\n", confidence_threshold);
+        }
+
+        if (value > 90)
+            value = 40;
 
         printf("free_heap_size = %ld\n", esp_get_free_heap_size());
         vTaskDelay(1000 / portTICK_PERIOD_MS);

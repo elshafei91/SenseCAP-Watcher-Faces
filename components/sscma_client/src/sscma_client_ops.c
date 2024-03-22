@@ -921,6 +921,94 @@ esp_err_t sscma_client_break(sscma_client_handle_t client)
     return ret;
 }
 
+esp_err_t sscma_client_set_iou_threshold(sscma_client_handle_t client, int threshold)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+    char cmd[64] = {0};
+
+    snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_TIOU CMD_SET "%d" CMD_SUFFIX, threshold);
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request set sensor failed");
+
+    if (reply.payload != NULL)
+    {
+        int code = get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_get_iou_threshold(sscma_client_handle_t client, int *threshold)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+
+    ESP_RETURN_ON_FALSE(threshold != NULL, ESP_ERR_INVALID_ARG, TAG, "threshold is NULL");
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_TIOU CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request get sensor failed");
+
+    if (reply.payload != NULL)
+    {
+        int code = get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
+        if (ret == ESP_OK)
+        {
+
+            *threshold = get_int_from_object(reply.payload, "data");
+        }
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_set_confidence_threshold(sscma_client_handle_t client, int threshold)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+    char cmd[64] = {0};
+
+    snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_TSCORE CMD_SET "%d" CMD_SUFFIX, threshold);
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request set sensor failed");
+
+    if (reply.payload != NULL)
+    {
+        int code = get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_get_confidence_threshold(sscma_client_handle_t client, int *threshold)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+
+    ESP_RETURN_ON_FALSE(threshold != NULL, ESP_ERR_INVALID_ARG, TAG, "threshold is NULL");
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_TSCORE CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request get sensor failed");
+
+    if (reply.payload != NULL)
+    {
+        int code = get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
+        if (ret == ESP_OK)
+        {
+
+            *threshold = get_int_from_object(reply.payload, "data");
+        }
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
 esp_err_t sscma_utils_fetch_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t **boxes, int *num_boxes)
 {
     esp_err_t ret = ESP_OK;

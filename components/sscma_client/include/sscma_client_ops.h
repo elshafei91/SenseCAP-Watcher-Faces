@@ -236,6 +236,42 @@ extern "C"
     esp_err_t sscma_client_break(sscma_client_handle_t client);
 
     /**
+     * @brief Set iou threshold
+     * @param[in] client SCCMA client handle
+     * @param[in] threshold iou threshold
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_set_iou_threshold(sscma_client_handle_t client, int threshold);
+
+    /**
+     * @brief Get iou threshold
+     * @param[in] client SCCMA client handle
+     * @param[out] threshold iou threshold
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_get_iou_threshold(sscma_client_handle_t client, int *threshold);
+
+    /**
+     * @brief Set confidence threshold
+     * @param[in] client SCCMA client handle
+     * @param[in] threshold confidence threshold
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_set_confidence_threshold(sscma_client_handle_t client, int threshold);
+
+    /**
+     * @brief Get confidence threshold
+     * @param[in] client SCCMA client handle
+     * @param[out] threshold confidence threshold
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_get_confidence_threshold(sscma_client_handle_t client, int *threshold);
+
+    /**
      * Fetch boxes and classes from sscma client reply
      * @param[in] reply sscma client reply
      * @param[out] boxes sscma client boxes
