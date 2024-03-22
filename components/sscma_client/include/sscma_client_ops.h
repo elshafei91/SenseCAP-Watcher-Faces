@@ -175,6 +175,16 @@ extern "C"
     esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_model_t **model, bool cached);
 
     /**
+     * @brief Set model
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] model pointer to sscma_client_model_t
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_set_model(sscma_client_handle_t client, int model);
+
+    /**
      * @brief Set sensor
      *
      * @param[in] client SCCMA client handle

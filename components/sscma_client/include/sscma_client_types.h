@@ -48,7 +48,8 @@ extern "C"
 
     typedef struct
     {
-        char *id;           /*!< ID */
+        int id;             /* !< ID */
+        char *uuid;         /* !< UUID */
         char *name;         /*!< Name */
         char *ver;          /*!< Version */
         char *category;     /*!< Category */

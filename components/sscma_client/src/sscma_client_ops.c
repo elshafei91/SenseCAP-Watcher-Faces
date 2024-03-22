@@ -49,6 +49,7 @@ static void fetch_string_common(cJSON *object, cJSON *field, char **target)
     if (*target != NULL)
     {
         free(*target);
+        *target = NULL;
     }
 
     *target = strdup(field->valuestring);
@@ -484,9 +485,9 @@ esp_err_t sscma_client_del(sscma_client_handle_t client)
             free(client->info.fw_ver);
         }
 
-        if (client->model.id != NULL)
+        if (client->model.uuid != NULL)
         {
-            free(client->model.id);
+            free(client->model.uuid);
         }
 
         if (client->model.name != NULL)
@@ -716,11 +717,28 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
 {
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
+    bool is_changed = false;
     char *model_data = NULL;
     size_t len = 0;
     *model = &client->model;
 
-    if (cached && client->model.id != NULL)
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_MODEL CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request model failed");
+
+    if (reply.payload != NULL)
+    {
+        cJSON *data = cJSON_GetObjectItem(reply.payload, "data");
+        if (data != NULL)
+        {
+            if (client->model.id != get_int_from_object(data, "id"))
+            {
+                is_changed = true;
+                client->model.id = get_int_from_object(data, "id");
+            }
+        }
+        sscma_client_reply_clear(&reply);
+    }
+
+    if (cached && !is_changed && client->model.uuid != NULL)
     {
         return ret;
     }
@@ -743,7 +761,7 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
                         cJSON *root = cJSON_Parse(model_data);
                         if (root != NULL)
                         {
-                            fetch_string_from_object(root, "uuid", &client->model.id);
+                            fetch_string_from_object(root, "uuid", &client->model.uuid);
                             fetch_string_from_object(root, "name", &client->model.name);
                             fetch_string_from_object(root, "version", &client->model.ver);
                             fetch_string_from_object(root, "category", &client->model.category);
@@ -767,6 +785,26 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
                 free(model_data);
             }
         }
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_client_set_model(sscma_client_handle_t client, int model)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+    int code = 0;
+    char cmd[64] = {0};
+    snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_MODEL CMD_SET "%d" CMD_SUFFIX, model);
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request model failed");
+
+    if (reply.payload != NULL)
+    {
+        code = get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         sscma_client_reply_clear(&reply);
     }
 

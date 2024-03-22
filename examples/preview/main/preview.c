@@ -17,7 +17,7 @@
 static const char *TAG = "main";
 
 /* SPI settings */
-#define EXAMPLE_SSCMA_SPI_NUM (SPI3_HOST)
+#define EXAMPLE_SSCMA_SPI_NUM (SPI2_HOST)
 #define EXAMPLE_SSCMA_SPI_CLK_HZ (12 * 1000 * 1000)
 
 /* SPI pins */
@@ -195,7 +195,7 @@ void app_main(void)
     }
 
     sscma_client_init(client);
-
+    sscma_client_set_model(client, 1);
     sscma_client_info_t *info;
     if (sscma_client_get_info(client, &info, true) == ESP_OK)
     {
@@ -212,7 +212,8 @@ void app_main(void)
     sscma_client_model_t *model;
     if (sscma_client_get_model(client, &model, true) == ESP_OK)
     {
-        printf("ID: %s\n", model->id ? model->id : "N/A");
+        printf("ID: %d\n", model->id ? model->id : -1);
+        printf("UUID: %s\n", model->uuid ? model->uuid : "N/A");
         printf("Name: %s\n", model->name ? model->name : "N/A");
         printf("Version: %s\n", model->ver ? model->ver : "N/A");
         printf("Category: %s\n", model->category ? model->category : "N/A");
@@ -249,6 +250,73 @@ void app_main(void)
         printf("sample failed\n");
     }
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    sscma_client_set_model(client, 2);
+    if (sscma_client_get_model(client, &model, true) == ESP_OK)
+    {
+        printf("ID: %d\n", model->id ? model->id : -1);
+        printf("UUID: %s\n", model->uuid ? model->uuid : "N/A");
+        printf("Name: %s\n", model->name ? model->name : "N/A");
+        printf("Version: %s\n", model->ver ? model->ver : "N/A");
+        printf("Category: %s\n", model->category ? model->category : "N/A");
+        printf("Algorithm: %s\n", model->algorithm ? model->algorithm : "N/A");
+        printf("Description: %s\n", model->description ? model->description : "N/A");
+
+        printf("Classes:\n");
+        if (model->classes[0] != NULL)
+        {
+            for (int i = 0; model->classes[i] != NULL; i++)
+            {
+                printf("  - %s\n", model->classes[i]);
+            }
+        }
+        else
+        {
+            printf("  N/A\n");
+        }
+
+        printf("Token: %s\n", model->token ? model->token : "N/A");
+        printf("URL: %s\n", model->url ? model->url : "N/A");
+        printf("Manufacturer: %s\n", model->manufacturer ? model->manufacturer : "N/A");
+    }
+    else
+    {
+        printf("get model failed\n");
+    }
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    sscma_client_set_model(client, 3);
+    if (sscma_client_get_model(client, &model, true) == ESP_OK)
+    {
+        printf("ID: %d\n", model->id ? model->id : -1);
+        printf("UUID: %s\n", model->uuid ? model->uuid : "N/A");
+        printf("Name: %s\n", model->name ? model->name : "N/A");
+        printf("Version: %s\n", model->ver ? model->ver : "N/A");
+        printf("Category: %s\n", model->category ? model->category : "N/A");
+        printf("Algorithm: %s\n", model->algorithm ? model->algorithm : "N/A");
+        printf("Description: %s\n", model->description ? model->description : "N/A");
+
+        printf("Classes:\n");
+        if (model->classes[0] != NULL)
+        {
+            for (int i = 0; model->classes[i] != NULL; i++)
+            {
+                printf("  - %s\n", model->classes[i]);
+            }
+        }
+        else
+        {
+            printf("  N/A\n");
+        }
+
+        printf("Token: %s\n", model->token ? model->token : "N/A");
+        printf("URL: %s\n", model->url ? model->url : "N/A");
+        printf("Manufacturer: %s\n", model->manufacturer ? model->manufacturer : "N/A");
+    }
+    else
+    {
+        printf("get model failed\n");
+    }
+
     sscma_client_set_sensor(client, 1, 0, true);
     // vTaskDelay(50 / portTICK_PERIOD_MS);
 
