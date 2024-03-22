@@ -570,7 +570,7 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
     }
     else
     {
-        ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), TAG, "request reset failed");
+        //ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), TAG, "request reset failed");
         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for sscma to be ready
     }
     return ret;
