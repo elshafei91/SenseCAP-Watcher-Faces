@@ -193,7 +193,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .lcd_cmd_bits = DRV_LCD_CMD_BITS,
         .lcd_param_bits = DRV_LCD_PARAM_BITS,
         .spi_mode = 0,
-        .trans_queue_depth = 1,
+        .trans_queue_depth = 2,
     };
     ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi(BSP_LCD_SPI_NUM, &io_config, ret_io), err,
                       TAG, "New panel IO failed");

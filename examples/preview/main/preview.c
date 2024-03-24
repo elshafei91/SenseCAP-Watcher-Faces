@@ -25,9 +25,9 @@ static const char *TAG = "main";
 #define EXAMPLE_SSCMA_SPI_MOSI (5)
 #define EXAMPLE_SSCMA_SPI_MISO (6)
 #define EXAMPLE_SSCMA_SPI_CS (21)
-#define EXAMPLE_SSCMA_SPI_SYNC (-1)
+#define EXAMPLE_SSCMA_SPI_SYNC (IO_EXPANDER_PIN_NUM_6)
 
-#define EXAMPLE_SSCMA_RESET (-1)
+#define EXAMPLE_SSCMA_RESET (BSP_PWR_AI_CHIP)
 
 esp_io_expander_handle_t io_expander = NULL;
 sscma_client_io_handle_t io = NULL;
@@ -172,7 +172,7 @@ void app_main(void)
     ESP_ERROR_CHECK(spi_bus_initialize(EXAMPLE_SSCMA_SPI_NUM, &buscfg, SPI_DMA_CH_AUTO));
 
     const sscma_client_io_spi_config_t spi_io_config = {
-        .sync_gpio_num = IO_EXPANDER_PIN_NUM_6,
+        .sync_gpio_num = EXAMPLE_SSCMA_SPI_SYNC,
         .cs_gpio_num = EXAMPLE_SSCMA_SPI_CS,
         .pclk_hz = EXAMPLE_SSCMA_SPI_CLK_HZ,
         .spi_mode = 0,
@@ -185,7 +185,7 @@ void app_main(void)
     sscma_client_new_io_spi_bus((sscma_client_spi_bus_handle_t)EXAMPLE_SSCMA_SPI_NUM, &spi_io_config, &io);
 
     sscma_client_config_t sscma_client_config = SSCMA_CLIENT_CONFIG_DEFAULT();
-    sscma_client_config.reset_gpio_num = BSP_PWR_AI_CHIP;
+    sscma_client_config.reset_gpio_num = EXAMPLE_SSCMA_RESET;
     sscma_client_config.io_expander = io_expander;
     sscma_client_config.flags.reset_use_expander = true;
 
@@ -351,7 +351,7 @@ void app_main(void)
     {
         printf("sample failed\n");
     }
-    
+
     int value = 40;
     while (1)
     {
