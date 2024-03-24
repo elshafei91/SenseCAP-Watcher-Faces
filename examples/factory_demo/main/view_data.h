@@ -127,6 +127,8 @@ enum {
 
     VIEW_EVENT_TIME,  //  bool time_format_24
     
+    VIEW_EVENT_BATTERY_ST,   
+
     VIEW_EVENT_WIFI_ST,   //view_data_wifi_st_t
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
 

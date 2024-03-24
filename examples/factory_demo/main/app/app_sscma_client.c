@@ -159,6 +159,8 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
 
 void __init(void)
 {
+    esp_io_expander_handle_t io_expander = bsp_io_expander_init();
+
     const spi_bus_config_t buscfg = {
         .sclk_io_num = EXAMPLE_SSCMA_SPI_SCLK,
         .mosi_io_num = EXAMPLE_SSCMA_SPI_MOSI,
@@ -177,12 +179,16 @@ void __init(void)
         .spi_mode = 0,
         .wait_delay = 2,
         .user_ctx = NULL,
+        .io_expander = io_expander,
+        .flags.sync_use_expander = true,
     };
 
     sscma_client_new_io_spi_bus((sscma_client_spi_bus_handle_t)EXAMPLE_SSCMA_SPI_NUM, &spi_io_config, &io);
 
     sscma_client_config_t sscma_client_config = SSCMA_CLIENT_CONFIG_DEFAULT();
     sscma_client_config.reset_gpio_num = EXAMPLE_SSCMA_RESET;
+    sscma_client_config.io_expander = io_expander;
+    sscma_client_config.flags.reset_use_expander = true;
 
     ESP_ERROR_CHECK(sscma_client_new(io, &sscma_client_config, &client));
     const sscma_client_callback_t callback = {
@@ -192,60 +198,80 @@ void __init(void)
 
     if (sscma_client_register_callback(client, &callback, NULL) != ESP_OK)
     {
-        ESP_LOGI(TAG, "set callback failed\n");
+        printf("set callback failed\n");
         abort();
     }
+
     sscma_client_init(client);
-
-    vTaskDelay(pdMS_TO_TICKS(1500));
-
+    sscma_client_set_model(client, 3);
     sscma_client_info_t *info;
     if (sscma_client_get_info(client, &info, true) == ESP_OK)
     {
-        ESP_LOGI(TAG, "ID: %s\n", (info->id != NULL) ? info->id : "NULL");
-        ESP_LOGI(TAG, "Name: %s\n", (info->name != NULL) ? info->name : "NULL");
-        ESP_LOGI(TAG, "Hardware Version: %s\n", (info->hw_ver != NULL) ? info->hw_ver : "NULL");
-        ESP_LOGI(TAG, "Software Version: %s\n", (info->sw_ver != NULL) ? info->sw_ver : "NULL");
-        ESP_LOGI(TAG, "Firmware Version: %s\n", (info->fw_ver != NULL) ? info->fw_ver : "NULL");
+        printf("ID: %s\n", (info->id != NULL) ? info->id : "NULL");
+        printf("Name: %s\n", (info->name != NULL) ? info->name : "NULL");
+        printf("Hardware Version: %s\n", (info->hw_ver != NULL) ? info->hw_ver : "NULL");
+        printf("Software Version: %s\n", (info->sw_ver != NULL) ? info->sw_ver : "NULL");
+        printf("Firmware Version: %s\n", (info->fw_ver != NULL) ? info->fw_ver : "NULL");
     }
     else
     {
-        ESP_LOGI(TAG, "get info failed\n");
+        printf("get info failed\n");
     }
     sscma_client_model_t *model;
     if (sscma_client_get_model(client, &model, true) == ESP_OK)
     {
-        ESP_LOGI(TAG, "ID: %s\n", model->id ? model->id : "N/A");
-        ESP_LOGI(TAG, "Name: %s\n", model->name ? model->name : "N/A");
-        ESP_LOGI(TAG, "Version: %s\n", model->ver ? model->ver : "N/A");
-        ESP_LOGI(TAG, "Category: %s\n", model->category ? model->category : "N/A");
-        ESP_LOGI(TAG, "Algorithm: %s\n", model->algorithm ? model->algorithm : "N/A");
-        ESP_LOGI(TAG, "Description: %s\n", model->description ? model->description : "N/A");
+        printf("ID: %d\n", model->id ? model->id : -1);
+        printf("UUID: %s\n", model->uuid ? model->uuid : "N/A");
+        printf("Name: %s\n", model->name ? model->name : "N/A");
+        printf("Version: %s\n", model->ver ? model->ver : "N/A");
+        printf("Category: %s\n", model->category ? model->category : "N/A");
+        printf("Algorithm: %s\n", model->algorithm ? model->algorithm : "N/A");
+        printf("Description: %s\n", model->description ? model->description : "N/A");
 
-        ESP_LOGI(TAG, "Classes:\n");
+        printf("Classes:\n");
         if (model->classes[0] != NULL)
         {
             for (int i = 0; model->classes[i] != NULL; i++)
             {
-                ESP_LOGI(TAG, "  - %s\n", model->classes[i]);
+                printf("  - %s\n", model->classes[i]);
             }
         }
         else
         {
-            ESP_LOGI(TAG, "  N/A\n");
+            printf("  N/A\n");
         }
 
-        ESP_LOGI(TAG, "Token: %s\n", model->token ? model->token : "N/A");
-        ESP_LOGI(TAG, "URL: %s\n", model->url ? model->url : "N/A");
-        ESP_LOGI(TAG, "Manufacturer: %s\n", model->manufacturer ? model->manufacturer : "N/A");
+        printf("Token: %s\n", model->token ? model->token : "N/A");
+        printf("URL: %s\n", model->url ? model->url : "N/A");
+        printf("Manufacturer: %s\n", model->manufacturer ? model->manufacturer : "N/A");
     }
     else
     {
-        ESP_LOGI(TAG, "get model failed\n");
+        printf("get model failed\n");
     }
+
+    if (sscma_client_set_iou_threshold(client, 50) != ESP_OK)
+    {
+        printf("set iou threshold failed\n");
+    }
+
+    if (sscma_client_set_confidence_threshold(client, 50) != ESP_OK)
+    {
+        printf("set confidence threshold failed\n");
+    }
+    int iou_threshold = 0;
+    if (sscma_client_get_iou_threshold(client, &iou_threshold) == ESP_OK)
+    {
+        printf("iou threshold: %d\n", iou_threshold);
+    }
+    int confidence_threshold = 0;
+    if (sscma_client_get_confidence_threshold(client, &confidence_threshold) == ESP_OK)
+    {
+        printf("confidence threshold: %d\n", confidence_threshold);
+    }
+
     sscma_client_break(client);
     sscma_client_set_sensor(client, 1, 0, true);
-    // vTaskDelay(50 / portTICK_PERIOD_MS);
     if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
     {
         ESP_LOGI(TAG, "sample failed\n");

@@ -7,9 +7,11 @@ int wifi_rssi_level_get(int rssi)
 	//    2    (-88, -77]
 	//    3    (-66, -55]
 	//    4    rssi>=-55
-    if( rssi > -66 ) {
-    	return 3;
-    } else if( rssi > -88) {
+    if( rssi > -55 ) {
+    	return 4;
+    } else if( rssi > -66 ) {
+		return 3;
+	} else if( rssi > -88) {
     	return 2;
     } else {
     	return 1;

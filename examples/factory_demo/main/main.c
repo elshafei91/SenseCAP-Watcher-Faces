@@ -92,8 +92,9 @@ int app_init(void)
 
     app_wifi_init();
 
-    // app_time_init();
-    app_cmd_init();
+    app_time_init();
+
+    // app_cmd_init();
     return ESP_OK;
 
 }
@@ -138,7 +139,12 @@ void app_main(void)
     esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
 
 
-    // tasklist_parse(test);
+    struct view_data_wifi_config cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    strcpy( cfg.ssid, "M2-TEST");
+    cfg.have_password = true;
+    strcpy( cfg.password,  "seeedrocks!");
+    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
     
     static char buffer[254];    /* Make sure buffer is enough for `sprintf` */
     while (1) {

@@ -10,35 +10,36 @@ void ui_screen_shutdown_confirm_screen_init(void)
 ui_screen_shutdown_confirm = lv_obj_create(NULL);
 lv_obj_clear_flag( ui_screen_shutdown_confirm, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
-ui_Image8 = lv_img_create(ui_screen_shutdown_confirm);
-lv_img_set_src(ui_Image8, &ui_img_ui_img__cancel_png);
-lv_obj_set_width( ui_Image8, LV_SIZE_CONTENT);  /// 1
-lv_obj_set_height( ui_Image8, LV_SIZE_CONTENT);   /// 1
-lv_obj_set_x( ui_Image8, -40 );
-lv_obj_set_y( ui_Image8, 40 );
-lv_obj_set_align( ui_Image8, LV_ALIGN_CENTER );
-lv_obj_add_flag( ui_Image8, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_ADV_HITTEST );   /// Flags
-lv_obj_clear_flag( ui_Image8, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
+ui_btn_cancel = lv_img_create(ui_screen_shutdown_confirm);
+lv_img_set_src(ui_btn_cancel, &ui_img_cancel_png);
+lv_obj_set_width( ui_btn_cancel, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_btn_cancel, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_x( ui_btn_cancel, -40 );
+lv_obj_set_y( ui_btn_cancel, 40 );
+lv_obj_set_align( ui_btn_cancel, LV_ALIGN_CENTER );
+lv_obj_add_flag( ui_btn_cancel, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_ADV_HITTEST );   /// Flags
+lv_obj_clear_flag( ui_btn_cancel, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
-ui_confirm = lv_img_create(ui_screen_shutdown_confirm);
-lv_img_set_src(ui_confirm, &ui_img_ui_img_confirm_red_png);
-lv_obj_set_width( ui_confirm, LV_SIZE_CONTENT);  /// 1
-lv_obj_set_height( ui_confirm, LV_SIZE_CONTENT);   /// 1
-lv_obj_set_x( ui_confirm, 40 );
-lv_obj_set_y( ui_confirm, 40 );
-lv_obj_set_align( ui_confirm, LV_ALIGN_CENTER );
-lv_obj_add_flag( ui_confirm, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_ADV_HITTEST );   /// Flags
-lv_obj_clear_flag( ui_confirm, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
+ui_btn_confirm = lv_img_create(ui_screen_shutdown_confirm);
+lv_img_set_src(ui_btn_confirm, &ui_img_confirm_red_png);
+lv_obj_set_width( ui_btn_confirm, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_btn_confirm, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_x( ui_btn_confirm, 40 );
+lv_obj_set_y( ui_btn_confirm, 40 );
+lv_obj_set_align( ui_btn_confirm, LV_ALIGN_CENTER );
+lv_obj_add_flag( ui_btn_confirm, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_ADV_HITTEST );   /// Flags
+lv_obj_clear_flag( ui_btn_confirm, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
-ui_Label1 = lv_label_create(ui_screen_shutdown_confirm);
-lv_obj_set_width( ui_Label1, LV_SIZE_CONTENT);  /// 1
-lv_obj_set_height( ui_Label1, LV_SIZE_CONTENT);   /// 1
-lv_obj_set_x( ui_Label1, 0 );
-lv_obj_set_y( ui_Label1, -20 );
-lv_obj_set_align( ui_Label1, LV_ALIGN_CENTER );
-lv_label_set_text(ui_Label1,"Do you want to turn off \n          the device?");
+ui_text_shutdown_hint_ = lv_label_create(ui_screen_shutdown_confirm);
+lv_obj_set_width( ui_text_shutdown_hint_, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_text_shutdown_hint_, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_x( ui_text_shutdown_hint_, 0 );
+lv_obj_set_y( ui_text_shutdown_hint_, -20 );
+lv_obj_set_align( ui_text_shutdown_hint_, LV_ALIGN_CENTER );
+lv_label_set_text(ui_text_shutdown_hint_,"Do you want to turn off \n          the device?");
 
-lv_obj_add_event_cb(ui_Image8, ui_event_Image8, LV_EVENT_ALL, NULL);
-lv_obj_add_event_cb(ui_confirm, ui_event_confirm, LV_EVENT_ALL, NULL);
+lv_obj_add_event_cb(ui_btn_cancel, ui_event_btn_cancel, LV_EVENT_ALL, NULL);
+lv_obj_add_event_cb(ui_btn_confirm, ui_event_btn_confirm, LV_EVENT_ALL, NULL);
+lv_obj_add_event_cb(ui_screen_shutdown_confirm, ui_event_screen_shutdown_confirm, LV_EVENT_ALL, NULL);
 
 }

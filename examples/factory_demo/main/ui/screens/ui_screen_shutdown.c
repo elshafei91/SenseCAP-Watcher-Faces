@@ -10,15 +10,15 @@ void ui_screen_shutdown_screen_init(void)
 ui_screen_shutdown = lv_obj_create(NULL);
 lv_obj_clear_flag( ui_screen_shutdown, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
-ui_Image7 = lv_img_create(ui_screen_shutdown);
-lv_img_set_src(ui_Image7, &ui_img_ui_img_shutdown_png);
-lv_obj_set_width( ui_Image7, LV_SIZE_CONTENT);  /// 1
-lv_obj_set_height( ui_Image7, LV_SIZE_CONTENT);   /// 1
-lv_obj_set_align( ui_Image7, LV_ALIGN_CENTER );
-lv_obj_add_flag( ui_Image7, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE | LV_OBJ_FLAG_ADV_HITTEST );   /// Flags
-lv_obj_clear_flag( ui_Image7, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
+ui_shutdown = lv_img_create(ui_screen_shutdown);
+lv_img_set_src(ui_shutdown, &ui_img_shutdown_png);
+lv_obj_set_width( ui_shutdown, LV_SIZE_CONTENT);  /// 1
+lv_obj_set_height( ui_shutdown, LV_SIZE_CONTENT);   /// 1
+lv_obj_set_align( ui_shutdown, LV_ALIGN_CENTER );
+lv_obj_add_flag( ui_shutdown, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE | LV_OBJ_FLAG_ADV_HITTEST );   /// Flags
+lv_obj_clear_flag( ui_shutdown, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
-lv_obj_add_event_cb(ui_Image7, ui_event_Image7, LV_EVENT_ALL, NULL);
+lv_obj_add_event_cb(ui_shutdown, ui_event_shutdown, LV_EVENT_ALL, NULL);
 lv_obj_add_event_cb(ui_screen_shutdown, ui_event_screen_shutdown, LV_EVENT_ALL, NULL);
 
 }

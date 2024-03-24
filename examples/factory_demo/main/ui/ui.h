@@ -16,13 +16,13 @@ extern "C" {
 #include "ui_events.h"
 #include "ui_theme_manager.h"
 #include "ui_themes.h"
-#include "config.h"
 
+void up_Animation( lv_obj_t *TargetObject, int delay);
 // SCREEN: ui_screen_startup
 void ui_screen_startup_screen_init(void);
 void ui_event_screen_startup( lv_event_t * e);
 extern lv_obj_t *ui_screen_startup;
-extern lv_obj_t *ui_Image2;
+extern lv_obj_t *ui_logo;
 // SCREEN: ui_screen_preview
 void ui_screen_preview_screen_init(void);
 void ui_event_screen_preview( lv_event_t * e);
@@ -36,29 +36,67 @@ extern lv_obj_t *ui_setting;
 void ui_screen_shutdown_screen_init(void);
 void ui_event_screen_shutdown( lv_event_t * e);
 extern lv_obj_t *ui_screen_shutdown;
-void ui_event_Image7( lv_event_t * e);
-extern lv_obj_t *ui_Image7;
+void ui_event_shutdown( lv_event_t * e);
+extern lv_obj_t *ui_shutdown;
 // SCREEN: ui_screen_shutdown_confirm
 void ui_screen_shutdown_confirm_screen_init(void);
+void ui_event_screen_shutdown_confirm( lv_event_t * e);
 extern lv_obj_t *ui_screen_shutdown_confirm;
-void ui_event_Image8( lv_event_t * e);
-extern lv_obj_t *ui_Image8;
-void ui_event_confirm( lv_event_t * e);
-extern lv_obj_t *ui_confirm;
-extern lv_obj_t *ui_Label1;
+void ui_event_btn_cancel( lv_event_t * e);
+extern lv_obj_t *ui_btn_cancel;
+void ui_event_btn_confirm( lv_event_t * e);
+extern lv_obj_t *ui_btn_confirm;
+extern lv_obj_t *ui_text_shutdown_hint_;
 // SCREEN: ui_screen_shutdown_wait
 void ui_screen_shutdown_wait_screen_init(void);
 extern lv_obj_t *ui_screen_shutdown_wait;
 extern lv_obj_t *ui_Spinner1;
+// SCREEN: ui_screen_ha_data
+void ui_screen_ha_data_screen_init(void);
+void ui_event_screen_ha_data( lv_event_t * e);
+extern lv_obj_t *ui_screen_ha_data;
+extern lv_obj_t *ui_data1;
+extern lv_obj_t *ui_data2;
+extern lv_obj_t *ui_data1_title;
+extern lv_obj_t *ui_data2_title;
+extern lv_obj_t *ui_data1_unit;
+extern lv_obj_t *ui_data2_unit;
+extern lv_obj_t *ui_time;
+// SCREEN: ui_screen_ha_ctrl
+void ui_screen_ha_ctrl_screen_init(void);
+void ui_event_screen_ha_ctrl( lv_event_t * e);
+extern lv_obj_t *ui_screen_ha_ctrl;
+extern lv_obj_t *ui_button_panel_1;
+extern lv_obj_t *ui_switch_1;
+extern lv_obj_t *ui_switch_label_1;
+extern lv_obj_t *ui_button_panel_2;
+extern lv_obj_t *ui_switch_2;
+extern lv_obj_t *ui_switch_label_2;
+extern lv_obj_t *ui_button_panel_3;
+extern lv_obj_t *ui_switch_3;
+extern lv_obj_t *ui_switch_label_3;
 extern lv_obj_t *ui____initial_actions0;
 
-LV_IMG_DECLARE( ui_img_948016297);   // assets/切图 1.png
-LV_IMG_DECLARE( ui_img_ui_img_setting_png);   // assets/ui_img_setting.png
-LV_IMG_DECLARE( ui_img_ui_img_shutdown_png);   // assets/ui_img_shutdown.png
-LV_IMG_DECLARE( ui_img_ui_img__cancel_png);   // assets/ui_img_ cancel.png
-LV_IMG_DECLARE( ui_img_ui_img_confirm_red_png);   // assets/ui_img_confirm_red.png
+LV_IMG_DECLARE( ui_img_seeed_logos_png);   // assets/seeed_logos.png
+LV_IMG_DECLARE( ui_img_setting_png);   // assets/setting.png
+LV_IMG_DECLARE( ui_img_shutdown_png);   // assets/shutdown.png
+LV_IMG_DECLARE( ui_img_cancel_png);   // assets/cancel.png
+LV_IMG_DECLARE( ui_img_confirm_red_png);   // assets/confirm_red.png
+LV_IMG_DECLARE( ui_img_battery_1_png);   // assets/battery_1.png
+LV_IMG_DECLARE( ui_img_battery_2_png);   // assets/battery_2.png
+LV_IMG_DECLARE( ui_img_battery_3_png);   // assets/battery_3.png
+LV_IMG_DECLARE( ui_img_battery_4_png);   // assets/battery_4.png
+LV_IMG_DECLARE( ui_img_battery_5_png);   // assets/battery_5.png
+LV_IMG_DECLARE( ui_img_wifi_0_png);   // assets/wifi_0.png
+LV_IMG_DECLARE( ui_img_wifi_1_png);   // assets/wifi_1.png
+LV_IMG_DECLARE( ui_img_wifi_2_png);   // assets/wifi_2.png
+LV_IMG_DECLARE( ui_img_wifi_3_png);   // assets/wifi_3.png
+LV_IMG_DECLARE( ui_img_wifi_4_png);   // assets/wifi_4.png
+LV_IMG_DECLARE( ui_img_wifi_nonnet_png);   // assets/wifi_nonnet.png
+LV_IMG_DECLARE( ui_img_wifi_disconnect_png);   // assets/wifi_disconnect.png
 
 
+LV_FONT_DECLARE( ui_font_Font1);
 
 
 void ui_init(void);
