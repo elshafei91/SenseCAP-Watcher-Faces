@@ -29,6 +29,7 @@ static const char *TAG = "main";
 
 #define EXAMPLE_SSCMA_RESET (-1)
 
+esp_io_expander_handle_t io_expander = NULL;
 sscma_client_io_handle_t io = NULL;
 sscma_client_handle_t client = NULL;
 
@@ -150,6 +151,8 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
 
 void app_main(void)
 {
+    io_expander = bsp_io_expander_init();
+    assert(io_expander != NULL);
     lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
 
@@ -169,12 +172,14 @@ void app_main(void)
     ESP_ERROR_CHECK(spi_bus_initialize(EXAMPLE_SSCMA_SPI_NUM, &buscfg, SPI_DMA_CH_AUTO));
 
     const sscma_client_io_spi_config_t spi_io_config = {
-        .sync_gpio_num = EXAMPLE_SSCMA_SPI_SYNC,
+        .sync_gpio_num = IO_EXPANDER_PIN_NUM_6,
         .cs_gpio_num = EXAMPLE_SSCMA_SPI_CS,
         .pclk_hz = EXAMPLE_SSCMA_SPI_CLK_HZ,
         .spi_mode = 0,
         .wait_delay = 2,
         .user_ctx = NULL,
+        .io_expander = io_expander,
+        .flags.sync_use_expander = true,
     };
 
     sscma_client_new_io_spi_bus((sscma_client_spi_bus_handle_t)EXAMPLE_SSCMA_SPI_NUM, &spi_io_config, &io);
@@ -347,10 +352,6 @@ void app_main(void)
     int value = 40;
     while (1)
     {
-        // if (sscma_client_invoke(client, 1, false, true) != ESP_OK)
-        // {
-        //     printf("sample failed\n");
-        // }
 
         if (sscma_client_set_iou_threshold(client, value++) != ESP_OK)
         {

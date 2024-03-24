@@ -425,7 +425,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     gpio_install_isr_service(0);
     gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
 
-    return &io_exp_handle;
+    return io_exp_handle;
 }
 
 esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
