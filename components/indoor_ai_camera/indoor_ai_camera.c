@@ -21,17 +21,18 @@ static const audio_codec_data_if_t *i2s_data_if = NULL;
 
 static uint16_t io_exp_val = 0;
 static volatile bool io_exp_update = false;
-static void io_exp_isr_handler(void* arg) { io_exp_update = true; }
+static void io_exp_isr_handler(void *arg) { io_exp_update = true; }
 
 uint8_t bsp_exp_io_get_level(uint16_t pin_mask)
 {
-    if (io_exp_update && (io_exp_handle != NULL)) {
+    if (io_exp_update && (io_exp_handle != NULL))
+    {
         uint32_t pin_val = 0;
         esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
         io_exp_val = (io_exp_val & (~DRV_IO_EXP_INPUT_MASK)) | pin_val;
         io_exp_update = false;
     }
-    
+
     pin_mask &= DRV_IO_EXP_INPUT_MASK;
     return (uint8_t)((io_exp_val & pin_mask) ? 1 : 0);
 }
@@ -40,9 +41,11 @@ esp_err_t bsp_exp_io_set_level(uint16_t pin_mask, uint8_t level)
 {
     esp_err_t ret = ESP_OK;
     pin_mask &= DRV_IO_EXP_OUTPUT_MASK;
-    if (pin_mask ^ (io_exp_val & DRV_IO_EXP_OUTPUT_MASK)) { // Output pins changed
+    if (pin_mask ^ (io_exp_val & DRV_IO_EXP_OUTPUT_MASK))
+    { // Output pins changed
         ret = esp_io_expander_set_level(io_exp_handle, pin_mask, level);
-        if (ret != ESP_OK) {
+        if (ret != ESP_OK)
+        {
             ESP_LOGE(TAG, "Failed to set output level");
             return ret;
         }
@@ -54,7 +57,8 @@ esp_err_t bsp_exp_io_set_level(uint16_t pin_mask, uint8_t level)
 esp_err_t bsp_spi_bus_init(void)
 {
     static bool initialized = false;
-    if (initialized) {
+    if (initialized)
+    {
         return ESP_OK;
     }
     spi_bus_config_t bus_cfg = {
@@ -73,7 +77,8 @@ esp_err_t bsp_spi_bus_init(void)
 esp_err_t bsp_i2c_bus_init(void)
 {
     static bool initialized = false;
-    if (initialized) {
+    if (initialized)
+    {
         return ESP_OK;
     }
     const i2c_config_t i2c_conf = {
@@ -82,8 +87,7 @@ esp_err_t bsp_i2c_bus_init(void)
         .sda_pullup_en = GPIO_PULLUP_DISABLE,
         .scl_io_num = BSP_GENERAL_I2C_SCL,
         .scl_pullup_en = GPIO_PULLUP_DISABLE,
-        .master.clk_speed = BSP_GENERAL_I2C_CLK
-    };
+        .master.clk_speed = BSP_GENERAL_I2C_CLK};
     BSP_ERROR_CHECK_RETURN_ERR(i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf));
     BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, 0));
     initialized = true;
@@ -126,9 +130,10 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
 esp_err_t bsp_knob_btn_init(void *param)
 {
     // esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
-    
+
     esp_io_expander_handle_t io_exp = bsp_io_expander_init();
-    if (io_exp == NULL) {
+    if (io_exp == NULL)
+    {
         ESP_LOGE(TAG, "IO expander initialization failed");
         return ESP_FAIL;
     }
@@ -152,7 +157,7 @@ static esp_err_t bsp_lcd_backlight_init()
     bsp_io_expander_init();
     bsp_exp_io_set_level(BSP_PWR_LCD, 1);
     bsp_exp_io_set_level(BSP_LCD_GPIO_BL, 1);
-    
+
     // const ledc_channel_config_t backlight_channel = {
     //     .gpio_num = BSP_LCD_GPIO_BL,
     //     .speed_mode = LEDC_LOW_SPEED_MODE,
@@ -272,8 +277,7 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
         .flags = {
             .buff_dma = cfg->flags.buff_dma,
             .buff_spiram = cfg->flags.buff_spiram,
-        }
-    };
+        }};
 
     return lvgl_port_add_disp(&disp_cfg);
 }
@@ -301,8 +305,7 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
     const lvgl_port_encoder_cfg_t encoder = {
         .disp = disp,
         .encoder_a_b = &knob_cfg,
-        .encoder_enter = &btn_config
-    };
+        .encoder_enter = &btn_config};
     return lvgl_port_add_encoder(&encoder);
 }
 
@@ -390,15 +393,16 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
 
 esp_io_expander_handle_t bsp_io_expander_init()
 {
-    if (io_exp_handle != NULL) {
+    if (io_exp_handle != NULL)
+    {
         return io_exp_handle;
     }
-    
+
     ESP_LOGI(TAG, "Initialize IO I2C bus");
     ESP_ERROR_CHECK(bsp_i2c_bus_init());
 
-    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, 
-                                          ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, 
+    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM,
+                                          ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001,
                                           &io_exp_handle);
 
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
@@ -441,8 +445,7 @@ esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = false,
         .max_files = max_files,
-        .allocation_unit_size = 16 * 1024
-    };
+        .allocation_unit_size = 16 * 1024};
     ESP_ERROR_CHECK(esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card));
     sdmmc_card_print_info(stdout, card);
 
@@ -456,7 +459,8 @@ esp_err_t bsp_sdcard_init_default(void)
 
 esp_err_t bsp_sdcard_deinit(char *mount_point)
 {
-    if (NULL == mount_point) {
+    if (NULL == mount_point)
+    {
         return ESP_ERR_INVALID_STATE;
     }
 
@@ -484,9 +488,12 @@ esp_err_t bsp_spiffs_init(char *mount_point, size_t max_files)
 
     size_t total = 0, used = 0;
     esp_err_t ret_val = esp_spiffs_info(conf.partition_label, &total, &used);
-    if (ret_val != ESP_OK) {
+    if (ret_val != ESP_OK)
+    {
         ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret_val));
-    } else {
+    }
+    else
+    {
         ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
     }
     return ret_val;
@@ -500,7 +507,8 @@ esp_err_t bsp_spiffs_init_default(void)
 esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
 {
     esp_err_t ret = ESP_FAIL;
-    if (i2s_tx_chan && i2s_rx_chan) {
+    if (i2s_tx_chan && i2s_rx_chan)
+    {
         /* Audio was initialized before */
         return ESP_OK;
     }
@@ -513,15 +521,18 @@ esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
     /* Setup I2S channels */
     i2s_std_config_t std_cfg_default = BSP_I2S_DUPLEX_MONO_CFG(DRV_AUDIO_SAMPLE_RATE);
     i2s_std_config_t *p_i2s_cfg = &std_cfg_default;
-    if (i2s_config != NULL) {
+    if (i2s_config != NULL)
+    {
         p_i2s_cfg = i2s_config;
     }
 
-    if (i2s_tx_chan != NULL) {
+    if (i2s_tx_chan != NULL)
+    {
         ESP_GOTO_ON_ERROR(i2s_channel_init_std_mode(i2s_tx_chan, p_i2s_cfg), err, TAG, "I2S channel initialization failed");
         ESP_GOTO_ON_ERROR(i2s_channel_enable(i2s_tx_chan), err, TAG, "I2S enabling failed");
     }
-    if (i2s_rx_chan != NULL) {
+    if (i2s_rx_chan != NULL)
+    {
         p_i2s_cfg->slot_cfg.slot_mask = I2S_STD_SLOT_RIGHT;
         ESP_GOTO_ON_ERROR(i2s_channel_init_std_mode(i2s_rx_chan, p_i2s_cfg), err, TAG, "I2S channel initialization failed");
         ESP_GOTO_ON_ERROR(i2s_channel_enable(i2s_rx_chan), err, TAG, "I2S enabling failed");
@@ -538,10 +549,12 @@ esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
     return ESP_OK;
 
 err:
-    if (i2s_tx_chan) {
+    if (i2s_tx_chan)
+    {
         i2s_del_channel(i2s_tx_chan);
     }
-    if (i2s_rx_chan) {
+    if (i2s_rx_chan)
+    {
         i2s_del_channel(i2s_rx_chan);
     }
 
@@ -556,7 +569,8 @@ const audio_codec_data_if_t *bsp_audio_get_codec_itf(void)
 esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void)
 {
     const audio_codec_data_if_t *i2s_data_if = bsp_audio_get_codec_itf();
-    if (i2s_data_if == NULL) {
+    if (i2s_data_if == NULL)
+    {
         /* Initilize I2C */
         BSP_ERROR_CHECK_RETURN_NULL(bsp_i2c_bus_init());
         /* Configure I2S peripheral and Power Amplifier */
@@ -606,7 +620,8 @@ esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void)
 esp_codec_dev_handle_t bsp_audio_codec_microphone_init(void)
 {
     const audio_codec_data_if_t *i2s_data_if = bsp_audio_get_codec_itf();
-    if (i2s_data_if == NULL) {
+    if (i2s_data_if == NULL)
+    {
         /* Initilize I2C */
         BSP_ERROR_CHECK_RETURN_NULL(bsp_i2c_bus_init());
         /* Configure I2S peripheral and Power Amplifier */
@@ -662,18 +677,22 @@ esp_err_t bsp_codec_set_fs(uint32_t rate, uint32_t bits_cfg, i2s_slot_mode_t ch)
         .bits_per_sample = bits_cfg,
     };
 
-    if (play_dev_handle) {
+    if (play_dev_handle)
+    {
         ret = esp_codec_dev_close(play_dev_handle);
     }
-    if (record_dev_handle) {
+    if (record_dev_handle)
+    {
         ret |= esp_codec_dev_close(record_dev_handle);
         ret |= esp_codec_dev_set_in_gain(record_dev_handle, DRV_AUDIO_MIC_GAIN);
     }
 
-    if (play_dev_handle) {
+    if (play_dev_handle)
+    {
         ret |= esp_codec_dev_open(play_dev_handle, &fs);
     }
-    if (record_dev_handle) {
+    if (record_dev_handle)
+    {
         fs.channel = 2;
         fs.channel_mask = ESP_CODEC_DEV_MAKE_CHANNEL_MASK(1);
         ret |= esp_codec_dev_open(record_dev_handle, &fs);
@@ -700,11 +719,13 @@ esp_err_t bsp_codec_dev_stop(void)
 {
     esp_err_t ret = ESP_OK;
 
-    if (play_dev_handle) {
+    if (play_dev_handle)
+    {
         ret = esp_codec_dev_close(play_dev_handle);
     }
 
-    if (record_dev_handle) {
+    if (record_dev_handle)
+    {
         ret = esp_codec_dev_close(record_dev_handle);
     }
     return ret;
@@ -734,11 +755,14 @@ esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer
     int audio_chunksize = buffer_len / (sizeof(int16_t) * DRV_AUDIO_I2S_CHANNEL);
 
     ret = esp_codec_dev_read(record_dev_handle, (void *)buffer, buffer_len);
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
         ESP_LOGE(TAG, "Failed to read data from codec device");
     }
-    if (!is_get_raw_channel) {
-        for (int i = 0; i < audio_chunksize; i++) {
+    if (!is_get_raw_channel)
+    {
+        for (int i = 0; i < audio_chunksize; i++)
+        {
             buffer[i] = buffer[i] << 2;
         }
     }

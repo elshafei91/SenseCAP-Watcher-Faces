@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
+#include "esp_io_expander.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -115,17 +116,18 @@ extern "C"
 
     struct sscma_client_t
     {
-        sscma_client_io_handle_t io;      /* !< IO handle */
-        int reset_gpio_num;               /* !< GPIO number of reset pin */
-        bool reset_level;                 /* !< Level of reset pin */
-        bool inited;                      /* !< Whether inited */
-        sscma_client_info_t info;         /* !< Info */
-        sscma_client_model_t model;       /* !< Model */
-        sscma_client_event_cb_t on_event; /* !< Callback function */
-        sscma_client_event_cb_t on_log;   /* !< Callback function */
-        void *user_ctx;                   /* !< User context */
-        TaskHandle_t monitor_task;        /* !< Monitor task handle */
-        TaskHandle_t process_task;        /* !< Process task handle */
+        sscma_client_io_handle_t io;          /* !< IO handle */
+        int reset_gpio_num;                   /* !< GPIO number of reset pin */
+        bool reset_level;                     /* !< Level of reset pin */
+        bool inited;                          /* !< Whether inited */
+        sscma_client_info_t info;             /* !< Info */
+        sscma_client_model_t model;           /* !< Model */
+        sscma_client_event_cb_t on_event;     /* !< Callback function */
+        sscma_client_event_cb_t on_log;       /* !< Callback function */
+        void *user_ctx;                       /* !< User context */
+        esp_io_expander_handle_t io_expander; /* !< IO expander handle */
+        TaskHandle_t monitor_task;            /* !< Monitor task handle */
+        TaskHandle_t process_task;            /* !< Process task handle */
         struct
         {
             char *data;            /* !< Data buffer */

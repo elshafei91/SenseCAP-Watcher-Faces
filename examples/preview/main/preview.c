@@ -185,7 +185,9 @@ void app_main(void)
     sscma_client_new_io_spi_bus((sscma_client_spi_bus_handle_t)EXAMPLE_SSCMA_SPI_NUM, &spi_io_config, &io);
 
     sscma_client_config_t sscma_client_config = SSCMA_CLIENT_CONFIG_DEFAULT();
-    sscma_client_config.reset_gpio_num = EXAMPLE_SSCMA_RESET;
+    sscma_client_config.reset_gpio_num = BSP_PWR_AI_CHIP;
+    sscma_client_config.io_expander = io_expander;
+    sscma_client_config.flags.reset_use_expander = true;
 
     ESP_ERROR_CHECK(sscma_client_new(io, &sscma_client_config, &client));
     const sscma_client_callback_t callback = {
@@ -343,12 +345,13 @@ void app_main(void)
     }
 
     sscma_client_set_sensor(client, 1, 0, true);
-    // vTaskDelay(50 / portTICK_PERIOD_MS);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
 
     if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
     {
         printf("sample failed\n");
     }
+    
     int value = 40;
     while (1)
     {

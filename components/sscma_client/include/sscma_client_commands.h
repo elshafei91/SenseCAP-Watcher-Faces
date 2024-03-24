@@ -18,7 +18,7 @@
 #define CMD_PREFIX_LEN (sizeof(CMD_PREFIX) - 1)
 #define CMD_SUFFIX_LEN (sizeof(CMD_SUFFIX) - 1)
 
-#define CMD_WAIT_DELAY 5000 // ms
+#define CMD_WAIT_DELAY 2000 // ms
 
 #define CMD_AT_ID "ID"
 #define CMD_AT_NAME "NAME"

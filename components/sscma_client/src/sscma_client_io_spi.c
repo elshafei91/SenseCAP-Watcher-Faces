@@ -87,8 +87,6 @@ esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, sscma_c
                 ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_ARG, err, TAG, "io expander not set");
             }
             spi_client_io->io_expander = io_config->io_expander;
-            printf("set io expander :%p\n", io_config->io_expander);
-            printf("set sync gpio :%d\n", io_config->sync_gpio_num);
             ESP_GOTO_ON_ERROR(esp_io_expander_set_dir(io_config->io_expander, io_config->sync_gpio_num, IO_EXPANDER_INPUT), err, TAG, "setting sync GPIO for sync failed");
         }
         else
@@ -446,7 +444,6 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
     {
         if (spi_client_io->io_expander)
         {
-
             ESP_GOTO_ON_ERROR(esp_io_expander_get_level(spi_client_io->io_expander, spi_client_io->sync_gpio_num, &sync_level), err, TAG, "io_expander gpio_get_level failed");
         }
         else

@@ -335,6 +335,12 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
 
     if (config->reset_gpio_num >= 0)
     {
+        if (config->flags.reset_use_expander)
+        {
+            client->io_expander = config->io_expander;
+            ESP_GOTO_ON_FALSE(client->io_expander, ESP_ERR_INVALID_ARG, err, TAG, "invalid io expander");
+            ESP_GOTO_ON_ERROR(esp_io_expander_set_dir(client->io_expander, config->reset_gpio_num, IO_EXPANDER_OUTPUT), err, TAG, "set GPIO direction failed");
+        }
         gpio_config_t io_conf = {
             .mode = GPIO_MODE_INPUT,
             .pin_bit_mask = 1ULL << config->reset_gpio_num,
@@ -437,7 +443,20 @@ esp_err_t sscma_client_del(sscma_client_handle_t client)
     {
         if (client->reset_gpio_num >= 0)
         {
-            gpio_reset_pin(client->reset_gpio_num);
+            if (client->io_expander)
+            {
+                esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level);
+            }
+            else
+            {
+                gpio_config_t io_conf = {
+                    .mode = GPIO_MODE_OUTPUT,
+                    .pin_bit_mask = 1ULL << client->reset_gpio_num,
+                };
+                gpio_config(&io_conf);
+                gpio_set_level(client->reset_gpio_num, client->reset_level);
+                gpio_reset_pin(client->reset_gpio_num);
+            }
         }
         vQueueDelete(client->reply_queue);
 
@@ -556,21 +575,31 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
     // perform hardware reset
     if (client->reset_gpio_num >= 0)
     {
-        gpio_config_t io_conf = {
-            .mode = GPIO_MODE_OUTPUT,
-            .pin_bit_mask = 1ULL << client->reset_gpio_num,
-        };
-        ESP_RETURN_ON_ERROR(gpio_config(&io_conf), TAG, "configure GPIO for RST line failed");
+        if (client->io_expander)
+        {
+            ESP_RETURN_ON_ERROR(esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level), TAG, "set GPIO level failed");
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            ESP_RETURN_ON_ERROR(esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, !client->reset_level), TAG, "set GPIO level failed");
+            vTaskDelay(500 / portTICK_PERIOD_MS);
+        }
+        else
+        {
+            gpio_config_t io_conf = {
+                .mode = GPIO_MODE_OUTPUT,
+                .pin_bit_mask = 1ULL << client->reset_gpio_num,
+            };
+            ESP_RETURN_ON_ERROR(gpio_config(&io_conf), TAG, "configure GPIO for RST line failed");
 
-        gpio_set_level(client->reset_gpio_num, client->reset_level);
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-        gpio_set_level(client->reset_gpio_num, !client->reset_level);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-        gpio_reset_pin(client->reset_gpio_num);
+            gpio_set_level(client->reset_gpio_num, client->reset_level);
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            gpio_set_level(client->reset_gpio_num, !client->reset_level);
+            vTaskDelay(500 / portTICK_PERIOD_MS);
+            gpio_reset_pin(client->reset_gpio_num);
+        }
     }
     else
     {
-        //ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), TAG, "request reset failed");
+        // ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), TAG, "request reset failed");
         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for sscma to be ready
     }
     return ret;
@@ -612,7 +641,6 @@ esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const ssc
 esp_err_t sscma_client_request(sscma_client_handle_t client, const char *cmd, sscma_client_reply_t *reply, bool wait, TickType_t timeout)
 {
     esp_err_t ret = ESP_OK;
-
     sscma_client_request_t *request = NULL;
 
     if (wait)
