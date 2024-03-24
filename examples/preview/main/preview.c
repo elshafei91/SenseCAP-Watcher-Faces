@@ -17,7 +17,7 @@
 static const char *TAG = "main";
 
 /* SPI settings */
-#define EXAMPLE_SSCMA_SPI_NUM (SPI3_HOST)
+#define EXAMPLE_SSCMA_SPI_NUM (SPI2_HOST)
 #define EXAMPLE_SSCMA_SPI_CLK_HZ (12 * 1000 * 1000)
 
 /* SPI pins */
@@ -29,6 +29,7 @@ static const char *TAG = "main";
 
 #define EXAMPLE_SSCMA_RESET (-1)
 
+esp_io_expander_handle_t io_expander = NULL;
 sscma_client_io_handle_t io = NULL;
 sscma_client_handle_t client = NULL;
 
@@ -150,6 +151,8 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
 
 void app_main(void)
 {
+    io_expander = bsp_io_expander_init();
+    assert(io_expander != NULL);
     lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
 
@@ -169,18 +172,22 @@ void app_main(void)
     ESP_ERROR_CHECK(spi_bus_initialize(EXAMPLE_SSCMA_SPI_NUM, &buscfg, SPI_DMA_CH_AUTO));
 
     const sscma_client_io_spi_config_t spi_io_config = {
-        .sync_gpio_num = EXAMPLE_SSCMA_SPI_SYNC,
+        .sync_gpio_num = IO_EXPANDER_PIN_NUM_6,
         .cs_gpio_num = EXAMPLE_SSCMA_SPI_CS,
         .pclk_hz = EXAMPLE_SSCMA_SPI_CLK_HZ,
         .spi_mode = 0,
         .wait_delay = 2,
         .user_ctx = NULL,
+        .io_expander = io_expander,
+        .flags.sync_use_expander = true,
     };
 
     sscma_client_new_io_spi_bus((sscma_client_spi_bus_handle_t)EXAMPLE_SSCMA_SPI_NUM, &spi_io_config, &io);
 
     sscma_client_config_t sscma_client_config = SSCMA_CLIENT_CONFIG_DEFAULT();
-    sscma_client_config.reset_gpio_num = EXAMPLE_SSCMA_RESET;
+    sscma_client_config.reset_gpio_num = BSP_PWR_AI_CHIP;
+    sscma_client_config.io_expander = io_expander;
+    sscma_client_config.flags.reset_use_expander = true;
 
     ESP_ERROR_CHECK(sscma_client_new(io, &sscma_client_config, &client));
     const sscma_client_callback_t callback = {
@@ -195,7 +202,7 @@ void app_main(void)
     }
 
     sscma_client_init(client);
-
+    sscma_client_set_model(client, 1);
     sscma_client_info_t *info;
     if (sscma_client_get_info(client, &info, true) == ESP_OK)
     {
@@ -212,7 +219,8 @@ void app_main(void)
     sscma_client_model_t *model;
     if (sscma_client_get_model(client, &model, true) == ESP_OK)
     {
-        printf("ID: %s\n", model->id ? model->id : "N/A");
+        printf("ID: %d\n", model->id ? model->id : -1);
+        printf("UUID: %s\n", model->uuid ? model->uuid : "N/A");
         printf("Name: %s\n", model->name ? model->name : "N/A");
         printf("Version: %s\n", model->ver ? model->ver : "N/A");
         printf("Category: %s\n", model->category ? model->category : "N/A");
@@ -241,6 +249,26 @@ void app_main(void)
         printf("get model failed\n");
     }
 
+    if (sscma_client_set_iou_threshold(client, 50) != ESP_OK)
+    {
+        printf("set iou threshold failed\n");
+    }
+
+    if (sscma_client_set_confidence_threshold(client, 50) != ESP_OK)
+    {
+        printf("set confidence threshold failed\n");
+    }
+    int iou_threshold = 0;
+    if (sscma_client_get_iou_threshold(client, &iou_threshold) == ESP_OK)
+    {
+        printf("iou threshold: %d\n", iou_threshold);
+    }
+    int confidence_threshold = 0;
+    if (sscma_client_get_confidence_threshold(client, &confidence_threshold) == ESP_OK)
+    {
+        printf("confidence threshold: %d\n", confidence_threshold);
+    }
+
     sscma_client_break(client);
     sscma_client_set_sensor(client, 1, 2, true);
     // vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -249,20 +277,107 @@ void app_main(void)
         printf("sample failed\n");
     }
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    sscma_client_set_model(client, 2);
+    if (sscma_client_get_model(client, &model, true) == ESP_OK)
+    {
+        printf("ID: %d\n", model->id ? model->id : -1);
+        printf("UUID: %s\n", model->uuid ? model->uuid : "N/A");
+        printf("Name: %s\n", model->name ? model->name : "N/A");
+        printf("Version: %s\n", model->ver ? model->ver : "N/A");
+        printf("Category: %s\n", model->category ? model->category : "N/A");
+        printf("Algorithm: %s\n", model->algorithm ? model->algorithm : "N/A");
+        printf("Description: %s\n", model->description ? model->description : "N/A");
+
+        printf("Classes:\n");
+        if (model->classes[0] != NULL)
+        {
+            for (int i = 0; model->classes[i] != NULL; i++)
+            {
+                printf("  - %s\n", model->classes[i]);
+            }
+        }
+        else
+        {
+            printf("  N/A\n");
+        }
+
+        printf("Token: %s\n", model->token ? model->token : "N/A");
+        printf("URL: %s\n", model->url ? model->url : "N/A");
+        printf("Manufacturer: %s\n", model->manufacturer ? model->manufacturer : "N/A");
+    }
+    else
+    {
+        printf("get model failed\n");
+    }
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    sscma_client_set_model(client, 3);
+    if (sscma_client_get_model(client, &model, true) == ESP_OK)
+    {
+        printf("ID: %d\n", model->id ? model->id : -1);
+        printf("UUID: %s\n", model->uuid ? model->uuid : "N/A");
+        printf("Name: %s\n", model->name ? model->name : "N/A");
+        printf("Version: %s\n", model->ver ? model->ver : "N/A");
+        printf("Category: %s\n", model->category ? model->category : "N/A");
+        printf("Algorithm: %s\n", model->algorithm ? model->algorithm : "N/A");
+        printf("Description: %s\n", model->description ? model->description : "N/A");
+
+        printf("Classes:\n");
+        if (model->classes[0] != NULL)
+        {
+            for (int i = 0; model->classes[i] != NULL; i++)
+            {
+                printf("  - %s\n", model->classes[i]);
+            }
+        }
+        else
+        {
+            printf("  N/A\n");
+        }
+
+        printf("Token: %s\n", model->token ? model->token : "N/A");
+        printf("URL: %s\n", model->url ? model->url : "N/A");
+        printf("Manufacturer: %s\n", model->manufacturer ? model->manufacturer : "N/A");
+    }
+    else
+    {
+        printf("get model failed\n");
+    }
+
     sscma_client_set_sensor(client, 1, 0, true);
-    // vTaskDelay(50 / portTICK_PERIOD_MS);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
 
     if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
     {
         printf("sample failed\n");
     }
-
+    
+    int value = 40;
     while (1)
     {
-        // if (sscma_client_invoke(client, 1, false, true) != ESP_OK)
-        // {
-        //     printf("sample failed\n");
-        // }
+
+        if (sscma_client_set_iou_threshold(client, value++) != ESP_OK)
+        {
+            printf("set iou threshold failed\n");
+        }
+
+        if (sscma_client_set_confidence_threshold(client, value++) != ESP_OK)
+        {
+            printf("set confidence threshold failed\n");
+        }
+
+        if (sscma_client_get_iou_threshold(client, &iou_threshold) == ESP_OK)
+        {
+            printf("iou threshold: %d\n", iou_threshold);
+        }
+
+        if (sscma_client_get_confidence_threshold(client, &confidence_threshold) == ESP_OK)
+        {
+            printf("confidence threshold: %d\n", confidence_threshold);
+        }
+
+        if (value > 90)
+            value = 40;
 
         printf("free_heap_size = %ld\n", esp_get_free_heap_size());
         vTaskDelay(1000 / portTICK_PERIOD_MS);

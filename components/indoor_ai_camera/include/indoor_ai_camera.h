@@ -126,7 +126,6 @@
 (                                    \
     BSP_PWR_SDCARD |                 \
     BSP_PWR_BATTERY |                \
-    BSP_PWR_AI_CHIP |                \
     BSP_PWR_CODEC_PA |               \
     BSP_PWR_AUDIO |                  \
     BSP_PWR_GROVE |                  \

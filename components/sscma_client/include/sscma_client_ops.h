@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include "esp_err.h"
 #include "sscma_client_types.h"
+#include "esp_io_expander.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -14,20 +15,22 @@ extern "C"
      */
     typedef struct
     {
-        int reset_gpio_num;        /*!< GPIO number of reset pin */
-        int tx_buffer_size;        /*!< Size of TX buffer */
-        int rx_buffer_size;        /*!< Size of RX buffer */
-        int process_task_priority; /* SSCMA process task priority */
-        int process_task_stack;    /* SSCMA process task stack size */
-        int process_task_affinity; /* SSCMA process task pinned to core (-1 is no affinity) */
-        int monitor_task_priority; /* SSCMA monitor task priority */
-        int monitor_task_stack;    /* SSCMA monitor task stack size */
-        int monitor_task_affinity; /* SSCMA monitor task pinned to core (-1 is no affinity) */
-        void *user_ctx;            /* User context */
+        int reset_gpio_num;                   /*!< GPIO number of reset pin */
+        int tx_buffer_size;                   /*!< Size of TX buffer */
+        int rx_buffer_size;                   /*!< Size of RX buffer */
+        int process_task_priority;            /* SSCMA process task priority */
+        int process_task_stack;               /* SSCMA process task stack size */
+        int process_task_affinity;            /* SSCMA process task pinned to core (-1 is no affinity) */
+        int monitor_task_priority;            /* SSCMA monitor task priority */
+        int monitor_task_stack;               /* SSCMA monitor task stack size */
+        int monitor_task_affinity;            /* SSCMA monitor task pinned to core (-1 is no affinity) */
+        void *user_ctx;                       /* User context */
+        esp_io_expander_handle_t io_expander; /*!< IO expander handle */
         struct
         {
-            unsigned int reset_active_high : 1; /*!< Setting this if the panel reset is high level active */
-        } flags;                                /*!< SSCMA client config flags */
+            unsigned int reset_active_high : 1;  /*!< Setting this if the panel reset is high level active */
+            unsigned int reset_use_expander : 1; /*!< Reset line use IO expander */
+        } flags;                                 /*!< SSCMA client config flags */
     } sscma_client_config_t;
 
 #define SSCMA_CLIENT_CONFIG_DEFAULT()   \
@@ -175,6 +178,16 @@ extern "C"
     esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_model_t **model, bool cached);
 
     /**
+     * @brief Set model
+     *
+     * @param[in] client SCCMA client handle
+     * @param[in] model pointer to sscma_client_model_t
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_set_model(sscma_client_handle_t client, int model);
+
+    /**
      * @brief Set sensor
      *
      * @param[in] client SCCMA client handle
@@ -224,6 +237,42 @@ extern "C"
      */
 
     esp_err_t sscma_client_break(sscma_client_handle_t client);
+
+    /**
+     * @brief Set iou threshold
+     * @param[in] client SCCMA client handle
+     * @param[in] threshold iou threshold
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_set_iou_threshold(sscma_client_handle_t client, int threshold);
+
+    /**
+     * @brief Get iou threshold
+     * @param[in] client SCCMA client handle
+     * @param[out] threshold iou threshold
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_get_iou_threshold(sscma_client_handle_t client, int *threshold);
+
+    /**
+     * @brief Set confidence threshold
+     * @param[in] client SCCMA client handle
+     * @param[in] threshold confidence threshold
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_set_confidence_threshold(sscma_client_handle_t client, int threshold);
+
+    /**
+     * @brief Get confidence threshold
+     * @param[in] client SCCMA client handle
+     * @param[out] threshold confidence threshold
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_get_confidence_threshold(sscma_client_handle_t client, int *threshold);
 
     /**
      * Fetch boxes and classes from sscma client reply

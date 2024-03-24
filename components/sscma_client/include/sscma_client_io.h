@@ -4,6 +4,7 @@
 #include "esp_err.h"
 #include "sscma_client_types.h"
 #include "soc/soc_caps.h"
+#include "esp_io_expander.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -22,17 +23,20 @@ extern "C"
         int cs_gpio_num;   /*!< GPIO used for CS line */
         int sync_gpio_num; /*!< GPIO used for SYNC line */
         int spi_mode;
-        int wait_delay;                                                                              /*!< Traditional SPI mode (0~3) */
-        unsigned int pclk_hz;                                                                        /*!< Frequency of pixel clock */
-        size_t trans_queue_depth;                                                                    /*!< Size of internal transaction queue */
-        void *user_ctx; /*!< User private data, passed directly to on_color_trans_done's user_ctx */ /*!< Extra flags to fine-tune the SPI device */
+        int wait_delay;                       /*!< Traditional SPI mode (0~3) */
+        unsigned int pclk_hz;                 /*!< Frequency of pixel clock */
+        size_t trans_queue_depth;             /*!< Size of internal transaction queue */
+        void *user_ctx;                       /*!< User private data, passed directly to on_color_trans_done's user_ctx */
+        esp_io_expander_handle_t io_expander; /*!< IO expander handle */
         struct
         {
-            unsigned int octal_mode : 1;     /*!< transmit with octal mode (8 data lines), this mode is used to simulate Intel 8080 timing */
-            unsigned int sio_mode : 1;       /*!< Read and write through a single data line (MOSI) */
-            unsigned int lsb_first : 1;      /*!< transmit LSB bit first */
-            unsigned int cs_high_active : 1; /*!< CS line is high active */
-        } flags;                             /*!< Extra flags to fine-tune the SPI device */
+            unsigned int octal_mode : 1;        /*!< transmit with octal mode (8 data lines), this mode is used to simulate Intel 8080 timing */
+            unsigned int sio_mode : 1;          /*!< Read and write through a single data line (MOSI) */
+            unsigned int lsb_first : 1;         /*!< transmit LSB bit first */
+            unsigned int cs_high_active : 1;    /*!< CS line is high active */
+            unsigned int sync_high_active : 1;  /*!< SYNC line is high active */
+            unsigned int sync_use_expander : 1; /*!< SYNC line use IO expander */
+        } flags;
     } sscma_client_io_spi_config_t;
 
     /**

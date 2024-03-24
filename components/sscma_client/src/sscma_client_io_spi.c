@@ -43,12 +43,13 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len);
 typedef struct
 {
     sscma_client_io_t base;
-    spi_device_handle_t spi_dev; // SPI bus id, indicating which SPI port
-    int sync_gpio_num;           // D/C line GPIO number
-    size_t spi_trans_max_bytes;  // SPI transaction max bytes
-    int wait_delay;              // SPI wait delay
-    void *user_ctx;              // User context
-    SemaphoreHandle_t lock;      // Lock
+    spi_device_handle_t spi_dev;          // SPI bus id, indicating which SPI port
+    int sync_gpio_num;                    // D/C line GPIO number
+    size_t spi_trans_max_bytes;           // SPI transaction max bytes
+    int wait_delay;                       // SPI wait delay
+    void *user_ctx;                       // User context
+    esp_io_expander_handle_t io_expander; // IO expander
+    SemaphoreHandle_t lock;               // Lock
     uint8_t buffer[PACKET_SIZE];
 } sscma_client_io_spi_t;
 
@@ -79,13 +80,25 @@ esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, sscma_c
 
     if (io_config->sync_gpio_num >= 0)
     {
-        // zero-initialize the config structure.
-        gpio_config_t io_conf = {};
-        io_conf.intr_type = GPIO_INTR_DISABLE;
-        io_conf.pin_bit_mask = (1 << io_config->sync_gpio_num);
-        io_conf.mode = GPIO_MODE_INPUT;
-        io_conf.pull_down_en = 1;
-        ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "configuring sync GPIO for sync failed");
+        if (io_config->flags.sync_use_expander)
+        {
+            if (io_config->io_expander == NULL)
+            {
+                ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_ARG, err, TAG, "io expander not set");
+            }
+            spi_client_io->io_expander = io_config->io_expander;
+            ESP_GOTO_ON_ERROR(esp_io_expander_set_dir(io_config->io_expander, io_config->sync_gpio_num, IO_EXPANDER_INPUT), err, TAG, "setting sync GPIO for sync failed");
+        }
+        else
+        {
+            // zero-initialize the config structure.
+            gpio_config_t io_conf = {};
+            io_conf.intr_type = GPIO_INTR_DISABLE;
+            io_conf.pin_bit_mask = (1 << io_config->sync_gpio_num);
+            io_conf.mode = GPIO_MODE_INPUT;
+            io_conf.pull_down_en = 1;
+            ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "configuring sync GPIO for sync failed");
+        }
     }
 
     spi_client_io->sync_gpio_num = io_config->sync_gpio_num;
@@ -421,6 +434,7 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
     spi_transaction_t spi_trans = {};
     sscma_client_io_spi_t *spi_client_io = __containerof(io, sscma_client_io_spi_t, base);
     size_t trans_len = 0;
+    uint32_t sync_level = 0;
 
     *len = 0;
 
@@ -428,12 +442,22 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
 
     if (spi_client_io->sync_gpio_num >= 0)
     {
-        if (gpio_get_level(spi_client_io->sync_gpio_num) == 0)
+        if (spi_client_io->io_expander)
+        {
+            ESP_GOTO_ON_ERROR(esp_io_expander_get_level(spi_client_io->io_expander, spi_client_io->sync_gpio_num, &sync_level), err, TAG, "io_expander gpio_get_level failed");
+        }
+        else
+        {
+            sync_level = gpio_get_level(spi_client_io->sync_gpio_num);
+        }
+        if (sync_level == 0)
         {
             xSemaphoreGive(spi_client_io->lock);
             return ESP_OK;
         }
-    }else{
+    }
+    else
+    {
         vTaskDelay(pdMS_TO_TICKS(spi_client_io->wait_delay));
     }
 
