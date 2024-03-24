@@ -215,19 +215,14 @@ static void sscma_client_process(void *arg)
                                                 {
                                                     sscma_client_reply_clear(&reply); // discard this reply
                                                 }
+                                                break;
                                             }
                                         }
                                     } while (next_req != first_req);
-
-                                    if (!found)
-                                    {
-                                        ESP_LOGW(TAG, "request not found: %s", name->valuestring);
-                                        sscma_client_reply_clear(&reply);
-                                    }
                                 }
-                                else
+                                if (!found)
                                 {
-                                    ESP_LOGW(TAG, "request list is empty");
+                                    ESP_LOGW(TAG, "request not found: %s", name->valuestring);
                                     sscma_client_reply_clear(&reply);
                                 }
                             }
@@ -266,19 +261,14 @@ static void sscma_client_process(void *arg)
                                                     {
                                                         sscma_client_reply_clear(&reply); // discard this reply
                                                     }
+                                                    break;
                                                 }
                                             }
                                         } while (next_req != first_req);
-
-                                        if (!found)
-                                        {
-                                            ESP_LOGW(TAG, "request not found: %s", name->valuestring);
-                                            sscma_client_reply_clear(&reply);
-                                        }
                                     }
-                                    else
+                                    if (!found)
                                     {
-                                        ESP_LOGW(TAG, "request list is empty");
+                                        ESP_LOGW(TAG, "request not found: %s", name->valuestring);
                                         sscma_client_reply_clear(&reply);
                                     }
                                 }
@@ -292,10 +282,32 @@ static void sscma_client_process(void *arg)
                             }
                             else if (type->valueint == CMD_TYPE_EVENT)
                             {
-                                if (client->on_event == NULL || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
+
+                                sscma_client_request_t *first_req, *next_req = NULL;
+                                bool found = false;
+                                // discard all the events while AT+BREAK is found
+                                if (listCURRENT_LIST_LENGTH(client->request_list) > (UBaseType_t)0)
+                                {
+                                    listGET_OWNER_OF_NEXT_ENTRY(first_req, client->request_list);
+                                    do
+                                    {
+                                        listGET_OWNER_OF_NEXT_ENTRY(next_req, client->request_list);
+                                        if (strnstr(next_req->cmd, CMD_AT_BREAK, strlen(CMD_AT_BREAK)) == 0)
+                                        {
+                                            found = true;
+                                            break;
+                                        }
+                                    } while (next_req != first_req);
+                                }
+                                if (client->on_event == NULL || found || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
                                 {
                                     sscma_client_reply_clear(&reply); // discard this reply
                                 }
+                            }
+                            else
+                            {
+                                ESP_LOGW(TAG, "invalid reply: %s", reply.data);
+                                sscma_client_reply_clear(&reply);
                             }
                         }
                     }
