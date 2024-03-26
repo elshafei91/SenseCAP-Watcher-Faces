@@ -24,6 +24,7 @@ extern "C"
         int monitor_task_priority;            /* SSCMA monitor task priority */
         int monitor_task_stack;               /* SSCMA monitor task stack size */
         int monitor_task_affinity;            /* SSCMA monitor task pinned to core (-1 is no affinity) */
+        int event_queue_size;                 /* Event queue size */
         void *user_ctx;                       /* User context */
         esp_io_expander_handle_t io_expander; /*!< IO expander handle */
         struct
@@ -44,6 +45,7 @@ extern "C"
         .monitor_task_priority = 4,     \
         .monitor_task_stack = 10240,    \
         .monitor_task_affinity = -1,    \
+        .event_queue_size = 5,          \
         .user_ctx = NULL,               \
         .flags = {                      \
             .reset_active_high = false, \

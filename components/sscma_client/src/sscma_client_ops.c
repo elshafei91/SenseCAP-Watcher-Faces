@@ -252,7 +252,7 @@ static void sscma_client_process(void *arg)
                                         do
                                         {
                                             listGET_OWNER_OF_NEXT_ENTRY(next_req, client->request_list);
-                                            if (strnstr(data->valuestring, next_req->cmd, strlen(next_req->cmd)) == 0)
+                                            if (strnstr(data->valuestring, next_req->cmd, strlen(data->valuestring)) != NULL)
                                             {
                                                 if (next_req->reply)
                                                 {
@@ -292,7 +292,7 @@ static void sscma_client_process(void *arg)
                                     do
                                     {
                                         listGET_OWNER_OF_NEXT_ENTRY(next_req, client->request_list);
-                                        if (strnstr(next_req->cmd, CMD_AT_BREAK, strlen(CMD_AT_BREAK)) == 0)
+                                        if (strnstr(next_req->cmd, CMD_AT_BREAK, strlen(next_req->cmd)) != NULL)
                                         {
                                             found = true;
                                             break;
@@ -374,7 +374,7 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     client->request_list = (List_t *)malloc(sizeof(List_t));
     ESP_GOTO_ON_FALSE(client->request_list, ESP_ERR_NO_MEM, err, TAG, "no mem for request list");
 
-    client->reply_queue = xQueueCreate(5, sizeof(sscma_client_reply_t));
+    client->reply_queue = xQueueCreate(config->event_queue_size, sizeof(sscma_client_reply_t));
     ESP_GOTO_ON_FALSE(client->reply_queue, ESP_ERR_NO_MEM, err, TAG, "no mem for reply queue");
 
     vListInitialise(client->request_list);
@@ -969,7 +969,7 @@ esp_err_t sscma_client_set_iou_threshold(sscma_client_handle_t client, int thres
 
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_TIOU CMD_SET "%d" CMD_SUFFIX, threshold);
 
-    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request set sensor failed");
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request set iou failed");
 
     if (reply.payload != NULL)
     {
@@ -988,7 +988,7 @@ esp_err_t sscma_client_get_iou_threshold(sscma_client_handle_t client, int *thre
 
     ESP_RETURN_ON_FALSE(threshold != NULL, ESP_ERR_INVALID_ARG, TAG, "threshold is NULL");
 
-    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_TIOU CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request get sensor failed");
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_TIOU CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request get iou failed");
 
     if (reply.payload != NULL)
     {
@@ -1013,7 +1013,7 @@ esp_err_t sscma_client_set_confidence_threshold(sscma_client_handle_t client, in
 
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_TSCORE CMD_SET "%d" CMD_SUFFIX, threshold);
 
-    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request set sensor failed");
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request set confidence failed");
 
     if (reply.payload != NULL)
     {
@@ -1032,7 +1032,7 @@ esp_err_t sscma_client_get_confidence_threshold(sscma_client_handle_t client, in
 
     ESP_RETURN_ON_FALSE(threshold != NULL, ESP_ERR_INVALID_ARG, TAG, "threshold is NULL");
 
-    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_TSCORE CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request get sensor failed");
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_TSCORE CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY), TAG, "request get confidence failed");
 
     if (reply.payload != NULL)
     {

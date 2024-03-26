@@ -115,6 +115,7 @@ esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, sscma_c
     size_t max_trans_bytes = 0;
     ESP_GOTO_ON_ERROR(spi_bus_get_max_transaction_len((spi_host_device_t)bus, &max_trans_bytes), err, TAG, "get spi max transaction len failed");
     spi_client_io->spi_trans_max_bytes = max_trans_bytes;
+    ESP_LOGI(TAG, "spi max trans bytes: %d", spi_client_io->spi_trans_max_bytes);
 
     *ret_io = &spi_client_io->base;
     ESP_LOGD(TAG, "new spi sscma client io @%p", spi_client_io);

@@ -98,6 +98,9 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
 
     char *img = NULL;
     int img_size = 0;
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    cJSON *count = cJSON_GetObjectItem(data, "count");
+    printf("count: %d\n", count->valueint);
     if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK)
     {
         if (img_size < 8 * 1024)
