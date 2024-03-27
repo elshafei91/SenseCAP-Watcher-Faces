@@ -3,12 +3,35 @@
 
 static lv_group_t *g_knob_op_group = NULL;
 
+extern lv_obj_t *ui_model_name;
+
+int g_model_id = 1;
 static void sceen_event_cb(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * obj = lv_event_get_target(e);
     if( code == LV_EVENT_FOCUSED) {
         lv_scr_load_anim(obj, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, false);
+    } else if( obj == ui_screen_preview && code == LV_EVENT_CLICKED) {
+        
+        char *p_name = NULL;
+        g_model_id++;
+        if( g_model_id >=4) {
+            g_model_id = 1;
+        }
+
+        switch (g_model_id)
+        {
+        case 1: p_name="Person Detection";break;
+        case 2: p_name="Apple Detection";break;
+        case 3: p_name="Gesture Detection";break;
+        default:
+            break;
+        }
+        lv_label_set_text(ui_model_name, p_name);
+        up_Animation(ui_model_name, 300);
+
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_MODEL, &g_model_id, sizeof(g_model_id), portMAX_DELAY);
     }
 }
 
@@ -38,6 +61,9 @@ int view_group_init(void)
 int view_group_screen_init(void)
 {
     //test
+
+    lv_obj_add_flag(ui_screen_preview, LV_OBJ_FLAG_CLICKABLE);
+    
     lv_group_remove_all_objs(g_knob_op_group);
 
     lv_obj_t * screens[] = {

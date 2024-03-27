@@ -37,9 +37,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             bsp_rgb_set(0, 0, 0);
             break;
         }
-        case VIEW_EVENT_IMAGE_640_480_REQ:
+        case VIEW_EVENT_IMAGE_640_480_SEND:
         {
-            ESP_LOGI(TAG, "event: VIEW_EVENT_IMAGE_640_480_REQ");
+            ESP_LOGI(TAG, "event: VIEW_EVENT_IMAGE_640_480_SEND");
             esp_timer_stop(rgb_timer_handle);
             flag=1;
             bsp_rgb_set(255, 0, 0);
@@ -71,7 +71,7 @@ int app_rgb_init(void)
                                                             __view_event_handler, NULL, NULL));
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
-                                                            VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_SEND, 
                                                             __view_event_handler, NULL, NULL));
     return 0;
 }

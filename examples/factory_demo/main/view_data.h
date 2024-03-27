@@ -112,6 +112,7 @@ struct view_data_image
     uint8_t *p_buf; //image data
     uint32_t len;
     time_t   time;
+    bool     need_free;
 };
 
 struct view_data_image_invoke
@@ -120,6 +121,27 @@ struct view_data_image_invoke
     struct view_data_boxes boxes[IMAGE_INVOKED_BOXES]; // todo 使用联合体考虑其他推理类型
     struct view_data_image image;
 };
+
+// union sscma_client_inference  {
+//     sscma_client_box_t   *p_box;
+//     sscma_client_class_t *p_class;
+//     sscma_client_point_t *p_point;
+// };
+
+
+// struct view_data_inference
+// {
+//     int      type;  //0 box, 1 class; 2 point
+//     void     *p_data; // 数组首地址, sscma_client_box_t、sscma_client_class_t、sscma_client_point_t
+//     uint32_t cnt;
+//     bool     need_free;
+// };
+
+// struct view_data_image_inference
+// {   
+//     struct view_data_inference inference;
+//     struct view_data_image     image;
+// };
 
 
 enum {
@@ -163,7 +185,9 @@ enum {
     VIEW_EVENT_IMAGE_640_480,  // struct view_data_image
     VIEW_EVENT_IMAGE_240_240_REQ,  //NULL
     VIEW_EVENT_IMAGE_640_480_REQ,  //NULL
+    VIEW_EVENT_IMAGE_640_480_SEND,  //NULL
     VIEW_EVENT_IMAGE_STOP,  //NULL
+    VIEW_EVENT_IMAGE_MODEL,
 
     
     VIEW_EVENT_ALARM_OFF,  //NULL

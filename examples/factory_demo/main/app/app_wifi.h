@@ -9,7 +9,8 @@
 extern "C" {
 #endif
 
-#define  PING_TEST_IP "192.168.100.1"
+// #define  PING_TEST_IP "192.168.100.1"
+ #define  PING_TEST_IP "223.5.5.5"
 
 int app_wifi_init(void);
 

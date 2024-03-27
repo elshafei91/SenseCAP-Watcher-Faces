@@ -254,6 +254,8 @@ void __app_sensecraft_task(void *p_arg)
         if (image_upload_flag == UPLOAD_FLAG_WAITING)
         {
             ESP_LOGI(TAG, "image upload: %ld", image_640_480.len);
+
+            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_SEND, NULL, 0, portMAX_DELAY);
             __https_upload_image(image_640_480.p_buf, image_640_480.len, scene_id);
         }
 

@@ -125,6 +125,10 @@ int view_init(void)
 
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_TIME, 
+                                                            __view_event_handler, NULL, NULL)); 
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, 
                                                             __view_event_handler, NULL, NULL)); 
 

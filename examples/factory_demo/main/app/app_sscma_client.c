@@ -23,6 +23,9 @@ static SemaphoreHandle_t __g_event_sem;
 static SemaphoreHandle_t   __g_data_mutex;
 static struct view_data_image_invoke image_invoke;
 static esp_timer_handle_t     alarm_timer_handle;
+
+static int g_model_id = 1;
+
 static void save_image_invoke(struct view_data_image_invoke *p_data)
 {
     if( alarm_flag ) {
@@ -118,7 +121,7 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             view_image_preview_flush(&invoke);
             lvgl_port_unlock();
 
-            if( app_sensecraft_image_invoke_check(&invoke) ) {
+            if( g_model_id == 1 && app_sensecraft_image_invoke_check(&invoke) ) {
                 save_image_invoke(&invoke);
             }
             free(boxes);
@@ -203,7 +206,7 @@ void __init(void)
     }
 
     sscma_client_init(client);
-    sscma_client_set_model(client, 3);
+    sscma_client_set_model(client, g_model_id);
     sscma_client_info_t *info;
     if (sscma_client_get_info(client, &info, true) == ESP_OK)
     {
@@ -249,8 +252,13 @@ void __init(void)
     {
         printf("get model failed\n");
     }
-
-    if (sscma_client_set_iou_threshold(client, 50) != ESP_OK)
+    sscma_client_break(client);
+    sscma_client_set_sensor(client, 1, 0, true);
+    if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
+    {
+        ESP_LOGI(TAG, "sample failed\n");
+    }
+    if (sscma_client_set_iou_threshold(client, 40) != ESP_OK)
     {
         printf("set iou threshold failed\n");
     }
@@ -269,13 +277,7 @@ void __init(void)
     {
         printf("confidence threshold: %d\n", confidence_threshold);
     }
-
-    sscma_client_break(client);
-    sscma_client_set_sensor(client, 1, 0, true);
-    if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
-    {
-        ESP_LOGI(TAG, "sample failed\n");
-    } 
+ 
 }
 
 void __app_sscma_client_task(void *p_arg)
@@ -368,6 +370,75 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             break;
         }
+        case VIEW_EVENT_IMAGE_MODEL:
+        {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_IMAGE_MODEL");
+            int *p_model =  (int * )event_data;
+            g_model_id = *p_model;
+            sscma_client_set_model(client, *p_model);
+            sscma_client_break(client);
+
+
+            sscma_client_model_t *model;
+            if (sscma_client_get_model(client, &model, true) == ESP_OK)
+            {
+                printf("ID: %d\n", model->id ? model->id : -1);
+                printf("UUID: %s\n", model->uuid ? model->uuid : "N/A");
+                printf("Name: %s\n", model->name ? model->name : "N/A");
+                printf("Version: %s\n", model->ver ? model->ver : "N/A");
+                printf("Category: %s\n", model->category ? model->category : "N/A");
+                printf("Algorithm: %s\n", model->algorithm ? model->algorithm : "N/A");
+                printf("Description: %s\n", model->description ? model->description : "N/A");
+
+                printf("Classes:\n");
+                if (model->classes[0] != NULL)
+                {
+                    for (int i = 0; model->classes[i] != NULL; i++)
+                    {
+                        printf("  - %s\n", model->classes[i]);
+                    }
+                }
+                else
+                {
+                    printf("  N/A\n");
+                }
+
+                printf("Token: %s\n", model->token ? model->token : "N/A");
+                printf("URL: %s\n", model->url ? model->url : "N/A");
+                printf("Manufacturer: %s\n", model->manufacturer ? model->manufacturer : "N/A");
+            }
+            else
+            {
+                printf("get model failed\n");
+            }  
+            sscma_client_set_sensor(client, 1, 0, true);
+            if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
+            {
+                ESP_LOGI(TAG, "sample failed\n");
+            }
+
+            if (sscma_client_set_iou_threshold(client, 40) != ESP_OK)
+            {
+                printf("set iou threshold failed\n");
+            }
+
+            if (sscma_client_set_confidence_threshold(client, 50) != ESP_OK)
+            {
+                printf("set confidence threshold failed\n");
+            }
+            int iou_threshold = 0;
+            if (sscma_client_get_iou_threshold(client, &iou_threshold) == ESP_OK)
+            {
+                printf("iou threshold: %d\n", iou_threshold);
+            }
+            int confidence_threshold = 0;
+            if (sscma_client_get_confidence_threshold(client, &confidence_threshold) == ESP_OK)
+            {
+                printf("confidence threshold: %d\n", confidence_threshold);
+            }
+
+            break;
+        }
     default:
         break;
     }
@@ -401,7 +472,11 @@ int app_sscma_client_init()
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, 
-                                                            __view_event_handler, NULL, NULL));                                                                                                        
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_MODEL, 
+                                                            __view_event_handler, NULL, NULL));                                                                                                         
     return 0;
 }
 
