@@ -31,13 +31,13 @@ typedef enum {
     KNOB_READY = 0,                     /*!< Knob state: ready*/
     KNOB_PHASE_A,                       /*!< Knob state: phase A arrives first */
     KNOB_PHASE_B,                       /*!< Knob state: phase B arrives first */
-    KNOB_PHASE_AB,                      /*!< Knob state: phase A and B levels arrive 1  */
 } knob_state_t;
 
 typedef struct Knob {
     bool          encoder_a_change;                            /*<! true means Encoder A phase Inverted*/
     bool          encoder_b_change;                            /*<! true means Encoder B phase Inverted*/
     uint8_t       default_direction;                           /*!< 0:positive increase   1:negative increase */
+    uint8_t       single_edge_trigger;                         /*!< 0:continuous edge trigger   1:single edge trigger */
     knob_state_t  state;                                       /*!< knob state machine status */
     uint8_t       debounce_a_cnt;                              /*!< Encoder A phase debounce count */
     uint8_t       debounce_b_cnt;                              /*!< Encoder B phase debounce count */
@@ -62,6 +62,35 @@ static bool s_is_timer_running = false;
 #define DEBOUNCE_TICKS    CONFIG_KNOB_DEBOUNCE_TICKS
 #define HIGH_LIMIT        CONFIG_KNOB_HIGH_LIMIT
 #define LOW_LIMIT         CONFIG_KNOB_LOW_LIMIT
+
+static inline void knob_call_event(knob_dev_t *knob, uint8_t direction)
+{
+    if (direction) {
+        knob->count_value++;
+        knob->event = KNOB_RIGHT;
+        CALL_EVENT_CB(KNOB_RIGHT);
+        if (knob->count_value >= HIGH_LIMIT) {
+            knob->event = KNOB_H_LIM;
+            CALL_EVENT_CB(KNOB_H_LIM);
+            knob->count_value = 0;
+        } else if (knob->count_value == 0) {
+            knob->event = KNOB_ZERO;
+            CALL_EVENT_CB(KNOB_ZERO);
+        }
+    } else {
+        knob->count_value--;
+        knob->event = KNOB_LEFT;
+        CALL_EVENT_CB(KNOB_LEFT);
+        if (knob->count_value <= LOW_LIMIT) {
+            knob->event = KNOB_L_LIM;
+            CALL_EVENT_CB(KNOB_L_LIM);
+            knob->count_value = 0;
+        } else if (knob->count_value == 0) {
+            knob->event = KNOB_ZERO;
+            CALL_EVENT_CB(KNOB_ZERO);
+        }
+    }
+}
 
 static void knob_handler(knob_dev_t *knob)
 {
@@ -92,67 +121,41 @@ static void knob_handler(knob_dev_t *knob)
         knob->debounce_b_cnt = 0;
     }
 
+    if (knob->single_edge_trigger) {
+        uint8_t direction = knob->default_direction;
+        if (knob->encoder_a_change) {
+            direction = (knob->encoder_a_level == knob->encoder_b_level) ? !direction : direction;
+            knob->encoder_a_change = false;
+            knob->ticks = 0;
+            knob_call_event(knob, direction);
+        } else if (knob->encoder_b_change) {
+            direction = (knob->encoder_a_level == knob->encoder_b_level) ? direction : !direction;
+            knob->encoder_b_change = false;
+            knob->ticks = 0;
+            knob_call_event(knob, direction);
+        }
+        return;
+    }
+    
     switch (knob->state) {
     case KNOB_READY:
         if (knob->encoder_a_change) {
-            if (knob->encoder_a_level == knob->encoder_b_level) {
-                knob->count_value--;
-                knob->event = KNOB_LEFT;
-                CALL_EVENT_CB(KNOB_LEFT);
-            } else {
-                knob->count_value++;
-                knob->event = KNOB_RIGHT;
-                CALL_EVENT_CB(KNOB_RIGHT);
-            }
             knob->encoder_a_change = false;
             knob->ticks = 0;
-            // knob->state = KNOB_PHASE_A;
+            knob->state = KNOB_PHASE_A;
         } else if ( knob->encoder_b_change) {
-            if (knob->encoder_a_level == knob->encoder_b_level) {
-                knob->count_value++;
-                knob->event = KNOB_RIGHT;
-                CALL_EVENT_CB(KNOB_RIGHT);
-            } else {
-                knob->count_value--;
-                knob->event = KNOB_LEFT;
-                CALL_EVENT_CB(KNOB_LEFT);
-            }
             knob->encoder_b_change = false;
             knob->ticks = 0;
-            // knob->state = KNOB_PHASE_B;
+            knob->state = KNOB_PHASE_B;
         }
         break;
 
     case KNOB_PHASE_A:
         if (knob->encoder_b_change) {
             knob->encoder_b_change = false;
-            if (knob->default_direction) {
-                knob->count_value--;
-                knob->event = KNOB_LEFT;
-                CALL_EVENT_CB(KNOB_LEFT);
-                if (knob->count_value <= LOW_LIMIT) {
-                    knob->event = KNOB_L_LIM;
-                    CALL_EVENT_CB(KNOB_L_LIM);
-                    knob->count_value = 0;
-                } else if (knob->count_value == 0) {
-                    knob->event = KNOB_ZERO;
-                    CALL_EVENT_CB(KNOB_ZERO);
-                }
-            } else {
-                knob->count_value++;
-                knob->event = KNOB_RIGHT;
-                CALL_EVENT_CB(KNOB_RIGHT);
-                if (knob->count_value >= HIGH_LIMIT) {
-                    knob->event = KNOB_H_LIM;
-                    CALL_EVENT_CB(KNOB_H_LIM);
-                    knob->count_value = 0;
-                } else if (knob->count_value == 0) {
-                    knob->event = KNOB_ZERO;
-                    CALL_EVENT_CB(KNOB_ZERO);
-                }
-            }
             knob->ticks = 0;
             knob->state = KNOB_READY;
+            knob_call_event(knob, !knob->default_direction);
         } else if (knob->encoder_a_change) {
             knob->encoder_a_change = false;
             knob->ticks = 0;
@@ -163,42 +166,11 @@ static void knob_handler(knob_dev_t *knob)
     case KNOB_PHASE_B:
         if (knob->encoder_a_change) {
             knob->encoder_a_change = false;
-            if (knob->default_direction) {
-                knob->count_value++;
-                knob->event = KNOB_RIGHT;
-                CALL_EVENT_CB(KNOB_RIGHT);
-                if (knob->count_value >= HIGH_LIMIT) {
-                    knob->event = KNOB_H_LIM;
-                    CALL_EVENT_CB(KNOB_H_LIM);
-                    knob->count_value = 0;
-                } else if (knob->count_value == 0) {
-                    knob->event = KNOB_ZERO;
-                    CALL_EVENT_CB(KNOB_ZERO);
-                }
-            } else {
-                knob->count_value--;
-                knob->event = KNOB_LEFT;
-                CALL_EVENT_CB(KNOB_LEFT);
-                if (knob->count_value <= LOW_LIMIT) {
-                    knob->event = KNOB_L_LIM;
-                    CALL_EVENT_CB(KNOB_L_LIM);
-                    knob->count_value = 0;
-                } else if (knob->count_value == 0) {
-                    knob->event = KNOB_ZERO;
-                    CALL_EVENT_CB(KNOB_ZERO);
-                }
-            }
             knob->ticks = 0;
             knob->state = KNOB_READY;
+            knob_call_event(knob, knob->default_direction);
         } else if (knob->encoder_b_change) {
             knob->encoder_b_change = false;
-            knob->ticks = 0;
-            knob->state = KNOB_READY;
-        }
-        break;
-    
-    case KNOB_PHASE_AB:
-        if (knob->ticks >= TICKS_INTERVAL) {
             knob->ticks = 0;
             knob->state = KNOB_READY;
         }
@@ -206,11 +178,7 @@ static void knob_handler(knob_dev_t *knob)
 
     case KNOB_CHECK:
         if ( knob->encoder_a_level == knob->encoder_b_level) {
-            knob->state = knob->encoder_a_level == 1 ? KNOB_PHASE_AB : KNOB_READY;
-            knob->encoder_a_change = false;
-            knob->encoder_b_change = false;
-        } else {
-            knob->state = knob->encoder_a_level == 1 ? KNOB_PHASE_A : KNOB_PHASE_B;
+            knob->state = KNOB_READY;
             knob->encoder_a_change = false;
             knob->encoder_b_change = false;
         }
@@ -271,6 +239,7 @@ knob_handle_t iot_knob_create(const knob_config_t *config)
     knob_dev_t *knob = (knob_dev_t *) calloc(1, sizeof(knob_dev_t));
     KNOB_CHECK_GOTO(NULL != knob, "alloc knob failed", _encoder_b_deinit);
     knob->default_direction = config->default_direction;
+    knob->single_edge_trigger = config->single_edge_trigger;
     knob->hal_knob_level = _knob_gpio_get_key_level;
     knob->encoder_a = (void *)(long)config->gpio_encoder_a;
     knob->encoder_b = (void *)(long)config->gpio_encoder_b;

@@ -264,6 +264,7 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
 {
     ESP_LOGI(TAG, "Initialize knob input device");
     const static knob_config_t knob_cfg = {
+        .single_edge_trigger = 1,
         .default_direction = 0,
         .gpio_encoder_a = BSP_KNOB_A,
         .gpio_encoder_b = BSP_KNOB_B,
