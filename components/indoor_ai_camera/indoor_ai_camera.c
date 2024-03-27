@@ -194,7 +194,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .spi_mode = 0,
         .trans_queue_depth = 2,
     };
-    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi(BSP_LCD_SPI_NUM, &io_config, ret_io), err,
+    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)BSP_LCD_SPI_NUM, &io_config, ret_io), err,
                       TAG, "New panel IO failed");
 
     ESP_LOGD(TAG, "Install LCD driver");
@@ -327,10 +327,8 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         .user_data = &io_exp_val,
     };
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CHSC6X_CONFIG();
-    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle),
-                        TAG, "TP IO initialization failed");
-    ESP_RETURN_ON_ERROR(esp_lcd_touch_new_i2c_chsc6x(tp_io_handle, &tp_cfg, &touch_handle),
-                        TAG, "TP initialization failed");
+    BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
+    BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_chsc6x(tp_io_handle, &tp_cfg, &touch_handle));
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = touch_handle,
@@ -500,9 +498,8 @@ esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
     /* Setup I2S channels */
     i2s_std_config_t std_cfg_default = BSP_I2S_DUPLEX_MONO_CFG(DRV_AUDIO_SAMPLE_RATE);
     i2s_std_config_t *p_i2s_cfg = &std_cfg_default;
-    if (i2s_config != NULL)
-    {
-        p_i2s_cfg = i2s_config;
+    if (i2s_config != NULL) {
+        memcpy(p_i2s_cfg, i2s_config, sizeof(i2s_std_config_t));
     }
 
     if (i2s_tx_chan != NULL)
@@ -568,7 +565,7 @@ esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void)
     BSP_NULL_CHECK(i2c_ctrl_if, NULL);
 
     esp_codec_dev_hw_gain_t gain = {
-        .pa_voltage = 3.3,
+        .pa_voltage = 5.0,
         .codec_dac_voltage = 3.3,
     };
 
@@ -736,21 +733,19 @@ esp_err_t bsp_codec_init(void)
 esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer_len)
 {
     esp_err_t ret = ESP_OK;
-    size_t bytes_read;
-    int audio_chunksize = buffer_len / (sizeof(int16_t) * DRV_AUDIO_I2S_CHANNEL);
 
     ret = esp_codec_dev_read(record_dev_handle, (void *)buffer, buffer_len);
-    if (ret != ESP_OK)
-    {
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read data from codec device");
     }
-    if (!is_get_raw_channel)
-    {
-        for (int i = 0; i < audio_chunksize; i++)
-        {
-            buffer[i] = buffer[i] << 2;
-        }
-    }
+    // int audio_chunksize = buffer_len / (sizeof(int16_t) * DRV_AUDIO_I2S_CHANNEL);
+    // if (!is_get_raw_channel)
+    // {
+    //     for (int i = 0; i < audio_chunksize; i++)
+    //     {
+    //         buffer[i] = buffer[i] << 2;
+    //     }
+    // }
     return ret;
 }
 

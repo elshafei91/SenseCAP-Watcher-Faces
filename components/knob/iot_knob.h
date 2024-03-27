@@ -31,6 +31,7 @@ typedef enum {
  * 
  */
 typedef struct {
+    uint8_t single_edge_trigger;        /*!< 0:Both edge trigger   1:Single edge trigger */
     uint8_t default_direction;          /*!< 0:positive increase   1:negative increase */
     uint8_t gpio_encoder_a;             /*!< Encoder Pin A */
     uint8_t gpio_encoder_b;             /*!< Encoder Pin B */
