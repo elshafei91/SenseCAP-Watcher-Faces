@@ -120,9 +120,8 @@ esp_err_t bsp_rgb_init()
 esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
 {
     esp_err_t ret = ESP_OK;
-    uint32_t index = 0;
 
-    ret |= led_strip_set_pixel(rgb_led_handle, index, r, g, b);
+    ret |= led_strip_set_pixel(rgb_led_handle, 0, r, g, b);
     ret |= led_strip_refresh(rgb_led_handle);
     return ret;
 }
@@ -635,10 +634,10 @@ esp_err_t bsp_i2s_read(void *audio_buffer, size_t len, size_t *bytes_read, uint3
     esp_err_t ret = ESP_OK;
     ret = esp_codec_dev_read(record_dev_handle, audio_buffer, len);
     *bytes_read = len;
-#if BSP_AUDIO_MIC_VALUE_GAIN > 0
+#if CONFIG_BSP_AUDIO_MIC_VALUE_GAIN > 0
     uint16_t *buffer = (uint16_t *)audio_buffer;
     for (size_t i = 0; i < len / 2; i++) {
-        buffer[i] = buffer[i] << BSP_AUDIO_MIC_VALUE_GAIN;
+        buffer[i] = buffer[i] << CONFIG_BSP_AUDIO_MIC_VALUE_GAIN;
     }
 #endif
     return ret;
