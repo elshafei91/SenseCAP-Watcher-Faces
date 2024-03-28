@@ -35,5 +35,4 @@ dependencies:
     public: true
 
   knob:
-    version: "^0.1.4"
-    public: true
+    override_path: "../knob"
