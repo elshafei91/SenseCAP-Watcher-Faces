@@ -167,6 +167,107 @@ uint16_t bsp_bat_get_voltage(void)
     return 0;
 }
 
+esp_err_t bsp_rtc_init(void)
+{
+    esp_err_t ret = ESP_OK;
+    ret = bsp_i2c_bus_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C bus initialization failed");
+        return ret;
+    }
+
+    uint8_t data[2] = {0x00, 0x00};
+    ret = i2c_master_write_to_device(
+        BSP_GENERAL_I2C_NUM, 
+        DRV_PCF8563_I2C_ADDR, 
+        data, 
+        sizeof(data), 
+        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
+    );
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize RTC");
+        return ret;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t bsp_rtc_get_time(struct tm *timeinfo)
+{
+    esp_err_t ret = ESP_OK;
+    ret = bsp_i2c_bus_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C bus initialization failed");
+        return ret;
+    }
+
+    uint8_t data[8] = {0};
+    data[0] = DRV_RTC_REG_TIME;
+    ret = i2c_master_write_read_device(
+        BSP_GENERAL_I2C_NUM, 
+        DRV_PCF8563_I2C_ADDR, 
+        data, 1, 
+        data + 1, sizeof(data) - 1, 
+        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
+    );
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read time from RTC");
+        return ret;
+    }
+
+    struct tm tm_data = {
+       .tm_sec =  BCD2DEC(data[1] & 0x7F),
+       .tm_min =  BCD2DEC(data[2] & 0x7F),
+       .tm_hour = BCD2DEC(data[3] & 0x3F),
+       .tm_mday = BCD2DEC(data[4] & 0x3F),
+       .tm_wday = BCD2DEC(data[5] & 0x07),
+       .tm_mon =  BCD2DEC(data[6] & 0x1F) - 1,
+       .tm_year = BCD2DEC(data[7]) + 2000 - 1900,
+    };
+    *timeinfo = tm_data;
+
+    ESP_LOGI(TAG, "Current time: %d-%d-%d %d:%d:%d", 
+            timeinfo->tm_year + 1900, 
+            timeinfo->tm_mon + 1, 
+            timeinfo->tm_mday, 
+            timeinfo->tm_hour, 
+            timeinfo->tm_min, 
+            timeinfo->tm_sec);
+
+    return ESP_OK;
+}
+
+esp_err_t bsp_rtc_set_time(const struct tm *timeinfo)
+{
+    esp_err_t ret = ESP_OK;
+
+    uint8_t data[8] = {0};
+    data[0] = DRV_RTC_REG_TIME;
+    data[1] = DEC2BCD(timeinfo->tm_sec);
+    data[2] = DEC2BCD(timeinfo->tm_min);
+    data[3] = DEC2BCD(timeinfo->tm_hour);
+    data[4] = DEC2BCD(timeinfo->tm_mday);
+    data[5] = DEC2BCD(timeinfo->tm_wday); // 0 - 6
+    data[6] = DEC2BCD(timeinfo->tm_mon + 1); // 0 - 11
+    data[7] = DEC2BCD(timeinfo->tm_year - 100);
+
+    ret = i2c_master_write_to_device(
+        BSP_GENERAL_I2C_NUM, 
+        DRV_PCF8563_I2C_ADDR, 
+        data, 
+        sizeof(data), 
+        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
+    );
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set time to RTC");
+        return ret;
+    }
+
+    return ESP_OK;
+}
+
 uint8_t bsp_bat_get_percentage(void)
 {
     uint32_t voltage = 0;

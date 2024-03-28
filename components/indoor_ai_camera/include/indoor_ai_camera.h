@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <time.h>
+#include <sys/time.h>
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "driver/i2c.h"
@@ -119,6 +121,15 @@
 #define DRV_IO_EXP_INPUT_MASK  (0x007f) // P0.0 ~ P0.6
 #define DRV_IO_EXP_OUTPUT_MASK (0xff80) // P0.7, P1.0 ~ P1.7
 
+#define DRV_PCF8563_I2C_ADDR   (0x51)
+#define DRV_PCF8563_TIMEOUT_MS (1000)
+#define DRV_RTC_REG_STATUS1    (0x00)
+#define DRV_RTC_REG_STATUS2    (0x01)
+#define DRV_RTC_REG_TIME       (0x02)
+#define DRV_RTC_REG_ALARM      (0x09)
+#define DRV_RTC_REG_CONTROL    (0x0d)
+#define DRV_RTC_REG_TIMER      (0x0e)
+
 #define DRV_ES8311_I2C_ADDR    (0x30)
 #define DRV_ES7243_I2C_ADDR    (0x26)
 #define DRV_AUDIO_SAMPLE_RATE  (16000)
@@ -145,6 +156,9 @@
     BSP_PWR_LCD |                    \
     BSP_PWR_LCD_BL                   \
 )
+
+#define DEC2BCD(d) (((((d) / 10) & 0x0f) << 4) + (((d) % 10) & 0x0f))
+#define BCD2DEC(b) (((((b) >> 4) & 0x0F) * 10) + ((b)&0x0F))
 
 #define BSP_I2S_GPIO_CFG             \
     {                                \
@@ -239,6 +253,10 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b);
 uint16_t bsp_bat_get_voltage(void);
 uint8_t bsp_bat_get_percentage(void);
 void bsp_system_pwr_off(void);
+
+esp_err_t bsp_rtc_init(void);
+esp_err_t bsp_rtc_get_time(struct tm *timeinfo);
+esp_err_t bsp_rtc_set_time(const struct tm *timeinfo);
 
 esp_err_t bsp_knob_btn_init(void *param);
 uint8_t bsp_knob_btn_get_key_value(void *param);
