@@ -25,6 +25,9 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 #include "lvgl.h"
 #include "esp_lvgl_port.h"
 #include "esp_vfs_fat.h"
@@ -39,6 +42,11 @@
 /* RGB LED */
 #define BSP_RGB_CTRL       (GPIO_NUM_40)
 
+/* ADC */
+#define BSP_BAT_ADC_CHAN   (ADC_CHANNEL_2) // GPIO3
+#define BSP_BAT_ADC_ATTEN  (ADC_ATTEN_DB_2_5) // 0 ~ 1100 mV
+#define BSP_BAT_VOL_RATIO  ((62 + 20) / 20)
+
 /* Knob */
 #define BSP_KNOB_A         (GPIO_NUM_41)
 #define BSP_KNOB_B         (GPIO_NUM_42)
@@ -49,7 +57,7 @@
 #define BSP_LCD_SPI_CS     (GPIO_NUM_45)
 #define BSP_LCD_GPIO_RST   (GPIO_NUM_NC)
 #define BSP_LCD_GPIO_DC    (GPIO_NUM_1)
-#define BSP_LCD_GPIO_BL    (IO_EXPANDER_PIN_NUM_7)
+#define BSP_LCD_GPIO_BL    (GPIO_NUM_19)
 
 /* Touch */
 #define BSP_TOUCH_I2C_NUM  (1)
@@ -79,9 +87,13 @@
 #define BSP_SD_GPIO_DET     (IO_EXPANDER_PIN_NUM_4)
 
 /* POWER */
+#define BSP_PWR_CHRG_DET    (IO_EXPANDER_PIN_NUM_0)
+#define BSP_PWR_STDBY_DET   (IO_EXPANDER_PIN_NUM_1)
+#define BSP_PWR_VBUS_IN_DET (IO_EXPANDER_PIN_NUM_2)
+#define BSP_PWR_LCD_BL      (IO_EXPANDER_PIN_NUM_7)
 #define BSP_PWR_SDCARD      (IO_EXPANDER_PIN_NUM_8)
 #define BSP_PWR_LCD         (IO_EXPANDER_PIN_NUM_9)
-#define BSP_PWR_BATTERY     (IO_EXPANDER_PIN_NUM_10)
+#define BSP_PWR_SYSTEM      (IO_EXPANDER_PIN_NUM_10)
 #define BSP_PWR_AI_CHIP     (IO_EXPANDER_PIN_NUM_11)
 #define BSP_PWR_CODEC_PA    (IO_EXPANDER_PIN_NUM_12)
 #define BSP_PWR_AUDIO       (IO_EXPANDER_PIN_NUM_13)
@@ -125,11 +137,13 @@
 #define BSP_PWR_START_UP             \
 (                                    \
     BSP_PWR_SDCARD |                 \
-    BSP_PWR_BATTERY |                \
+    BSP_PWR_SYSTEM |                 \
     BSP_PWR_CODEC_PA |               \
     BSP_PWR_AUDIO |                  \
     BSP_PWR_GROVE |                  \
-    BSP_PWR_BAT_ADC                  \
+    BSP_PWR_BAT_ADC |                \
+    BSP_PWR_LCD |                    \
+    BSP_PWR_LCD_BL                   \
 )
 
 #define BSP_I2S_GPIO_CFG             \
@@ -221,6 +235,10 @@ typedef struct {
 
 esp_err_t bsp_rgb_init(void);
 esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b);
+
+uint16_t bsp_bat_get_voltage(void);
+uint8_t bsp_bat_get_percentage(void);
+void bsp_system_pwr_off(void);
 
 esp_err_t bsp_knob_btn_init(void *param);
 uint8_t bsp_knob_btn_get_key_value(void *param);

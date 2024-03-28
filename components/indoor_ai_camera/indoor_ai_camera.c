@@ -126,6 +126,64 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
     return ret;
 }
 
+uint16_t bsp_bat_get_voltage(void)
+{
+    static bool initialized = false;
+    static adc_oneshot_unit_handle_t adc_handle;
+    static adc_cali_handle_t cali_handle = NULL;
+    if (!initialized)
+    {
+        adc_oneshot_unit_init_cfg_t init_config = { 
+            .unit_id = ADC_UNIT_1,
+        };
+        adc_oneshot_new_unit(&init_config, &adc_handle);
+
+        adc_oneshot_chan_cfg_t ch_config = {
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
+            .atten = BSP_BAT_ADC_ATTEN,
+        };
+        adc_oneshot_config_channel(adc_handle, BSP_BAT_ADC_CHAN, &ch_config);
+
+        adc_cali_curve_fitting_config_t cali_config = {
+            .unit_id = ADC_UNIT_1,
+            .chan = BSP_BAT_ADC_CHAN,
+            .atten = BSP_BAT_ADC_ATTEN,
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
+        };
+        if (adc_cali_create_scheme_curve_fitting(&cali_config, &cali_handle) == ESP_OK) {
+            initialized = true;
+        }
+    }
+    if (initialized)
+    {
+        int raw_value = 0;
+        int voltage = 0; // mV
+        adc_oneshot_read(adc_handle, BSP_BAT_ADC_CHAN, &raw_value);
+        adc_cali_raw_to_voltage(cali_handle, raw_value, &voltage);
+        voltage = voltage * 82 / 20;
+        ESP_LOGI(TAG, "voltage: %umV", voltage);
+        return (uint16_t)voltage;
+    }
+    return 0;
+}
+
+uint8_t bsp_bat_get_percentage(void)
+{
+    uint32_t voltage = 0;
+    for (uint8_t i = 0; i < 10; i++) {
+        voltage += bsp_bat_get_voltage();
+    }
+    voltage /= 10;
+    uint32_t percentage = (voltage - 3400) * 100 / (4200 - 3400);
+    percentage = (percentage > 100) ? 100 : percentage;
+    ESP_LOGI(TAG, "percentage: %u%%", percentage);
+    return (uint8_t)percentage;
+}
+
+void bsp_system_pwr_off(void) {
+    bsp_exp_io_set_level(BSP_PWR_SYSTEM, 0);
+}
+
 esp_err_t bsp_knob_btn_init(void *param)
 {
     // esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
