@@ -89,7 +89,7 @@ esp_err_t bsp_i2c_bus_init(void)
         .scl_pullup_en = GPIO_PULLUP_DISABLE,
         .master.clk_speed = BSP_GENERAL_I2C_CLK};
     BSP_ERROR_CHECK_RETURN_ERR(i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf));
-    BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, 0));
+    BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_HIGH));
     initialized = true;
     return ESP_OK;
 }
@@ -459,7 +459,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = BSP_TOUCH_I2C_CLK};
     if ((i2c_param_config(BSP_TOUCH_I2C_NUM, &i2c_conf) != ESP_OK) ||
-        (i2c_driver_install(BSP_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, 0) != ESP_OK))
+        (i2c_driver_install(BSP_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_HIGH) != ESP_OK))
     {
         ESP_LOGE(TAG, "I2C initialization failed");
         return NULL;
@@ -562,7 +562,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     };
     gpio_config(&io_conf);
     gpio_set_intr_type(BSP_IO_EXPANDER_INT, GPIO_INTR_NEGEDGE);
-    gpio_install_isr_service(0);
+    gpio_install_isr_service(ESP_INTR_FLAG_HIGH);
     gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
 
     return io_exp_handle;
@@ -652,6 +652,7 @@ esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
     /* Setup I2S peripheral */
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(BSP_AUDIO_I2S_NUM, I2S_ROLE_MASTER);
     chan_cfg.auto_clear = true; // Auto clear the legacy data in the DMA buffer
+    chan_cfg.intr_priority = 4;
     BSP_ERROR_CHECK_RETURN_ERR(i2s_new_channel(&chan_cfg, &i2s_tx_chan, &i2s_rx_chan));
 
     /* Setup I2S channels */
