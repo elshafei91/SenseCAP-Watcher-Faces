@@ -19,6 +19,7 @@
 #include "app_sensecraft.h"
 #include "app_tasklist.h"
 #include "app_sscma_client.h"
+#include "app_sensecap_https.h"
 #include "app_rgb.h"
 
 #include "view.h"
@@ -74,27 +75,26 @@ int board_init(void)
 
     bsp_rgb_init();
 
-
-    // bsp_lcd_brightness_set(100);
-
-
     return ESP_OK;
 }
 
 int app_init(void)
 {
+
+
     tasklist_init();
     app_rgb_init();
     app_sensecraft_init();
-    app_sscma_client_init();
+    // app_sscma_client_init();
+
+    app_sensecap_https_init();
 
     // app_sr_start(false);
 
     app_wifi_init();
-
     app_time_init();
+    app_cmd_init();
 
-    // app_cmd_init();
     return ESP_OK;
 
 }

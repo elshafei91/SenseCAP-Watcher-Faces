@@ -3,13 +3,15 @@
 
 #include "config.h"
 #include <time.h>
+#include "sscma_client_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 enum start_screen{
-    SCREEN_SENSECAP_LOGO, //startup screen
+    SCREEN_SENSECAP_LOGO,     //startup screen
+    SCREEN_CLOUDTASK_PREVIEW,
     SCREEN_HOME,
     SCREEN_WIFI_CONFIG,
 };
@@ -122,29 +124,59 @@ struct view_data_image_invoke
     struct view_data_image image;
 };
 
-// union sscma_client_inference  {
-//     sscma_client_box_t   *p_box;
-//     sscma_client_class_t *p_class;
-//     sscma_client_point_t *p_point;
-// };
+union sscma_client_inference  {
+    sscma_client_box_t   *p_box;
+    sscma_client_class_t *p_class;
+    sscma_client_point_t *p_point;
+};
 
 
-// struct view_data_inference
-// {
-//     int      type;  //0 box, 1 class; 2 point
-//     void     *p_data; // 数组首地址, sscma_client_box_t、sscma_client_class_t、sscma_client_point_t
-//     uint32_t cnt;
-//     bool     need_free;
-// };
+struct view_data_inference
+{
+    int      type;      //0 box, 1 class; 2 point
+    union sscma_client_inference  data;  // 数组首地址, sscma_client_box_t、sscma_client_class_t、sscma_client_point_t
+    uint32_t  cnt;  // 个数
+    char     *classes;
+    bool      need_free;
+};
 
-// struct view_data_image_inference
-// {   
-//     struct view_data_inference inference;
-//     struct view_data_image     image;
-// };
+struct view_data_image_inference
+{   
+    struct view_data_inference  inference;
+    struct view_data_image      image;
+};
 
+struct view_data_mqtt_connect_info
+{   
+    char serverUrl[128];
+    char token[171];
+    int mqttPort;
+    int mqttsPort;
+    int expiresIn;
+};
+
+struct view_data_trigger_cfg
+{   
+    int detect_class;
+    int condition_type; // 0-小于，1-小于等于，2-小于，3-大于等于，4-大于，5-不等于
+    int condition_num;
+};
+
+struct view_data_task
+{
+    int task_type; // 0: local example task; 1: cloud task 
+    int model_id; // 运行模型ID:1,2,3, 不需要运行模型，model id 为0
+    int num; // 运行次数, -1表示无限次数
+};
+
+struct view_data_deviceinfo
+{
+    char eui[17];
+    char key[33];
+};
 
 enum {
+
     VIEW_EVENT_SCREEN_START = 0,  // uint8_t, enum start_screen, which screen when start
 
     VIEW_EVENT_TIME,  //  bool time_format_24
@@ -157,12 +189,8 @@ enum {
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
     VIEW_EVENT_WIFI_CONNECT,    // struct view_data_wifi_config
-
     VIEW_EVENT_WIFI_CONNECT_RET,   // struct view_data_wifi_connet_ret_msg
-
-
     VIEW_EVENT_WIFI_CFG_DELETE,
-
 
     VIEW_EVENT_TIME_CFG_UPDATE,  //  struct view_data_time_cfg
     VIEW_EVENT_TIME_CFG_APPLY,   //  struct view_data_time_cfg
@@ -187,11 +215,19 @@ enum {
     VIEW_EVENT_IMAGE_640_480_REQ,  //NULL
     VIEW_EVENT_IMAGE_640_480_SEND,  //NULL
     VIEW_EVENT_IMAGE_STOP,  //NULL
-    VIEW_EVENT_IMAGE_MODEL,
+    VIEW_EVENT_IMAGE_MODEL, //int
 
-    
-    VIEW_EVENT_ALARM_OFF,  //NULL
-    VIEW_EVENT_ALARM_ON,  // char str[128]
+
+    VIEW_EVENT_TASK_START, //struct view_data_task
+    VIEW_EVENT_TASK_STOP,   //struct view_data_task
+    VIEW_EVENT_TRIGGER_CFG, //struct view_data_trigger_cfg
+
+    VIEW_EVENT_IMAGE_240_240_1, //struct view_data_image_inference //todo
+
+    VIEW_EVENT_MQTT_CONNECT,  // struct view_data_mqtt_connect_info
+
+    VIEW_EVENT_ALARM_ON,  //struct view_data_task //todo
+    VIEW_EVENT_ALARM_OFF, //NULL
 
     VIEW_EVENT_ALL,
 };
