@@ -1,7 +1,7 @@
 #ifndef VIEW_H
 #define VIEW_H
 
-#include "view_data.h"
+#include "data_defs.h"
 #include "lvgl.h"
 #include "ui.h"
 

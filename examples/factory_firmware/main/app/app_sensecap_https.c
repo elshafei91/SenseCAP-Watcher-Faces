@@ -1,15 +1,19 @@
-#include "app_sensecap_https.h"
-#include "esp_log.h"
-#include <mbedtls/base64.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/cdefs.h>
 #include <inttypes.h>
+#include <mbedtls/base64.h>
+
+#include "esp_log.h"
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 #include "cJSON.h"
+
+
 #include "deviceinfo.h"
+#include "app_sensecap_https.h"
+
 
 static const char *TAG = "sensecap-https";
 
@@ -17,6 +21,7 @@ static const char *TAG = "sensecap-https";
 static uint8_t network_connect_flag = 0;
 static SemaphoreHandle_t __g_data_mutex;
 static SemaphoreHandle_t __g_event_sem;
+static struct view_data_mqtt_connect_info mqttinfo;
 
 #define ERROR_CHECK(a, str, ret)                                               \
     if (!(a))                                                                  \
@@ -136,6 +141,7 @@ static int __https_token_get(struct view_data_mqtt_connect_info *p_info,
     // 获取data对象
     cJSON *data = cJSON_GetObjectItem(root, "data");
     if (data != NULL && cJSON_IsObject(data)) {
+        xSemaphoreTake(p_info->mutex, portMAX_DELAY);
         // 获取serverUrl
         cJSON *serverUrl_json = cJSON_GetObjectItem(data, "serverUrl");
         if (cJSON_IsString(serverUrl_json)) {
@@ -165,6 +171,7 @@ static int __https_token_get(struct view_data_mqtt_connect_info *p_info,
         if (cJSON_IsString(mqttsPort_json)) {
             p_info->mqttsPort = atoi(mqttsPort_json->valuestring);
         }
+        xSemaphoreGive(p_info->mutex);
     }
 
     // 打印值
@@ -181,15 +188,15 @@ static int __https_token_get(struct view_data_mqtt_connect_info *p_info,
     return 0;
 }
 
-void sensecap_https_task(void *p_arg)
+void __app_sensecap_https_task(void *p_arg)
 {
     ESP_LOGI(TAG, "start %s", SENSECAP_URL );
     
     int ret = 0;
     time_t now = 0;
+    struct view_data_mqtt_connect_info *p_mqttinfo;
 
-    struct view_data_mqtt_connect_info info;
-    memset(&info, 0, sizeof(info));
+    memset(p_mqttinfo, 0, sizeof(struct view_data_mqtt_connect_info));
 
     char deviceinfo_buf[70];
     char token[71];
@@ -222,16 +229,17 @@ void sensecap_https_task(void *p_arg)
         {
             continue;
         }
-        now = time(NULL);
-        if ((now - info.expiresIn) > 70) // 至少提前一分钟获取token
+        time(&now);  // now is seconds since unix epoch
+        if ((p_mqttinfo->expiresIn / 1000) < ((int)now + 60)) // 至少提前一分钟获取token
         {
-            ESP_LOGI(TAG, "Need get token");
-            ret = __https_token_get(&info, (const char *)token);
+            ESP_LOGI(TAG, "mqtt token is near expiration, refresh it ...");
+            ret = __https_token_get(p_mqttinfo, (const char *)token);
             if( ret == 0 ) {
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT, &info, sizeof(info), portMAX_DELAY);
+                // mqttinfo is big, we post pointer of it along with a mutex
+                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO, 
+                                    &p_mqttinfo, sizeof(p_mqttinfo), portMAX_DELAY);
             }
-            
-        }        
+        }
     }
 }
 
@@ -239,6 +247,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
 {
     switch (id)
     {
+    //wifi connection state changed
     case VIEW_EVENT_WIFI_ST:
     {
         static bool fist = true;
@@ -252,7 +261,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
         {
             network_connect_flag = 0;
         }
-        xSemaphoreGive(__g_event_sem); 
+        xSemaphoreGive(__g_event_sem);
         break;
     }
     default:
@@ -265,7 +274,9 @@ int app_sensecap_https_init(void)
     __g_data_mutex = xSemaphoreCreateMutex();
     __g_event_sem = xSemaphoreCreateBinary();
 
-    xTaskCreate(&sensecap_https_task, "sensecap_https_task", 1024 * 5, NULL, 2, NULL);
+    mqttinfo.mutex = xSemaphoreCreateMutex();
+
+    xTaskCreate(__app_sensecap_https_task, "app_sensecap_https_task", 1024 * 5, NULL, 3, NULL);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,

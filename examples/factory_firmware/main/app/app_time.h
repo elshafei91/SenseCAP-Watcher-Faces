@@ -2,7 +2,7 @@
 #define APP_TIME_H
 
 #include "config.h"
-#include "view_data.h"
+#include "data_defs.h"
 #include <time.h>
 
 #ifdef __cplusplus

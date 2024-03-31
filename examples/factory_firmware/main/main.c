@@ -80,7 +80,9 @@ int board_init(void)
 
 int app_init(void)
 {
-
+    app_wifi_init();
+    app_time_init();
+    app_cmd_init();
 
     tasklist_init();
     app_rgb_init();
@@ -90,10 +92,6 @@ int app_init(void)
     app_sensecap_https_init();
 
     // app_sr_start(false);
-
-    app_wifi_init();
-    app_time_init();
-    app_cmd_init();
 
     return ESP_OK;
 

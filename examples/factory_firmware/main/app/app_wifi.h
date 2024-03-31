@@ -2,8 +2,7 @@
 #define APP_WIFI_H
 
 #include "config.h"
-#include "view_data.h"
-#include "ctrl_data.h"
+#include "data_defs.h"
 
 #ifdef __cplusplus
 extern "C" {

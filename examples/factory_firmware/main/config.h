@@ -17,8 +17,7 @@
 
 
 
-#include "view_data.h"
-#include "ctrl_data.h"
+#include "data_defs.h"
 #include "storage.h"
 #include "util.h"
 

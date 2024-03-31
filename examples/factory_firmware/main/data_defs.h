@@ -1,13 +1,20 @@
-#ifndef VIEW_DATA_H
-#define VIEW_DATA_H
+#pragma once
+
+#include <time.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 #include "config.h"
-#include <time.h>
 #include "sscma_client_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/************************************************
+ * View Data Defines
+*************************************************/
 
 enum start_screen{
     SCREEN_SENSECAP_LOGO,     //startup screen
@@ -147,7 +154,8 @@ struct view_data_image_inference
 };
 
 struct view_data_mqtt_connect_info
-{   
+{
+    SemaphoreHandle_t mutex;
     char serverUrl[128];
     char token[171];
     int mqttPort;
@@ -175,15 +183,20 @@ struct view_data_deviceinfo
     char key[33];
 };
 
+/**
+ * To better understand the event name, every event name need a suffix "_CHANGED".
+ * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
+ * the UI should render again if it's sensitive to that data.
+*/
 enum {
 
     VIEW_EVENT_SCREEN_START = 0,  // uint8_t, enum start_screen, which screen when start
 
-    VIEW_EVENT_TIME,  //  bool time_format_24
+    VIEW_EVENT_TIME,      // bool time_format_24
     
-    VIEW_EVENT_BATTERY_ST,   
+    VIEW_EVENT_BATTERY_ST,// battery changed event
 
-    VIEW_EVENT_WIFI_ST,   //view_data_wifi_st_t
+    VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
 
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
@@ -224,7 +237,7 @@ enum {
 
     VIEW_EVENT_IMAGE_240_240_1, //struct view_data_image_inference //todo
 
-    VIEW_EVENT_MQTT_CONNECT,  // struct view_data_mqtt_connect_info
+    VIEW_EVENT_MQTT_CONNECT_INFO,  // struct view_data_mqtt_connect_info
 
     VIEW_EVENT_ALARM_ON,  //struct view_data_task //todo
     VIEW_EVENT_ALARM_OFF, //NULL
@@ -233,8 +246,23 @@ enum {
 };
 
 
+/************************************************
+ * Control Data Defines
+*************************************************/
+
+/**
+ * Control Events are used for control logic within the app backend scope.
+ * Typically there are two types of control events:
+ * - events for notifying a state/data change, e.g. time has been synced
+ * - events for start a action/request, e.g. start requesting some resource through HTTP
+*/
+enum {
+    CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
+
+    CTRL_EVENT_ALL,
+};
+
+
 #ifdef __cplusplus
 }
-#endif
-
 #endif

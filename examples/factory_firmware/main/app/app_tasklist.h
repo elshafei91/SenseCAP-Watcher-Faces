@@ -2,7 +2,7 @@
 #define APP_TASKLIST_H
 
 #include "config.h"
-#include "view_data.h"
+#include "data_defs.h"
 
 
 #ifdef __cplusplus
