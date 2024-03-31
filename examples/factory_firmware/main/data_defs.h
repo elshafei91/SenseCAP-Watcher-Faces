@@ -1,5 +1,10 @@
 #pragma once
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include <inttypes.h>
 #include <time.h>
 
 #include "freertos/FreeRTOS.h"

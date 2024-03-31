@@ -1,3 +1,5 @@
+#include <time.h>
+
 #include "util.h"
 
 int wifi_rssi_level_get(int rssi)
@@ -16,4 +18,11 @@ int wifi_rssi_level_get(int rssi)
     } else {
     	return 1;
     }
+}
+
+int util_get_timestamp_ms(void)
+{
+	time_t now;
+	time(&now);
+	return (int)now * 1000;
 }

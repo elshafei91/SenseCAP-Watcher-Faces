@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "nvs_flash.h"
+#include "esp_app_desc.h"
 
 #include "indoor_ai_camera.h"
 
@@ -26,8 +27,6 @@
 
 
 static const char *TAG = "app_main";
-
-#define VERSION   "v1.0.0"
 
 #define SENSECAP  "\n\
    _____                      _________    ____         \n\
@@ -99,7 +98,8 @@ int app_init(void)
 
 void app_main(void)
 {
-    ESP_LOGI("", SENSECAP, VERSION, __DATE__, __TIME__);
+    const esp_app_desc_t *app_desc = esp_app_get_description();
+    ESP_LOGI("", SENSECAP, app_desc->version, __DATE__, __TIME__);
 
     ESP_ERROR_CHECK(board_init());
 
