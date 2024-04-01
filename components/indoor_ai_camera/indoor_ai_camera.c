@@ -89,7 +89,7 @@ esp_err_t bsp_i2c_bus_init(void)
         .scl_pullup_en = GPIO_PULLUP_DISABLE,
         .master.clk_speed = BSP_GENERAL_I2C_CLK};
     BSP_ERROR_CHECK_RETURN_ERR(i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf));
-    BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, 0));
+    BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_SHARED));
     initialized = true;
     return ESP_OK;
 }
@@ -120,11 +120,169 @@ esp_err_t bsp_rgb_init()
 esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
 {
     esp_err_t ret = ESP_OK;
-    uint32_t index = 0;
 
-    ret |= led_strip_set_pixel(rgb_led_handle, index, r, g, b);
+    ret |= led_strip_set_pixel(rgb_led_handle, 0, r, g, b);
     ret |= led_strip_refresh(rgb_led_handle);
     return ret;
+}
+
+uint16_t bsp_bat_get_voltage(void)
+{
+    static bool initialized = false;
+    static adc_oneshot_unit_handle_t adc_handle;
+    static adc_cali_handle_t cali_handle = NULL;
+    if (!initialized)
+    {
+        adc_oneshot_unit_init_cfg_t init_config = { 
+            .unit_id = ADC_UNIT_1,
+        };
+        adc_oneshot_new_unit(&init_config, &adc_handle);
+
+        adc_oneshot_chan_cfg_t ch_config = {
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
+            .atten = BSP_BAT_ADC_ATTEN,
+        };
+        adc_oneshot_config_channel(adc_handle, BSP_BAT_ADC_CHAN, &ch_config);
+
+        adc_cali_curve_fitting_config_t cali_config = {
+            .unit_id = ADC_UNIT_1,
+            .chan = BSP_BAT_ADC_CHAN,
+            .atten = BSP_BAT_ADC_ATTEN,
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
+        };
+        if (adc_cali_create_scheme_curve_fitting(&cali_config, &cali_handle) == ESP_OK) {
+            initialized = true;
+        }
+    }
+    if (initialized)
+    {
+        int raw_value = 0;
+        int voltage = 0; // mV
+        adc_oneshot_read(adc_handle, BSP_BAT_ADC_CHAN, &raw_value);
+        adc_cali_raw_to_voltage(cali_handle, raw_value, &voltage);
+        voltage = voltage * 82 / 20;
+        ESP_LOGI(TAG, "voltage: %dmV", voltage);
+        return (uint16_t)voltage;
+    }
+    return 0;
+}
+
+uint8_t bsp_bat_get_percentage(void)
+{
+    uint32_t voltage = 0;
+    for (uint8_t i = 0; i < 10; i++) {
+        voltage += bsp_bat_get_voltage();
+    }
+    voltage /= 10;
+    int percent = (voltage - 3400) * 100 / (4200 - 3400);
+    percent = (percent > 100) ? 100 : (percent < 0) ? 0 : percent;
+    ESP_LOGI(TAG, "percentage: %d%%", percent);
+    return (uint8_t)percent;
+}
+
+esp_err_t bsp_rtc_init(void)
+{
+    esp_err_t ret = ESP_OK;
+    ret = bsp_i2c_bus_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C bus initialization failed");
+        return ret;
+    }
+
+    uint8_t data[2] = {0x00, 0x00};
+    ret = i2c_master_write_to_device(
+        BSP_GENERAL_I2C_NUM, 
+        DRV_PCF8563_I2C_ADDR, 
+        data, 
+        sizeof(data), 
+        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
+    );
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize RTC");
+        return ret;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t bsp_rtc_get_time(struct tm *timeinfo)
+{
+    esp_err_t ret = ESP_OK;
+    ret = bsp_i2c_bus_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C bus initialization failed");
+        return ret;
+    }
+
+    uint8_t data[8] = {0};
+    data[0] = DRV_RTC_REG_TIME;
+    ret = i2c_master_write_read_device(
+        BSP_GENERAL_I2C_NUM, 
+        DRV_PCF8563_I2C_ADDR, 
+        data, 1, 
+        data + 1, sizeof(data) - 1, 
+        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
+    );
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read time from RTC");
+        return ret;
+    }
+
+    struct tm tm_data = {
+       .tm_sec =  BCD2DEC(data[1] & 0x7F),
+       .tm_min =  BCD2DEC(data[2] & 0x7F),
+       .tm_hour = BCD2DEC(data[3] & 0x3F),
+       .tm_mday = BCD2DEC(data[4] & 0x3F),
+       .tm_wday = BCD2DEC(data[5] & 0x07),
+       .tm_mon =  BCD2DEC(data[6] & 0x1F) - 1,
+       .tm_year = BCD2DEC(data[7]) + 2000 - 1900,
+    };
+    *timeinfo = tm_data;
+
+    ESP_LOGI(TAG, "Current time: %d-%d-%d %d:%d:%d", 
+            timeinfo->tm_year + 1900, 
+            timeinfo->tm_mon + 1, 
+            timeinfo->tm_mday, 
+            timeinfo->tm_hour, 
+            timeinfo->tm_min, 
+            timeinfo->tm_sec);
+
+    return ESP_OK;
+}
+
+esp_err_t bsp_rtc_set_time(const struct tm *timeinfo)
+{
+    esp_err_t ret = ESP_OK;
+
+    uint8_t data[8] = {0};
+    data[0] = DRV_RTC_REG_TIME;
+    data[1] = DEC2BCD(timeinfo->tm_sec);
+    data[2] = DEC2BCD(timeinfo->tm_min);
+    data[3] = DEC2BCD(timeinfo->tm_hour);
+    data[4] = DEC2BCD(timeinfo->tm_mday);
+    data[5] = DEC2BCD(timeinfo->tm_wday); // 0 - 6
+    data[6] = DEC2BCD(timeinfo->tm_mon + 1); // 0 - 11
+    data[7] = DEC2BCD(timeinfo->tm_year - 100);
+
+    ret = i2c_master_write_to_device(
+        BSP_GENERAL_I2C_NUM, 
+        DRV_PCF8563_I2C_ADDR, 
+        data, 
+        sizeof(data), 
+        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
+    );
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set time to RTC");
+        return ret;
+    }
+
+    return ESP_OK;
+}
+
+void bsp_system_pwr_off(void) {
+    bsp_exp_io_set_level(BSP_PWR_SYSTEM, 0);
 }
 
 esp_err_t bsp_knob_btn_init(void *param)
@@ -195,7 +353,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .spi_mode = 0,
         .trans_queue_depth = 2,
     };
-    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi(BSP_LCD_SPI_NUM, &io_config, ret_io), err,
+    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)BSP_LCD_SPI_NUM, &io_config, ret_io), err,
                       TAG, "New panel IO failed");
 
     ESP_LOGD(TAG, "Install LCD driver");
@@ -265,6 +423,7 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
 {
     ESP_LOGI(TAG, "Initialize knob input device");
     const static knob_config_t knob_cfg = {
+        .single_edge_trigger = 1,
         .default_direction = 0,
         .gpio_encoder_a = BSP_KNOB_A,
         .gpio_encoder_b = BSP_KNOB_B,
@@ -300,7 +459,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = BSP_TOUCH_I2C_CLK};
     if ((i2c_param_config(BSP_TOUCH_I2C_NUM, &i2c_conf) != ESP_OK) ||
-        (i2c_driver_install(BSP_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, 0) != ESP_OK))
+        (i2c_driver_install(BSP_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_SHARED) != ESP_OK))
     {
         ESP_LOGE(TAG, "I2C initialization failed");
         return NULL;
@@ -327,10 +486,8 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         .user_data = &io_exp_val,
     };
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CHSC6X_CONFIG();
-    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle),
-                        TAG, "TP IO initialization failed");
-    ESP_RETURN_ON_ERROR(esp_lcd_touch_new_i2c_chsc6x(tp_io_handle, &tp_cfg, &touch_handle),
-                        TAG, "TP initialization failed");
+    BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
+    BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_chsc6x(tp_io_handle, &tp_cfg, &touch_handle));
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = touch_handle,
@@ -405,7 +562,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     };
     gpio_config(&io_conf);
     gpio_set_intr_type(BSP_IO_EXPANDER_INT, GPIO_INTR_NEGEDGE);
-    gpio_install_isr_service(0);
+    gpio_install_isr_service(ESP_INTR_FLAG_SHARED);
     gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
 
     return io_exp_handle;
@@ -495,14 +652,14 @@ esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
     /* Setup I2S peripheral */
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(BSP_AUDIO_I2S_NUM, I2S_ROLE_MASTER);
     chan_cfg.auto_clear = true; // Auto clear the legacy data in the DMA buffer
+    chan_cfg.intr_priority = 4;
     BSP_ERROR_CHECK_RETURN_ERR(i2s_new_channel(&chan_cfg, &i2s_tx_chan, &i2s_rx_chan));
 
     /* Setup I2S channels */
     i2s_std_config_t std_cfg_default = BSP_I2S_DUPLEX_MONO_CFG(DRV_AUDIO_SAMPLE_RATE);
     i2s_std_config_t *p_i2s_cfg = &std_cfg_default;
-    if (i2s_config != NULL)
-    {
-        p_i2s_cfg = i2s_config;
+    if (i2s_config != NULL) {
+        memcpy(p_i2s_cfg, i2s_config, sizeof(i2s_std_config_t));
     }
 
     if (i2s_tx_chan != NULL)
@@ -568,7 +725,7 @@ esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void)
     BSP_NULL_CHECK(i2c_ctrl_if, NULL);
 
     esp_codec_dev_hw_gain_t gain = {
-        .pa_voltage = 3.3,
+        .pa_voltage = 5.0,
         .codec_dac_voltage = 3.3,
     };
 
@@ -635,10 +792,10 @@ esp_err_t bsp_i2s_read(void *audio_buffer, size_t len, size_t *bytes_read, uint3
     esp_err_t ret = ESP_OK;
     ret = esp_codec_dev_read(record_dev_handle, audio_buffer, len);
     *bytes_read = len;
-#if BSP_AUDIO_MIC_VALUE_GAIN > 0
+#if CONFIG_BSP_AUDIO_MIC_VALUE_GAIN > 0
     uint16_t *buffer = (uint16_t *)audio_buffer;
     for (size_t i = 0; i < len / 2; i++) {
-        buffer[i] = buffer[i] << BSP_AUDIO_MIC_VALUE_GAIN;
+        buffer[i] = buffer[i] << CONFIG_BSP_AUDIO_MIC_VALUE_GAIN;
     }
 #endif
     return ret;
@@ -736,21 +893,19 @@ esp_err_t bsp_codec_init(void)
 esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer_len)
 {
     esp_err_t ret = ESP_OK;
-    size_t bytes_read;
-    int audio_chunksize = buffer_len / (sizeof(int16_t) * DRV_AUDIO_I2S_CHANNEL);
 
     ret = esp_codec_dev_read(record_dev_handle, (void *)buffer, buffer_len);
-    if (ret != ESP_OK)
-    {
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read data from codec device");
     }
-    if (!is_get_raw_channel)
-    {
-        for (int i = 0; i < audio_chunksize; i++)
-        {
-            buffer[i] = buffer[i] << 2;
-        }
-    }
+    // int audio_chunksize = buffer_len / (sizeof(int16_t) * DRV_AUDIO_I2S_CHANNEL);
+    // if (!is_get_raw_channel)
+    // {
+    //     for (int i = 0; i < audio_chunksize; i++)
+    //     {
+    //         buffer[i] = buffer[i] << 2;
+    //     }
+    // }
     return ret;
 }
 
