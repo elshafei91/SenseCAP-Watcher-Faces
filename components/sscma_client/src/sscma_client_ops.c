@@ -589,9 +589,9 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
         if (client->io_expander)
         {
             ESP_RETURN_ON_ERROR(esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level), TAG, "set GPIO level failed");
-            vTaskDelay(100 / portTICK_PERIOD_MS);
-            ESP_RETURN_ON_ERROR(esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, !client->reset_level), TAG, "set GPIO level failed");
             vTaskDelay(200 / portTICK_PERIOD_MS);
+            ESP_RETURN_ON_ERROR(esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, !client->reset_level), TAG, "set GPIO level failed");
+            vTaskDelay(300 / portTICK_PERIOD_MS);
             sscma_client_request(client, CMD_PREFIX CMD_AT_BREAK CMD_SUFFIX, NULL, false, 0);
         }
         else
