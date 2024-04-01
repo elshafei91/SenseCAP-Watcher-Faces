@@ -89,7 +89,7 @@ esp_err_t bsp_i2c_bus_init(void)
         .scl_pullup_en = GPIO_PULLUP_DISABLE,
         .master.clk_speed = BSP_GENERAL_I2C_CLK};
     BSP_ERROR_CHECK_RETURN_ERR(i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf));
-    BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_HIGH));
+    BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_SHARED));
     initialized = true;
     return ESP_OK;
 }
@@ -161,10 +161,23 @@ uint16_t bsp_bat_get_voltage(void)
         adc_oneshot_read(adc_handle, BSP_BAT_ADC_CHAN, &raw_value);
         adc_cali_raw_to_voltage(cali_handle, raw_value, &voltage);
         voltage = voltage * 82 / 20;
-        ESP_LOGI(TAG, "voltage: %umV", voltage);
+        ESP_LOGI(TAG, "voltage: %dmV", voltage);
         return (uint16_t)voltage;
     }
     return 0;
+}
+
+uint8_t bsp_bat_get_percentage(void)
+{
+    uint32_t voltage = 0;
+    for (uint8_t i = 0; i < 10; i++) {
+        voltage += bsp_bat_get_voltage();
+    }
+    voltage /= 10;
+    int percent = (voltage - 3400) * 100 / (4200 - 3400);
+    percent = (percent > 100) ? 100 : (percent < 0) ? 0 : percent;
+    ESP_LOGI(TAG, "percentage: %d%%", percent);
+    return (uint8_t)percent;
 }
 
 esp_err_t bsp_rtc_init(void)
@@ -266,19 +279,6 @@ esp_err_t bsp_rtc_set_time(const struct tm *timeinfo)
     }
 
     return ESP_OK;
-}
-
-uint8_t bsp_bat_get_percentage(void)
-{
-    uint32_t voltage = 0;
-    for (uint8_t i = 0; i < 10; i++) {
-        voltage += bsp_bat_get_voltage();
-    }
-    voltage /= 10;
-    uint32_t percentage = (voltage - 3400) * 100 / (4200 - 3400);
-    percentage = (percentage > 100) ? 100 : percentage;
-    ESP_LOGI(TAG, "percentage: %u%%", percentage);
-    return (uint8_t)percentage;
 }
 
 void bsp_system_pwr_off(void) {
@@ -459,7 +459,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = BSP_TOUCH_I2C_CLK};
     if ((i2c_param_config(BSP_TOUCH_I2C_NUM, &i2c_conf) != ESP_OK) ||
-        (i2c_driver_install(BSP_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_HIGH) != ESP_OK))
+        (i2c_driver_install(BSP_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_SHARED) != ESP_OK))
     {
         ESP_LOGE(TAG, "I2C initialization failed");
         return NULL;
@@ -562,7 +562,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     };
     gpio_config(&io_conf);
     gpio_set_intr_type(BSP_IO_EXPANDER_INT, GPIO_INTR_NEGEDGE);
-    gpio_install_isr_service(ESP_INTR_FLAG_HIGH);
+    gpio_install_isr_service(ESP_INTR_FLAG_SHARED);
     gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
 
     return io_exp_handle;
