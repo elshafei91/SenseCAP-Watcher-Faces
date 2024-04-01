@@ -2,7 +2,7 @@
 #include "esp_sntp.h"
 #include "sntp.h"
 #include "freertos/semphr.h"
-#include<stdlib.h>
+#include <stdlib.h>
 #include "nvs.h"
 #include "esp_timer.h"
 
@@ -61,6 +61,7 @@ static void __time_sync_notification_cb(struct timeval *tv)
     __time_cfg_get(&cfg);
     bool time_format_24 = cfg.time_format_24;
     esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
+    esp_event_post_to(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED, NULL, 0, portMAX_DELAY);
 }
 
 static void __time_set(time_t time)
@@ -153,7 +154,7 @@ static void __time_view_update_init(void)
             .arg = (void*) view_update_timer_handle,
             .name = "time update"
     };
-    ESP_ERROR_CHECK( esp_timer_create(&timer_args, &view_update_timer_handle));
+    ESP_ERROR_CHECK(esp_timer_create(&timer_args, &view_update_timer_handle));
     ESP_ERROR_CHECK(esp_timer_start_periodic(view_update_timer_handle, 1000000)); //1s
 }
 

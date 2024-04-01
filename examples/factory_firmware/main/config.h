@@ -1,24 +1,20 @@
+#pragma once
 
-
-#ifndef CONFIG_H
-#define CONFIG_H
-
-
+#include <stdlib.h>
+#include <stdio.h>
 #include <stdbool.h>
-#include <string.h> 
+#include <string.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_err.h"
+#include "esp_check.h"
 #include "esp_log.h"
 #include "esp_event_base.h"
 #include "esp_event.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
-
-
-#include "view_data.h"
-#include "ctrl_data.h"
+#include "data_defs.h"
 #include "storage.h"
 #include "util.h"
 
@@ -35,6 +31,4 @@ extern esp_event_loop_handle_t ctrl_event_handle;
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

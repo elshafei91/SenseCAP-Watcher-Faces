@@ -8,11 +8,13 @@ static const char *TAG = "tasklist";
 static char p_image_buf[30*1024];
 static int image_len =0;
 static SemaphoreHandle_t __g_data_mutex;
+
 void tasklist_init(void)
 {
     __g_data_mutex = xSemaphoreCreateMutex();
 }
-char* tasklist_parse(char *resp)
+
+char *tasklist_parse(char *resp)
 {
     int ret = 0;
     char * result = NULL;
@@ -26,7 +28,7 @@ char* tasklist_parse(char *resp)
     
     cJSON *json = cJSON_Parse(resp);
 
-    cJSON *code, *data, *sceneId, *tasklist, *warnStatus, *tasklist_len; 
+    cJSON *code, *data, *sceneId, *tasklist, *warnStatus, *tasklist_len;
 
     code = cJSON_GetObjectItem(json, "code");
     if( code != NULL  && code->valueint != NULL) {
@@ -45,7 +47,7 @@ char* tasklist_parse(char *resp)
     if (warnStatus != NULL &&  warnStatus->valueint != NULL) {
         ESP_LOGI(TAG, "warnStatus: %d", warnStatus->valueint);
         warnStatus_flag = warnStatus->valueint;
-    }    
+    }
 
     tasklist = cJSON_GetObjectItem(data, "taskList");
     if (tasklist == NULL || !cJSON_IsArray(tasklist)) {
@@ -141,9 +143,6 @@ char* tasklist_parse(char *resp)
                         //     image_len = 0;
                         //     ESP_LOGE(TAG, "malloc failed");
                         // }
-                        
-
-                        
                     }
                     break;
                 }
@@ -170,7 +169,7 @@ end:
 }
 
 
-int tasklist_image_get (char ** pp_img)
+int tasklist_image_get(char ** pp_img)
 {
     int len = 0;
     if( image_len <=0) {

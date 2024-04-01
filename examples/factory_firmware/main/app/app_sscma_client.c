@@ -253,6 +253,30 @@ void __init(void)
         printf("get model failed\n");
     }
     sscma_client_break(client);
+    /*
+    Get available sensors
+    Request: AT+SENSORS?\r
+    Response:
+    \r{
+    "type": 0,
+    "name": "SENSORS?",
+    "code": 0,
+    "data": [
+        {
+            "id": 1,
+            "type": 1,
+            "state": 1,
+            "opt_id": 0,
+            "opt_detail": "240x240 Auto",
+            "opts": {
+                "2": "640x480 Auto",
+                "1": "480x480 Auto",
+                "0": "240x240 Auto"
+            }
+        }
+    ]
+    }\n
+    */
     sscma_client_set_sensor(client, 1, 0, true);
     if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
     {
@@ -457,7 +481,7 @@ int app_sscma_client_init()
     __g_data_mutex = xSemaphoreCreateMutex();
 
     // __g_event_sem = xSemaphoreCreateBinary();
-    // xTaskCreate(&__app_sscma_client_task, "__app_sscma_client_task", 1024 * 5, NULL, 10, NULL);
+    // xTaskCreate(&__app_sscma_client_task, "app_sscma_client_task", 1024 * 5, NULL, 10, NULL);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_240_240_REQ, 

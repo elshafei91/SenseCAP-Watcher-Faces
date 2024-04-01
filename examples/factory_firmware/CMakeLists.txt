@@ -9,5 +9,5 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 #     ../../components
 #     )
 add_compile_options(-fdiagnostics-color=always -Wno-ignored-qualifiers)
-project(factory_demo)
+project(factory_firmware)
 

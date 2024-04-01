@@ -2,7 +2,7 @@
 #define APP_SSCMA_CLIENT_H
 
 #include "config.h"
-#include "view_data.h"
+#include "data_defs.h"
 
 /* SPI settings */
 #define EXAMPLE_SSCMA_SPI_NUM (SPI2_HOST)
