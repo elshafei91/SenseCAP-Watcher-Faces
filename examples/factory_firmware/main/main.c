@@ -25,6 +25,7 @@
 #include "app_sscma_client.h"
 #include "app_sensecap_https.h"
 #include "app_mqtt_client.h"
+#include "app_taskengine.h"
 #include "app_rgb.h"
 
 #include "view.h"
@@ -88,6 +89,7 @@ int app_init(void)
     app_cmd_init();
 
     tasklist_init();
+    app_taskengine_init();
     app_rgb_init();
     app_sensecraft_init();
     app_sscma_client_init();

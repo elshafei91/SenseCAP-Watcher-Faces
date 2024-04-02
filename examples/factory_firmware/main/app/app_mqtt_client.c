@@ -67,7 +67,7 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
 
     xSemaphoreTake(g_ctrl_data_mqtt_tasklist_cjson.mutex, portMAX_DELAY);
     if (g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson != NULL) {
-        free(g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson);
+        cJSON_Delete(g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson);
     }
     g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson = tmp_cjson;
     xSemaphoreGive(g_ctrl_data_mqtt_tasklist_cjson.mutex);
