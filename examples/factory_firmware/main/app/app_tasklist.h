@@ -1,10 +1,6 @@
 #ifndef APP_TASKLIST_H
 #define APP_TASKLIST_H
 
-#include "config.h"
-#include "data_defs.h"
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif

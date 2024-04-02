@@ -2,9 +2,8 @@
 
 #pragma once
 
+#include "esp_err.h"
 #include "cJSON.h"
-
-#include "config.h"
 
 #ifdef __cplusplus
 extern "C" {

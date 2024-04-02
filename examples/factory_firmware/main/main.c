@@ -1,7 +1,8 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_check.h"
@@ -10,6 +11,8 @@
 
 #include "indoor_ai_camera.h"
 
+#include "event_loops.h"
+#include "data_defs.h"
 #include "storage.h"
 // #include "audio_player.h"
 // #include "app_sr.h"
@@ -21,6 +24,7 @@
 #include "app_tasklist.h"
 #include "app_sscma_client.h"
 #include "app_sensecap_https.h"
+#include "app_mqtt_client.h"
 #include "app_rgb.h"
 
 #include "view.h"
@@ -33,7 +37,7 @@ static const char *TAG = "app_main";
   / ___/___  ____  ________  / ____/   |  / __ \\       \n\
   \\__ \\/ _ \\/ __ \\/ ___/ _ \\/ /   / /| | / /_/ /   \n\
  ___/ /  __/ / / (__  )  __/ /___/ ___ |/ ____/         \n\
-/____/\\___/_/ /_/____/\\___/\\____/_/  |_/_/           \n\
+/____/\\___/_/ /_/____/\\___/\\____/_/  |_/_/     WATCHER\n\
 --------------------------------------------------------\n\
  Version: %s %s %s\n\
 --------------------------------------------------------\n\
@@ -86,8 +90,8 @@ int app_init(void)
     tasklist_init();
     app_rgb_init();
     app_sensecraft_init();
-    // app_sscma_client_init();
-
+    app_sscma_client_init();
+    app_mqtt_client_init();
     app_sensecap_https_init();
 
     // app_sr_start(false);
@@ -98,6 +102,11 @@ int app_init(void)
 
 void app_main(void)
 {
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    esp_log_level_set("MEM", ESP_LOG_DEBUG);
+#endif
+
     const esp_app_desc_t *app_desc = esp_app_get_description();
     ESP_LOGI("", SENSECAP, app_desc->version, __DATE__, __TIME__);
 
@@ -106,28 +115,26 @@ void app_main(void)
     esp_event_loop_args_t view_event_task_args = {
         .queue_size = 10,
         .task_name = "view_event_task",
-        .task_priority =6, // uxTaskPriorityGet(NULL),
+        .task_priority = 6, // uxTaskPriorityGet(NULL),
         .task_stack_size = 10240,
         .task_core_id = 0
     };
     ESP_ERROR_CHECK(esp_event_loop_create(&view_event_task_args, &view_event_handle));
 
-    // esp_event_loop_args_t ctrl_event_task_args = {
-    //     .queue_size = 10,
-    //     .task_name = "ctrl_event_task",
-    //     .task_priority = uxTaskPriorityGet(NULL),
-    //     .task_stack_size = 1024*5,
-    //     .task_core_id = tskNO_AFFINITY
-    // };
-    // ESP_ERROR_CHECK(esp_event_loop_create(&ctrl_event_task_args, &ctrl_event_handle));
+    esp_event_loop_args_t ctrl_event_task_args = {
+        .queue_size = 10,
+        .task_name = "ctrl_event_task",
+        .task_priority = 7,
+        .task_stack_size = 1024*5,
+        .task_core_id = 1
+    };
+    ESP_ERROR_CHECK(esp_event_loop_create(&ctrl_event_task_args, &ctrl_event_handle));
 
-   // UI init
+    // UI init
     view_init();
-
 
     // app init
     app_init();
-
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                         VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, 
@@ -160,7 +167,7 @@ void app_main(void)
                 heap_caps_get_free_size(MALLOC_CAP_DMA),
                 heap_caps_get_total_size(MALLOC_CAP_DMA));
 
-        ESP_LOGI("MEM", "%s", buffer);
+        ESP_LOGD("MEM", "%s", buffer);
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }

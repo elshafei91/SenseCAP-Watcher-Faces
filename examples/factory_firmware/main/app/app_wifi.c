@@ -1,17 +1,22 @@
-#include "app_wifi.h"
+#include "string.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
+#include "esp_event.h"
+#include "esp_log.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include "lwip/inet.h"
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
-#include "esp_event.h"
 #include "ping/ping_sock.h"
+
+#include "app_wifi.h"
+#include "data_defs.h"
+#include "event_loops.h"
 
 
 #define WIFI_CONNECTED_BIT BIT0

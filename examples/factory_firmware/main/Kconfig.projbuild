@@ -1,4 +1,4 @@
-menu "Factory Demo Example Configuration"
+menu "Factory Firmware Example Configuration"
     config VOICE_ID
         string "Speaker Id"
         default "qiumum_0gushi"
@@ -10,4 +10,9 @@ menu "Factory Demo Example Configuration"
         range 1 100
         help
             speaker volume
+    config ENABLE_FACTORY_FW_DEBUG_LOG
+        bool "Enable debug log level for this example project"
+        default "n"
+        help
+            Enable debug log level for this factory firmware example project
 endmenu

@@ -1,17 +1,27 @@
-#include "app_sscma_client.h"
 #include <dirent.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
+#include <mbedtls/base64.h>
+#include "esp_timer.h"
+#include "esp_log.h"
+#include "esp_event.h"
+
 #include "sscma_client_io.h"
 #include "sscma_client_ops.h"
-#include <mbedtls/base64.h>
-#include "view_image_preview.h"
 #include "indoor_ai_camera.h"
-#include "app_sensecraft.h"
-#include "esp_timer.h"
+
+#include "app_sscma_client.h"
+#include "event_loops.h"
+#include "data_defs.h"
 #include "app_tasklist.h"
+#include "app_sensecraft.h"
+
+#include "view_image_preview.h"
 
 static const char *TAG = "sscma-client";
 

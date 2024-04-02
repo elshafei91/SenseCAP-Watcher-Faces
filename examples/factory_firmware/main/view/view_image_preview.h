@@ -1,7 +1,8 @@
 #ifndef VIEW_IMAGE_PREVIEW_H
 #define VIEW_IMAGE_PREVIEW_H
 
-#include "config.h"
+#include "event_loops.h"
+#include "data_defs.h"
 #include "lvgl.h"
 
 #ifdef __cplusplus

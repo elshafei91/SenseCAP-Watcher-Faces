@@ -1,7 +1,17 @@
-#include "app_tasklist.h"
+#include <stdio.h>
+#include <string.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "esp_event.h"
+#include "esp_log.h"
 #include "cJSON.h"
 // #include "audio_player.h"
 #include <mbedtls/base64.h>
+
+#include "app_tasklist.h"
+#include "event_loops.h"
+#include "data_defs.h"
 
 static const char *TAG = "tasklist";
 

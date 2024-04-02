@@ -9,8 +9,8 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "cJSON.h"
 
-#include "config.h"
 #include "sscma_client_types.h"
 
 #ifdef __cplusplus
@@ -255,6 +255,12 @@ enum {
  * Control Data Defines
 *************************************************/
 
+struct ctrl_data_mqtt_tasklist_cjson
+{
+    SemaphoreHandle_t mutex;
+    cJSON *tasklist_cjson;
+};
+
 /**
  * Control Events are used for control logic within the app backend scope.
  * Typically there are two types of control events:
@@ -263,6 +269,7 @@ enum {
 */
 enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
+    CTRL_EVENT_MQTT_TASKLIST_JSON,          //received tasklist json from MQTT
 
     CTRL_EVENT_ALL,
 };

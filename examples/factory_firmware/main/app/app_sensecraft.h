@@ -1,7 +1,6 @@
 #ifndef APP_SENSECRAFT_H
 #define APP_SENSECRAFT_H
 
-#include "config.h"
 #include "data_defs.h"
 
 #define SENSECRAFT_HTTPS_URL  "http://192.168.100.10:8888"

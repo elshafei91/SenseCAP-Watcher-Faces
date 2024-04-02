@@ -1,3 +1,6 @@
+#include "esp_err.h"
+#include "esp_log.h"
+
 #include "deviceinfo.h"
 #include "storage.h"
 

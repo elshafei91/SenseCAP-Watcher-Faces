@@ -26,4 +26,11 @@ idf_component_register(
         ${UTIL_DIR}
 )
 
+if (CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG)
+    # to override the CONFIG_LOG_MAXIMUM_LEVEL for 'main'
+    # still need to call esp_log_level_set() for specific module.
+    # The ESP-IDF doc is obscure for this.
+    target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLOG_LOCAL_LEVEL=ESP_LOG_DEBUG")
+endif()
+
 # spiffs_create_partition_image(storage ../spiffs FLASH_IN_PROJECT)

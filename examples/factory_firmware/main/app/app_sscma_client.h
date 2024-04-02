@@ -1,9 +1,6 @@
 #ifndef APP_SSCMA_CLIENT_H
 #define APP_SSCMA_CLIENT_H
 
-#include "config.h"
-#include "data_defs.h"
-
 /* SPI settings */
 #define EXAMPLE_SSCMA_SPI_NUM (SPI2_HOST)
 #define EXAMPLE_SSCMA_SPI_CLK_HZ (12 * 1000 * 1000)

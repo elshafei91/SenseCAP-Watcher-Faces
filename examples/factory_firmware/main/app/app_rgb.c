@@ -1,6 +1,12 @@
-#include "app_rgb.h"
+#include <time.h>
+
 #include "esp_timer.h"
+
 #include "indoor_ai_camera.h"
+
+#include "app_rgb.h"
+#include "event_loops.h"
+#include "data_defs.h"
 
 static const char *TAG = "rgb";
 

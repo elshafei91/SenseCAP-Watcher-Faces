@@ -1,7 +1,7 @@
 #ifndef VIEW_ALARM_H
 #define VIEW_ALARM_H
 
-#include "config.h"
+#include "event_loops.h"
 #include "lvgl.h"
 
 #ifdef __cplusplus

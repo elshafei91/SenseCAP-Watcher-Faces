@@ -1,18 +1,24 @@
-#include "app_sensecraft.h"
-#include "esp_log.h"
-#include <mbedtls/base64.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/cdefs.h>
 #include <inttypes.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "esp_log.h"
+#include <mbedtls/base64.h>
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
-#include "app_tasklist.h"
 #include "cJSON.h"
 
-#include "view_image_preview.h"
 #include "indoor_ai_camera.h"
+
+#include "app_sensecraft.h"
+#include "event_loops.h"
+#include "app_tasklist.h"
+
+#include "view_image_preview.h"
 
 // #include "audio_player.h"
 

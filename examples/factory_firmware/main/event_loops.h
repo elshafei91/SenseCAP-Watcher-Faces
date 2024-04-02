@@ -1,22 +1,7 @@
 #pragma once
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_system.h"
-#include "esp_err.h"
-#include "esp_check.h"
-#include "esp_log.h"
 #include "esp_event_base.h"
 #include "esp_event.h"
-
-#include "data_defs.h"
-#include "storage.h"
-#include "util.h"
 
 #ifdef __cplusplus
 extern "C" {

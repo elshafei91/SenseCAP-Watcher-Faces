@@ -1,14 +1,9 @@
 #ifndef APP_TIME_H
 #define APP_TIME_H
 
-#include "config.h"
-#include "data_defs.h"
-#include <time.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 //ntp sync
 int app_time_init(void);

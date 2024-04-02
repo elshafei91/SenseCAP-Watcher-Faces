@@ -1,7 +1,7 @@
 #ifndef VIEW_STATUS_BAR_H
 #define VIEW_STATUS_BAR_H
 
-#include "config.h"
+#include "event_loops.h"
 #include "ui.h"
 
 #ifdef __cplusplus

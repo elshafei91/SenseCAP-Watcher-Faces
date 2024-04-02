@@ -1,12 +1,16 @@
-#include "app_cmd.h"
-#include "storage.h"
-#include "esp_log.h"
-#include "esp_console.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+
+#include "esp_log.h"
+#include "esp_console.h"
 #include "argtable3/argtable3.h"
+#include "esp_event.h"
+
+#include "app_cmd.h"
+#include "event_loops.h"
+#include "storage.h"
 #include "deviceinfo.h"
 
 static const char *TAG = "cmd";

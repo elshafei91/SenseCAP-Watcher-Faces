@@ -1,10 +1,6 @@
 #ifndef APP_CMD_H
 #define APP_CMD_H
 
-#include "config.h"
-#include "data_defs.h"
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif

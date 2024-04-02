@@ -1,7 +1,8 @@
 #ifndef VIEW_GROUP_H
 #define VIEW_GROUP_H
 
-#include "config.h"
+#include "event_loops.h"
+#include "data_defs.h"
 #include "lvgl.h"
 
 #ifdef __cplusplus

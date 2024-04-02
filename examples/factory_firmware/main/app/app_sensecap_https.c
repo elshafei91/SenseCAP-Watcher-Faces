@@ -3,17 +3,20 @@
 #include <stdio.h>
 #include <sys/cdefs.h>
 #include <inttypes.h>
-#include <mbedtls/base64.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
+#include <mbedtls/base64.h>
 #include "cJSON.h"
 
 
-#include "deviceinfo.h"
 #include "app_sensecap_https.h"
-
+#include "event_loops.h"
+#include "data_defs.h"
+#include "deviceinfo.h"
 
 static const char *TAG = "sensecap-https";
 
@@ -102,7 +105,7 @@ static char *__request( const char *base_url,
     else
     {
         result[content_length] = 0;
-        ESP_LOGD(TAG, "result: %s, size: %d", result, strlen(result));
+        ESP_LOGD(TAG, "content: %s, size: %d", result, strlen(result));
     }
 
 end:
@@ -121,8 +124,7 @@ static int __https_token_get(struct view_data_mqtt_connect_info *p_info,
         ESP_LOGE(TAG, "request failed");
         return -1;
     }
-    printf("%s\n", result);
-    
+
     // 解析JSON
     cJSON *root = cJSON_Parse(result);
     if (root == NULL) {
@@ -194,9 +196,7 @@ void __app_sensecap_https_task(void *p_arg)
     
     int ret = 0;
     time_t now = 0;
-    struct view_data_mqtt_connect_info *p_mqttinfo;
-
-    memset(p_mqttinfo, 0, sizeof(struct view_data_mqtt_connect_info));
+    struct view_data_mqtt_connect_info *p_mqttinfo = &mqttinfo;
 
     char deviceinfo_buf[70];
     char token[71];
@@ -230,9 +230,9 @@ void __app_sensecap_https_task(void *p_arg)
             continue;
         }
         time(&now);  // now is seconds since unix epoch
-        if ((p_mqttinfo->expiresIn / 1000) < ((int)now + 60)) // 至少提前一分钟获取token
+        if ((p_mqttinfo->expiresIn) < ((int)now + 60)) // 至少提前一分钟获取token
         {
-            ESP_LOGI(TAG, "mqtt token is near expiration, refresh it ...");
+            ESP_LOGI(TAG, "mqtt token is near expiration, now: %d, expire: %d, refresh it ...", (int)now, (p_mqttinfo->expiresIn));
             ret = __https_token_get(p_mqttinfo, (const char *)token);
             if( ret == 0 ) {
                 // mqttinfo is big, we post pointer of it along with a mutex
@@ -271,6 +271,10 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
 
 int app_sensecap_https_init(void)
 {
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
     __g_data_mutex = xSemaphoreCreateMutex();
     __g_event_sem = xSemaphoreCreateBinary();
 

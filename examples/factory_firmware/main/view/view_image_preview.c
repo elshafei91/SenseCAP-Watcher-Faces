@@ -1,5 +1,7 @@
-#include "view_image_preview.h"
+#include "esp_log.h"
 #include <mbedtls/base64.h>
+
+#include "view_image_preview.h"
 
 #define IMG_WIDTH 240
 #define IMG_HEIGHT 240
