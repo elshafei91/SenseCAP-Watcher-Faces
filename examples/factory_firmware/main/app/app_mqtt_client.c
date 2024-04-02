@@ -54,6 +54,8 @@ static void log_error_if_nonzero(const char *message, int error_code)
 */
 static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
 {
+    static struct ctrl_data_mqtt_tasklist_cjson *p_tasklist_cjson = &g_ctrl_data_mqtt_tasklist_cjson;
+
     ESP_LOGI(TAG, "start to parse tasklist from MQTT msg ...");
     ESP_LOGD(TAG, "MQTT msg: \r\n %.*s\r\n", msg_buff_len, mqtt_msg_buff);
     
@@ -71,10 +73,12 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
     }
     g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson = tmp_cjson;
     xSemaphoreGive(g_ctrl_data_mqtt_tasklist_cjson.mutex);
+
+    ESP_LOGD(TAG, "PTR: 0x%" PRIx32, (uint32_t)p_tasklist_cjson);
     
     esp_event_post_to(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_TASKLIST_JSON, 
-                                    &(g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson), /* cJSON** ptr */
-                                    sizeof(g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson), /* ptr size */
+                                    &p_tasklist_cjson,
+                                    sizeof(void *), /* ptr size */
                                     portMAX_DELAY);
     xSemaphoreGive(g_sem_taskpub_ack);
 }
@@ -197,25 +201,7 @@ static void __app_mqtt_client_task(void *p_arg)
             }
         }
         if (xSemaphoreTake(g_sem_taskpub_ack, pdMS_TO_TICKS(1)) == pdPASS) {
-            xSemaphoreTake(g_ctrl_data_mqtt_tasklist_cjson.mutex, portMAX_DELAY);
-            cJSON *json_root = g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson;
-            do {
-                cJSON *json_requestId = cJSON_GetObjectItem(json_root, "requestId");
-                if (json_requestId == NULL) break;
-                char *request_id = json_requestId->valuestring;
-
-                cJSON *json_order = cJSON_GetObjectItem(json_root, "order");
-                if (json_order == NULL) break;
-
-                cJSON *json_order_value = cJSON_GetObjectItem(json_order, "value");
-                if (json_order_value == NULL) break;
-
-                cJSON *json_order_value_taskSettings = cJSON_GetObjectItem(json_order_value, "taskSettings");
-                if (json_order_value_taskSettings == NULL) break;
-
-                app_mqtt_client_report_tasklist_ack(request_id, json_order_value_taskSettings);
-            } while (0);
-            xSemaphoreGive(g_ctrl_data_mqtt_tasklist_cjson.mutex);
+            
         }
     } 
 }

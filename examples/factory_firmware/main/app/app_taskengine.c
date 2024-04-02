@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
@@ -10,6 +11,7 @@
 #include "app_taskengine.h"
 #include "data_defs.h"
 #include "event_loops.h"
+#include "app_mqtt_client.h"
 #include "storage.h"
 
 
@@ -27,13 +29,23 @@ static const char *TAG = "taskengine";
 
 static TaskHandle_t g_task = NULL;
 static uint8_t g_taskengine_sm;  //state machine for taskengine
-static SemaphoreHandle_t g_sem_tasklist_cjson;
+// static SemaphoreHandle_t g_sem_tasklist_cjson;
 static SemaphoreHandle_t g_mutex_tasklist_cjson;
 static cJSON *g_tasklist_cjson;
+static struct ctrl_data_mqtt_tasklist_cjson *g_ctrl_data_mqtt_tasklist_cjson;
+static char g_tasklist_reqid[40];
 
 static esp_err_t __validate_incoming_tasklist_cjson(cJSON *tl_cjson)
 {
-    return ESP_OK;
+    esp_err_t ret = ESP_OK;
+
+    cJSON *json_root = tl_cjson;
+    cJSON *json_requestId = cJSON_GetObjectItem(json_root, "requestId");
+    ESP_GOTO_ON_FALSE(json_requestId != NULL, ESP_FAIL, err, TAG, 
+                      "incoming tasklist cjson invalid: no requestId field!");
+    //TODO
+err:    
+    return ret;
 }
 
 static void __app_taskengine_task(void *p_arg)
@@ -81,6 +93,8 @@ static void __app_taskengine_task(void *p_arg)
         case TE_SM_TRANSLATE_TL:
             ESP_LOGI(TAG, "state: TE_SM_TRANSLATE_TL");
 
+            bool using_flash_tasklist = g_tasklist_cjson == tasklist_cjson_from_flash;
+
             if (g_tasklist_cjson != tasklist_cjson_from_flash && tasklist_cjson_from_flash != NULL) {
                 cJSON_Delete(tasklist_cjson_from_flash);
                 tasklist_cjson_from_flash = NULL;
@@ -88,15 +102,41 @@ static void __app_taskengine_task(void *p_arg)
             // TODO: this is temp solution for EW
 
 
-            // sidejob: store tasklist into flash
-            char *json_buff1 = malloc(2048);
-            xSemaphoreTake(g_mutex_tasklist_cjson, portMAX_DELAY);
-            json_buff1 = cJSON_Print(g_tasklist_cjson);
-            xSemaphoreGive(g_mutex_tasklist_cjson);
+            if (!using_flash_tasklist) {
+                // sidejob: store tasklist into flash
+                char *json_buff1 = malloc(2048);
+                xSemaphoreTake(g_mutex_tasklist_cjson, portMAX_DELAY);
+                json_buff1 = cJSON_Print(g_tasklist_cjson);
+                xSemaphoreGive(g_mutex_tasklist_cjson);
 
-            storage_write("tasklist_json", json_buff1, strlen(json_buff1));
-            free(json_buff1);
-            ESP_LOGI(TAG, "tasklist json is saved into flash.");
+                storage_write("tasklist_json", json_buff1, strlen(json_buff1));
+                free(json_buff1);
+                ESP_LOGI(TAG, "tasklist json is saved into flash.");
+
+                // valid tasklist, task ack to MQTT
+                xSemaphoreTake(g_mutex_tasklist_cjson, portMAX_DELAY);
+                cJSON *json_root = g_tasklist_cjson;
+                do {
+                    cJSON *json_requestId = cJSON_GetObjectItem(json_root, "requestId");
+                    if (json_requestId == NULL) break;
+                    char *request_id = json_requestId->valuestring;
+
+                    cJSON *json_order = cJSON_GetObjectItem(json_root, "order");
+                    if (json_order == NULL) break;
+
+                    cJSON *json_order0 = cJSON_GetArrayItem(json_order, 0);
+                    if (json_order0 == NULL) break;
+
+                    cJSON *json_order_value = cJSON_GetObjectItem(json_order0, "value");
+                    if (json_order_value == NULL) break;
+
+                    cJSON *json_order_value_taskSettings = cJSON_GetObjectItem(json_order_value, "taskSettings");
+                    if (json_order_value_taskSettings == NULL) break;
+
+                    app_mqtt_client_report_tasklist_ack(request_id, json_order_value_taskSettings);
+                } while (0);
+                xSemaphoreGive(g_mutex_tasklist_cjson);
+            }
 
             // translate done, jump state
             g_taskengine_sm = TE_SM_TL_RUN;
@@ -105,7 +145,17 @@ static void __app_taskengine_task(void *p_arg)
 
         case TE_SM_TL_RUN:
             ESP_LOGI(TAG, "state: TE_SM_TL_RUN");
+
+            xSemaphoreTake(g_mutex_tasklist_cjson, portMAX_DELAY);
+            cJSON *json_root1 = g_tasklist_cjson;
+            cJSON *json_requestId1 = cJSON_GetObjectItem(json_root1, "requestId");
+            memcpy(g_tasklist_reqid, json_requestId1->valuestring, strlen(json_requestId1->valuestring));
+            xSemaphoreGive(g_mutex_tasklist_cjson);
+
             // TODO
+            
+            ESP_LOGI(TAG, "#### Now the tasklist is running ... ####");
+            ESP_LOGI(TAG, "tasklist requestId=%s", g_tasklist_reqid);
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  //task sleep
 
             //cleanup?
@@ -133,13 +183,22 @@ static void __ctrl_event_handler(void *handler_args, esp_event_base_t base, int3
     {
         ESP_LOGI(TAG, "received event: CTRL_EVENT_MQTT_TASKLIST_JSON");
 
-        cJSON *tmp_cjson = *(cJSON **)event_data;
-        if (__validate_incoming_tasklist_cjson(tmp_cjson) != ESP_OK) {
-            ESP_LOGW(TAG, "incoming tasklist cjson is not valid, ignore ...");
-            break;
-        }
+        g_ctrl_data_mqtt_tasklist_cjson = *(struct ctrl_data_mqtt_tasklist_cjson **)event_data;
+        g_mutex_tasklist_cjson = g_ctrl_data_mqtt_tasklist_cjson->mutex;
 
         xSemaphoreTake(g_mutex_tasklist_cjson, portMAX_DELAY);
+        cJSON *tmp_cjson = g_ctrl_data_mqtt_tasklist_cjson->tasklist_cjson;
+        if (__validate_incoming_tasklist_cjson(tmp_cjson) != ESP_OK) {
+            ESP_LOGW(TAG, "incoming tasklist cjson is not valid, ignore ...");
+            xSemaphoreGive(g_mutex_tasklist_cjson);
+            break;
+        }
+        cJSON *json_requestId = cJSON_GetObjectItem(tmp_cjson, "requestId");
+        if (strcmp(json_requestId->valuestring, g_tasklist_reqid) == 0) {
+            ESP_LOGW(TAG, "incoming tasklist is the same as running, ignore ...");
+            xSemaphoreGive(g_mutex_tasklist_cjson);
+            break;
+        }
         g_tasklist_cjson = tmp_cjson;
         xSemaphoreGive(g_mutex_tasklist_cjson);
 
@@ -162,6 +221,7 @@ esp_err_t app_taskengine_init(void)
     // g_sem_tasklist_cjson = xSemaphoreCreateBinary();
     g_mutex_tasklist_cjson = xSemaphoreCreateMutex();
     g_taskengine_sm = TE_SM_LOAD_STORAGE_TL;
+    memset(g_tasklist_reqid, 0, sizeof(g_tasklist_reqid));
 
     xTaskCreate(__app_taskengine_task, "app_taskengine_task", 1024 * 4, NULL, 4, &g_task);
 
