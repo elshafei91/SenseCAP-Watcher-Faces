@@ -43,6 +43,22 @@ static esp_err_t __validate_incoming_tasklist_cjson(cJSON *tl_cjson)
     cJSON *json_requestId = cJSON_GetObjectItem(json_root, "requestId");
     ESP_GOTO_ON_FALSE(json_requestId != NULL, ESP_FAIL, err, TAG, 
                       "incoming tasklist cjson invalid: no requestId field!");
+    cJSON *json_order = cJSON_GetObjectItem(json_root, "order");
+    ESP_GOTO_ON_FALSE(json_order != NULL, ESP_FAIL, err, TAG, 
+                      "incoming tasklist cjson invalid: no order field!");
+
+    cJSON *json_order0 = cJSON_GetArrayItem(json_order, 0);
+    ESP_GOTO_ON_FALSE(json_order0 != NULL, ESP_FAIL, err, TAG, 
+                      "incoming tasklist cjson invalid: order field is empty array!");
+
+    cJSON *json_order0_name = cJSON_GetObjectItem(json_order0, "name");
+    ESP_GOTO_ON_FALSE(json_order0_name != NULL, ESP_FAIL, err, TAG, 
+                      "incoming tasklist cjson invalid: order has no name field!");
+    char *order_name = json_order0_name->valuestring;
+    ESP_GOTO_ON_FALSE(strcmp(order_name, "task-publish") == 0, ESP_FAIL, err, TAG, 
+                      "incoming tasklist cjson invalid: order name is not task-publish!");
+
+
     //TODO
 err:    
     return ret;
@@ -51,6 +67,7 @@ err:
 static void __app_taskengine_task(void *p_arg)
 {
     cJSON *tasklist_cjson_from_flash = NULL;
+    uint32_t tasklist_exist = 0;
 
     while (1)
     {
@@ -87,6 +104,12 @@ static void __app_taskengine_task(void *p_arg)
 
         case TE_SM_WAIT_TL:
             ESP_LOGI(TAG, "state: TE_SM_WAIT_TL");
+            // tell UI no tasklist running
+            tasklist_exist = 0;
+            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASKLIST_EXIST, 
+                                &tasklist_exist,
+                                4, /* uint32_t size */
+                                portMAX_DELAY);
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  //task sleep
             break;
 
@@ -152,8 +175,15 @@ static void __app_taskengine_task(void *p_arg)
             memcpy(g_tasklist_reqid, json_requestId1->valuestring, strlen(json_requestId1->valuestring));
             xSemaphoreGive(g_mutex_tasklist_cjson);
 
-            // TODO
-            
+            // TODO: make the tasklist run
+
+            // tell UI tasklist running
+            tasklist_exist = 1;
+            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASKLIST_EXIST, 
+                                &tasklist_exist,
+                                4, /* uint32_t size */
+                                portMAX_DELAY);
+
             ESP_LOGI(TAG, "#### Now the tasklist is running ... ####");
             ESP_LOGI(TAG, "tasklist requestId=%s", g_tasklist_reqid);
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  //task sleep
@@ -194,11 +224,11 @@ static void __ctrl_event_handler(void *handler_args, esp_event_base_t base, int3
             break;
         }
         cJSON *json_requestId = cJSON_GetObjectItem(tmp_cjson, "requestId");
-        if (strcmp(json_requestId->valuestring, g_tasklist_reqid) == 0) {
-            ESP_LOGW(TAG, "incoming tasklist is the same as running, ignore ...");
-            xSemaphoreGive(g_mutex_tasklist_cjson);
-            break;
-        }
+        // if (strcmp(json_requestId->valuestring, g_tasklist_reqid) == 0) {
+        //     ESP_LOGW(TAG, "incoming tasklist is the same as running, ignore ...");
+        //     xSemaphoreGive(g_mutex_tasklist_cjson);
+        //     break;
+        // }
         g_tasklist_cjson = tmp_cjson;
         xSemaphoreGive(g_mutex_tasklist_cjson);
 
