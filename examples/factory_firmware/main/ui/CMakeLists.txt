@@ -64,6 +64,9 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c
     images/ui_img_wifi_3_png.c
-    fonts/ui_font_Font1.c)
+    images/ui_img_wifi_disconnect_png.c
+    images/ui_img_wifi_nonnet_png.c
+    fonts/ui_font_Font1.c
+    )
 
 add_library(ui ${SOURCES})

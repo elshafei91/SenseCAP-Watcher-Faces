@@ -312,8 +312,26 @@ esp_err_t bsp_knob_btn_deinit(void *param)
 
 static esp_err_t bsp_lcd_backlight_init()
 {
-    bsp_io_expander_init();
-    bsp_exp_io_set_level(BSP_PWR_LCD, 1);
+    const ledc_channel_config_t backlight_channel = {
+        .gpio_num = BSP_LCD_GPIO_BL,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = DRV_LCD_LEDC_CH,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = LEDC_TIMER_1,
+        .duty = BIT(DRV_LCD_LEDC_DUTY_RES),
+        .hpoint = 0
+    };
+    const ledc_timer_config_t backlight_timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = DRV_LCD_LEDC_DUTY_RES,
+        .timer_num = LEDC_TIMER_1,
+        .freq_hz = 5000,
+        .clk_cfg = LEDC_AUTO_CLK
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&backlight_timer));
+    ESP_ERROR_CHECK(ledc_channel_config(&backlight_channel));
+
+    ESP_ERROR_CHECK(bsp_lcd_brightness_set(80));
 
     return ESP_OK;
 }
@@ -351,7 +369,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .lcd_cmd_bits = DRV_LCD_CMD_BITS,
         .lcd_param_bits = DRV_LCD_PARAM_BITS,
         .spi_mode = 0,
-        .trans_queue_depth = 2,
+        .trans_queue_depth = 1,
     };
     ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)BSP_LCD_SPI_NUM, &io_config, ret_io), err,
                       TAG, "New panel IO failed");

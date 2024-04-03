@@ -99,6 +99,7 @@ void ui_ltaskscreen_screen_init(void)
     lv_obj_set_style_bg_img_src(ui_menubtn1, &ui_img_human2_png, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_color(ui_menubtn1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_opa(ui_menubtn1, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_width(ui_menubtn1, 0, LV_STATE_FOCUS_KEY);
 
     ui_menulp2 = lv_obj_create(ui_menulist);
     lv_obj_set_width(ui_menulp2, 30);
@@ -122,6 +123,7 @@ void ui_ltaskscreen_screen_init(void)
     lv_obj_set_style_shadow_color(ui_menubtn2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_menubtn2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_src(ui_menubtn2, &ui_img_apple2_png, LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_width(ui_menubtn2, 0, LV_STATE_FOCUS_KEY);
 
     ui_menulp3 = lv_obj_create(ui_menulist);
     lv_obj_set_width(ui_menulp3, 30);
@@ -149,6 +151,7 @@ void ui_ltaskscreen_screen_init(void)
     lv_obj_set_style_bg_img_src(ui_menubtn3, &ui_img_gesture2_png, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_color(ui_menubtn3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_opa(ui_menubtn3, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_width(ui_menubtn3, 0, LV_STATE_FOCUS_KEY);
 
     ui_menulp4 = lv_obj_create(ui_menulist);
     lv_obj_set_width(ui_menulp4, 30);
@@ -172,6 +175,7 @@ void ui_ltaskscreen_screen_init(void)
     lv_obj_set_style_shadow_color(ui_menubtn4, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_menubtn4, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_src(ui_menubtn4, &ui_img_back2_png, LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_width(ui_menubtn4, 0, LV_STATE_FOCUS_KEY);
 
     ui_menucircle = lv_obj_create(ui_menupanel);
     lv_obj_set_width(ui_menucircle, 300);

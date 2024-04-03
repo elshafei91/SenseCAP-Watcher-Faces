@@ -5,6 +5,10 @@
 
 #include "ui.h"
 #include "ui_helpers.h"
+#include "esp_log.h"
+
+static const char * TAG = "ui:event";
+uint8_t * g_iftasklist;
 
 ///////////////////// VARIABLES ////////////////////
 void start_anim_Animation(lv_obj_t * TargetObject, int delay);
@@ -395,6 +399,19 @@ lv_img_dsc_t * _virtual[] = {
     &ui_img_virtual5_png,
     &ui_img_virtual6_png
 };
+
+lv_img_dsc_t * _dethuman_1[] = {
+    &ui_img_virtual1_png,
+    &ui_img_virtual2_png,
+};
+
+lv_img_dsc_t * _dethuman_0[] = {
+    &ui_img_virtual3_png,
+    &ui_img_virtual4_png,
+    &ui_img_virtual5_png,
+    &ui_img_virtual6_png
+};
+
 // 图片数量
 #define IMG_COUNT 6
 
@@ -405,6 +422,24 @@ static void virtual_timer_callback(lv_timer_t * timer) {
     lv_img_dsc_t * current_img = _virtual[current_img_index];
     // 设置图片到对象ui_maincircle
     lv_obj_set_style_bg_img_src(ui_virtual, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
+
+static void dethuman1_timer_callback(lv_timer_t * timer) {
+    // 更新当前图片索引
+    current_img_index = (current_img_index + 1) % 2;
+    // 获取当前图片的指针
+    lv_img_dsc_t * current_img = _dethuman_1[current_img_index];
+    // 设置图片到对象ui_maincircle
+    lv_obj_set_style_bg_img_src(ui_preview_detection, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
+
+static void dethuamn0_timer_callback(lv_timer_t * timer) {
+    // 更新当前图片索引
+    current_img_index = (current_img_index + 1) % 4;
+    // 获取当前图片的指针
+    lv_img_dsc_t * current_img = _dethuman_0[current_img_index];
+    // 设置图片到对象ui_maincircle
+    lv_obj_set_style_bg_img_src(ui_preview_detection, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 // 声明一个函数来创建定时器
@@ -419,15 +454,13 @@ static void create_timer(uint8_t det_task) {
 	case 0:
     	g_timer = lv_timer_create(virtual_timer_callback, 500, NULL);
 		break;
-	
-	// case 1:
-    // 	g_timer = lv_timer_create(human_timer_callback, 3000, NULL);
-	// 	break;
-
-	// case 2:
-    // 	g_timer = lv_timer_create(human_timer_callback, 500, NULL);
-	// 	break;
-	
+    case 1:
+    	g_timer = lv_timer_create(dethuamn0_timer_callback, 500, NULL);
+		break;
+    case 2:
+    	g_timer = lv_timer_create(dethuman1_timer_callback, 500, NULL);
+		break;
+    
 	default:
 		break;
 	}    
@@ -480,10 +513,19 @@ void ui_event_mainbtn2(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_PRESSED) {
-        lv_group_remove_all_objs(g_main);
-        lv_group_add_obj(g_main, ui_notaskbtn);
-
-        _ui_screen_change(&ui_nocurrentT, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_nocurrentT_screen_init);
+        // check if there any task storage were in the flash
+        if(g_iftasklist)
+        {
+            lv_group_remove_all_objs(g_main);
+            lv_group_add_obj(g_main, ui_preview_detection);
+            _ui_screen_change(&ui_preview_detection, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_preview_detection_screen_init);
+        }
+        else
+        {
+            lv_group_remove_all_objs(g_main);
+            lv_group_add_obj(g_main, ui_notaskbtn);
+            _ui_screen_change(&ui_nocurrentT, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_nocurrentT_screen_init);
+        }
     }
     if(event_code == LV_EVENT_FOCUSED) {
         main2f_cb(e);
@@ -524,7 +566,11 @@ void ui_event_waitingtask(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    // if(event_code == LV_EVENT_PRESSED) {
+    //     waitT_cb(e);
+    // }
+    if(g_iftasklist)
+    {
         waitT_cb(e);
     }
 }
@@ -547,6 +593,7 @@ void ui_event_atask_down(lv_event_t * e)
 }
 void ui_event_preview_detection(lv_event_t * e)
 {
+    create_timer(g_predet);
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_PRESSED) {

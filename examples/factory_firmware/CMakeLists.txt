@@ -8,6 +8,8 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # set(EXTRA_COMPONENT_DIRS
 #     ../../components
 #     )
-add_compile_options(-fdiagnostics-color=always -Wno-ignored-qualifiers)
+# add_compile_options(-fdiagnostics-color=always -Wno-ignored-qualifiers)
+add_compile_options(-fdiagnostics-color=always -Wno-error=format= -Wno-format)
+
 project(factory_firmware)
 

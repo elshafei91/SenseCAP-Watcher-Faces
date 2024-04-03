@@ -9,6 +9,7 @@ void ui_virtual_screen_init(void)
 {
     ui_virtual = lv_obj_create(NULL);
     lv_obj_clear_flag(ui_virtual, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_virtual, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_virtual, ui_event_virtual, LV_EVENT_ALL, NULL);
 

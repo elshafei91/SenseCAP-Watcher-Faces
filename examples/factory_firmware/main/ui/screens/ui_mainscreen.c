@@ -106,6 +106,7 @@ void ui_mainscreen_screen_init(void)
     lv_obj_set_style_bg_img_src(ui_mainbtn1, &ui_img_19533631, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_color(ui_mainbtn1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_opa(ui_mainbtn1, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_width(ui_mainbtn1, 0, LV_STATE_FOCUS_KEY);
 
     ui_mainlp2 = lv_obj_create(ui_mainlist);
     lv_obj_set_width(ui_mainlp2, 30);
@@ -135,6 +136,7 @@ void ui_mainscreen_screen_init(void)
     lv_obj_set_style_bg_img_src(ui_mainbtn2, &ui_img_1721754357, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_color(ui_mainbtn2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_opa(ui_mainbtn2, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_width(ui_mainbtn2, 0, LV_STATE_FOCUS_KEY);
 
     ui_mainlp3 = lv_obj_create(ui_mainlist);
     lv_obj_set_width(ui_mainlp3, 30);
@@ -162,6 +164,7 @@ void ui_mainscreen_screen_init(void)
     lv_obj_set_style_bg_img_src(ui_mainbtn3, &ui_img_ha_png, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_color(ui_mainbtn3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_opa(ui_mainbtn3, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_width(ui_mainbtn3, 0, LV_STATE_FOCUS_KEY);
 
     ui_mainlp4 = lv_obj_create(ui_mainlist);
     lv_obj_set_width(ui_mainlp4, 30);
@@ -189,6 +192,7 @@ void ui_mainscreen_screen_init(void)
     lv_obj_set_style_bg_img_src(ui_mainbtn4, &ui_img_457376777, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_color(ui_mainbtn4, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_opa(ui_mainbtn4, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_outline_width(ui_mainbtn4, 0, LV_STATE_FOCUS_KEY);
 
     ui_maincircle = lv_obj_create(ui_mainpanel);
     lv_obj_set_width(ui_maincircle, 300);
@@ -206,7 +210,7 @@ void ui_mainscreen_screen_init(void)
     lv_obj_set_style_bg_grad_dir(ui_maincircle, LV_GRAD_DIR_HOR, LV_PART_MAIN | LV_STATE_DEFAULT);
     // lv_obj_set_style_bg_img_src(ui_maincircle, &ui_img_onboarddemobackground_png, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_maincircle, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_maincircle, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_maincircle, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_maincontent = lv_obj_create(ui_maincircle);
     lv_obj_set_width(ui_maincontent, 171);
@@ -234,7 +238,7 @@ void ui_mainscreen_screen_init(void)
     ui_maintime = lv_label_create(ui_maincontent);
     lv_obj_set_width(ui_maintime, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_maintime, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_x(ui_maintime, -5);
+    lv_obj_set_x(ui_maintime, -12);
     lv_obj_set_y(ui_maintime, 90);
     lv_obj_set_align(ui_maintime, LV_ALIGN_CENTER);
     lv_label_set_text(ui_maintime, "18:20");

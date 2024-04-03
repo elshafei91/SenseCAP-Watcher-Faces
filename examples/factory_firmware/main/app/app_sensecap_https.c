@@ -196,7 +196,7 @@ void __app_sensecap_https_task(void *p_arg)
     
     int ret = 0;
     time_t now = 0;
-    struct view_data_mqtt_connect_info *p_mqttinfo = &mqttinfo;
+    static struct view_data_mqtt_connect_info *p_mqttinfo = &mqttinfo;
 
     char deviceinfo_buf[70];
     char token[71];

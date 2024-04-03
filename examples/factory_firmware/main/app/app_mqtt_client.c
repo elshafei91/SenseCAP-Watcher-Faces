@@ -22,6 +22,7 @@ const int MQTT_PUB_QOS = 0;
 
 static struct view_data_deviceinfo g_deviceinfo;
 static SemaphoreHandle_t g_sem_mqttinfo;
+static SemaphoreHandle_t g_sem_timesynced;
 static SemaphoreHandle_t g_sem_taskpub_ack;
 static struct view_data_mqtt_connect_info *g_mqttinfo;
 static esp_mqtt_client_handle_t g_mqtt_client;
@@ -54,6 +55,8 @@ static void log_error_if_nonzero(const char *message, int error_code)
 */
 static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
 {
+    static struct ctrl_data_mqtt_tasklist_cjson *p_tasklist_cjson = &g_ctrl_data_mqtt_tasklist_cjson;
+
     ESP_LOGI(TAG, "start to parse tasklist from MQTT msg ...");
     ESP_LOGD(TAG, "MQTT msg: \r\n %.*s\r\n", msg_buff_len, mqtt_msg_buff);
     
@@ -73,8 +76,8 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
     xSemaphoreGive(g_ctrl_data_mqtt_tasklist_cjson.mutex);
     
     esp_event_post_to(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_TASKLIST_JSON, 
-                                    &(g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson), /* cJSON** ptr */
-                                    sizeof(g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson), /* ptr size */
+                                    &p_tasklist_cjson,
+                                    sizeof(void *), /* ptr size */
                                     portMAX_DELAY);
     xSemaphoreGive(g_sem_taskpub_ack);
 }
@@ -162,6 +165,7 @@ static void __app_mqtt_client_task(void *p_arg)
     sniprintf(g_topic_up_warn_event_report, sizeof(g_topic_up_warn_event_report), 
                 "iot/ipnode/%s/update/event/measure-sensor", g_deviceinfo.eui);
 
+    xSemaphoreTake(g_sem_timesynced, portMAX_DELAY);
     
     while (1)
     {
@@ -197,25 +201,7 @@ static void __app_mqtt_client_task(void *p_arg)
             }
         }
         if (xSemaphoreTake(g_sem_taskpub_ack, pdMS_TO_TICKS(1)) == pdPASS) {
-            xSemaphoreTake(g_ctrl_data_mqtt_tasklist_cjson.mutex, portMAX_DELAY);
-            cJSON *json_root = g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson;
-            do {
-                cJSON *json_requestId = cJSON_GetObjectItem(json_root, "requestId");
-                if (json_requestId == NULL) break;
-                char *request_id = json_requestId->valuestring;
-
-                cJSON *json_order = cJSON_GetObjectItem(json_root, "order");
-                if (json_order == NULL) break;
-
-                cJSON *json_order_value = cJSON_GetObjectItem(json_order, "value");
-                if (json_order_value == NULL) break;
-
-                cJSON *json_order_value_taskSettings = cJSON_GetObjectItem(json_order_value, "taskSettings");
-                if (json_order_value_taskSettings == NULL) break;
-
-                app_mqtt_client_report_tasklist_ack(request_id, json_order_value_taskSettings);
-            } while (0);
-            xSemaphoreGive(g_ctrl_data_mqtt_tasklist_cjson.mutex);
+            
         }
     } 
 }
@@ -235,6 +221,12 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
 
         break;
     }
+    case CTRL_EVENT_SNTP_TIME_SYNCED:
+    {
+        ESP_LOGI(TAG, "received event: CTRL_EVENT_SNTP_TIME_SYNCED");
+        xSemaphoreGive(g_sem_timesynced);
+        break;
+    }
     default:
         break;
     }
@@ -247,6 +239,7 @@ esp_err_t app_mqtt_client_init(void)
 #endif
     g_sem_mqttinfo = xSemaphoreCreateBinary();
     g_sem_taskpub_ack = xSemaphoreCreateBinary();
+    g_sem_timesynced = xSemaphoreCreateBinary();
     g_ctrl_data_mqtt_tasklist_cjson.mutex = xSemaphoreCreateMutex();
     g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson = NULL;
 
@@ -257,7 +250,9 @@ esp_err_t app_mqtt_client_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO,
                                                             __view_event_handler, NULL, NULL));
-
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED,
+                                                            __view_event_handler, NULL, NULL));
+    
     return ESP_OK;
 }
 
@@ -268,7 +263,7 @@ esp_err_t app_mqtt_client_report_tasklist_ack(char *request_id, cJSON *task_sett
     const char *json_fmt =  \
     "{"
         "\"requestId\": \"%s\","
-        "\"timestamp\": %d,"
+        "\"timestamp\": %jd,"
         "\"intent\": \"order\","
         "\"type\": \"response\","
         "\"deviceEui\": \"%s\","
@@ -289,11 +284,11 @@ esp_err_t app_mqtt_client_report_tasklist_ack(char *request_id, cJSON *task_sett
     
     char *json_buff = malloc(2048);
     char *task_settings_str = cJSON_Print(task_settings_node);
-    int timestamp_ms = util_get_timestamp_ms();
+    time_t timestamp_ms = util_get_timestamp_ms();
 
-    sniprintf(json_buff, sizeof(json_buff), json_fmt, request_id, timestamp_ms, g_deviceinfo.eui, task_settings_str);
+    sniprintf(json_buff, 2048, json_fmt, request_id, timestamp_ms, g_deviceinfo.eui, task_settings_str);
 
-    ESP_LOGD(TAG, "app_mqtt_client_report_tasklist_ack: \r\n%s\r\n", json_buff);
+    ESP_LOGD(TAG, "app_mqtt_client_report_tasklist_ack: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
     int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_task_publish_ack, json_buff, strlen(json_buff),
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
@@ -316,7 +311,7 @@ esp_err_t app_mqtt_client_report_tasklist_status(int tasklist_id, int tasklist_s
     const char *json_fmt =  \
     "{"
         "\"requestId\": \"%s\","
-        "\"timestamp\": %d,"
+        "\"timestamp\": %jd,"
         "\"intent\": \"event\","
         "\"deviceEui\": \"%s\","
         "\"events\":  [{"
@@ -337,13 +332,13 @@ esp_err_t app_mqtt_client_report_tasklist_status(int tasklist_id, int tasklist_s
     
     char *json_buff = malloc(2048);
     char uuid[37];
-    int timestamp_ms = util_get_timestamp_ms();
+    time_t timestamp_ms = util_get_timestamp_ms();
 
     UUIDGen(uuid);
-    sniprintf(json_buff, sizeof(json_buff), json_fmt, uuid, timestamp_ms, g_deviceinfo.eui, tasklist_id, tasklist_status_num,
+    sniprintf(json_buff, 2048, json_fmt, uuid, timestamp_ms, g_deviceinfo.eui, tasklist_id, tasklist_status_num,
               timestamp_ms);
 
-    ESP_LOGD(TAG, "app_mqtt_client_report_tasklist_ack: \r\n%s\r\n", json_buff);
+    ESP_LOGD(TAG, "app_mqtt_client_report_tasklist_ack: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
     int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_task_status_change, json_buff, strlen(json_buff),
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
@@ -365,7 +360,7 @@ esp_err_t app_mqtt_client_report_warn_event(int tasklist_id, char *tasklist_name
     const char *json_fmt =  \
     "{"
         "\"requestId\": \"%s\","
-        "\"timestamp\": %d,"
+        "\"timestamp\": %jd,"
         "\"intent\": \"event\","
         "\"deviceEui\": \"%s\","
         "\"deviceKey\": \"%s\","
@@ -391,13 +386,13 @@ esp_err_t app_mqtt_client_report_warn_event(int tasklist_id, char *tasklist_name
     
     char *json_buff = malloc(2048);
     char uuid[37];
-    int timestamp_ms = util_get_timestamp_ms();
+    time_t timestamp_ms = util_get_timestamp_ms();
 
     UUIDGen(uuid);
-    sniprintf(json_buff, sizeof(json_buff), json_fmt, uuid, timestamp_ms, g_deviceinfo.eui, g_deviceinfo.key,
+    sniprintf(json_buff, 2048, json_fmt, uuid, timestamp_ms, g_deviceinfo.eui, g_deviceinfo.key,
               tasklist_id, tasklist_name, warn_type, timestamp_ms);
 
-    ESP_LOGD(TAG, "app_mqtt_client_report_tasklist_ack: \r\n%s\r\n", json_buff);
+    ESP_LOGD(TAG, "app_mqtt_client_report_tasklist_ack: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
     int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_task_status_change, json_buff, strlen(json_buff),
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);

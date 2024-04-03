@@ -21,6 +21,9 @@ extern lv_indev_t * cur_drv;
 extern lv_group_t * g_main;
 extern lv_timer_t * g_timer;
 extern lv_obj_t   * g_prepage;
+extern uint8_t      g_alarm_;
+extern uint8_t    * g_iftasklist;
+extern uint8_t      g_predet; // 1 for no human, 2 for human
 
 void start_anim_Animation(lv_obj_t * TargetObject, int delay);
 void start_anim2_Animation(lv_obj_t * TargetObject, int delay);
@@ -216,6 +219,8 @@ LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets\wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets\wifi_1.png
 LV_IMG_DECLARE(ui_img_wifi_2_png);    // assets\wifi_2.png
 LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets\wifi_3.png
+LV_IMG_DECLARE(ui_img_wifi_disconnect_png);    
+LV_IMG_DECLARE(ui_img_wifi_nonnet_png);    
 
 LV_FONT_DECLARE(ui_font_Font1);
 

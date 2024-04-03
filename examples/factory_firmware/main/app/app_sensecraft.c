@@ -17,11 +17,18 @@
 #include "app_sensecraft.h"
 #include "event_loops.h"
 #include "app_tasklist.h"
+#include "app_audio.h"
 
 #include "view_image_preview.h"
+#include "ui.h"
 
 // #include "audio_player.h"
 
+#define USE_TESTENV_LLM_API    1
+// #define SENSECRAFT_HTTPS_URL  "http://192.168.100.10:8888"
+#define SENSECRAFT_HTTPS_URL  "https://csg-demo.exposeweb.pro/ai001tusuknyshiphjexy/v1/watcher/vision"
+
+#define GLOBAL_SILENT_TIME     30  //temp, this is ugly
 
 #define UPLOAD_FLAG_READY      0
 #define UPLOAD_FLAG_REQ        1
@@ -39,11 +46,18 @@ static struct view_data_record record_data; // 不需要重新buf
 static uint8_t image_upload_flag = UPLOAD_FLAG_READY;
 static uint8_t audio_upload_flag = UPLOAD_FLAG_READY;
 static uint8_t network_connect_flag = 0;
+static time_t last_image_upload_time = 0;
 
 static SemaphoreHandle_t __g_data_mutex;
 static SemaphoreHandle_t __g_event_sem;
 
 static uint8_t scene_id = SCENE_ID_DEFAULT;
+
+static struct ctrl_data_taskinfo7 *g_ctrl_data_taskinfo_7;
+static SemaphoreHandle_t g_mtx_task7_cjson;
+static cJSON *g_task7_cjson;
+
+uint8_t g_predet = 1; // 1 for no human, 2 for human
 
 #define ERROR_CHECK(a, str, ret)                                               \
     if (!(a))                                                                  \
@@ -66,16 +80,34 @@ static void  image_upload_flag_set(uint8_t flag)
     xSemaphoreGive(__g_data_mutex);    
 }
 
-static char *__request(const char *base_url, const char *api_key, const char *endpoint, const char *content_type, esp_http_client_method_t method, const char *boundary, uint8_t *data, size_t len)
+// this is ugly
+static void tmp_parse_cloud_result(char *result)
 {
-    char *url = NULL;
+    cJSON *json = cJSON_Parse(result);
+    if (json) {
+        if (cJSON_GetObjectItem(json, "code")->valueint == 0) {
+            if ((json = cJSON_GetObjectItem(json, "data"))) {
+                if ((json = cJSON_GetObjectItem(json, "tlid"))) {
+                    // cloud warn
+                    const char *warn_str = "cloud warn";
+                    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
+                }
+            }
+        } else {
+            ESP_LOGW(TAG, "cloud result, code != 0, code=%d", cJSON_GetObjectItem(json, "code")->valueint);
+        }
+    } else {
+        ESP_LOGW(TAG, "cloud result is not valid json");
+    }
+}
+
+static char *__request(const char *url, const char *api_key, const char *content_type, esp_http_client_method_t method, const char *boundary, uint8_t *data, size_t len)
+{
     char *result = NULL;
-    asprintf(&url, "%s%s", base_url, endpoint);
-    ERROR_CHECK(url != NULL, "Failed to allocate url!", NULL);
     esp_http_client_config_t config = {
         .url = url,
         .method = method,
-        .timeout_ms = 15000,
+        .timeout_ms = 29000,
         .crt_bundle_attach = esp_crt_bundle_attach,
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -129,7 +161,6 @@ static char *__request(const char *base_url, const char *api_key, const char *en
     }
 
 end:
-    free(url);
     esp_http_client_close(client);
     esp_http_client_cleanup(client);
     return result != NULL ? result : NULL;
@@ -186,7 +217,7 @@ static char *__https_upload_audio(uint8_t *audio_data, size_t audio_len)
     free(reqEndBody);
     free(itemPrefix);
 
-    char *result = __request(SENSECRAFT_HTTPS_URL, NULL, "/ai/scene_select", "multipart/form-data", HTTP_METHOD_POST, boundary, data, len);
+    char *result = __request(SENSECRAFT_HTTPS_URL"/ai/scene_select", NULL,"multipart/form-data", HTTP_METHOD_POST, boundary, data, len);
     free(data);
 
     FILE *fp;
@@ -206,33 +237,52 @@ static char *__https_upload_audio(uint8_t *audio_data, size_t audio_len)
     return NULL;
 }
 
-static char * __https_upload_image(uint8_t *image_data, size_t image_len, uint8_t scene_id)
+static char * __https_upload_image(uint8_t *image_data, size_t image_len, const char *p_token)
 {
 
-    uint8_t *p_data = NULL;
-    int index = 0;
-    size_t len = 0;
-
     //{"sceneId":1,"image":""}
-    p_data = (uint8_t *)malloc(image_len + 32);
+    char *p_data = malloc(image_len + 1);  //to ensure adding trailing '\0' to image_data
     ERROR_CHECK(p_data != NULL, "Failed to allocate request buffer!", NULL);
-
-    index += sprintf((char *)p_data + index, "{\"sceneId\":%d,\"image\":\"", scene_id);
+    memset(p_data, 0, image_len + 1);
 
     xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
-    memcpy(p_data + index, image_data, image_len);
+    memcpy(p_data, image_data, image_len);  //tmp use
+    cJSON *image = cJSON_CreateString(p_data);  //char * will be copied
     image_upload_flag = UPLOAD_FLAG_UPLOADING; // 不考虑上传失败的情况
     xSemaphoreGive(__g_data_mutex);
 
-    index += image_len;
-    index += sprintf((char *)p_data + index, "\"}");
-    len = index;
-
-    char *result = __request(SENSECRAFT_HTTPS_URL, NULL, "/ai/scene_detection", "application/json", HTTP_METHOD_POST, NULL, p_data, len);
     free(p_data);
+
+    xSemaphoreTake(g_mtx_task7_cjson, portMAX_DELAY);
+    char *json_str = cJSON_Print(g_task7_cjson);
+    cJSON *dl = cJSON_GetObjectItem(g_task7_cjson, "dl");
+    cJSON_ReplaceItemInObject(dl, "i", image);
+#if USE_TESTENV_LLM_API
+    if (!cJSON_GetObjectItem(dl, "token")) {
+        cJSON_AddItemToObject(dl, "token", cJSON_CreateString("CEZHpciAM4LymJ_74gjUaApJ\""));
+    }
+#endif
+    char *json_dl_str = cJSON_Print(dl);
+    xSemaphoreGive(g_mtx_task7_cjson);
+
+    ESP_LOGD(TAG, "task 7 json:\r\n%s", json_str);
+    ESP_LOGD(TAG, "upload image, post body:\r\n%s", json_dl_str);
+
+    char *api_host = SENSECRAFT_HTTPS_URL;
+
+#if !USE_TESTENV_LLM_API
+    api_host = cJSON_GetObjectItem(g_task7_cjson, "url")->valuestring;
+#endif
+
+    char *result = __request(api_host, NULL, "application/json", 
+                            HTTP_METHOD_POST, NULL, (uint8_t *)json_dl_str, strlen(json_dl_str));
+    free(json_str);
+    free(json_dl_str);
+
     if (result != NULL)
     {
-        tasklist_parse(result);
+        //tasklist_parse(result);
+        tmp_parse_cloud_result(result);
         free(result);
     }
     else
@@ -249,6 +299,8 @@ static char * __https_upload_image(uint8_t *image_data, size_t image_len, uint8_
 
 void __app_sensecraft_task(void *p_arg)
 {
+    cJSON *tmpjson;
+
     ESP_LOGI(TAG, "start:%s", SENSECRAFT_HTTPS_URL );
     while (1)
     {
@@ -262,6 +314,7 @@ void __app_sensecraft_task(void *p_arg)
             ESP_LOGI(TAG, "image upload: %ld", image_640_480.len);
 
             esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_SEND, NULL, 0, portMAX_DELAY);
+
             __https_upload_image(image_640_480.p_buf, image_640_480.len, scene_id);
         }
 
@@ -320,11 +373,49 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     }
 }
 
+static void __ctrl_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+{
+    switch (id)
+    {
+    case CTRL_EVENT_BROADCAST_TASK7:
+    {
+        ESP_LOGI(TAG, "received event: CTRL_EVENT_BROADCAST_TASK7");
+
+        g_ctrl_data_taskinfo_7 = *(struct ctrl_data_taskinfo7 **)event_data;
+
+        xSemaphoreTake(g_ctrl_data_taskinfo_7->mutex, portMAX_DELAY);
+        cJSON *tmp = cJSON_Duplicate(g_ctrl_data_taskinfo_7->task7, 1);
+        if (!g_ctrl_data_taskinfo_7->no_task7) {
+            last_image_upload_time = 0;
+        }
+        xSemaphoreGive(g_ctrl_data_taskinfo_7->mutex);
+
+        if (tmp) {
+            // this is ugly
+            xSemaphoreTake(g_mtx_task7_cjson, portMAX_DELAY);
+            if (g_task7_cjson) cJSON_Delete(g_task7_cjson);
+            g_task7_cjson = tmp;
+            xSemaphoreGive(g_mtx_task7_cjson);
+        }
+
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 int app_sensecraft_init(void)
 {
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
     __g_data_mutex = xSemaphoreCreateMutex();
     __g_event_sem = xSemaphoreCreateBinary();
-
+    g_mtx_task7_cjson = xSemaphoreCreateMutex();
+    g_ctrl_data_taskinfo_7 = NULL;
+    g_task7_cjson = NULL;
 
     image_640_480.len = 0;
     image_640_480.p_buf = (uint8_t *)malloc(IMAGE_240_240_BUF_SIZE);
@@ -340,6 +431,11 @@ int app_sensecraft_init(void)
                                                              VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,
                                                              __view_event_handler, NULL, NULL));
 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle,
+                                                             CTRL_EVENT_BASE, CTRL_EVENT_BROADCAST_TASK7,
+                                                             __ctrl_event_handler, NULL, NULL));
+    audio_player_init();
+    
     return 0;
 }
 
@@ -363,7 +459,6 @@ int app_sensecraft_image_upload(struct view_data_image *p_data)
 
 int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
 {
-    static time_t last_image_upload_time = 0;
     time_t now = 0;
 
 
@@ -372,6 +467,11 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     // 未检测到目标
     if (p_data->boxes_cnt <= 0)
     {
+        return 0;
+    }
+
+    // 等待taskengine下发任务流，不管是从flash加载的还是从云端获取的
+    if (g_ctrl_data_taskinfo_7 == NULL) {
         return 0;
     }
 
@@ -394,10 +494,17 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     if (image_upload_flag != UPLOAD_FLAG_READY)
     {
         now = time(NULL);
-        if ((now - last_image_upload_time) > 5)
+        if ((now - last_image_upload_time) > GLOBAL_SILENT_TIME)
         {
             image_upload_flag = UPLOAD_FLAG_READY;
         } 
+        return 0;  //这一次不行，下次可以上传
+    }
+
+    // 判断静默期是否已过
+    now = time(NULL);
+    if ((now - last_image_upload_time) < GLOBAL_SILENT_TIME) {
+        ESP_LOGD(TAG, "golbal silent time not passed, wait ...");
         return 0;
     }
 
@@ -408,10 +515,25 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     now = time(NULL);
     last_image_upload_time = now;
 
-
-    ESP_LOGI(TAG, "Need upload image!");
-    // sample 640*480 image
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, NULL, 0, portMAX_DELAY);
+    bool notask7 = true;
+    if (g_ctrl_data_taskinfo_7) {
+        xSemaphoreTake(g_ctrl_data_taskinfo_7->mutex, portMAX_DELAY);
+        notask7 = g_ctrl_data_taskinfo_7->no_task7;
+        xSemaphoreGive(g_ctrl_data_taskinfo_7->mutex);
+    }
+    ESP_LOGI(TAG, "local warn? %d", notask7);
+    if (notask7) {
+        const char *warn_str = "local warn";
+        audio_play_task("/spiffs/echo_en_wake.wav");
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
+    } else {
+        ESP_LOGI(TAG, "Need upload image!");
+        // set g_predet to 2 to identify the detection of human to TRUE
+        g_predet = 2;
+        lv_event_send(ui_preview_detection, LV_EVENT_ALL, NULL);
+        // sample 640*480 image
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, NULL, 0, portMAX_DELAY);
+    }
 
     return 1;
 }

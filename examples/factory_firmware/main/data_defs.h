@@ -247,6 +247,8 @@ enum {
     VIEW_EVENT_ALARM_ON,  //struct view_data_task //todo
     VIEW_EVENT_ALARM_OFF, //NULL
 
+    VIEW_EVENT_TASKLIST_EXIST,        //uint32_t, 1 or 0, tell UI if there's already a tasklist running
+
     VIEW_EVENT_ALL,
 };
 
@@ -261,6 +263,14 @@ struct ctrl_data_mqtt_tasklist_cjson
     cJSON *tasklist_cjson;
 };
 
+// this is temp
+struct ctrl_data_taskinfo7
+{
+    SemaphoreHandle_t mutex;
+    cJSON *task7;
+    bool no_task7;  //if no task 7, imply local warn
+};
+
 /**
  * Control Events are used for control logic within the app backend scope.
  * Typically there are two types of control events:
@@ -270,7 +280,7 @@ struct ctrl_data_mqtt_tasklist_cjson
 enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
     CTRL_EVENT_MQTT_TASKLIST_JSON,          //received tasklist json from MQTT
-
+    CTRL_EVENT_BROADCAST_TASK7,             //broadcast info of task7 to all listeners, this is temp
     CTRL_EVENT_ALL,
 };
 

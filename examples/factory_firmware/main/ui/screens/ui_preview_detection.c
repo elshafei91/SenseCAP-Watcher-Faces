@@ -9,6 +9,7 @@ void ui_preview_detection_screen_init(void)
 {
     ui_preview_detection = lv_obj_create(NULL);
     lv_obj_clear_flag(ui_preview_detection, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_preview_detection, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_predetp1 = lv_obj_create(ui_preview_detection);
     lv_obj_set_width(ui_predetp1, 240);

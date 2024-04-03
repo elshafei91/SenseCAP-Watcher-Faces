@@ -153,8 +153,7 @@
     BSP_PWR_AUDIO |                  \
     BSP_PWR_GROVE |                  \
     BSP_PWR_BAT_ADC |                \
-    BSP_PWR_LCD |                    \
-    BSP_PWR_LCD_BL                   \
+    BSP_PWR_LCD                      \
 )
 
 #define DEC2BCD(d) (((((d) / 10) & 0x0f) << 4) + (((d) % 10) & 0x0f))

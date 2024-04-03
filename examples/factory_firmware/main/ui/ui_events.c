@@ -282,10 +282,7 @@ void predet3c_cb(lv_event_t * e)
 
 void waitT_cb(lv_event_t * e)
 {
-	if(1)
-	{
-		_ui_screen_change(&ui_atask_down, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_atask_down_screen_init);
-	}
+	_ui_screen_change(&ui_atask_down, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_atask_down_screen_init);
 }
 
 void previewp1_cb(lv_event_t * e)
