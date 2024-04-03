@@ -17,6 +17,7 @@
 #include "app_sensecraft.h"
 #include "event_loops.h"
 #include "app_tasklist.h"
+#include "app_audio.h"
 
 #include "view_image_preview.h"
 #include "ui.h"
@@ -27,6 +28,7 @@
 // #define SENSECRAFT_HTTPS_URL  "http://192.168.100.10:8888"
 #define SENSECRAFT_HTTPS_URL  "https://csg-demo.exposeweb.pro/ai001tusuknyshiphjexy/v1/watcher/vision"
 
+#define GLOBAL_SILENT_TIME     30  //temp, this is ugly
 
 #define UPLOAD_FLAG_READY      0
 #define UPLOAD_FLAG_REQ        1
@@ -44,6 +46,7 @@ static struct view_data_record record_data; // 不需要重新buf
 static uint8_t image_upload_flag = UPLOAD_FLAG_READY;
 static uint8_t audio_upload_flag = UPLOAD_FLAG_READY;
 static uint8_t network_connect_flag = 0;
+static time_t last_image_upload_time = 0;
 
 static SemaphoreHandle_t __g_data_mutex;
 static SemaphoreHandle_t __g_event_sem;
@@ -86,7 +89,8 @@ static void tmp_parse_cloud_result(char *result)
             if ((json = cJSON_GetObjectItem(json, "data"))) {
                 if ((json = cJSON_GetObjectItem(json, "tlid"))) {
                     // cloud warn
-                    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, "", 0, portMAX_DELAY);
+                    const char *warn_str = "cloud warn";
+                    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
                 }
             }
         } else {
@@ -278,6 +282,7 @@ static char * __https_upload_image(uint8_t *image_data, size_t image_len, const 
     if (result != NULL)
     {
         //tasklist_parse(result);
+        tmp_parse_cloud_result(result);
         free(result);
     }
     else
@@ -380,6 +385,9 @@ static void __ctrl_event_handler(void *handler_args, esp_event_base_t base, int3
 
         xSemaphoreTake(g_ctrl_data_taskinfo_7->mutex, portMAX_DELAY);
         cJSON *tmp = cJSON_Duplicate(g_ctrl_data_taskinfo_7->task7, 1);
+        if (!g_ctrl_data_taskinfo_7->no_task7) {
+            last_image_upload_time = 0;
+        }
         xSemaphoreGive(g_ctrl_data_taskinfo_7->mutex);
 
         if (tmp) {
@@ -406,6 +414,7 @@ int app_sensecraft_init(void)
     __g_data_mutex = xSemaphoreCreateMutex();
     __g_event_sem = xSemaphoreCreateBinary();
     g_mtx_task7_cjson = xSemaphoreCreateMutex();
+    g_ctrl_data_taskinfo_7 = NULL;
     g_task7_cjson = NULL;
 
     image_640_480.len = 0;
@@ -425,6 +434,8 @@ int app_sensecraft_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle,
                                                              CTRL_EVENT_BASE, CTRL_EVENT_BROADCAST_TASK7,
                                                              __ctrl_event_handler, NULL, NULL));
+    audio_player_init();
+    
     return 0;
 }
 
@@ -448,7 +459,6 @@ int app_sensecraft_image_upload(struct view_data_image *p_data)
 
 int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
 {
-    static time_t last_image_upload_time = 0;
     time_t now = 0;
 
 
@@ -457,6 +467,11 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     // 未检测到目标
     if (p_data->boxes_cnt <= 0)
     {
+        return 0;
+    }
+
+    // 等待taskengine下发任务流，不管是从flash加载的还是从云端获取的
+    if (g_ctrl_data_taskinfo_7 == NULL) {
         return 0;
     }
 
@@ -479,10 +494,17 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     if (image_upload_flag != UPLOAD_FLAG_READY)
     {
         now = time(NULL);
-        if ((now - last_image_upload_time) > 5)
+        if ((now - last_image_upload_time) > GLOBAL_SILENT_TIME)
         {
             image_upload_flag = UPLOAD_FLAG_READY;
         } 
+        return 0;  //这一次不行，下次可以上传
+    }
+
+    // 判断静默期是否已过
+    now = time(NULL);
+    if ((now - last_image_upload_time) < GLOBAL_SILENT_TIME) {
+        ESP_LOGD(TAG, "golbal silent time not passed, wait ...");
         return 0;
     }
 
@@ -493,13 +515,25 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     now = time(NULL);
     last_image_upload_time = now;
 
-
-    ESP_LOGI(TAG, "Need upload image!");
-    // set g_predet to 2 to identify the detection of human to TRUE
-    g_predet = 2;
-    lv_event_send(ui_preview_detection, LV_EVENT_ALL, NULL);
-    // sample 640*480 image
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, NULL, 0, portMAX_DELAY);
+    bool notask7 = true;
+    if (g_ctrl_data_taskinfo_7) {
+        xSemaphoreTake(g_ctrl_data_taskinfo_7->mutex, portMAX_DELAY);
+        notask7 = g_ctrl_data_taskinfo_7->no_task7;
+        xSemaphoreGive(g_ctrl_data_taskinfo_7->mutex);
+    }
+    ESP_LOGI(TAG, "local warn? %d", notask7);
+    if (notask7) {
+        const char *warn_str = "local warn";
+        audio_play_task("/spiffs/echo_en_wake.wav");
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
+    } else {
+        ESP_LOGI(TAG, "Need upload image!");
+        // set g_predet to 2 to identify the detection of human to TRUE
+        g_predet = 2;
+        lv_event_send(ui_preview_detection, LV_EVENT_ALL, NULL);
+        // sample 640*480 image
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, NULL, 0, portMAX_DELAY);
+    }
 
     return 1;
 }
