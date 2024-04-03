@@ -22,6 +22,7 @@ const int MQTT_PUB_QOS = 0;
 
 static struct view_data_deviceinfo g_deviceinfo;
 static SemaphoreHandle_t g_sem_mqttinfo;
+static SemaphoreHandle_t g_sem_timesynced;
 static SemaphoreHandle_t g_sem_taskpub_ack;
 static struct view_data_mqtt_connect_info *g_mqttinfo;
 static esp_mqtt_client_handle_t g_mqtt_client;
@@ -164,6 +165,7 @@ static void __app_mqtt_client_task(void *p_arg)
     sniprintf(g_topic_up_warn_event_report, sizeof(g_topic_up_warn_event_report), 
                 "iot/ipnode/%s/update/event/measure-sensor", g_deviceinfo.eui);
 
+    xSemaphoreTake(g_sem_timesynced, portMAX_DELAY);
     
     while (1)
     {
@@ -219,6 +221,12 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
 
         break;
     }
+    case CTRL_EVENT_SNTP_TIME_SYNCED:
+    {
+        ESP_LOGI(TAG, "received event: CTRL_EVENT_SNTP_TIME_SYNCED");
+        xSemaphoreGive(g_sem_timesynced);
+        break;
+    }
     default:
         break;
     }
@@ -231,6 +239,7 @@ esp_err_t app_mqtt_client_init(void)
 #endif
     g_sem_mqttinfo = xSemaphoreCreateBinary();
     g_sem_taskpub_ack = xSemaphoreCreateBinary();
+    g_sem_timesynced = xSemaphoreCreateBinary();
     g_ctrl_data_mqtt_tasklist_cjson.mutex = xSemaphoreCreateMutex();
     g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson = NULL;
 
@@ -241,7 +250,9 @@ esp_err_t app_mqtt_client_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO,
                                                             __view_event_handler, NULL, NULL));
-
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED,
+                                                            __view_event_handler, NULL, NULL));
+    
     return ESP_OK;
 }
 

@@ -3,8 +3,6 @@
 
 #include "data_defs.h"
 
-#define SENSECRAFT_HTTPS_URL  "http://192.168.100.10:8888"
-
 #define IMAGE_UPLOAD_TIME_INTERVAL  10
 
 #define IMAGE_640_480_BUF_SIZE 80*1024

@@ -7,6 +7,7 @@
 #include "esp_console.h"
 #include "argtable3/argtable3.h"
 #include "esp_event.h"
+#include "esp_system.h"
 
 #include "app_cmd.h"
 #include "event_loops.h"
@@ -152,6 +153,24 @@ static void register_cmd_deviceinfo(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* reboot **************/
+static int do_reboot(int argc, char **argv)
+{
+    esp_restart();
+}
+
+static void register_cmd_reboot(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "reboot",
+        .help = "reboot the device",
+        .hint = NULL,
+        .func = &do_reboot,
+        .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
 int app_cmd_init(void)
 {
     esp_console_repl_t *repl = NULL;
@@ -164,6 +183,7 @@ int app_cmd_init(void)
 
     register_cmd_wifi_sta();
     register_cmd_deviceinfo();
+    register_cmd_reboot();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
     esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
