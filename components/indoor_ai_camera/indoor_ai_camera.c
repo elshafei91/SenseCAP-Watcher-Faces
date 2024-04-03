@@ -312,8 +312,26 @@ esp_err_t bsp_knob_btn_deinit(void *param)
 
 static esp_err_t bsp_lcd_backlight_init()
 {
-    bsp_io_expander_init();
-    bsp_exp_io_set_level(BSP_PWR_LCD, 1);
+    const ledc_channel_config_t backlight_channel = {
+        .gpio_num = BSP_LCD_GPIO_BL,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = DRV_LCD_LEDC_CH,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = LEDC_TIMER_1,
+        .duty = BIT(DRV_LCD_LEDC_DUTY_RES),
+        .hpoint = 0
+    };
+    const ledc_timer_config_t backlight_timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = DRV_LCD_LEDC_DUTY_RES,
+        .timer_num = LEDC_TIMER_1,
+        .freq_hz = 5000,
+        .clk_cfg = LEDC_AUTO_CLK
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&backlight_timer));
+    ESP_ERROR_CHECK(ledc_channel_config(&backlight_channel));
+
+    ESP_ERROR_CHECK(bsp_lcd_brightness_set(80));
 
     return ESP_OK;
 }
