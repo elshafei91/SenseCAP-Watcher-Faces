@@ -77,7 +77,7 @@ static void __app_taskengine_task(void *p_arg)
         {
         case TE_SM_LOAD_STORAGE_TL:
             char *json_buff = malloc(2048);
-            size_t json_str_len;
+            size_t json_str_len = 2048;
             if (storage_read("tasklist_json", json_buff, &json_str_len) != ESP_OK) {
                 ESP_LOGE(TAG, "failed to read tasklist from flash!");
                 free(json_buff);

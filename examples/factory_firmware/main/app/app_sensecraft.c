@@ -19,6 +19,7 @@
 #include "app_tasklist.h"
 
 #include "view_image_preview.h"
+#include "ui.h"
 
 // #include "audio_player.h"
 
@@ -52,6 +53,8 @@ static uint8_t scene_id = SCENE_ID_DEFAULT;
 static struct ctrl_data_taskinfo7 *g_ctrl_data_taskinfo_7;
 static SemaphoreHandle_t g_mtx_task7_cjson;
 static cJSON *g_task7_cjson;
+
+uint8_t g_predet = 1; // 1 for no human, 2 for human
 
 #define ERROR_CHECK(a, str, ret)                                               \
     if (!(a))                                                                  \
@@ -492,6 +495,9 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
 
 
     ESP_LOGI(TAG, "Need upload image!");
+    // set g_predet to 2 to identify the detection of human to TRUE
+    g_predet = 2;
+    lv_event_send(ui_preview_detection, LV_EVENT_ALL, NULL);
     // sample 640*480 image
     esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, NULL, 0, portMAX_DELAY);
 

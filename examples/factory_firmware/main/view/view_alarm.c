@@ -1,9 +1,28 @@
 #include "view_alarm.h"
+#include "ui.h"
 
 lv_obj_t *ui_alarm_text;
 lv_obj_t *ui_alarm_indicator;
 
+static lv_timer_t * alarm_timer; 
+uint8_t             g_alarm_;
+
 static char alarm_str[128];
+
+static void view_alarm_callback(lv_timer_t * timer)
+{
+    g_alarm_ = 0;
+}
+
+static void create_alarm_timer()
+{
+    if(alarm_timer != NULL)
+    {
+        lv_timer_del(alarm_timer);
+    }
+    alarm_timer = lv_timer_create(view_alarm_callback, 5000, NULL);
+}
+
 
 int view_alarm_init(lv_obj_t *ui_screen)
 {
@@ -23,33 +42,25 @@ int view_alarm_init(lv_obj_t *ui_screen)
     lv_obj_set_style_arc_width(ui_alarm_indicator, 10, LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_remove_style(ui_alarm_indicator, NULL, LV_PART_KNOB);
 
-    ui_alarm_text = lv_label_create(ui_screen);
-    lv_label_set_long_mode(ui_alarm_text, LV_LABEL_LONG_SCROLL_CIRCULAR);     /*Circular scroll*/
-    lv_obj_set_width(ui_alarm_text, 200);
-
-    lv_obj_set_style_text_font(ui_alarm_text, &lv_font_montserrat_24, LV_PART_MAIN| LV_STATE_DEFAULT);
-    lv_label_set_text(ui_alarm_text, "warning...");
-    lv_obj_align(ui_alarm_text, LV_ALIGN_CENTER, 0, 0);
-    // lv_obj_set_style_border_color(ui_alarm_text, lv_palette_main(LV_PALETTE_RED), 0);
-    lv_obj_set_style_text_color(ui_alarm_text, lv_palette_main(LV_PALETTE_RED), 0);
-
     return 0;
 }
 
-int view_alarm_on(char * str)
+int view_alarm_on(void)
 {
-    lv_snprintf(alarm_str,sizeof(alarm_str)-1, "%s", str);
-    lv_label_set_text(ui_alarm_text, alarm_str);
+    lv_group_remove_all_objs(g_main);
+    lv_group_add_obj(g_main, ui_preview_detection);
+    _ui_screen_change(&ui_preview_detection, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_preview_detection_screen_init);
+    lv_obj_clear_flag(ui_previewp2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(ui_alarm_text, LV_OBJ_FLAG_HIDDEN);
+    // create_alarm_timer();
 
     return 0;
 }
 
 int view_alarm_off(void)
 {
+    lv_obj_add_flag(ui_previewp2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_alarm_text, LV_OBJ_FLAG_HIDDEN);
 
     return 0;
 }
