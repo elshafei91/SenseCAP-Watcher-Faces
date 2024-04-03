@@ -71,13 +71,15 @@ static void __app_taskengine_task(void *p_arg)
     uint32_t tasklist_exist = 0;
     static struct ctrl_data_taskinfo7 *p_ctrl_data_taskinfo_7 = &g_ctrl_data_taskinfo_7;
 
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
     while (1)
     {
         switch (g_taskengine_sm)
         {
         case TE_SM_LOAD_STORAGE_TL:
             char *json_buff = malloc(2048);
-            size_t json_str_len;
+            size_t json_str_len = 2048;
             if (storage_read("tasklist_json", json_buff, &json_str_len) != ESP_OK) {
                 ESP_LOGE(TAG, "failed to read tasklist from flash!");
                 free(json_buff);
@@ -177,6 +179,11 @@ static void __app_taskengine_task(void *p_arg)
                 xSemaphoreTake(g_ctrl_data_taskinfo_7.mutex, portMAX_DELAY);
                 g_ctrl_data_taskinfo_7.no_task7 = true;
                 xSemaphoreGive(g_ctrl_data_taskinfo_7.mutex);
+                ESP_LOGI(TAG, "no task7, do local warn");
+                esp_event_post_to(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_BROADCAST_TASK7, 
+                                    &p_ctrl_data_taskinfo_7,
+                                    sizeof(void *), /* ptr size */
+                                    portMAX_DELAY);
             }
 
             if (!using_flash_tasklist) {
@@ -185,9 +192,14 @@ static void __app_taskengine_task(void *p_arg)
                 char *json_buff1 = cJSON_Print(g_tasklist_cjson);
                 xSemaphoreGive(g_mtx_tasklist_cjson);
 
-                storage_write("tasklist_json", json_buff1, strlen(json_buff1));
+                esp_err_t ret = storage_write("tasklist_json", json_buff1, strlen(json_buff1));
+                if (ret == ESP_OK) {
+                    ESP_LOGI(TAG, "tasklist json is saved into flash.");
+                } else {
+                    ESP_LOGI(TAG, "tasklist json failed to be saved into flash.");
+                }
                 free(json_buff1);
-                ESP_LOGI(TAG, "tasklist json is saved into flash.");
+                
 
                 // valid tasklist, task ack to MQTT
                 xSemaphoreTake(g_mtx_tasklist_cjson, portMAX_DELAY);
@@ -278,11 +290,11 @@ static void __ctrl_event_handler(void *handler_args, esp_event_base_t base, int3
             break;
         }
         cJSON *json_requestId = cJSON_GetObjectItem(tmp_cjson, "requestId");
-        // if (strcmp(json_requestId->valuestring, g_tasklist_reqid) == 0) {
-        //     ESP_LOGW(TAG, "incoming tasklist is the same as running, ignore ...");
-        //     xSemaphoreGive(g_mutex_tasklist_cjson);
-        //     break;
-        // }
+        if (strcmp(json_requestId->valuestring, g_tasklist_reqid) == 0) {
+            ESP_LOGW(TAG, "incoming tasklist is the same as running, ignore ...");
+            xSemaphoreGive(g_mtx_tasklist_cjson);
+            break;
+        }
         g_tasklist_cjson = tmp_cjson;
         xSemaphoreGive(g_mtx_tasklist_cjson);
 

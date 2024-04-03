@@ -14,9 +14,9 @@
 #include "event_loops.h"
 #include "data_defs.h"
 #include "storage.h"
-// #include "audio_player.h"
-// #include "app_sr.h"
-// #include "app_audio.h"
+#include "audio_player.h"
+#include "app_sr.h"
+#include "app_audio.h"
 #include "app_wifi.h"
 #include "app_time.h"
 #include "app_cmd.h"
@@ -70,15 +70,19 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 int board_init(void)
 {
     storage_init();
-    
+    bsp_spiffs_init_default();
+
     bsp_io_expander_init();
 
     lv_disp_t *lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
 
-
     bsp_rgb_init();
 
+    // bsp_codec_init();
+    // bsp_codec_volume_set(100, NULL);
+    // audio_play_task("/spiffs/echo_en_wake.wav");
+    
     return ESP_OK;
 }
 
@@ -145,14 +149,13 @@ void app_main(void)
     
     esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
 
+    // struct view_data_wifi_config cfg;
+    // memset(&cfg, 0, sizeof(cfg));
+    // strcpy( cfg.ssid, "M2-TEST");
+    // cfg.have_password = true;
+    // strcpy( cfg.password,  "seeedrxxxs!");
+    // esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
 
-    struct view_data_wifi_config cfg;
-    memset(&cfg, 0, sizeof(cfg));
-    strcpy( cfg.ssid, "M2-TEST");
-    cfg.have_password = true;
-    strcpy( cfg.password,  "seeedrocks!");
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
-    
     static char buffer[254];    /* Make sure buffer is enough for `sprintf` */
     while (1) {
         sprintf(buffer, "   Biggest /     Free /    Total\n"

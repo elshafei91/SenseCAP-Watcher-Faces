@@ -15,12 +15,14 @@
 
 static const char *TAG = "tasklist";
 
-static char p_image_buf[30*1024];
+static char p_image_buf;
 static int image_len =0;
 static SemaphoreHandle_t __g_data_mutex;
 
 void tasklist_init(void)
 {
+    p_image_buf = malloc(30*1024);
+    assert(p_image_buf);
     __g_data_mutex = xSemaphoreCreateMutex();
 }
 

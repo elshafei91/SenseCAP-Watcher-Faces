@@ -33,4 +33,4 @@ if (CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG)
     target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLOG_LOCAL_LEVEL=ESP_LOG_DEBUG")
 endif()
 
-# spiffs_create_partition_image(storage ../spiffs FLASH_IN_PROJECT)
+spiffs_create_partition_image(storage ../spiffs FLASH_IN_PROJECT)
