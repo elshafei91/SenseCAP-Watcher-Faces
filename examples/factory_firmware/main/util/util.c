@@ -20,9 +20,9 @@ int wifi_rssi_level_get(int rssi)
     }
 }
 
-int util_get_timestamp_ms(void)
+time_t util_get_timestamp_ms(void)
 {
 	time_t now;
 	time(&now);
-	return (int)now * 1000;
+	return now * 1000;
 }

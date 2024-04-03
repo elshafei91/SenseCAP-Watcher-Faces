@@ -263,7 +263,7 @@ esp_err_t app_mqtt_client_report_tasklist_ack(char *request_id, cJSON *task_sett
     const char *json_fmt =  \
     "{"
         "\"requestId\": \"%s\","
-        "\"timestamp\": %d,"
+        "\"timestamp\": %jd,"
         "\"intent\": \"order\","
         "\"type\": \"response\","
         "\"deviceEui\": \"%s\","
@@ -284,7 +284,7 @@ esp_err_t app_mqtt_client_report_tasklist_ack(char *request_id, cJSON *task_sett
     
     char *json_buff = malloc(2048);
     char *task_settings_str = cJSON_Print(task_settings_node);
-    int timestamp_ms = util_get_timestamp_ms();
+    time_t timestamp_ms = util_get_timestamp_ms();
 
     sniprintf(json_buff, 2048, json_fmt, request_id, timestamp_ms, g_deviceinfo.eui, task_settings_str);
 
@@ -311,7 +311,7 @@ esp_err_t app_mqtt_client_report_tasklist_status(int tasklist_id, int tasklist_s
     const char *json_fmt =  \
     "{"
         "\"requestId\": \"%s\","
-        "\"timestamp\": %d,"
+        "\"timestamp\": %jd,"
         "\"intent\": \"event\","
         "\"deviceEui\": \"%s\","
         "\"events\":  [{"
@@ -332,7 +332,7 @@ esp_err_t app_mqtt_client_report_tasklist_status(int tasklist_id, int tasklist_s
     
     char *json_buff = malloc(2048);
     char uuid[37];
-    int timestamp_ms = util_get_timestamp_ms();
+    time_t timestamp_ms = util_get_timestamp_ms();
 
     UUIDGen(uuid);
     sniprintf(json_buff, 2048, json_fmt, uuid, timestamp_ms, g_deviceinfo.eui, tasklist_id, tasklist_status_num,
@@ -360,7 +360,7 @@ esp_err_t app_mqtt_client_report_warn_event(int tasklist_id, char *tasklist_name
     const char *json_fmt =  \
     "{"
         "\"requestId\": \"%s\","
-        "\"timestamp\": %d,"
+        "\"timestamp\": %jd,"
         "\"intent\": \"event\","
         "\"deviceEui\": \"%s\","
         "\"deviceKey\": \"%s\","
@@ -386,7 +386,7 @@ esp_err_t app_mqtt_client_report_warn_event(int tasklist_id, char *tasklist_name
     
     char *json_buff = malloc(2048);
     char uuid[37];
-    int timestamp_ms = util_get_timestamp_ms();
+    time_t timestamp_ms = util_get_timestamp_ms();
 
     UUIDGen(uuid);
     sniprintf(json_buff, 2048, json_fmt, uuid, timestamp_ms, g_deviceinfo.eui, g_deviceinfo.key,

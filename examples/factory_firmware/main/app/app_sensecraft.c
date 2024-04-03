@@ -251,7 +251,9 @@ static char * __https_upload_image(uint8_t *image_data, size_t image_len, const 
     cJSON *dl = cJSON_GetObjectItem(g_task7_cjson, "dl");
     cJSON_ReplaceItemInObject(dl, "i", image);
 #if USE_TESTENV_LLM_API
-    cJSON_AddItemToObject(dl, "token", cJSON_CreateString("CEZHpciAM4LymJ_74gjUaApJ\""));
+    if (!cJSON_GetObjectItem(dl, "token")) {
+        cJSON_AddItemToObject(dl, "token", cJSON_CreateString("CEZHpciAM4LymJ_74gjUaApJ\""));
+    }
 #endif
     char *json_dl_str = cJSON_Print(dl);
     xSemaphoreGive(g_mtx_task7_cjson);
