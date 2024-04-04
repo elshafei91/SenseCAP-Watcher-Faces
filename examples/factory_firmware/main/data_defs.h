@@ -189,6 +189,13 @@ struct view_data_deviceinfo
     char key[33];
 };
 
+struct view_data_device_status
+{
+    char *fw_version;
+    char *hw_version;
+    uint8_t battery_per;
+};
+
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
@@ -281,6 +288,7 @@ struct ctrl_data_taskinfo7
 */
 enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
+    CTRL_EVENT_MQTT_CONNECTED,
     CTRL_EVENT_MQTT_TASKLIST_JSON,          //received tasklist json from MQTT
     CTRL_EVENT_BROADCAST_TASK7,             //broadcast info of task7 to all listeners, this is temp
     CTRL_EVENT_ALL,

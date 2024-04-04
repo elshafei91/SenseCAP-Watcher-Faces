@@ -27,6 +27,7 @@
 #include "app_mqtt_client.h"
 #include "app_taskengine.h"
 #include "app_rgb.h"
+#include "deviceinfo.h"
 
 #include "view.h"
 
@@ -98,6 +99,7 @@ int app_init(void)
     app_sscma_client_init();
     app_mqtt_client_init();
     app_sensecap_https_init();
+    app_device_status_monitor_init();
 
     // app_sr_start(false);
 

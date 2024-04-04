@@ -261,7 +261,7 @@ static char * __https_upload_image(uint8_t *image_data, size_t image_len, const 
     free(p_data);
 
     xSemaphoreTake(g_mtx_task7_cjson, portMAX_DELAY);
-    char *json_str = cJSON_Print(g_task7_cjson);
+    char *json_str = cJSON_PrintUnformatted(g_task7_cjson);
     ESP_LOGD(TAG, "task 7 json:\r\n%s", json_str);
     free(json_str);
 
@@ -272,7 +272,7 @@ static char * __https_upload_image(uint8_t *image_data, size_t image_len, const 
         cJSON_AddItemToObject(detail, "token", cJSON_CreateString("CEZHpciAM4LymJ_74gjUaApJ\""));
     }
 #endif
-    char *json_dl_str = cJSON_Print(detail);
+    char *json_dl_str = cJSON_PrintUnformatted(detail);
     xSemaphoreGive(g_mtx_task7_cjson);
 
     //ESP_LOGD(TAG, "upload image, post body:\r\n%s", json_dl_str);

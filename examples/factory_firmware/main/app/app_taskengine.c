@@ -116,10 +116,11 @@ static void __app_taskengine_task(void *p_arg)
         switch (g_taskengine_sm)
         {
         case TE_SM_LOAD_STORAGE_TL:
-            char *json_buff = malloc(2048);
-            size_t json_str_len = 2048;
-            if (storage_read("tasklist_json", json_buff, &json_str_len) != ESP_OK) {
-                ESP_LOGE(TAG, "failed to read tasklist from flash!");
+            char *json_buff = malloc(4096);
+            size_t json_str_len = 4096;
+            esp_err_t err0;
+            if ((err0 = storage_read("tasklist_json", json_buff, &json_str_len)) != ESP_OK) {
+                ESP_LOGE(TAG, "failed to read tasklist from flash, err=%d!", err0);
                 free(json_buff);
                 //jump state
                 g_taskengine_sm = TE_SM_WAIT_TL;
@@ -243,12 +244,14 @@ static void __app_taskengine_task(void *p_arg)
             if (!using_flash_tasklist) {
                 // sidejob: store tasklist into flash
                 xSemaphoreTake(g_mtx_tasklist_cjson, portMAX_DELAY);
-                char *json_buff1 = cJSON_Print(g_tasklist_cjson);
+                char *json_buff1 = cJSON_PrintUnformatted(g_tasklist_cjson);
                 xSemaphoreGive(g_mtx_tasklist_cjson);
+
+                // ESP_LOGD(TAG, "tasklist to be written:\r\n%s", json_buff1);
 
                 esp_err_t ret = storage_write("tasklist_json", json_buff1, strlen(json_buff1));
                 if (ret == ESP_OK) {
-                    ESP_LOGI(TAG, "tasklist json is saved into flash.");
+                    ESP_LOGI(TAG, "tasklist json is saved into flash, len=%d.", strlen(json_buff1));
                 } else {
                     ESP_LOGI(TAG, "tasklist json failed to be saved into flash.");
                 }
