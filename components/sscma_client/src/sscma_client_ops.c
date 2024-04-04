@@ -158,6 +158,11 @@ static void sscma_client_process(void *arg)
     sscma_client_reply_t reply;
     while (true)
     {
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+        if (client->inited == false)
+        {
+            continue;
+        }
         if (sscma_client_available(client, &rlen) == ESP_OK && rlen)
         {
             if (rlen + client->rx_buffer.pos > client->rx_buffer.len)
@@ -167,6 +172,7 @@ static void sscma_client_process(void *arg)
                 {
                     ESP_LOGW(TAG, "rx buffer is full");
                     client->rx_buffer.pos = 0;
+                    continue;
                 }
             }
             sscma_client_read(client, client->rx_buffer.data + client->rx_buffer.pos, rlen);
@@ -324,7 +330,6 @@ static void sscma_client_process(void *arg)
                 }
             }
         }
-        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
@@ -456,7 +461,9 @@ esp_err_t sscma_client_del(sscma_client_handle_t client)
         {
             if (client->io_expander)
             {
+                esp_io_expander_set_dir(client->io_expander, client->reset_gpio_num, IO_EXPANDER_OUTPUT);
                 esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level);
+                esp_io_expander_set_dir(client->io_expander, client->reset_gpio_num, IO_EXPANDER_INPUT);
             }
             else
             {
@@ -583,15 +590,16 @@ esp_err_t sscma_client_init(sscma_client_handle_t client)
 esp_err_t sscma_client_reset(sscma_client_handle_t client)
 {
     esp_err_t ret = ESP_OK;
+    vTaskSuspend(client->process_task);
     // perform hardware reset
     if (client->reset_gpio_num >= 0)
     {
         if (client->io_expander)
         {
-            ESP_RETURN_ON_ERROR(esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level), TAG, "set GPIO level failed");
+            esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level);
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, !client->reset_level);
             vTaskDelay(200 / portTICK_PERIOD_MS);
-            ESP_RETURN_ON_ERROR(esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, !client->reset_level), TAG, "set GPIO level failed");
-            vTaskDelay(300 / portTICK_PERIOD_MS);
             sscma_client_request(client, CMD_PREFIX CMD_AT_BREAK CMD_SUFFIX, NULL, false, 0);
         }
         else
@@ -600,7 +608,7 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
                 .mode = GPIO_MODE_OUTPUT,
                 .pin_bit_mask = 1ULL << client->reset_gpio_num,
             };
-            ESP_RETURN_ON_ERROR(gpio_config(&io_conf), TAG, "configure GPIO for RST line failed");
+            gpio_config(&io_conf);
             gpio_set_level(client->reset_gpio_num, client->reset_level);
             vTaskDelay(100 / portTICK_PERIOD_MS);
             gpio_set_level(client->reset_gpio_num, !client->reset_level);
@@ -614,6 +622,8 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
         // ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), TAG, "request reset failed");
         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for sscma to be ready
     }
+    ESP_LOGW(TAG, "reset done");
+    vTaskResume(client->process_task);
     return ret;
 }
 

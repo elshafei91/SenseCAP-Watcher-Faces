@@ -518,6 +518,10 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
     ret = spi_device_transmit(spi_client_io->spi_dev, &spi_trans);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
     *len = (spi_client_io->buffer[0] << 8) | spi_client_io->buffer[1];
+    if (*len == 0xFFFF)
+    {
+        *len = 0;
+    }
 err:
     spi_device_release_bus(spi_client_io->spi_dev);
     xSemaphoreGive(spi_client_io->lock);
