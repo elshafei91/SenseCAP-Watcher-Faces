@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <inttypes.h>
@@ -269,6 +270,7 @@ struct ctrl_data_taskinfo7
     SemaphoreHandle_t mutex;
     cJSON *task7;
     bool no_task7;  //if no task 7, imply local warn
+    intmax_t
 };
 
 /**

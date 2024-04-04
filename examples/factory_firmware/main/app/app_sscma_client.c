@@ -383,7 +383,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             lvgl_port_unlock();
             xSemaphoreGive(__g_data_mutex);
 
-            __timer_start(20);
+            __timer_start(10);
 
             break;
         }

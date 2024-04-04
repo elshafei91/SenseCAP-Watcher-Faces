@@ -304,7 +304,7 @@ esp_err_t app_mqtt_client_report_tasklist_ack(char *request_id, cJSON *task_sett
     return ret;
 }
 
-esp_err_t app_mqtt_client_report_tasklist_status(int tasklist_id, int tasklist_status_num)
+esp_err_t app_mqtt_client_report_tasklist_status(intmax_t tasklist_id, int tasklist_status_num)
 {
     int ret = ESP_OK;
 
@@ -319,7 +319,7 @@ esp_err_t app_mqtt_client_report_tasklist_status(int tasklist_id, int tasklist_s
             "\"value\": {"
                 "\"3968\": ["
                     "{"
-                        "\"tlid\": %d,"
+                        "\"tlid\": %jd,"
                         "\"status\": %d"
                     "}"
                 "]"
@@ -353,7 +353,7 @@ esp_err_t app_mqtt_client_report_tasklist_status(int tasklist_id, int tasklist_s
     return ret;
 }
 
-esp_err_t app_mqtt_client_report_warn_event(int tasklist_id, char *tasklist_name, int warn_type)
+esp_err_t app_mqtt_client_report_warn_event(intmax_t tasklist_id, char *tasklist_name, int warn_type)
 {
     int ret = ESP_OK;
 
@@ -371,7 +371,7 @@ esp_err_t app_mqtt_client_report_warn_event(int tasklist_id, char *tasklist_name
                 "\"measurements\": {"
                     "\"5004\": ["
                         "{"
-                            "\"tlid\": %d,"
+                            "\"tlid\": %jd,"
                             "\"tn\": \"%s\","
                             "\"warnType\": %d"
                         "}"

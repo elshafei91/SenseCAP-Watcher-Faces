@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
@@ -35,6 +36,7 @@ static cJSON *g_tasklist_cjson;
 static struct ctrl_data_taskinfo7 g_ctrl_data_taskinfo_7;  // this is garbage
 static struct ctrl_data_mqtt_tasklist_cjson *g_ctrl_data_mqtt_tasklist_cjson;
 static char g_tasklist_reqid[40];
+static intmax_t g_current_running_tlid;
 
 static esp_err_t __validate_incoming_tasklist_cjson(cJSON *tl_cjson)
 {
@@ -114,6 +116,7 @@ static void __app_taskengine_task(void *p_arg)
                                 &tasklist_exist,
                                 4, /* uint32_t size */
                                 portMAX_DELAY);
+            g_current_running_tlid = 0;
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  //task sleep
             break;
 
@@ -127,6 +130,7 @@ static void __app_taskengine_task(void *p_arg)
                 tasklist_cjson_from_flash = NULL;
             }
             // TODO: this is temp solution for EW
+            xSemaphoreTake(g_mtx_tasklist_cjson, portMAX_DELAY);
             cJSON *node = g_tasklist_cjson;
             cJSON *item, *item2;
             cJSON *found = NULL;
@@ -136,6 +140,9 @@ static void __app_taskengine_task(void *p_arg)
                     if ((node = cJSON_GetObjectItem(node, "value"))) {
                         if ((node = cJSON_GetObjectItem(node, "taskSettings"))) {
                             if ((node = cJSON_GetArrayItem(node, 0))) {
+                                if (cJSON_GetObjectItem(node, "tlid")) {
+                                    g_current_running_tlid = (intmax_t)(cJSON_GetObjectItem(node, "tlid")->valuedouble);
+                                }
                                 if ((node = cJSON_GetObjectItem(node, "tl"))) {
                                     array_len = cJSON_GetArraySize(node);
                                     ESP_LOGD(TAG, "array_len=%d", array_len);
@@ -162,6 +169,8 @@ static void __app_taskengine_task(void *p_arg)
                     }
                 }
             }
+            xSemaphoreGive(g_mtx_tasklist_cjson);
+
             if (found != NULL) {
                 xSemaphoreTake(g_ctrl_data_taskinfo_7.mutex, portMAX_DELAY);
                 if (g_ctrl_data_taskinfo_7.task7 != NULL) {
@@ -322,6 +331,8 @@ esp_err_t app_taskengine_init(void)
     g_ctrl_data_taskinfo_7.task7 = NULL;
     g_ctrl_data_taskinfo_7.no_task7 = true;
 
+    g_current_running_tlid = 0;
+
     xTaskCreate(__app_taskengine_task, "app_taskengine_task", 1024 * 4, NULL, 4, &g_task);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_TASKLIST_JSON,
@@ -333,4 +344,9 @@ esp_err_t app_taskengine_init(void)
 esp_err_t app_taskengine_register_task_executor(void *something)
 {
     return ESP_OK;
+}
+
+intmax_t app_taskengine_get_current_tlid(void)
+{
+    return g_current_running_tlid;
 }

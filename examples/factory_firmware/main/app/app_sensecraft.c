@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <sys/cdefs.h>
 #include <inttypes.h>
 
@@ -18,6 +19,8 @@
 #include "event_loops.h"
 #include "app_tasklist.h"
 #include "app_audio.h"
+#include "app_mqtt_client.h"
+#include "app_taskengine.h"
 
 #include "view_image_preview.h"
 #include "ui.h"
@@ -91,6 +94,10 @@ static void tmp_parse_cloud_result(char *result)
                     // cloud warn
                     const char *warn_str = "cloud warn";
                     esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
+                    intmax_t tlid = app_taskengine_get_current_tlid();
+                    if (tlid != 0) {
+                        app_mqtt_client_report_warn_event(tlid, "do you care tl name?", 1/*local warn*/);
+                    }
                 }
             }
         } else {
@@ -516,9 +523,11 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     last_image_upload_time = now;
 
     bool notask7 = true;
+    cJSON *json;
     if (g_ctrl_data_taskinfo_7) {
         xSemaphoreTake(g_ctrl_data_taskinfo_7->mutex, portMAX_DELAY);
         notask7 = g_ctrl_data_taskinfo_7->no_task7;
+        if ((json = cJSON_GetObjectItem(g_ctrl_data_taskinfo_7->task7, "")))
         xSemaphoreGive(g_ctrl_data_taskinfo_7->mutex);
     }
     ESP_LOGI(TAG, "local warn? %d", notask7);
@@ -526,6 +535,10 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
         const char *warn_str = "local warn";
         audio_play_task("/spiffs/echo_en_wake.wav");
         esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
+        intmax_t tlid = app_taskengine_get_current_tlid();
+        if (tlid != 0) {
+            app_mqtt_client_report_warn_event(tlid, "do you care tl name?", 0/*local warn*/);
+        }
     } else {
         ESP_LOGI(TAG, "Need upload image!");
         // set g_predet to 2 to identify the detection of human to TRUE
