@@ -6,9 +6,13 @@
 #include "ui.h"
 #include "ui_helpers.h"
 #include "esp_log.h"
+#include "esp_event.h"
+#include "event_loops.h"
+#include "data_defs.h"
+
 
 static const char * TAG = "ui:event";
-uint8_t * g_iftasklist;
+uint8_t g_iftasklist;
 
 ///////////////////// VARIABLES ////////////////////
 void start_anim_Animation(lv_obj_t * TargetObject, int delay);
@@ -620,6 +624,10 @@ void ui_event_predet1e(lv_event_t * e)
         lv_group_add_obj(g_main, ui_mainbtn3);
         lv_group_add_obj(g_main, ui_mainbtn4);
 
+        ESP_LOGI(TAG, "ui_event_predet1e");
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_STOP, 
+                                    NULL,  0, portMAX_DELAY);
+
         _ui_screen_change(&ui_mainscreen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_mainscreen_screen_init);
     }
 }
@@ -651,6 +659,10 @@ void ui_event_predet2e(lv_event_t * e)
         lv_group_add_obj(g_main, ui_mainbtn2);
         lv_group_add_obj(g_main, ui_mainbtn3);
         lv_group_add_obj(g_main, ui_mainbtn4);
+
+        ESP_LOGI(TAG, "ui_event_predet2e");
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_STOP, 
+                                    NULL,  0, portMAX_DELAY);
 
         _ui_screen_change(&ui_mainscreen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_mainscreen_screen_init);
     }

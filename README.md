@@ -1,8 +1,8 @@
-# IndoorCombo
+# SenseCAP Watcher
 
 ## Introduction
 
-The project provides examples of how to develop project for IndorCombo. It is based on the [ESP-IDF](https://github.com/espressif/esp-idf).
+The project provides basic SDK for the SenseCAP Watcher, as well as the examples for getting started. It is based on the [ESP-IDF](https://github.com/espressif/esp-idf).
 
 
 ## Getting Started
@@ -18,13 +18,13 @@ to setup the built toolchain used by SSCMA examples. Currently we're using the l
 1. Clone our repository.
 
     ```sh
-    git clone https://github.com/Seeed-Studio/IndoorCombo
+    git clone https://github.com/Seeed-Studio/SenseCAP-Watcher
     ```
 
-2. Go to `IndoorCombo` folder.
+2. Go to `SenseCAP-Watcher` folder.
 
     ```sh
-    cd IndoorCombo
+    cd SenseCAP-Watcher
     ```
 
 3. Fetch the submodules.
@@ -90,7 +90,7 @@ to setup the built toolchain used by SSCMA examples. Currently we're using the l
 
 ## Contributing
 
-- If you find any issue in using these examples, or wish to submit an enhancement request, please use the raise a [Issue](https://github.com/Seeed-Studio/IndoorCombo/issues) or submit a [Pull Request](https://github.com/Seeed-Studio/IndoorCombo/pulls).
+- If you find any issue in using these examples, or wish to submit an enhancement request, please use the raise a [Issue](https://github.com/Seeed-Studio/SenseCAP-Watcher/issues) or submit a [Pull Request](https://github.com/Seeed-Studio/SenseCAP-Watcher/pulls).
 
 
 ## License

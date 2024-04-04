@@ -26,7 +26,7 @@ void ui_ltask_back_screen_init(void)
     lv_obj_set_width(ui_ltaskbb1t, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_ltaskbb1t, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_ltaskbb1t, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_ltaskbb1t, "End task");
+    lv_label_set_text(ui_ltaskbb1t, "End Task");
 
     ui_ltaskbb2 = lv_btn_create(ui_ltask_back);
     lv_obj_set_width(ui_ltaskbb2, 32);

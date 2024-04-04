@@ -262,18 +262,20 @@ static char * __https_upload_image(uint8_t *image_data, size_t image_len, const 
 
     xSemaphoreTake(g_mtx_task7_cjson, portMAX_DELAY);
     char *json_str = cJSON_Print(g_task7_cjson);
-    cJSON *dl = cJSON_GetObjectItem(g_task7_cjson, "dl");
-    cJSON_ReplaceItemInObject(dl, "i", image);
+    ESP_LOGD(TAG, "task 7 json:\r\n%s", json_str);
+    free(json_str);
+
+    cJSON *detail = cJSON_GetObjectItem(g_task7_cjson, "detail");
+    cJSON_ReplaceItemInObject(detail, "i", image);
 #if USE_TESTENV_LLM_API
-    if (!cJSON_GetObjectItem(dl, "token")) {
-        cJSON_AddItemToObject(dl, "token", cJSON_CreateString("CEZHpciAM4LymJ_74gjUaApJ\""));
+    if (!cJSON_GetObjectItem(detail, "token")) {
+        cJSON_AddItemToObject(detail, "token", cJSON_CreateString("CEZHpciAM4LymJ_74gjUaApJ\""));
     }
 #endif
-    char *json_dl_str = cJSON_Print(dl);
+    char *json_dl_str = cJSON_Print(detail);
     xSemaphoreGive(g_mtx_task7_cjson);
 
-    ESP_LOGD(TAG, "task 7 json:\r\n%s", json_str);
-    ESP_LOGD(TAG, "upload image, post body:\r\n%s", json_dl_str);
+    //ESP_LOGD(TAG, "upload image, post body:\r\n%s", json_dl_str);
 
     char *api_host = SENSECRAFT_HTTPS_URL;
 
@@ -283,7 +285,7 @@ static char * __https_upload_image(uint8_t *image_data, size_t image_len, const 
 
     char *result = __request(api_host, NULL, "application/json", 
                             HTTP_METHOD_POST, NULL, (uint8_t *)json_dl_str, strlen(json_dl_str));
-    free(json_str);
+    
     free(json_dl_str);
 
     if (result != NULL)

@@ -69,7 +69,7 @@ void ui_preview_detection_screen_init(void)
     lv_obj_set_width(ui_predet1et, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_predet1et, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_predet1et, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_predet1et, "End task");
+    lv_label_set_text(ui_predet1et, "End Task");
     lv_obj_set_style_text_color(ui_predet1et, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_predet1et, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -149,7 +149,7 @@ void ui_preview_detection_screen_init(void)
     lv_obj_set_width(ui_predet2et, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_predet2et, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_predet2et, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_predet2et, "End task");
+    lv_label_set_text(ui_predet2et, "End Task");
     lv_obj_set_style_text_color(ui_predet2et, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_predet2et, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 

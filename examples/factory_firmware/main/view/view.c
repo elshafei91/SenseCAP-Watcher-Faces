@@ -96,9 +96,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             break;
         }
         case VIEW_EVENT_TASKLIST_EXIST: {
-            uint32_t *p_st = (uint32_t *)event_data;
+            uint32_t p_st = *(uint32_t *)event_data;
             ESP_LOGI(TAG, "event: VIEW_EVENT_TASKLIST_EXIST");
-            g_iftasklist = *p_st;
+            g_iftasklist = (uint8_t)p_st;
             break;
         }
         default:
