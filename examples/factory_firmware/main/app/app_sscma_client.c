@@ -101,14 +101,13 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) != ESP_OK) {
                 break;
             }
-            // ESP_LOGI(TAG, "image_size: %d\n", img_size);
+            //ESP_LOGI(TAG, "image_size: %d\n", img_size);
 
             if (sscma_utils_fetch_boxes_from_reply(reply, &boxes, &box_count) != ESP_OK)
             {
                 free(img);
                 break;
             }
-
             invoke.image.p_buf = (uint8_t *)img;
             invoke.image.len = img_size;
             invoke.image.time = time(NULL);
@@ -130,7 +129,6 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             lvgl_port_lock(0);
             view_image_preview_flush(&invoke);
             lvgl_port_unlock();
-
             if( g_model_id == 1 && app_sensecraft_image_invoke_check(&invoke) ) {
                 save_image_invoke(&invoke);
             }

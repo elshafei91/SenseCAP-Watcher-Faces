@@ -324,7 +324,7 @@ esp_err_t app_mqtt_client_report_tasklist_status(intmax_t tasklist_id, int taskl
                     "}"
                 "]"
             "},"
-            "\"timestamp\": %d,"
+            "\"timestamp\": %jd,"
         "}]"
     "}";
 
@@ -377,7 +377,7 @@ esp_err_t app_mqtt_client_report_warn_event(intmax_t tasklist_id, char *tasklist
                         "}"
                     "]"
                 "},"
-                "\"measureTime\": %d"
+                "\"measureTime\": %jd"
             "}]"
         "}]"
     "}";
