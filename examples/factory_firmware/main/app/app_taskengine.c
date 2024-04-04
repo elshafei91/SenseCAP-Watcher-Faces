@@ -67,8 +67,10 @@ err:
     return ret;
 }
 
-static void __build_task_ack_and_send()
+static void __build_task_ack_and_send(bool ensure_empty_task)
 {
+    ESP_LOGI(TAG, "%s", __func__);
+
     xSemaphoreTake(g_mtx_tasklist_cjson, portMAX_DELAY);
     cJSON *json_root = g_tasklist_cjson;
     do {
@@ -87,6 +89,14 @@ static void __build_task_ack_and_send()
 
         cJSON *json_order_value_taskSettings = cJSON_GetObjectItem(json_order_value, "taskSettings");
         if (json_order_value_taskSettings == NULL) break;
+
+        //ensure the taskSettings is empty
+        if (ensure_empty_task) {
+            if (cJSON_GetArraySize(json_order_value_taskSettings) != 0) {
+                cJSON_ReplaceItemInObject(json_order_value, "taskSettings", cJSON_CreateArray());
+                json_order_value_taskSettings = cJSON_GetObjectItem(json_order_value, "taskSettings");
+            }
+        }
 
         app_mqtt_client_report_tasklist_ack(request_id, json_order_value_taskSettings);
     } while (0);
@@ -202,15 +212,6 @@ static void __app_taskengine_task(void *p_arg)
 
             if (empty_task) {
                 ESP_LOGW(TAG, "tasklist is empty, means stop the tasklist.");
-                g_current_running_tlid = 0;
-
-                esp_err_t ret = storage_write("tasklist_json", "{", 1);  //write an invalid json, aka delete the tasklist in flash
-                if (ret == ESP_OK) {
-                    ESP_LOGI(TAG, "tasklist json is deleted from flash.");
-                } else {
-                    ESP_LOGI(TAG, "tasklist json can not be deleted from flash.");
-                }
-                __build_task_ack_and_send();
                 g_taskengine_sm = TE_SM_TL_STOP;
                 break;
             }
@@ -254,7 +255,7 @@ static void __app_taskengine_task(void *p_arg)
                 free(json_buff1);
                 
                 // valid tasklist, task ack to MQTT
-                __build_task_ack_and_send();
+                __build_task_ack_and_send(false);
             }
 
             // translate done, jump state
@@ -293,6 +294,16 @@ static void __app_taskengine_task(void *p_arg)
 
         case TE_SM_TL_STOP:
             // TODO: 
+            g_current_running_tlid = 0;
+
+            esp_err_t ret = storage_write("tasklist_json", "{", 1);  //write an invalid json, aka delete the tasklist in flash
+            if (ret == ESP_OK) {
+                ESP_LOGI(TAG, "tasklist json is deleted from flash.");
+            } else {
+                ESP_LOGI(TAG, "tasklist json can not be deleted from flash.");
+            }
+            __build_task_ack_and_send(true);
+
             g_taskengine_sm = TE_SM_WAIT_TL;
             break;
         
@@ -334,6 +345,13 @@ static void __ctrl_event_handler(void *handler_args, esp_event_base_t base, int3
 
         break;
     }
+    case VIEW_EVENT_TASK_STOP:
+    {
+        ESP_LOGI(TAG, "received event: VIEW_EVENT_TASK_STOP");
+        g_taskengine_sm = TE_SM_TL_STOP;
+        xTaskNotifyGive(g_task);  // wakeup the task
+        break;
+    }
     default:
         break;
     }
@@ -359,6 +377,9 @@ esp_err_t app_taskengine_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_TASKLIST_JSON,
                                                             __ctrl_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_STOP,
+                                                             __ctrl_event_handler, NULL, NULL));
 
     return ESP_OK;
 }

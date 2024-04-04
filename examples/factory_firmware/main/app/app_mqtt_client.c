@@ -392,7 +392,7 @@ esp_err_t app_mqtt_client_report_warn_event(intmax_t tasklist_id, char *tasklist
     sniprintf(json_buff, 2048, json_fmt, uuid, timestamp_ms, g_deviceinfo.eui, g_deviceinfo.key,
               tasklist_id, tasklist_name, warn_type, timestamp_ms);
 
-    ESP_LOGD(TAG, "app_mqtt_client_report_tasklist_ack: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
+    ESP_LOGD(TAG, "app_mqtt_client_report_warn_event: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
     int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_task_status_change, json_buff, strlen(json_buff),
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
