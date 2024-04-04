@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
@@ -35,6 +36,7 @@ static cJSON *g_tasklist_cjson;
 static struct ctrl_data_taskinfo7 g_ctrl_data_taskinfo_7;  // this is garbage
 static struct ctrl_data_mqtt_tasklist_cjson *g_ctrl_data_mqtt_tasklist_cjson;
 static char g_tasklist_reqid[40];
+static intmax_t g_current_running_tlid;
 
 static esp_err_t __validate_incoming_tasklist_cjson(cJSON *tl_cjson)
 {
@@ -63,6 +65,32 @@ static esp_err_t __validate_incoming_tasklist_cjson(cJSON *tl_cjson)
     //TODO
 err:    
     return ret;
+}
+
+static void __build_task_ack_and_send()
+{
+    xSemaphoreTake(g_mtx_tasklist_cjson, portMAX_DELAY);
+    cJSON *json_root = g_tasklist_cjson;
+    do {
+        cJSON *json_requestId = cJSON_GetObjectItem(json_root, "requestId");
+        if (json_requestId == NULL) break;
+        char *request_id = json_requestId->valuestring;
+
+        cJSON *json_order = cJSON_GetObjectItem(json_root, "order");
+        if (json_order == NULL) break;
+
+        cJSON *json_order0 = cJSON_GetArrayItem(json_order, 0);
+        if (json_order0 == NULL) break;
+
+        cJSON *json_order_value = cJSON_GetObjectItem(json_order0, "value");
+        if (json_order_value == NULL) break;
+
+        cJSON *json_order_value_taskSettings = cJSON_GetObjectItem(json_order_value, "taskSettings");
+        if (json_order_value_taskSettings == NULL) break;
+
+        app_mqtt_client_report_tasklist_ack(request_id, json_order_value_taskSettings);
+    } while (0);
+    xSemaphoreGive(g_mtx_tasklist_cjson);
 }
 
 static void __app_taskengine_task(void *p_arg)
@@ -114,6 +142,7 @@ static void __app_taskengine_task(void *p_arg)
                                 &tasklist_exist,
                                 4, /* uint32_t size */
                                 portMAX_DELAY);
+            g_current_running_tlid = 0;
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  //task sleep
             break;
 
@@ -127,15 +156,22 @@ static void __app_taskengine_task(void *p_arg)
                 tasklist_cjson_from_flash = NULL;
             }
             // TODO: this is temp solution for EW
+            xSemaphoreTake(g_mtx_tasklist_cjson, portMAX_DELAY);
             cJSON *node = g_tasklist_cjson;
             cJSON *item, *item2;
             cJSON *found = NULL;
             int array_len, i;
+            bool empty_task = false;
             if ((node = cJSON_GetObjectItem(node, "order"))) {
                 if ((node = cJSON_GetArrayItem(node, 0))) {
                     if ((node = cJSON_GetObjectItem(node, "value"))) {
                         if ((node = cJSON_GetObjectItem(node, "taskSettings"))) {
+                            array_len = cJSON_GetArraySize(node);
+                            if (array_len == 0) empty_task = true;
                             if ((node = cJSON_GetArrayItem(node, 0))) {
+                                if (cJSON_GetObjectItem(node, "tlid")) {
+                                    g_current_running_tlid = (intmax_t)(cJSON_GetObjectItem(node, "tlid")->valuedouble);
+                                }
                                 if ((node = cJSON_GetObjectItem(node, "tl"))) {
                                     array_len = cJSON_GetArraySize(node);
                                     ESP_LOGD(TAG, "array_len=%d", array_len);
@@ -162,6 +198,23 @@ static void __app_taskengine_task(void *p_arg)
                     }
                 }
             }
+            xSemaphoreGive(g_mtx_tasklist_cjson);
+
+            if (empty_task) {
+                ESP_LOGW(TAG, "tasklist is empty, means stop the tasklist.");
+                g_current_running_tlid = 0;
+
+                esp_err_t ret = storage_write("tasklist_json", "{", 1);  //write an invalid json, aka delete the tasklist in flash
+                if (ret == ESP_OK) {
+                    ESP_LOGI(TAG, "tasklist json is deleted from flash.");
+                } else {
+                    ESP_LOGI(TAG, "tasklist json can not be deleted from flash.");
+                }
+                __build_task_ack_and_send();
+                g_taskengine_sm = TE_SM_TL_STOP;
+                break;
+            }
+
             if (found != NULL) {
                 xSemaphoreTake(g_ctrl_data_taskinfo_7.mutex, portMAX_DELAY);
                 if (g_ctrl_data_taskinfo_7.task7 != NULL) {
@@ -200,30 +253,8 @@ static void __app_taskengine_task(void *p_arg)
                 }
                 free(json_buff1);
                 
-
                 // valid tasklist, task ack to MQTT
-                xSemaphoreTake(g_mtx_tasklist_cjson, portMAX_DELAY);
-                cJSON *json_root = g_tasklist_cjson;
-                do {
-                    cJSON *json_requestId = cJSON_GetObjectItem(json_root, "requestId");
-                    if (json_requestId == NULL) break;
-                    char *request_id = json_requestId->valuestring;
-
-                    cJSON *json_order = cJSON_GetObjectItem(json_root, "order");
-                    if (json_order == NULL) break;
-
-                    cJSON *json_order0 = cJSON_GetArrayItem(json_order, 0);
-                    if (json_order0 == NULL) break;
-
-                    cJSON *json_order_value = cJSON_GetObjectItem(json_order0, "value");
-                    if (json_order_value == NULL) break;
-
-                    cJSON *json_order_value_taskSettings = cJSON_GetObjectItem(json_order_value, "taskSettings");
-                    if (json_order_value_taskSettings == NULL) break;
-
-                    app_mqtt_client_report_tasklist_ack(request_id, json_order_value_taskSettings);
-                } while (0);
-                xSemaphoreGive(g_mtx_tasklist_cjson);
+                __build_task_ack_and_send();
             }
 
             // translate done, jump state
@@ -322,6 +353,8 @@ esp_err_t app_taskengine_init(void)
     g_ctrl_data_taskinfo_7.task7 = NULL;
     g_ctrl_data_taskinfo_7.no_task7 = true;
 
+    g_current_running_tlid = 0;
+
     xTaskCreate(__app_taskengine_task, "app_taskengine_task", 1024 * 4, NULL, 4, &g_task);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_TASKLIST_JSON,
@@ -333,4 +366,9 @@ esp_err_t app_taskengine_init(void)
 esp_err_t app_taskengine_register_task_executor(void *something)
 {
     return ESP_OK;
+}
+
+intmax_t app_taskengine_get_current_tlid(void)
+{
+    return g_current_running_tlid;
 }
