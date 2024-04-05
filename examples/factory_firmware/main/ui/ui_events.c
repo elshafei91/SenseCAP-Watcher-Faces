@@ -278,6 +278,9 @@ void predet3c_cb(lv_event_t * e)
 {
 	lv_obj_add_flag(ui_predetp3, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_clear_flag(g_prepage, LV_OBJ_FLAG_HIDDEN);
+
+	lv_group_remove_all_objs(g_main);
+	lv_group_add_obj(g_main, ui_previewp2);
 }
 
 void waitT_cb(lv_event_t * e)
@@ -292,7 +295,18 @@ void previewp1_cb(lv_event_t * e)
 
 void previewp2_cb(lv_event_t * e)
 {
-	_preview_panel_status(2);
+	switch (g_alarm_)
+	{
+	case 0:
+		_preview_panel_status(2);
+		break;
+	case 1:
+		_preview_panel_status(3);
+		break;
+	
+	default:
+		break;
+	}
 }
 
 void _preview_panel_status(uint8_t id)
@@ -323,7 +337,14 @@ void _preview_panel_status(uint8_t id)
 		lv_group_add_obj(g_main, ui_predet2c);
 		break;
 	case 3:
-		/* code */
+		lv_obj_add_flag(ui_predetp1, LV_OBJ_FLAG_HIDDEN);
+		lv_obj_add_flag(ui_predetp2, LV_OBJ_FLAG_HIDDEN);
+		lv_obj_clear_flag(ui_predetp3, LV_OBJ_FLAG_HIDDEN);
+		lv_obj_move_foreground(ui_predetp3);
+
+		lv_group_remove_all_objs(g_main);
+		lv_group_add_obj(g_main, ui_predet3e);
+		lv_group_add_obj(g_main, ui_predet3c);
 		break;
 
 	
