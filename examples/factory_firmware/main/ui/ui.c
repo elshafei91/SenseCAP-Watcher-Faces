@@ -619,7 +619,7 @@ void ui_event_preview_detection(lv_event_t * e)
     lv_indev_type_t indev_type = lv_indev_get_type(indev);
     lv_event_code_t event_code = lv_event_get_code(e);
     if(event_code == LV_EVENT_CLICKED && indev_type == LV_INDEV_TYPE_ENCODER) {
-        predet_cb(e);
+        preview_detection_click_cb(e);
     }
 }
 void ui_event_predet1v(lv_event_t * e)
@@ -627,7 +627,8 @@ void ui_event_predet1v(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
-        predet1v_cb(e);
+        ESP_LOGD(TAG, "ui_event_predet1e");
+        predet1v_click_cb(e);
     }
 }
 void ui_event_predet1e(lv_event_t * e)
@@ -642,7 +643,7 @@ void ui_event_predet1e(lv_event_t * e)
         lv_group_add_obj(g_main, ui_mainbtn3);
         lv_group_add_obj(g_main, ui_mainbtn4);
 
-        ESP_LOGI(TAG, "ui_event_predet1e");
+        ESP_LOGD(TAG, "ui_event_predet1e");
         esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_STOP, 
                                     NULL,  0, portMAX_DELAY);
 
@@ -678,7 +679,7 @@ void ui_event_predet2e(lv_event_t * e)
         lv_group_add_obj(g_main, ui_mainbtn3);
         lv_group_add_obj(g_main, ui_mainbtn4);
 
-        ESP_LOGI(TAG, "ui_event_predet2e");
+        ESP_LOGD(TAG, "ui_event_predet2e");
         esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_STOP, 
                                     NULL,  0, portMAX_DELAY);
 

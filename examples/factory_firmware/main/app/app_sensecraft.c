@@ -31,7 +31,7 @@
 // #define SENSECRAFT_HTTPS_URL  "http://192.168.100.10:8888"
 #define SENSECRAFT_HTTPS_URL  "https://csg-demo.exposeweb.pro/ai001tusuknyshiphjexy/v1/watcher/vision"
 
-#define GLOBAL_SILENT_TIME     30  //temp, this is ugly
+#define GLOBAL_SILENT_TIME     12  //temp, this is ugly
 
 #define UPLOAD_FLAG_READY      0
 #define UPLOAD_FLAG_REQ        1
