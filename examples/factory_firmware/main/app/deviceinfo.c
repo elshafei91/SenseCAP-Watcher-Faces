@@ -99,7 +99,7 @@ esp_err_t app_device_status_monitor_init(void)
 
     g_sem_mqttconn = xSemaphoreCreateBinary();
 
-    xTaskCreate(__deviceinfo_task, "deviceinfo_task", 1024 * 3, NULL, 11, NULL);
+    xTaskCreate(__deviceinfo_task, "deviceinfo_task", 1024 * 3, NULL, 1, NULL);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED,
                                                             __event_loop_handler, NULL, NULL));

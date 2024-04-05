@@ -55,15 +55,10 @@ static void __timer_callback(void* arg)
 }
 
 static void __timer_start( int s)
-{
-    const esp_timer_create_args_t timer_args = {
-            .callback = &__timer_callback,
-            /* argument specified here will be passed to timer callback function */
-            .arg = (void*) alarm_timer_handle,
-            .name = "timer mode"
-    };
-    ESP_ERROR_CHECK( esp_timer_create(&timer_args, &alarm_timer_handle));
-    
+{  
+    if (esp_timer_is_active(alarm_timer_handle)) {
+        esp_timer_stop(alarm_timer_handle);
+    }
     ESP_ERROR_CHECK(esp_timer_start_once(alarm_timer_handle, (uint64_t) s * 1000000 ));
 }
 
@@ -487,7 +482,12 @@ int app_sscma_client_init()
     assert(image_invoke.image.p_buf);
 
     __init();
-    
+
+    const esp_timer_create_args_t timer_args = {
+            .callback = &__timer_callback,
+            .name = "alarm off timer"
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&timer_args, &alarm_timer_handle));
 
     __g_data_mutex = xSemaphoreCreateMutex();
 

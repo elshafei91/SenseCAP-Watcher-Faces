@@ -86,17 +86,24 @@ static void  image_upload_flag_set(uint8_t flag)
 // this is ugly
 static void tmp_parse_cloud_result(char *result)
 {
+    intmax_t tlid = app_taskengine_get_current_tlid();
+
+    if (tlid == 0) {
+        ESP_LOGW(TAG, "parse_cloud_result, no tasklist running, skip parsing...");
+        return;
+    }
+
     cJSON *json = cJSON_Parse(result);
     if (json) {
         if (cJSON_GetObjectItem(json, "code")->valueint == 0) {
             if ((json = cJSON_GetObjectItem(json, "data"))) {
-                if ((json = cJSON_GetObjectItem(json, "tlid"))) {
-                    // cloud warn
-                    const char *warn_str = "cloud warn";
-                    audio_play_task("/spiffs/alarm-di.wav");
-                    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
-                    intmax_t tlid = app_taskengine_get_current_tlid();
-                    if (tlid != 0) {
+                if ((json = cJSON_GetObjectItem(json, "tl"))) {
+                    int array_len = cJSON_GetArraySize(json);
+                    if (array_len > 0) {
+                        // cloud warn
+                        const char *warn_str = "cloud warn";
+                        audio_play_task("/spiffs/alarm-di.wav");
+                        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
                         app_mqtt_client_report_warn_event(tlid, "The monitored event happened.", 1/*cloud warn*/);
                     }
                 }
@@ -484,6 +491,11 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     if (g_ctrl_data_taskinfo_7 == NULL) {
         return 0;
     }
+    // 如果没有tasklist在跑，没有必要做下面检测
+    intmax_t tlid = app_taskengine_get_current_tlid();
+    if (tlid == 0) {
+        return 0;
+    }
 
     uint8_t max_score = 0;
     for (size_t i = 0; i < p_data->boxes_cnt; i++)
@@ -532,10 +544,7 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
         xSemaphoreGive(g_ctrl_data_taskinfo_7->mutex);
     }
     ESP_LOGI(TAG, "local warn? %d", notask7);
-    intmax_t tlid = app_taskengine_get_current_tlid();
-    if (tlid == 0) {
-        return 0;
-    }
+    
     if (notask7) {
         const char *warn_str = "local warn";
         audio_play_task("/spiffs/alarm-di.wav");
