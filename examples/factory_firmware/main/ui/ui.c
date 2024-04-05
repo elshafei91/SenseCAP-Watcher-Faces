@@ -12,7 +12,7 @@
 
 
 static const char * TAG = "ui:event";
-uint8_t g_iftasklist;
+uint8_t g_iftasklist = 0;
 
 ///////////////////// VARIABLES ////////////////////
 void start_anim_Animation(lv_obj_t * TargetObject, int delay);
@@ -487,7 +487,7 @@ void ui_event_virtual(lv_event_t * e)
     create_timer(0);
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         lv_group_add_obj(g_main, ui_mainbtn1);
         lv_group_add_obj(g_main, ui_mainbtn2);
         lv_group_add_obj(g_main, ui_mainbtn3);
@@ -497,9 +497,12 @@ void ui_event_virtual(lv_event_t * e)
 }
 void ui_event_mainbtn1(lv_event_t * e)
 {
+    lv_indev_t * indev = lv_indev_get_act();
+    if(indev == NULL) return;
+    lv_indev_type_t indev_type = lv_indev_get_type(indev);
+
     lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED && indev_type == LV_INDEV_TYPE_ENCODER) {
         lv_group_remove_all_objs(g_main);
         lv_group_add_obj(g_main, ui_menubtn1);
         lv_group_add_obj(g_main, ui_menubtn2);
@@ -514,9 +517,12 @@ void ui_event_mainbtn1(lv_event_t * e)
 }
 void ui_event_mainbtn2(lv_event_t * e)
 {
+    lv_indev_t * indev = lv_indev_get_act();
+    if(indev == NULL) return;
+    lv_indev_type_t indev_type = lv_indev_get_type(indev);
+
     lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED && indev_type == LV_INDEV_TYPE_ENCODER) {
         // check if there any task storage were in the flash
         if(g_iftasklist)
         {
@@ -537,9 +543,12 @@ void ui_event_mainbtn2(lv_event_t * e)
 }
 void ui_event_mainbtn3(lv_event_t * e)
 {
+    lv_indev_t * indev = lv_indev_get_act();
+    if(indev == NULL) return;
+    lv_indev_type_t indev_type = lv_indev_get_type(indev);
+
     lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED && indev_type == LV_INDEV_TYPE_ENCODER) {
         _ui_screen_change(&ui_ha, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_ha_screen_init);
     }
     if(event_code == LV_EVENT_FOCUSED) {
@@ -548,9 +557,12 @@ void ui_event_mainbtn3(lv_event_t * e)
 }
 void ui_event_mainbtn4(lv_event_t * e)
 {
+    lv_indev_t * indev = lv_indev_get_act();
+    if(indev == NULL) return;
+    lv_indev_type_t indev_type = lv_indev_get_type(indev);
+
     lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED && indev_type == LV_INDEV_TYPE_ENCODER) {
         _ui_screen_change(&ui_setting, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_setting_screen_init);
     }
     if(event_code == LV_EVENT_FOCUSED) {
@@ -561,7 +573,7 @@ void ui_event_notaskbtn(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         lv_group_remove_all_objs(g_main);
         _ui_screen_change(&ui_waitingtask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_waitingtask_screen_init);
     }
@@ -598,9 +610,11 @@ void ui_event_atask_down(lv_event_t * e)
 void ui_event_preview_detection(lv_event_t * e)
 {
     create_timer(g_predet);
+    lv_indev_t * indev = lv_indev_get_act();
+    if(indev == NULL) return;
+    lv_indev_type_t indev_type = lv_indev_get_type(indev);
     lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED && indev_type == LV_INDEV_TYPE_ENCODER) {
         predet_cb(e);
     }
 }
@@ -608,7 +622,7 @@ void ui_event_predet1v(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         predet1v_cb(e);
     }
 }
@@ -616,7 +630,7 @@ void ui_event_predet1e(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         lv_obj_add_flag(ui_predetp1, LV_OBJ_FLAG_HIDDEN);
         lv_group_remove_all_objs(g_main);
         lv_group_add_obj(g_main, ui_mainbtn1);
@@ -635,7 +649,7 @@ void ui_event_predet1c(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         predet1c_cb(e);
     }
 }
@@ -643,7 +657,7 @@ void ui_event_predet2b(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         predet2b_cb(e);
     }
 }
@@ -651,7 +665,7 @@ void ui_event_predet2e(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         lv_obj_add_flag(ui_predetp2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ui_previewp2, LV_OBJ_FLAG_HIDDEN);
         lv_group_remove_all_objs(g_main);
@@ -671,7 +685,7 @@ void ui_event_predet2c(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         predet2c_cb(e);
     }
 }
@@ -679,12 +693,15 @@ void ui_event_predet3e(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         lv_group_remove_all_objs(g_main);
         lv_group_add_obj(g_main, ui_mainbtn1);
         lv_group_add_obj(g_main, ui_mainbtn2);
         lv_group_add_obj(g_main, ui_mainbtn3);
         lv_group_add_obj(g_main, ui_mainbtn4);
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, NULL, 0, portMAX_DELAY);
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_STOP, 
+                                    NULL,  0, portMAX_DELAY);
 
         _ui_screen_change(&ui_mainscreen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_mainscreen_screen_init);
     }
@@ -693,7 +710,7 @@ void ui_event_predet3c(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         predet3c_cb(e);
     }
 }
@@ -702,15 +719,17 @@ void ui_event_previewp1(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         previewp1_cb(e);
     }
 }
 void ui_event_previewp2(lv_event_t * e)
 {
+    lv_indev_t * indev = lv_indev_get_act();
+    if(indev == NULL) return;
+    lv_indev_type_t indev_type = lv_indev_get_type(indev);
     lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED && indev_type == LV_INDEV_TYPE_ENCODER) {
         previewp2_cb(e);
     }
 }
@@ -719,10 +738,10 @@ void ui_event_menubtn1(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         _ui_screen_change(&ui_ltask_view, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_ltask_view_screen_init);
     }
-    if(event_code == LV_EVENT_FOCUSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         menu1f_cb(e);
     }
 }
@@ -730,7 +749,7 @@ void ui_event_menubtn2(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         _ui_screen_change(&ui_ltask_view, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_ltask_view_screen_init);
     }
     if(event_code == LV_EVENT_FOCUSED) {
@@ -741,7 +760,7 @@ void ui_event_menubtn3(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         _ui_screen_change(&ui_ltask_view, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_ltask_view_screen_init);
     }
     if(event_code == LV_EVENT_FOCUSED) {
@@ -752,7 +771,7 @@ void ui_event_menubtn4(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         lv_group_remove_all_objs(g_main);
         lv_group_add_obj(g_main, ui_mainbtn1);
         lv_group_add_obj(g_main, ui_mainbtn2);
@@ -768,7 +787,7 @@ void ui_event_ltask_view(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         _ui_screen_change(&ui_ltask_back, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_ltask_back_screen_init);
     }
 }
@@ -776,7 +795,7 @@ void ui_event_ltaskbb1(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         _ui_screen_change(&ui_ltaskscreen, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_ltaskscreen_screen_init);
     }
 }
@@ -784,7 +803,7 @@ void ui_event_ltaskbb2(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         _ui_screen_change(&ui_ltask_view, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_ltask_view_screen_init);
     }
 }
@@ -792,7 +811,7 @@ void ui_event_ha(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         _ui_screen_change(&ui_mainscreen, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_mainscreen_screen_init);
     }
 }
@@ -800,7 +819,7 @@ void ui_event_setting(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_PRESSED) {
+    if(event_code == LV_EVENT_CLICKED) {
         _ui_screen_change(&ui_mainscreen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_mainscreen_screen_init);
     }
 }

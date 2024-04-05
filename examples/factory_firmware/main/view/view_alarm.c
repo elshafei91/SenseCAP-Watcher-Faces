@@ -47,20 +47,22 @@ int view_alarm_init(lv_obj_t *ui_screen)
 
 int view_alarm_on(void)
 {
-    lv_group_remove_all_objs(g_main);
-    lv_group_add_obj(g_main, ui_preview_detection);
-    _ui_screen_change(&ui_preview_detection, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_preview_detection_screen_init);
+    g_alarm_ = 1;
+    g_prepage = ui_previewp2;
     lv_obj_clear_flag(ui_previewp2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
-    // create_alarm_timer();
+    lv_group_remove_all_objs(g_main);
+    lv_group_add_obj(g_main, ui_previewp2);
+    _ui_screen_change(&ui_preview_detection, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_preview_detection_screen_init);
 
     return 0;
 }
 
 int view_alarm_off(void)
 {
-    lv_obj_add_flag(ui_previewp2, LV_OBJ_FLAG_HIDDEN);
+    g_alarm_ = 0;
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_predetp3, LV_OBJ_FLAG_HIDDEN);
 
     return 0;
 }

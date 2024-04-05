@@ -554,9 +554,6 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
         
     } else {
         ESP_LOGI(TAG, "Need upload image!");
-        // set g_predet to 2 to identify the detection of human to TRUE
-        g_predet = 2;
-        lv_event_send(ui_preview_detection, LV_EVENT_ALL, NULL);
         // sample 640*480 image
         esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_REQ, NULL, 0, portMAX_DELAY);
     }
