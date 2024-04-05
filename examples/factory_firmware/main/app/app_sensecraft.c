@@ -93,6 +93,7 @@ static void tmp_parse_cloud_result(char *result)
                 if ((json = cJSON_GetObjectItem(json, "tlid"))) {
                     // cloud warn
                     const char *warn_str = "cloud warn";
+                    audio_play_task("/spiffs/alarm-di.wav");
                     esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
                     intmax_t tlid = app_taskengine_get_current_tlid();
                     if (tlid != 0) {
@@ -512,7 +513,7 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
 
     // 判断静默期是否已过
     now = time(NULL);
-    if ((now - last_image_upload_time) < GLOBAL_SILENT_TIME) {
+    if ((now - last_image_upload_time) < GLOBAL_SILENT_TIME && last_image_upload_time != 0) {
         ESP_LOGD(TAG, "golbal silent time not passed, wait ...");
         return 0;
     }
@@ -537,7 +538,7 @@ int app_sensecraft_image_invoke_check(struct view_data_image_invoke *p_data)
     }
     if (notask7) {
         const char *warn_str = "local warn";
-        audio_play_task("/spiffs/echo_en_wake.wav");
+        audio_play_task("/spiffs/alarm-di.wav");
         esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, warn_str, strlen(warn_str), portMAX_DELAY);
 
         app_mqtt_client_report_warn_event(tlid, "The monitored object was detected on the device.", 0/*local warn*/);
