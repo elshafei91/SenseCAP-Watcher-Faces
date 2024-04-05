@@ -47,7 +47,7 @@ int view_alarm_init(lv_obj_t *ui_screen)
 
 int view_alarm_on(void)
 {
-    if (g_curpage != ui_preview_detection) return 0;
+    if (g_curscreen != ui_preview_detection) return 0;
     
     g_alarm_ = 1;
     //g_prepage = ui_previewp2;
@@ -71,6 +71,8 @@ int view_alarm_off(void)
     lv_obj_add_flag(ui_previewp2, LV_OBJ_FLAG_HIDDEN);
     if (g_prepage) {
         lv_obj_clear_flag(g_prepage, LV_OBJ_FLAG_HIDDEN);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, g_prepage);
     }
 
     return 0;

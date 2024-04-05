@@ -21,7 +21,7 @@ extern lv_indev_t * cur_drv;
 extern lv_group_t * g_main;
 extern lv_timer_t * g_timer;
 extern lv_obj_t   * g_prepage;
-extern lv_obj_t   * g_curpage;
+extern lv_obj_t   * g_curscreen;
 extern uint8_t      g_alarm_;
 extern uint8_t      g_iftasklist;
 extern uint8_t      g_predet; // 1 for no human, 2 for human
