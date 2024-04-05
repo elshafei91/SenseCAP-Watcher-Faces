@@ -494,6 +494,10 @@ void ui_event_virtual(lv_event_t * e)
         lv_group_add_obj(g_main, ui_mainbtn4);
         _ui_screen_change(&ui_mainscreen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_mainscreen_screen_init);
     }
+    if(event_code == LV_EVENT_SCREEN_LOADED) {
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_virtual);
+    }
 }
 void ui_event_mainbtn1(lv_event_t * e)
 {
