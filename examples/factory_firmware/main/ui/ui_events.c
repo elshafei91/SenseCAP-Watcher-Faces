@@ -10,6 +10,7 @@ static const char *TAG = "ui_event";
 
 lv_timer_t * g_timer 	= NULL;
 lv_obj_t   * g_prepage	= NULL;
+lv_obj_t   * g_curpage  = NULL;
 
 static int current_img_index = 0;
 // 图片资源数组，包含所有图片的指针

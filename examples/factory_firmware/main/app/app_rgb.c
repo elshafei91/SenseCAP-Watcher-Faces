@@ -66,7 +66,7 @@ int app_rgb_init(void)
             .arg = (void*) rgb_timer_handle,
             .name = "rgb timer"
     };
-    ESP_ERROR_CHECK( esp_timer_create(&timer_args, &rgb_timer_handle));
+    ESP_ERROR_CHECK(esp_timer_create(&timer_args, &rgb_timer_handle));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, 
