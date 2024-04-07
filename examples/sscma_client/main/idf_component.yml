@@ -4,4 +4,7 @@ dependencies:
 
   sscma_client:
     override_path: "../../../components/sscma_client"
+
+  indoor_ai_camera:
+    override_path: "../../../components/indoor_ai_camera"
   
