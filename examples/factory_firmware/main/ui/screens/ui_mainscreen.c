@@ -185,8 +185,8 @@ void ui_mainscreen_screen_init(void)
     lv_obj_set_style_bg_color(ui_mainbtn4, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_mainbtn4, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_src(ui_mainbtn4, &ui_img_setting_png, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_color(ui_mainbtn4, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_opa(ui_mainbtn4, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_color(ui_mainbtn4, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(ui_mainbtn4, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_mainbtn4, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_bg_opa(ui_mainbtn4, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_bg_img_src(ui_mainbtn4, &ui_img_457376777, LV_PART_MAIN | LV_STATE_FOCUSED);
@@ -246,7 +246,7 @@ void ui_mainscreen_screen_init(void)
     lv_obj_set_style_text_opa(ui_maintime, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_mainwifi = lv_img_create(ui_maincontent);
-    lv_img_set_src(ui_mainwifi, &ui_img_wifi_4_png);
+    lv_img_set_src(ui_mainwifi, &ui_img_wifi_disconnect_png);
     lv_obj_set_width(ui_mainwifi, LV_SIZE_CONTENT);   /// 18
     lv_obj_set_height(ui_mainwifi, LV_SIZE_CONTENT);    /// 18
     lv_obj_set_x(ui_mainwifi, -16);

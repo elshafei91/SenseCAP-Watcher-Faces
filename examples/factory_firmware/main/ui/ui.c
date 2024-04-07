@@ -488,6 +488,7 @@ void ui_event_virtual(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
+        lv_group_remove_all_objs(g_main);
         lv_group_add_obj(g_main, ui_mainbtn1);
         lv_group_add_obj(g_main, ui_mainbtn2);
         lv_group_add_obj(g_main, ui_mainbtn3);
