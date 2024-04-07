@@ -50,7 +50,7 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
     int img_size = 0;
     if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK)
     {
-        printf("image_size: %d\n", img_size);
+        ESP_LOGI(TAG, "image_size: %d\n", img_size);
         free(img);
     }
     sscma_client_box_t *boxes = NULL;
@@ -61,7 +61,7 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
         {
             for (int i = 0; i < box_count; i++)
             {
-                printf("[box %d]: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\n", i, boxes[i].x, boxes[i].y, boxes[i].w, boxes[i].h, boxes[i].score, boxes[i].target);
+                ESP_LOGI(TAG, "[box %d]: x=%d, y=%d, w=%d, h=%d, score=%d, target=%d\n", i, boxes[i].x, boxes[i].y, boxes[i].w, boxes[i].h, boxes[i].score, boxes[i].target);
             }
         }
         free(boxes);
@@ -75,7 +75,7 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
         {
             for (int i = 0; i < class_count; i++)
             {
-                printf("[class %d]: target=%d, score=%d\n", i, classes[i].target, classes[i].score);
+                ESP_LOGI(TAG, "[class %d]: target=%d, score=%d\n", i, classes[i].target, classes[i].score);
             }
         }
         free(classes);
@@ -89,7 +89,7 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
         strcpy(&reply->data[100 - 4], "...");
     }
 
-    printf("log: %s\n", reply->data);
+    ESP_LOGI(TAG, "log: %s\n", reply->data);
 }
 
 void app_main(void)
@@ -120,7 +120,7 @@ void app_main(void)
         .user_ctx = NULL,
     };
 
-    sscma_client_new_io_uart_bus((sscma_client_uart_bus_handle_t)0, &io_uart_config, &io_ota);
+    sscma_client_new_io_uart_bus((sscma_client_uart_bus_handle_t)EXAMPLE_SSCMA_UART_NUM, &io_uart_config, &io_ota);
 
     const spi_bus_config_t buscfg = {
         .sclk_io_num = EXAMPLE_SSCMA_SPI_SCLK,
@@ -159,16 +159,24 @@ void app_main(void)
 
     if (sscma_client_register_callback(client, &callback, NULL) != ESP_OK)
     {
-        printf("set callback failed\n");
+        ESP_LOGI(TAG, "set callback failed\n");
         abort();
     }
     sscma_client_init(client);
 
     sscma_client_invoke(client, -1, false, true);
 
+    if(sscma_client_ota_start(client, io_ota, 0) != ESP_OK)
+    {
+        ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
+        abort();
+    }else{
+        ESP_LOGI(TAG, "sscma_client_ota_start success\n");
+    }
+
     while (1)
     {
-        printf("free_heap_size = %ld\n", esp_get_free_heap_size());
+        ESP_LOGI(TAG, "free_heap_size = %ld\n", esp_get_free_heap_size());
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

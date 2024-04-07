@@ -5,7 +5,7 @@ set(srcs "src/sscma_client_ops.c"
          "src/sscma_client_io_uart.c"
          )
 set(includes "include" "interface")
-set(priv_requires "driver" "json" "mbedtls")
+set(priv_requires "driver" "json" "mbedtls" "esp_timer")
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS ${includes}

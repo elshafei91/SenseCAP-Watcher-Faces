@@ -117,6 +117,7 @@ extern "C"
     struct sscma_client_t
     {
         sscma_client_io_handle_t io;          /* !< IO handle */
+        sscma_client_io_handle_t io_ota;      /* !< OTA IO handle */
         int reset_gpio_num;                   /* !< GPIO number of reset pin */
         bool reset_level;                     /* !< Level of reset pin */
         bool inited;                          /* !< Whether inited */

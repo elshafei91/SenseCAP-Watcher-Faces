@@ -7,19 +7,24 @@
 // Set the maximum log level for this source file
 #define LOG_SSCMA_LEVEL ESP_LOG_DEBUG
 #endif
+
+#include "driver/gpio.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/list.h"
 #include "cJSON.h"
 #include "mbedtls/base64.h"
+
+#include "esp_log.h"
+#include "esp_check.h"
+#include "esp_timer.h"
+
 #include "sscma_client_types.h"
 #include "sscma_client_io.h"
 #include "sscma_client_commands.h"
 #include "sscma_client_ops.h"
-#include "driver/gpio.h"
-#include "esp_log.h"
-#include "esp_check.h"
 
 static const char *TAG = "sscma_client";
 
@@ -1286,4 +1291,160 @@ esp_err_t sscma_utils_prase_image_from_reply(sscma_client_reply_t *reply, char *
     strcpy(image, image_str);
 
     return ESP_OK;
+}
+
+esp_err_t sscma_client_ota_start(sscma_client_handle_t client, const sscma_client_io_handle_t io, size_t offset)
+{
+    esp_err_t ret = ESP_OK;
+    uint64_t start = 0;
+    size_t rlen = 0;
+    ESP_RETURN_ON_FALSE(client, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+
+    if (client->io_ota != NULL)
+    {
+        if (io != NULL)
+        {
+            ESP_LOGW(TAG, "client OTA io already registered, overriding it");
+            client->io_ota = io;
+        }
+    }
+    else
+    {
+        ESP_RETURN_ON_FALSE(io, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+        client->io_ota = io;
+    }
+
+    // Suspend the process task
+    vTaskSuspend(client->process_task);
+
+    // perform reset
+    if (client->reset_gpio_num >= 0)
+    {
+        if (client->io_expander)
+        {
+            esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level);
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, !client->reset_level);
+            vTaskDelay(10);
+        }
+        else
+        {
+            gpio_config_t io_conf = {
+                .mode = GPIO_MODE_OUTPUT,
+                .pin_bit_mask = 1ULL << client->reset_gpio_num,
+            };
+            gpio_config(&io_conf);
+            gpio_set_level(client->reset_gpio_num, client->reset_level);
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            gpio_set_level(client->reset_gpio_num, !client->reset_level);
+            gpio_reset_pin(client->reset_gpio_num);
+            vTaskDelay(10);
+        }
+    }
+    else
+    {
+        ESP_GOTO_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), err, TAG, "request reset failed");
+        vTaskDelay(100 / portTICK_PERIOD_MS); // wait for sscma to be ready
+    }
+
+    // enter ota mode
+    client->tx_buffer.pos = 0;
+    start = esp_timer_get_time();
+    ret = ESP_ERR_TIMEOUT;
+    do
+    {
+        sscma_client_io_write(client->io_ota, OTA_ENTER_CMD, sizeof(OTA_ENTER_CMD) - 1);
+        if (sscma_client_io_available(client->io_ota, &rlen) == ESP_OK && rlen > 0)
+        {
+            if (rlen + client->rx_buffer.pos > client->rx_buffer.len)
+            {
+                ret = ESP_ERR_NO_MEM;
+                break;
+            }
+            for (int i = 0; i < rlen; i++)
+            {
+                char c = '\0';
+                sscma_client_io_read(client->io_ota, &c, 1);
+                if (c != '\0')
+                {
+                    client->rx_buffer.data[client->rx_buffer.pos++] = c;
+                }
+            }
+            client->rx_buffer.data[client->rx_buffer.pos] = 0;
+            if (strnstr(client->rx_buffer.data, OTA_ENTER_HINT, client->rx_buffer.pos) != NULL)
+            {
+                ret = ESP_OK;
+                break;
+            }
+        }
+        vTaskDelay(5 / portTICK_PERIOD_MS);
+    } while ((esp_timer_get_time() - start) / 1000 < OTA_ENTER_TIMEOUT);
+
+    ESP_GOTO_ON_ERROR(ret, err, TAG, "enter ota mode failed");
+
+    // write offset config
+    // if (offset != 0)
+    // {
+    //     char config[12] = {0xC0, 0x5A, (offset >> 0) & 0xFF, (offset >> 8) & 0xFF, (offset >> 16) & 0xFF, (offset >> 24) & 0xFF, 0x00, 0x00, 0x00, 0x00, 0x5A, 0xC0};
+    //     client->tx_buffer.pos = 0;
+    //     start = esp_timer_get_time();
+    //     ret = ESP_ERR_TIMEOUT;
+    //     do
+    //     {
+    //         if (sscma_client_io_available(client->io_ota, &rlen) == ESP_OK && rlen > 0)
+    //         {
+    //             if (rlen + client->rx_buffer.pos > client->rx_buffer.len)
+    //             {
+    //                 ret = ESP_ERR_NO_MEM;
+    //                 break;
+    //             }
+    //             for (int i = 0; i < rlen; i++)
+    //             {
+    //                 char c = '\0';
+    //                 sscma_client_io_read(client->io_ota, &c, 1);
+    //                 if (c != '\0')
+    //                 {
+    //                     client->rx_buffer.data[client->rx_buffer.pos++] = c;
+    //                 }
+    //             }
+    //             client->rx_buffer.data[client->rx_buffer.pos] = 0;
+    //             if (strnstr(client->rx_buffer.data, OTA_DONE_TIMEOUT, client->rx_buffer.pos) != NULL)
+    //             {
+    //                 sscma_client_io_write(client->io_ota, 'y', 1);
+    //                 ret = ESP_OK;
+    //                 break;
+    //             }
+    //         }
+    //         vTaskDelay(5 / portTICK_PERIOD_MS);
+    //     } while ((esp_timer_get_time() - start) / 1000 < OTA_ENTER_TIMEOUT);
+
+    //     ESP_GOTO_ON_ERROR(ret, err, TAG, "enter ota mode failed");
+    // }
+
+err:
+    vTaskResume(client->process_task);
+    return ret;
+}
+
+esp_err_t sscma_client_ota_write(sscma_client_handle_t client, const void *data, size_t len)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(client && data && len, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+
+    return ret;
+}
+
+esp_err_t sscma_client_ota_finish(sscma_client_handle_t client)
+{
+    esp_err_t ret = ESP_OK;
+    ESP_RETURN_ON_FALSE(client, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+    return ret;
+}
+
+esp_err_t sscma_client_ota_abort(sscma_client_handle_t client)
+{
+    esp_err_t ret = ESP_OK;
+    ESP_RETURN_ON_FALSE(client, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+    return ret;
 }

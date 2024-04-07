@@ -339,6 +339,42 @@ extern "C"
      */
     esp_err_t sscma_utils_prase_image_from_reply(sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size);
 
+    /**
+     * Start ota
+     * @param[in] client SCCMA client handle
+     * @param[in] io sscma client io
+     * @param[in] offset offset in file
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_ota_start(sscma_client_handle_t client, const sscma_client_io_handle_t io, size_t offset);
+
+    /**
+     * Write data to ota
+     * @param[in] client SCCMA client handle
+     * @param[in] data data to write
+     * @param[in] len length of data
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_ota_write(sscma_client_handle_t client, const void *data, size_t len);
+
+    /**
+     * Finish ota
+     * @param[in] client SCCMA client handle
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_ota_finish(sscma_client_handle_t client);
+
+    /**
+     * Abort ota
+     * @param[in] client SCCMA client handle
+     * @return
+     *          - ESP_OK on success
+     */
+    esp_err_t sscma_client_ota_abort(sscma_client_handle_t client);
+
 #ifdef __cplusplus
 }
 #endif
