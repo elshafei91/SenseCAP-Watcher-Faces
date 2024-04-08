@@ -55,7 +55,7 @@
 #define OTA_ENTER_HINT "Send data using the xmodem protocol from your terminal"      
 #define OTA_ENTER_TIMEOUT 5000 
 #define OTA_DONE_HINT "Do you want to end file transmission and reboot system?"
-#define OTA_DONE_TIMEOUT 15000
+#define OTA_DONE_TIMEOUT 60000
 
 typedef enum
 {

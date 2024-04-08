@@ -284,7 +284,7 @@ extern "C"
      * @return
      *    - ESP_OK
      */
-    esp_err_t sscma_utils_fetch_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t **boxes, int *num_boxes);
+    esp_err_t sscma_utils_fetch_boxes_from_reply(const sscma_client_reply_t *reply, sscma_client_box_t **boxes, int *num_boxes);
 
     /**
      * Prase boxes from sscma client reply
@@ -295,7 +295,7 @@ extern "C"
      * @return
      *    - ESP_OK
      */
-    esp_err_t sscma_utils_prase_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t *boxes, int max_boxes, int *num_boxes);
+    esp_err_t sscma_utils_prase_boxes_from_reply(const sscma_client_reply_t *reply, sscma_client_box_t *boxes, int max_boxes, int *num_boxes);
 
     /**
      * Fetch classes from sscma client reply
@@ -305,7 +305,7 @@ extern "C"
      * @return
      *    - ESP_OK
      */
-    esp_err_t sscma_utils_fetch_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t **classes, int *num_classes);
+    esp_err_t sscma_utils_fetch_classes_from_reply(const sscma_client_reply_t *reply, sscma_client_class_t **classes, int *num_classes);
 
     /**
      * Prase classes from sscma client reply
@@ -316,7 +316,7 @@ extern "C"
      * @return
      *    - ESP_OK
      */
-    esp_err_t sscma_utils_prase_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes);
+    esp_err_t sscma_utils_prase_classes_from_reply(const sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes);
 
     /**
      * Fetch image from sscma client reply
@@ -326,7 +326,7 @@ extern "C"
      * @return
      *    - ESP_OK
      */
-    esp_err_t sscma_utils_fetch_image_from_reply(sscma_client_reply_t *reply, char **image, int *image_size);
+    esp_err_t sscma_utils_fetch_image_from_reply(const sscma_client_reply_t *reply, char **image, int *image_size);
 
     /**
      * Prase image from sscma client reply
@@ -337,7 +337,7 @@ extern "C"
      * @return
      *    - ESP_OK
      */
-    esp_err_t sscma_utils_prase_image_from_reply(sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size);
+    esp_err_t sscma_utils_prase_image_from_reply(const sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size);
 
     /**
      * Start ota
@@ -347,7 +347,7 @@ extern "C"
      * @return
      *          - ESP_OK on success
      */
-    esp_err_t sscma_client_ota_start(sscma_client_handle_t client, const sscma_client_io_handle_t io, size_t offset);
+    esp_err_t sscma_client_ota_start(sscma_client_handle_t client, sscma_client_io_handle_t io, size_t offset);
 
     /**
      * Write data to ota
