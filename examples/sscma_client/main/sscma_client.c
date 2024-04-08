@@ -2,17 +2,23 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "freertos/FreeRTOS.h"
 #include "driver/uart.h"
 #include "driver/i2c.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
+
+#include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 #include "esp_log.h"
 #include "esp_check.h"
+#include "esp_timer.h"
+#include "esp_spiffs.h"
+
 #include "sscma_client_io.h"
 #include "sscma_client_ops.h"
 #include "indoor_ai_camera.h"
+
 #include <driver/usb_serial_jtag.h>
 static const char *TAG = "main";
 
@@ -33,7 +39,7 @@ static const char *TAG = "main";
 #define EXAMPLE_SSCMA_UART_RX (18)
 #define EXAMPLE_SSCMA_UART_BAUD_RATE (921600)
 
-#define EXAMPLE_SSCMA_RESET (BSP_PWR_AI_CHIP)
+#define EXAMPLE_SSCMA_RESET (IO_EXPANDER_PIN_NUM_7)
 
 char usb_buf[2 * 1024];
 char sscma_buf[64 * 1024];
@@ -96,6 +102,8 @@ void app_main(void)
 {
     io_expander = bsp_io_expander_init();
     assert(io_expander != NULL);
+
+    bsp_spiffs_init_default();
 
     /* Configure parameters of an UART driver,
      * communication pins and install the driver */
@@ -165,13 +173,46 @@ void app_main(void)
     sscma_client_init(client);
 
     sscma_client_invoke(client, -1, false, true);
-
-    if(sscma_client_ota_start(client, io_ota, 0) != ESP_OK)
+    int64_t start = esp_timer_get_time();
+    if (sscma_client_ota_start(client, io_ota, 0x700000) != ESP_OK)
     {
         ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
-        abort();
-    }else{
+    }
+    else
+    {
         ESP_LOGI(TAG, "sscma_client_ota_start success\n");
+        FILE *f = fopen("/spiffs/gesture.tflite", "r");
+        if (f == NULL)
+        {
+            ESP_LOGE(TAG, "open gesture.tflite failed\n");
+        }
+        else
+        {
+            ESP_LOGI(TAG, "open gesture.tflite success\n");
+            size_t len = 0;
+            char buf[128] = {0};
+            do
+            {
+                memset(buf, 0, sizeof(buf));
+                if (fread(buf, 1, sizeof(buf), f) <= 0)
+                {
+                    break;
+                }
+                else
+                {
+                    // memset(buf, 0xFF, sizeof(buf));
+                    len += sizeof(buf);
+                    if (sscma_client_ota_write(client, buf, sizeof(buf)) != ESP_OK)
+                    {
+                        ESP_LOGI(TAG, "sscma_client_ota_write failed\n");
+                        break;
+                    }
+                }
+            } while (true);
+            fclose(f);
+        }
+        sscma_client_ota_finish(client);
+        ESP_LOGI(TAG, "sscma_client_ota_finish success, take %lld ms\n", esp_timer_get_time() - start);
     }
 
     while (1)
