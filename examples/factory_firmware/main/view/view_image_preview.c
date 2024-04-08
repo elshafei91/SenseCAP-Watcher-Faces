@@ -26,11 +26,14 @@ static lv_obj_t *ui_image = NULL;
 static lv_obj_t * ui_rectangle[IMAGE_INVOKED_BOXES];
 static lv_obj_t * ui_class_name[IMAGE_INVOKED_BOXES];
 
-static uint8_t image_buf[IMG_240_240_BUF_SIZE];
+static uint8_t *image_buf;
 
 extern int g_model_id;
 int view_image_preview_init(lv_obj_t *ui_screen)
 {
+    image_buf = malloc(IMG_240_240_BUF_SIZE);
+    assert(image_buf);
+
     ui_image = lv_img_create(ui_screen);
     lv_obj_set_align(ui_image, LV_ALIGN_CENTER);
 
