@@ -599,16 +599,19 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
 {
     esp_err_t ret = ESP_OK;
     vTaskSuspend(client->process_task);
+
+    client->rx_buffer.pos = 0;
+    client->tx_buffer.pos = 0;
+
     // perform hardware reset
     if (client->reset_gpio_num >= 0)
     {
         if (client->io_expander)
         {
             esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level);
-            vTaskDelay(50 / portTICK_PERIOD_MS);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
             esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, !client->reset_level);
             vTaskDelay(200 / portTICK_PERIOD_MS);
-            sscma_client_request(client, CMD_PREFIX CMD_AT_BREAK CMD_SUFFIX, NULL, false, 0);
         }
         else
         {
@@ -622,7 +625,6 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
             gpio_set_level(client->reset_gpio_num, !client->reset_level);
             vTaskDelay(200 / portTICK_PERIOD_MS);
             gpio_reset_pin(client->reset_gpio_num);
-            sscma_client_request(client, CMD_PREFIX CMD_AT_BREAK CMD_SUFFIX, NULL, false, 0);
         }
     }
     else
@@ -630,6 +632,7 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
         // ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), TAG, "request reset failed");
         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for sscma to be ready
     }
+
     ESP_LOGW(TAG, "reset done");
     vTaskResume(client->process_task);
     return ret;
@@ -1504,8 +1507,10 @@ esp_err_t sscma_client_ota_finish(sscma_client_handle_t client)
 
     ESP_GOTO_ON_ERROR(ret, err, TAG, "finish ota failed");
 
-    sscma_client_reset(client);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
 err:
+    sscma_client_reset(client);
     vTaskResume(client->process_task);
     return ret;
 }

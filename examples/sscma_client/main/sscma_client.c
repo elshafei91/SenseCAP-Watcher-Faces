@@ -172,23 +172,35 @@ void app_main(void)
     }
     sscma_client_init(client);
 
-    sscma_client_invoke(client, -1, false, true);
+    sscma_client_info_t *info;
+    if (sscma_client_get_info(client, &info, true) == ESP_OK)
+    {
+        printf("ID: %s\n", (info->id != NULL) ? info->id : "NULL");
+        printf("Name: %s\n", (info->name != NULL) ? info->name : "NULL");
+        printf("Hardware Version: %s\n", (info->hw_ver != NULL) ? info->hw_ver : "NULL");
+        printf("Software Version: %s\n", (info->sw_ver != NULL) ? info->sw_ver : "NULL");
+        printf("Firmware Version: %s\n", (info->fw_ver != NULL) ? info->fw_ver : "NULL");
+    }
+    else
+    {
+        printf("get info failed\n");
+    }
     int64_t start = esp_timer_get_time();
-    if (sscma_client_ota_start(client, io_ota, 0x700000) != ESP_OK)
+    if (sscma_client_ota_start(client, io_ota, 0x0000) != ESP_OK)
     {
         ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
     }
     else
     {
         ESP_LOGI(TAG, "sscma_client_ota_start success\n");
-        FILE *f = fopen("/spiffs/gesture.tflite", "r");
+        FILE *f = fopen("/spiffs/output.img", "r");
         if (f == NULL)
         {
-            ESP_LOGE(TAG, "open gesture.tflite failed\n");
+            ESP_LOGE(TAG, "open output.img failed\n");
         }
         else
         {
-            ESP_LOGI(TAG, "open gesture.tflite success\n");
+            ESP_LOGI(TAG, "open output.img success\n");
             size_t len = 0;
             char buf[128] = {0};
             do
@@ -200,7 +212,7 @@ void app_main(void)
                 }
                 else
                 {
-                    // memset(buf, 0xFF, sizeof(buf));
+                    memset(buf, 0xFF, sizeof(buf));
                     len += sizeof(buf);
                     if (sscma_client_ota_write(client, buf, sizeof(buf)) != ESP_OK)
                     {
@@ -214,6 +226,21 @@ void app_main(void)
         sscma_client_ota_finish(client);
         ESP_LOGI(TAG, "sscma_client_ota_finish success, take %lld ms\n", esp_timer_get_time() - start);
     }
+
+    if (sscma_client_get_info(client, &info, false) == ESP_OK)
+    {
+        printf("ID: %s\n", (info->id != NULL) ? info->id : "NULL");
+        printf("Name: %s\n", (info->name != NULL) ? info->name : "NULL");
+        printf("Hardware Version: %s\n", (info->hw_ver != NULL) ? info->hw_ver : "NULL");
+        printf("Software Version: %s\n", (info->sw_ver != NULL) ? info->sw_ver : "NULL");
+        printf("Firmware Version: %s\n", (info->fw_ver != NULL) ? info->fw_ver : "NULL");
+    }
+    else
+    {
+        printf("get info failed\n");
+    }
+
+    sscma_client_invoke(client, -1, false, true);
 
     while (1)
     {
