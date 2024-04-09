@@ -445,7 +445,11 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
     {
         if (spi_client_io->io_expander)
         {
-            ESP_GOTO_ON_ERROR(esp_io_expander_get_level(spi_client_io->io_expander, spi_client_io->sync_gpio_num, &sync_level), err, TAG, "io_expander gpio_get_level failed");
+            if (esp_io_expander_get_level(spi_client_io->io_expander, spi_client_io->sync_gpio_num, &sync_level) != ESP_OK)
+            {
+                xSemaphoreGive(spi_client_io->lock);
+                return ESP_FAIL;
+            }
         }
         else
         {
