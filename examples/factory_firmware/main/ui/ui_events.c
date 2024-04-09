@@ -68,6 +68,7 @@ static void gesture_timer_callback(lv_timer_t *timer)
 	lv_img_dsc_t *current_img = gesture_d[current_img_index];
 	// 设置图片到对象ui_maincircle
 	lv_obj_set_style_bg_img_src(ui_menucircle, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+
 }
 // 声明一个函数来创建定时器
 static void create_timer(uint8_t det_task)
@@ -216,7 +217,7 @@ void menu2f_cb(lv_event_t *e)
 
 void menu4f_cb(lv_event_t *e)
 {
-	// lv_timer_pause(g_timer);
+	lv_timer_pause(g_timer);
 }
 
 void ltview_cb(lv_event_t *e)

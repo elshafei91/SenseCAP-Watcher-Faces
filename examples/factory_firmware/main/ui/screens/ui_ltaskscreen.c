@@ -189,8 +189,8 @@ void ui_ltaskscreen_screen_init(void)
     ui_menucontent = lv_obj_create(ui_menucircle);
     lv_obj_set_width(ui_menucontent, 171);
     lv_obj_set_height(ui_menucontent, 224);
-    lv_obj_set_x(ui_menucontent, 5);
-    lv_obj_set_y(ui_menucontent, 0);
+    lv_obj_set_x(ui_menucontent, -3);
+    lv_obj_set_y(ui_menucontent, -1);
     lv_obj_set_align(ui_menucontent, LV_ALIGN_LEFT_MID);
     lv_obj_clear_flag(ui_menucontent, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_menucontent, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
