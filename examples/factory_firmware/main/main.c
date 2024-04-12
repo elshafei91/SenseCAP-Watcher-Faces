@@ -8,6 +8,7 @@
 #include "esp_check.h"
 #include "nvs_flash.h"
 #include "esp_app_desc.h"
+#include "cJSON.h"
 
 #include "indoor_ai_camera.h"
 
@@ -49,6 +50,18 @@ esp_event_loop_handle_t view_event_handle;
 
 ESP_EVENT_DEFINE_BASE(CTRL_EVENT_BASE);
 esp_event_loop_handle_t ctrl_event_handle;
+
+static void *__cJSON_malloc(size_t sz)
+{
+    return heap_caps_malloc(sz, MALLOC_CAP_SPIRAM);
+}
+
+static void __cJSON_free(void *ptr)
+{
+    free(ptr);
+}
+
+cJSON_Hooks cJSONHooks = {.malloc_fn = __cJSON_malloc, .free_fn = __cJSON_free};
 
 static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
@@ -131,13 +144,15 @@ void app_main(void)
     const esp_app_desc_t *app_desc = esp_app_get_description();
     ESP_LOGI("", SENSECAP, app_desc->version, __DATE__, __TIME__);
 
+    cJSON_InitHooks(&cJSONHooks);
+
     ESP_ERROR_CHECK(board_init());
 
     esp_event_loop_args_t view_event_task_args = {
         .queue_size = 10,
         .task_name = "view_event_task",
         .task_priority = 6, // uxTaskPriorityGet(NULL),
-        .task_stack_size = 10240,
+        .task_stack_size = 1024 * 3,
         .task_core_id = 0};
     ESP_ERROR_CHECK(esp_event_loop_create(&view_event_task_args, &view_event_handle));
 
@@ -145,7 +160,7 @@ void app_main(void)
         .queue_size = 10,
         .task_name = "ctrl_event_task",
         .task_priority = 7,
-        .task_stack_size = 1024 * 5,
+        .task_stack_size = 1024 * 3,
         .task_core_id = 1};
     ESP_ERROR_CHECK(esp_event_loop_create(&ctrl_event_task_args, &ctrl_event_handle));
 

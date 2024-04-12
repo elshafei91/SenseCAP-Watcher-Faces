@@ -8,26 +8,25 @@
 
 static const char *TAG = "ui_event";
 
-lv_timer_t * g_timer 	= NULL;
-lv_obj_t   * g_prepage	= NULL;
-lv_obj_t   * g_curscreen  = NULL;
+lv_timer_t *g_timer = NULL;
+lv_obj_t *g_prepage = NULL;
+lv_obj_t *g_curscreen = NULL;
 
 static int current_img_index = 0;
 // 图片资源数组，包含所有图片的指针
-lv_img_dsc_t * human_d[] = {
-    &ui_img_humand1_png,
-    &ui_img_humand2_png,
-    &ui_img_humand3_png,
-    &ui_img_humand4_png
-};
+lv_img_dsc_t *human_d[] = {
+	&ui_img_humand1_png,
+	&ui_img_humand2_png,
+	&ui_img_humand3_png,
+	&ui_img_humand4_png};
 
-lv_img_dsc_t * apple_d[] = {
+lv_img_dsc_t *apple_d[] = {
 	&ui_img_appled1_png,
 	&ui_img_appled2_png,
 	&ui_img_appled3_png,
 };
 
-lv_img_dsc_t * gesture_d[] = {
+lv_img_dsc_t *gesture_d[] = {
 	&ui_img_gesture_detection1_png,
 	&ui_img_gesture_detection2_png,
 	&ui_img_gesture_detection3_png,
@@ -41,261 +40,280 @@ lv_img_dsc_t * gesture_d[] = {
 #define APPLE_COUNT 3
 #define GESTURE_COUNT 6
 
-static void human_timer_callback(lv_timer_t * timer) {
-    // 更新当前图片索引
-    current_img_index = (current_img_index + 1) % HUMAN_COUNT;
-    // 获取当前图片的指针
-    lv_img_dsc_t * current_img = human_d[current_img_index];
-    // 设置图片到对象ui_maincircle
-    lv_obj_set_style_bg_img_src(ui_menucircle, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+static void human_timer_callback(lv_timer_t *timer)
+{
+	// 更新当前图片索引
+	current_img_index = (current_img_index + 1) % HUMAN_COUNT;
+	// 获取当前图片的指针
+	lv_img_dsc_t *current_img = human_d[current_img_index];
+	// 设置图片到对象ui_maincircle
+	lv_obj_set_style_bg_img_src(ui_menucircle, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
-static void apple_timer_callback(lv_timer_t * timer) {
-    // 更新当前图片索引
-    current_img_index = (current_img_index + 1) % APPLE_COUNT;
-    // 获取当前图片的指针
-    lv_img_dsc_t * current_img = apple_d[current_img_index];
-    // 设置图片到对象ui_maincircle
-    lv_obj_set_style_bg_img_src(ui_menucircle, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+static void apple_timer_callback(lv_timer_t *timer)
+{
+	// 更新当前图片索引
+	current_img_index = (current_img_index + 1) % APPLE_COUNT;
+	// 获取当前图片的指针
+	lv_img_dsc_t *current_img = apple_d[current_img_index];
+	// 设置图片到对象ui_maincircle
+	lv_obj_set_style_bg_img_src(ui_menucircle, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
-static void gesture_timer_callback(lv_timer_t * timer) {
-    // 更新当前图片索引
-    current_img_index = (current_img_index + 1) % GESTURE_COUNT;
-    // 获取当前图片的指针
-    lv_img_dsc_t * current_img = gesture_d[current_img_index];
-    // 设置图片到对象ui_maincircle
-    lv_obj_set_style_bg_img_src(ui_menucircle, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+static void gesture_timer_callback(lv_timer_t *timer)
+{
+	// 更新当前图片索引
+	current_img_index = (current_img_index + 1) % GESTURE_COUNT;
+	// 获取当前图片的指针
+	lv_img_dsc_t *current_img = gesture_d[current_img_index];
+	// 设置图片到对象ui_maincircle
+	lv_obj_set_style_bg_img_src(ui_menucircle, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+
 }
 // 声明一个函数来创建定时器
-static void create_timer(uint8_t det_task) {
-    // 停止并删除之前的定时器，如果存在的话
-    if (g_timer != NULL) {
-        lv_timer_del(g_timer);
-        g_timer = NULL;
-    }
+static void create_timer(uint8_t det_task)
+{
+	// 停止并删除之前的定时器，如果存在的话
+	if (g_timer != NULL)
+	{
+		lv_timer_del(g_timer);
+		g_timer = NULL;
+	}
 	switch (det_task)
 	{
 	case 0:
-    	g_timer = lv_timer_create(human_timer_callback, 500, NULL);
+		g_timer = lv_timer_create(human_timer_callback, 500, NULL);
 		break;
-	
+
 	case 1:
-    	g_timer = lv_timer_create(apple_timer_callback, 500, NULL);
+		g_timer = lv_timer_create(apple_timer_callback, 500, NULL);
 		break;
 
 	case 2:
-    	g_timer = lv_timer_create(gesture_timer_callback, 500, NULL);
+		g_timer = lv_timer_create(gesture_timer_callback, 500, NULL);
 		break;
 
-	// case 3:
+		// case 3:
 
-	// 	break;
+		// 	break;
 
-	
 	default:
 		break;
-	}    
+	}
 }
 
-void key_next_cb(lv_event_t * e)
+void key_next_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void key_prev_cb(lv_event_t * e)
+void key_prev_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void task1_cb(lv_event_t * e)
+void task1_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void task2_cb(lv_event_t * e)
+void task2_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void task3_cb(lv_event_t * e)
+void task3_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void main_focus_cb(lv_event_t * e)
+void main_focus_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void main_menu_cb(lv_event_t * e)
+void main_menu_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void menu_example_cb(lv_event_t * e)
+void menu_example_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void menu_ha_cb(lv_event_t * e)
+void menu_ha_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void menu_back_cb(lv_event_t * e)
+void menu_back_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void task_view_cb(lv_event_t * e)
+void task_view_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void main1f_cb(lv_event_t * e)
+void main1f_cb(lv_event_t *e)
 {
 	lv_label_set_text(ui_maintitle, "Onboard Demo");
 	lv_obj_set_style_text_color(ui_maintitle, lv_color_hex(0x8FC31F), LV_PART_MAIN | LV_STATE_DEFAULT);
 	lv_obj_set_style_bg_grad_color(ui_maincircle, lv_color_hex(0x8FC31F), LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
-void main2f_cb(lv_event_t * e)
+void main2f_cb(lv_event_t *e)
 {
 	lv_label_set_text(ui_maintitle, "Current Task");
 	lv_obj_set_style_text_color(ui_maintitle, lv_color_hex(0x7B61FF), LV_PART_MAIN | LV_STATE_DEFAULT);
 	lv_obj_set_style_bg_grad_color(ui_maincircle, lv_color_hex(0x7B61FF), LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
-void main3f_cb(lv_event_t * e)
+void main3f_cb(lv_event_t *e)
 {
 	lv_label_set_text(ui_maintitle, "Sensors");
 	lv_obj_set_style_text_color(ui_maintitle, lv_color_hex(0x30A0F2), LV_PART_MAIN | LV_STATE_DEFAULT);
 	lv_obj_set_style_bg_grad_color(ui_maincircle, lv_color_hex(0x30A0F2), LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
-void task1f_cb(lv_event_t * e)
+void task1f_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void task2f_cb(lv_event_t * e)
+void task2f_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void task3f_cb(lv_event_t * e)
+void task3f_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void menu1f_cb(lv_event_t * e)
+void menu1f_cb(lv_event_t *e)
 {
 	create_timer(0);
 }
 
-void menu3f_cb(lv_event_t * e)
+void menu3f_cb(lv_event_t *e)
 {
 	create_timer(2);
 }
 
-void main4f_cb(lv_event_t * e)
+void main4f_cb(lv_event_t *e)
 {
 	lv_label_set_text(ui_maintitle, "Setting");
 	lv_obj_set_style_text_color(ui_maintitle, lv_color_hex(0xCACACA), LV_PART_MAIN | LV_STATE_DEFAULT);
 	lv_obj_set_style_bg_grad_color(ui_maincircle, lv_color_hex(0xCACACA), LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
-void menu2f_cb(lv_event_t * e)
+void menu2f_cb(lv_event_t *e)
 {
 	create_timer(1);
 }
 
-void menu4f_cb(lv_event_t * e)
+void menu4f_cb(lv_event_t *e)
+{
+	lv_timer_pause(g_timer);
+}
+
+void ltview_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void ltview_cb(lv_event_t * e)
+void ltviewback_cb(lv_event_t *e)
 {
 	// Your code here
 }
 
-void ltviewback_cb(lv_event_t * e)
+void preview_detection_click_cb(lv_event_t *e)
 {
-	// Your code here
 }
-
-void preview_detection_click_cb(lv_event_t * e)
+// jump live cam
+void predet1v_click_cb(lv_event_t *e)
 {
-	g_prepage = ui_preview_detection;
+	g_prepage = g_curscreen;
+	g_curscreen = ui_previewp2;
 
-	_preview_panel_status(1);
-
-}
-//jump live cam
-void predet1v_click_cb(lv_event_t * e)
-{
 	lv_obj_add_flag(ui_predetp1, LV_OBJ_FLAG_HIDDEN);
-	lv_obj_clear_flag(ui_previewp2, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_add_flag(g_prepage, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_clear_flag(g_curscreen, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_move_foreground(g_curscreen);
 
 	lv_group_remove_all_objs(g_main);
-	lv_group_add_obj(g_main, ui_previewp2);
-
-	g_prepage = ui_previewp2;
+	lv_group_add_obj(g_main, g_curscreen);
 }
 
-void predet1c_cb(lv_event_t * e)
+void predet1c_cb(lv_event_t *e)
 {
+	g_prepage = g_curscreen;
+	g_curscreen = ui_previewp1;
+
 	lv_obj_add_flag(ui_predetp1, LV_OBJ_FLAG_HIDDEN);
-	lv_obj_clear_flag(g_prepage, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_clear_flag(g_curscreen, LV_OBJ_FLAG_HIDDEN);
 
 	lv_group_remove_all_objs(g_main);
-	lv_group_add_obj(g_main, g_prepage);
+	lv_group_add_obj(g_main, g_curscreen);
 }
-//jump avatar
-void predet2b_cb(lv_event_t * e)
+// jump avatar
+void predet2b_cb(lv_event_t *e)
 {
-	lv_obj_add_flag(ui_previewp2, LV_OBJ_FLAG_HIDDEN);
+	g_prepage = g_curscreen;
+	g_curscreen = ui_previewp1;
+
 	lv_obj_add_flag(ui_predetp2, LV_OBJ_FLAG_HIDDEN);
-	lv_obj_clear_flag(ui_preview_detection, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_add_flag(g_prepage, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_clear_flag(g_curscreen, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_move_foreground(g_curscreen);
 
 	lv_group_remove_all_objs(g_main);
-	lv_group_add_obj(g_main, ui_preview_detection);
+	lv_group_add_obj(g_main, g_curscreen);
 
-	g_prepage = ui_preview_detection;
 }
 
-void predet2c_cb(lv_event_t * e)
+void predet2c_cb(lv_event_t *e)
 {
+	g_prepage = g_curscreen;
+	g_curscreen = ui_previewp2;
+
 	lv_obj_add_flag(ui_predetp2, LV_OBJ_FLAG_HIDDEN);
-	lv_obj_clear_flag(g_prepage, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_clear_flag(g_curscreen, LV_OBJ_FLAG_HIDDEN);
+	
 
 	lv_group_remove_all_objs(g_main);
-	lv_group_add_obj(g_main, g_prepage);
+	lv_group_add_obj(g_main, g_curscreen);
 }
 
-void predet3c_cb(lv_event_t * e)
+void predet3c_cb(lv_event_t *e)
 {
+	g_prepage = g_curscreen;
+	g_curscreen = ui_previewp2;
+
 	lv_obj_add_flag(ui_predetp3, LV_OBJ_FLAG_HIDDEN);
-	lv_obj_clear_flag(ui_previewp2, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_clear_flag(g_curscreen, LV_OBJ_FLAG_HIDDEN);
 
 	lv_group_remove_all_objs(g_main);
-	lv_group_add_obj(g_main, ui_previewp2);
+	lv_group_add_obj(g_main, g_curscreen);
 }
 
-void waitT_cb(lv_event_t * e)
+void waitT_cb(lv_event_t *e)
 {
 	_ui_screen_change(&ui_atask_down, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_atask_down_screen_init);
 }
 
-void previewp1_cb(lv_event_t * e)
+void previewp1_cb(lv_event_t *e)
 {
-	// Your code here
+	_preview_panel_status(1);
 }
 
-void previewp2_cb(lv_event_t * e)
+void previewp2_cb(lv_event_t *e)
 {
+	g_prepage = g_curscreen;
+
 	switch (g_alarm_)
 	{
 	case 0:
@@ -304,7 +322,7 @@ void previewp2_cb(lv_event_t * e)
 	case 1:
 		_preview_panel_status(3);
 		break;
-	
+
 	default:
 		break;
 	}
@@ -348,7 +366,6 @@ void _preview_panel_status(uint8_t id)
 		lv_group_add_obj(g_main, ui_predet3c);
 		break;
 
-	
 	default:
 		break;
 	}

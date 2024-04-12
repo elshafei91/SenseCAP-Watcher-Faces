@@ -438,7 +438,7 @@ int app_sensecraft_init(void)
     image_640_480.p_buf = (uint8_t *)malloc(IMAGE_240_240_BUF_SIZE);
     assert(image_640_480.p_buf);
 
-    xTaskCreate(__app_sensecraft_task, "app_sensecraft_task", 1024 * 10, NULL,  6, NULL);
+    xTaskCreate(__app_sensecraft_task, "app_sensecraft_task", 1024 * 5, NULL,  6, NULL);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_VAD_TIMEOUT,

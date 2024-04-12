@@ -25,6 +25,22 @@ enum taskengine_state_machine {
     TE_SM_NUM
 };
 
+enum taskengine_tasklist_status {
+    TE_TLST_CONFIGED = 0,  //tasklist received
+    TE_TLST_MODEL_DOWNLOADING,
+    TE_TLST_MODEL_DEPLOYING,
+    TE_TLST_MODEL_DEPLOYED,
+    TE_TLST_TIMER_CONFIGED,
+    TE_TLST_TIMER_EXECED_ONCE,
+    TE_TLST_MODEL_DOWNLOAD_FAIL,
+    TE_TLST_MODEL_DEPLOY_FAIL,
+    TE_TLST_TIMER_EXEC_FAIL,
+    TE_TLST_OTHER_EXEC_FAIL,
+    TE_TLST_END_ON_DEVICE,
+    TE_TLST_NUM
+
+};
+
 
 static const char *TAG = "taskengine";
 
@@ -101,6 +117,17 @@ static void __build_task_ack_and_send(bool ensure_empty_task)
         app_mqtt_client_report_tasklist_ack(request_id, json_order_value_taskSettings);
     } while (0);
     xSemaphoreGive(g_mtx_tasklist_cjson);
+
+    if (g_current_running_tlid != 0) {
+        vTaskDelay(pdMS_TO_TICKS(200));
+
+        if (ensure_empty_task) {
+            app_mqtt_client_report_tasklist_status(g_current_running_tlid, TE_TLST_END_ON_DEVICE);
+        } else {
+            app_mqtt_client_report_tasklist_status(g_current_running_tlid, TE_TLST_CONFIGED);
+        }
+    }
+
 }
 
 static void __app_taskengine_task(void *p_arg)
@@ -286,7 +313,7 @@ static void __app_taskengine_task(void *p_arg)
                                 portMAX_DELAY);
 
             ESP_LOGI(TAG, "#### Now the tasklist is running ... ####");
-            ESP_LOGI(TAG, "tasklist requestId=%s", g_tasklist_reqid);
+            ESP_LOGI(TAG, "tasklist requestId=%s, tlid=%jd", g_tasklist_reqid, g_current_running_tlid);
             ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  //task sleep
 
             //cleanup?
@@ -297,7 +324,6 @@ static void __app_taskengine_task(void *p_arg)
 
         case TE_SM_TL_STOP:
             // TODO: 
-            g_current_running_tlid = 0;
 
             esp_err_t ret = storage_write("tasklist_json", "{", 1);  //write an invalid json, aka delete the tasklist in flash
             if (ret == ESP_OK) {
@@ -306,6 +332,8 @@ static void __app_taskengine_task(void *p_arg)
                 ESP_LOGI(TAG, "tasklist json can not be deleted from flash.");
             }
             __build_task_ack_and_send(true);
+
+            g_current_running_tlid = 0;
 
             g_taskengine_sm = TE_SM_WAIT_TL;
             break;
