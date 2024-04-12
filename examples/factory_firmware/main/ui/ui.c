@@ -612,10 +612,12 @@ void ui_event_atask_down(lv_event_t * e)
         text_pulse_Animation(ui_atask_press, 4000);
     }
     if(event_code == LV_EVENT_CLICKED) {
+        lv_obj_clear_flag(ui_previewp1, LV_OBJ_FLAG_HIDDEN);        
+        _ui_screen_change(&ui_preview_detection, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_preview_detection_screen_init);
+
         lv_group_remove_all_objs(g_main);
         lv_group_add_obj(g_main, ui_previewp1);
-
-        _ui_screen_change(&ui_preview_detection, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, &ui_preview_detection_screen_init);
+        g_curscreen = ui_previewp1;
     }
 }
 void ui_event_preview_detection(lv_event_t * e)
