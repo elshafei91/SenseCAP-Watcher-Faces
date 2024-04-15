@@ -2,22 +2,26 @@
 
 [![Component Registry](https://components.espressif.com/components/espressif/esp_io_expander_pca95xx_16bit/badge.svg)](https://components.espressif.com/components/espressif/esp_io_expander_pca95xx_16bit)
 
-Implementation of the PCA9539 and PCA9555 io expander chip with esp_io_expander component.
+Implementation of the PCA9539 and PCA9555 io expander chip with esp_io_expander
+component.
 
-| Chip             | Communication interface | Component name                | Link to datasheet |
-| :--------------: | :---------------------: | :---------------------------: | :---------------: |
-| PCA9539          | I2C                     | esp_io_expander_pca95xx_16bit | [datasheet](https://www.ti.com/lit/gpn/pca9539) |
-| PCA9555          | I2C                     | esp_io_expander_pca95xx_16bit | [datasheet](https://www.ti.com/lit/gpn/pca9555) |
+|  Chip   | Communication interface |        Component name         |                Link to datasheet                |
+| :-----: | :---------------------: | :---------------------------: | :---------------------------------------------: |
+| PCA9539 |           I2C           | esp_io_expander_pca95xx_16bit | [datasheet](https://www.ti.com/lit/gpn/pca9539) |
+| PCA9555 |           I2C           | esp_io_expander_pca95xx_16bit | [datasheet](https://www.ti.com/lit/gpn/pca9555) |
 
 ## Add to project
 
-Packages from this repository are uploaded to [Espressif's component service](https://components.espressif.com/).
-You can add them to your project via `idf.py add-dependency`, e.g.
+Packages from this repository are uploaded to
+[Espressif's component service](https://components.espressif.com/). You can add
+them to your project via `idf.py add-dependency`, e.g.
+
 ```
     idf.py add-dependency esp_io_expander_pca95xx_16bit==1.0.0
 ```
 
-Alternatively, you can create `idf_component.yml`. More is in [Espressif's documentation](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/tools/idf-component-manager.html).
+Alternatively, you can create `idf_component.yml`. More is in
+[Espressif's documentation](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/tools/idf-component-manager.html).
 
 ## Example use
 
