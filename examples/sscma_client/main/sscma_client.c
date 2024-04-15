@@ -1,5 +1,6 @@
 #include <dirent.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 
 #include "driver/uart.h"
@@ -16,6 +17,7 @@
 #include "esp_spiffs.h"
 
 #include "sscma_client_io.h"
+#include "sscma_client_flasher.h"
 #include "sscma_client_ops.h"
 #include "indoor_ai_camera.h"
 
@@ -23,20 +25,20 @@
 static const char *TAG = "main";
 
 /* SPI settings */
-#define EXAMPLE_SSCMA_SPI_NUM (SPI2_HOST)
+#define EXAMPLE_SSCMA_SPI_NUM    (SPI2_HOST)
 #define EXAMPLE_SSCMA_SPI_CLK_HZ (12 * 1000 * 1000)
 
 /* SPI pins */
 #define EXAMPLE_SSCMA_SPI_SCLK (4)
 #define EXAMPLE_SSCMA_SPI_MOSI (5)
 #define EXAMPLE_SSCMA_SPI_MISO (6)
-#define EXAMPLE_SSCMA_SPI_CS (21)
+#define EXAMPLE_SSCMA_SPI_CS   (21)
 #define EXAMPLE_SSCMA_SPI_SYNC (IO_EXPANDER_PIN_NUM_6)
 
 /* UART pins */
-#define EXAMPLE_SSCMA_UART_NUM (1)
-#define EXAMPLE_SSCMA_UART_TX (17)
-#define EXAMPLE_SSCMA_UART_RX (18)
+#define EXAMPLE_SSCMA_UART_NUM       (1)
+#define EXAMPLE_SSCMA_UART_TX        (17)
+#define EXAMPLE_SSCMA_UART_RX        (18)
 #define EXAMPLE_SSCMA_UART_BAUD_RATE (921600)
 
 #define EXAMPLE_SSCMA_RESET (IO_EXPANDER_PIN_NUM_7)
@@ -44,8 +46,9 @@ static const char *TAG = "main";
 char usb_buf[2 * 1024];
 char sscma_buf[64 * 1024];
 sscma_client_io_handle_t io = NULL;
-sscma_client_io_handle_t io_ota = NULL;
 sscma_client_handle_t client = NULL;
+sscma_client_io_handle_t io_ota = NULL;
+sscma_client_flasher_handle_t flasher = NULL;
 esp_io_expander_handle_t io_expander = NULL;
 
 void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
@@ -107,13 +110,12 @@ void app_main(void)
 
     /* Configure parameters of an UART driver,
      * communication pins and install the driver */
-    uart_config_t uart_config = {
-        .baud_rate = EXAMPLE_SSCMA_UART_BAUD_RATE,
+    uart_config_t uart_config = { .baud_rate = EXAMPLE_SSCMA_UART_BAUD_RATE,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT};
+        .source_clk = UART_SCLK_DEFAULT };
     int intr_alloc_flags = 0;
 
 #if CONFIG_UART_ISR_IN_IRAM
@@ -129,6 +131,16 @@ void app_main(void)
     };
 
     sscma_client_new_io_uart_bus((sscma_client_uart_bus_handle_t)EXAMPLE_SSCMA_UART_NUM, &io_uart_config, &io_ota);
+
+    const sscma_client_flasher_we2_config_t flasher_config = {
+        .reset_gpio_num = EXAMPLE_SSCMA_RESET,
+        .io_expander = io_expander,
+        .flags.reset_use_expander = true,
+        .flags.reset_high_active = false,
+        .user_ctx = NULL,
+    };
+
+    sscma_client_new_flasher_we2(io_ota, &flasher_config, &flasher);
 
     const spi_bus_config_t buscfg = {
         .sclk_io_num = EXAMPLE_SSCMA_SPI_SCLK,
@@ -186,7 +198,7 @@ void app_main(void)
         printf("get info failed\n");
     }
     int64_t start = esp_timer_get_time();
-    if (sscma_client_ota_start(client, io_ota, 0x0000) != ESP_OK)
+    if (sscma_client_ota_start(client, flasher, 0x700000) != ESP_OK)
     {
         ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
     }
@@ -202,12 +214,13 @@ void app_main(void)
         {
             ESP_LOGI(TAG, "open output.img success\n");
             size_t len = 0;
-            char buf[128] = {0};
+            char buf[128] = { 0 };
             do
             {
                 memset(buf, 0, sizeof(buf));
                 if (fread(buf, 1, sizeof(buf), f) <= 0)
                 {
+                    printf("\n");
                     break;
                 }
                 else
@@ -220,7 +233,8 @@ void app_main(void)
                         break;
                     }
                 }
-            } while (true);
+            }
+            while (true);
             fclose(f);
         }
         sscma_client_ota_finish(client);

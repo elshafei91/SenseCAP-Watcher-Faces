@@ -1,9 +1,9 @@
 #pragma once
 
-#include <stdbool.h>
 #include "esp_err.h"
-#include "sscma_client_types.h"
 #include "esp_io_expander.h"
+#include "sscma_client_types.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,24 +19,27 @@ typedef struct
     int rx_buffer_size;                   /*!< Size of RX buffer */
     int process_task_priority;            /* SSCMA process task priority */
     int process_task_stack;               /* SSCMA process task stack size */
-    int process_task_affinity;            /* SSCMA process task pinned to core (-1 is no affinity) */
+    int process_task_affinity;            /* SSCMA process task pinned to core (-1 is no
+                                             affinity) */
     int monitor_task_priority;            /* SSCMA monitor task priority */
     int monitor_task_stack;               /* SSCMA monitor task stack size */
-    int monitor_task_affinity;            /* SSCMA monitor task pinned to core (-1 is no affinity) */
+    int monitor_task_affinity;            /* SSCMA monitor task pinned to core (-1 is no
+                                             affinity) */
     int event_queue_size;                 /* Event queue size */
     void *user_ctx;                       /* User context */
     esp_io_expander_handle_t io_expander; /*!< IO expander handle */
     struct
     {
-        unsigned int reset_active_high : 1;  /*!< Setting this if the panel reset is high level active */
+        unsigned int reset_active_high : 1;  /*!< Setting this if the panel reset is
+                                                high level active */
         unsigned int reset_use_expander : 1; /*!< Reset line use IO expander */
     } flags;                                 /*!< SSCMA client config flags */
 } sscma_client_config_t;
 
 #define SSCMA_CLIENT_CONFIG_DEFAULT()                                                                                                                                                                  \
     {                                                                                                                                                                                                  \
-        .reset_gpio_num = -1, .tx_buffer_size = 4096, .rx_buffer_size = 65536, .process_task_priority = 5, .process_task_stack = 4096, .process_task_affinity = -1, .monitor_task_priority = 4,        \
-        .monitor_task_stack = 10240, .monitor_task_affinity = -1, .event_queue_size = 5, .user_ctx = NULL,                                                                                             \
+        .reset_gpio_num = -1, .tx_buffer_size = 4096, .rx_buffer_size = 65536, .process_task_priority = 5, .process_task_stack = 2048, .process_task_affinity = -1, .monitor_task_priority = 4,        \
+        .monitor_task_stack = 4096, .monitor_task_affinity = -1, .event_queue_size = 5, .user_ctx = NULL,                                                                                              \
         .flags                                                                                                                                                                                         \
             = {.reset_active_high = false,                                                                                                                                                             \
               }                                                                                                                                                                                        \
@@ -332,12 +335,12 @@ esp_err_t sscma_utils_prase_image_from_reply(const sscma_client_reply_t *reply, 
 /**
  * Start ota
  * @param[in] client SCCMA client handle
- * @param[in] io sscma client io
+ * @param[in] flasher flasher handle
  * @param[in] offset offset in file
  * @return
  *          - ESP_OK on success
  */
-esp_err_t sscma_client_ota_start(sscma_client_handle_t client, sscma_client_io_handle_t io, size_t offset);
+esp_err_t sscma_client_ota_start(sscma_client_handle_t client, const sscma_client_flasher_handle_t flasher, size_t offset);
 
 /**
  * Write data to ota
