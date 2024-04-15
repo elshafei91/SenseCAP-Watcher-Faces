@@ -39,6 +39,7 @@ static esp_err_t client_io_spi_del(sscma_client_io_t *io);
 static esp_err_t client_io_spi_write(sscma_client_io_t *io, const void *data, size_t len);
 static esp_err_t client_io_spi_read(sscma_client_io_t *io, void *data, size_t len);
 static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len);
+static esp_err_t client_io_spi_flush(sscma_client_io_t *io);
 
 typedef struct
 {
@@ -53,7 +54,7 @@ typedef struct
     uint8_t buffer[PACKET_SIZE];
 } sscma_client_io_spi_t;
 
-esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, sscma_client_io_spi_config_t *io_config, sscma_client_io_handle_t *ret_io)
+esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, const sscma_client_io_spi_config_t *io_config, sscma_client_io_handle_t *ret_io)
 {
 #if CONFIG_SSCMA_ENABLE_DEBUG_LOG
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
@@ -106,6 +107,7 @@ esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, sscma_c
     spi_client_io->base.write = client_io_spi_write;
     spi_client_io->base.read = client_io_spi_read;
     spi_client_io->base.available = client_io_spi_available;
+    spi_client_io->base.flush = client_io_spi_flush;
 
     spi_client_io->lock = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(spi_client_io->lock, ESP_ERR_NO_MEM, err, TAG, "no mem for mutex");
@@ -529,6 +531,90 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
     {
         *len = 0;
     }
+err:
+    spi_device_release_bus(spi_client_io->spi_dev);
+    xSemaphoreGive(spi_client_io->lock);
+    return ret;
+}
+
+static esp_err_t client_io_spi_flush(sscma_client_io_t *io)
+{
+    esp_err_t ret = ESP_OK;
+    spi_transaction_t spi_trans = {};
+    sscma_client_io_spi_t *spi_client_io = __containerof(io, sscma_client_io_spi_t, base);
+    size_t trans_len = 0;
+    uint32_t sync_level = 0;
+
+    xSemaphoreTake(spi_client_io->lock, portMAX_DELAY);
+
+    if (spi_client_io->sync_gpio_num >= 0)
+    {
+        if (spi_client_io->io_expander)
+        {
+            if (esp_io_expander_get_level(spi_client_io->io_expander, spi_client_io->sync_gpio_num, &sync_level) != ESP_OK)
+            {
+                xSemaphoreGive(spi_client_io->lock);
+                return ESP_FAIL;
+            }
+        }
+        else
+        {
+            sync_level = gpio_get_level(spi_client_io->sync_gpio_num);
+        }
+        if (sync_level == 0)
+        {
+            xSemaphoreGive(spi_client_io->lock);
+            return ESP_OK;
+        }
+    }
+    else
+    {
+        vTaskDelay(pdMS_TO_TICKS(spi_client_io->wait_delay));
+    }
+
+    if (spi_device_acquire_bus(spi_client_io->spi_dev, portMAX_DELAY) != ESP_OK)
+    {
+        xSemaphoreGive(spi_client_io->lock);
+        return ESP_FAIL;
+    }
+
+    trans_len = PACKET_SIZE;
+    memset(spi_client_io->buffer, 0, sizeof(spi_client_io->buffer));
+    spi_client_io->buffer[0] = FEATURE_TRANSPORT;
+    spi_client_io->buffer[1] = FEATURE_TRANSPORT_CMD_RESET;
+    spi_client_io->buffer[2] = 0x00;
+    spi_client_io->buffer[3] = 0x00;
+    spi_client_io->buffer[4] = 0xFF;
+    spi_client_io->buffer[5] = 0xFF;
+    spi_trans.tx_buffer = spi_client_io->buffer;
+    if (spi_client_io->wait_delay > 0)
+    {
+        vTaskDelay(pdMS_TO_TICKS(spi_client_io->wait_delay));
+    }
+    do
+    {
+        uint16_t chunk_size = trans_len;
+        if (chunk_size > spi_client_io->spi_trans_max_bytes)
+        {
+            chunk_size = spi_client_io->spi_trans_max_bytes;
+            spi_trans.flags |= SPI_TRANS_CS_KEEP_ACTIVE;
+        }
+        else
+        {
+            chunk_size = trans_len;
+            spi_trans.flags &= ~SPI_TRANS_CS_KEEP_ACTIVE;
+        }
+        spi_trans.length = chunk_size * 8;
+        spi_trans.rxlength = 0;
+        spi_trans.rx_buffer = NULL;
+        spi_trans.user = spi_client_io;
+        ret = spi_device_transmit(spi_client_io->spi_dev, &spi_trans);
+        ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
+        spi_trans.tx_buffer = spi_trans.tx_buffer + chunk_size;
+        trans_len -= chunk_size;
+    }
+    while (trans_len > 0);
+
 err:
     spi_device_release_bus(spi_client_io->spi_dev);
     xSemaphoreGive(spi_client_io->lock);

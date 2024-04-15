@@ -1,10 +1,10 @@
 #pragma once
 
 #include <stdbool.h>
-
+#include "soc/soc_caps.h"
 #include "esp_err.h"
 #include "esp_io_expander.h"
-#include "soc/soc_caps.h"
+
 #include "sscma_client_types.h"
 
 #ifdef __cplusplus
@@ -51,7 +51,7 @@ typedef struct
  *          - ESP_OK                on success
  */
 
-esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, sscma_client_io_spi_config_t *io_config, sscma_client_io_handle_t *ret_io);
+esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, const sscma_client_io_spi_config_t *io_config, sscma_client_io_handle_t *ret_io);
 
 /**
  * @brief Client IO configuration structure, for I2C interface
@@ -75,7 +75,7 @@ typedef struct
  *          - ESP_ERR_NO_MEM        if out of memory
  *          - ESP_OK                on success
  */
-esp_err_t sscma_client_new_io_i2c_bus(sscma_client_i2c_bus_handle_t bus, sscma_client_io_i2c_config_t *io_config, sscma_client_io_handle_t *ret_io);
+esp_err_t sscma_client_new_io_i2c_bus(sscma_client_i2c_bus_handle_t bus, const sscma_client_io_i2c_config_t *io_config, sscma_client_io_handle_t *ret_io);
 
 /**
  * @brief Client IO configuration structure, for uart interface
@@ -97,7 +97,7 @@ typedef struct
  *          - ESP_ERR_NO_MEM        if out of memory
  *          - ESP_OK                on success
  */
-esp_err_t sscma_client_new_io_uart_bus(sscma_client_uart_bus_handle_t bus, sscma_client_io_uart_config_t *io_config, sscma_client_io_handle_t *ret_io);
+esp_err_t sscma_client_new_io_uart_bus(sscma_client_uart_bus_handle_t bus, const sscma_client_io_uart_config_t *io_config, sscma_client_io_handle_t *ret_io);
 
 /**
  * @brief Destory SSCMA client IO handle
@@ -142,6 +142,15 @@ esp_err_t sscma_client_io_read(sscma_client_io_handle_t io, void *data, size_t s
  *          - ESP_OK
  */
 esp_err_t sscma_client_io_available(sscma_client_io_handle_t io, size_t *len);
+
+/**
+ * @brief Flush data
+ *
+ * @param[in] io IO handle
+ * @return
+ *          - ESP_OK
+ */
+esp_err_t sscma_client_io_flush(sscma_client_io_handle_t io);
 
 #ifdef __cplusplus
 }
