@@ -1,20 +1,21 @@
 /*
- * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: Seeed Tech. Co., Ltd.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <stdio.h>
 #include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_system.h"
-#include "esp_err.h"
-#include "esp_log.h"
-#include "esp_check.h"
+
 #include "driver/gpio.h"
 #include "driver/i2c.h"
+#include "esp_check.h"
+#include "esp_err.h"
 #include "esp_lcd_touch.h"
+#include "esp_log.h"
+#include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #define CHSC6X_READ_POINT_LEN (5)
 
@@ -69,10 +70,9 @@ esp_err_t esp_lcd_touch_new_i2c_chsc6x(const esp_lcd_panel_io_handle_t io, const
     /* Prepare pin for touch interrupt */
     if (esp_lcd_touch_chsc6x->config.int_gpio_num != GPIO_NUM_NC)
     {
-        const gpio_config_t int_gpio_config = {
-            .mode = GPIO_MODE_INPUT,
+        const gpio_config_t int_gpio_config = { .mode = GPIO_MODE_INPUT,
             .intr_type = (esp_lcd_touch_chsc6x->config.levels.interrupt ? GPIO_INTR_POSEDGE : GPIO_INTR_NEGEDGE),
-            .pin_bit_mask = BIT64(esp_lcd_touch_chsc6x->config.int_gpio_num)};
+            .pin_bit_mask = BIT64(esp_lcd_touch_chsc6x->config.int_gpio_num) };
         ret = gpio_config(&int_gpio_config);
         ESP_GOTO_ON_ERROR(ret, err, TAG, "GPIO config failed");
 
@@ -86,9 +86,7 @@ esp_err_t esp_lcd_touch_new_i2c_chsc6x(const esp_lcd_panel_io_handle_t io, const
     /* Prepare pin for touch controller reset */
     if (esp_lcd_touch_chsc6x->config.rst_gpio_num != GPIO_NUM_NC)
     {
-        const gpio_config_t rst_gpio_config = {
-            .mode = GPIO_MODE_OUTPUT,
-            .pin_bit_mask = BIT64(esp_lcd_touch_chsc6x->config.rst_gpio_num)};
+        const gpio_config_t rst_gpio_config = { .mode = GPIO_MODE_OUTPUT, .pin_bit_mask = BIT64(esp_lcd_touch_chsc6x->config.rst_gpio_num) };
         ret = gpio_config(&rst_gpio_config);
         ESP_GOTO_ON_ERROR(ret, err, TAG, "GPIO config failed");
     }
@@ -124,9 +122,9 @@ static esp_err_t esp_lcd_touch_chsc6x_read_data(esp_lcd_touch_handle_t tp)
     assert(tp != NULL);
 
     tp->data.points = 0;
-    if (tp->config.int_gpio_num != GPIO_NUM_NC) 
+    if (tp->config.int_gpio_num != GPIO_NUM_NC)
     {
-        if (gpio_get_level(tp->config.int_gpio_num) != 0) 
+        if (gpio_get_level(tp->config.int_gpio_num) != 0)
         {
             return ESP_OK;
         }
