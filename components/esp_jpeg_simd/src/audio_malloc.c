@@ -4,9 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <stdlib.h>
-#include "sdkconfig.h"
+
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
 
 // #define audio_malloc  malloc
 // #define audio_free    free
@@ -16,9 +17,9 @@
 
 void *audio_calloc_inner(size_t n, size_t size)
 {
-    void *data =  NULL;
+    void *data = NULL;
 #if CONFIG_SPIRAM_BOOT_INIT
-    data = heap_caps_calloc_prefer(n, size, 2,  MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM);
+    data = heap_caps_calloc_prefer(n, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM);
 #else
     data = heap_caps_calloc(n, size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 #endif
