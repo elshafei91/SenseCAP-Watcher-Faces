@@ -27,40 +27,35 @@
  *
  */
 
+#include "esp_jpeg_common.h"
 #include "stdbool.h"
 #include "stdint.h"
-#include "esp_jpeg_common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define DEFAULT_JPEG_ENC_CONFIG()              \
-    {                                          \
-        .width = 320,                          \
-        .height = 240,                         \
-        .src_type = JPEG_RAW_TYPE_YCbYCr,      \
-        .subsampling = JPEG_SUB_SAMPLE_YUV420, \
-        .quality = 40,                         \
-        .task_enable = false,                  \
-        .hfm_task_priority = 13,               \
-        .hfm_task_core = 1,                    \
-        .rotate = JPEG_ROTATE_0D,              \
+#define DEFAULT_JPEG_ENC_CONFIG()                                                                                                                                                                      \
+    {                                                                                                                                                                                                  \
+        .width = 320, .height = 240, .src_type = JPEG_RAW_TYPE_YCbYCr, .subsampling = JPEG_SUB_SAMPLE_YUV420, .quality = 40, .task_enable = false, .hfm_task_priority = 13, .hfm_task_core = 1,        \
+        .rotate = JPEG_ROTATE_0D,                                                                                                                                                                      \
     }
 
 /* JPEG configure information*/
-typedef struct jpeg_info {
-    int width;                      /*!< Image width */
-    int height;                     /*!< Image height */
-    jpeg_raw_type_t src_type;       /*!< Input image type */
-    jpeg_subsampling_t subsampling; /*!< JPEG chroma subsampling factors. If `src_type` is JPEG_RAW_TYPE_YCbY2YCrY2, this must be `JPEG_SUB_SAMPLE_Y` or `JPEG_SUB_SAMPLE_YUV420`. Others is un-support */
-    uint8_t quality;                /*!< Quality: 1-100, higher is better. Typical values are around 40 - 100. */
-    bool task_enable;               /*!< True: `jpeg_enc_open`  would create task to finish part of encoding work. false: no task help the encoder encode */
-    uint8_t hfm_task_priority;      /*!< Task priority.If task_enable is true, this must be set */
-    uint8_t hfm_task_core;          /*!< Task core.If task_enable is true, this must be set */
-    jpeg_rotate_t rotate;           /*!< Supports 0, 90 180 270 degree clockwise rotation.
-                                         Under src_type = JPEG_RAW_TYPE_YCbYCr, subsampling = JPEG_SUB_SAMPLE_YUV420, width % 16 == 0. height % 16 = 0 conditions, rotation enabled.
-                                         Otherwise unsupported */
+typedef struct jpeg_info
+{
+    int width;                /*!< Image width */
+    int height;               /*!< Image height */
+    jpeg_raw_type_t src_type; /*!< Input image type */
+    jpeg_subsampling_t
+        subsampling;           /*!< JPEG chroma subsampling factors. If `src_type` is JPEG_RAW_TYPE_YCbY2YCrY2, this must be `JPEG_SUB_SAMPLE_Y` or `JPEG_SUB_SAMPLE_YUV420`. Others is un-support */
+    uint8_t quality;           /*!< Quality: 1-100, higher is better. Typical values are around 40 - 100. */
+    bool task_enable;          /*!< True: `jpeg_enc_open`  would create task to finish part of encoding work. false: no task help the encoder encode */
+    uint8_t hfm_task_priority; /*!< Task priority.If task_enable is true, this must be set */
+    uint8_t hfm_task_core;     /*!< Task core.If task_enable is true, this must be set */
+    jpeg_rotate_t rotate;      /*!< Supports 0, 90 180 270 degree clockwise rotation.
+                                   Under src_type = JPEG_RAW_TYPE_YCbYCr, subsampling = JPEG_SUB_SAMPLE_YUV420, width % 16 == 0. height % 16 = 0 conditions, rotation enabled.
+                                   Otherwise unsupported */
 } jpeg_enc_info_t;
 
 /**

@@ -2,6 +2,8 @@
  * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2024 Seeed Tech. Co., Ltd.
  */
 
 #pragma once
@@ -10,7 +12,6 @@
 
 #include "driver/i2c.h"
 #include "esp_err.h"
-
 #include "esp_io_expander.h"
 
 #ifdef __cplusplus

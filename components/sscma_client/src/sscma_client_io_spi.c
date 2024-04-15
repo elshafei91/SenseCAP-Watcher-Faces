@@ -19,21 +19,21 @@
 
 static const char *TAG = "sscma_client.io.spi";
 
-#define HEADER_LEN (uint8_t)4
-#define MAX_PL_LEN (uint8_t)250
+#define HEADER_LEN   (uint8_t)4
+#define MAX_PL_LEN   (uint8_t)250
 #define CHECKSUM_LEN (uint8_t)2
 
 #define PACKET_SIZE (uint16_t)(HEADER_LEN + MAX_PL_LEN + CHECKSUM_LEN)
 
 #define MAX_RECIEVE_SIZE (uint16_t)4095
 
-#define FEATURE_TRANSPORT 0x10
-#define FEATURE_TRANSPORT_CMD_READ 0x01
-#define FEATURE_TRANSPORT_CMD_WRITE 0x02
+#define FEATURE_TRANSPORT               0x10
+#define FEATURE_TRANSPORT_CMD_READ      0x01
+#define FEATURE_TRANSPORT_CMD_WRITE     0x02
 #define FEATURE_TRANSPORT_CMD_AVAILABLE 0x03
-#define FEATURE_TRANSPORT_CMD_START 0x04
-#define FEATURE_TRANSPORT_CMD_STOP 0x05
-#define FEATURE_TRANSPORT_CMD_RESET 0x06
+#define FEATURE_TRANSPORT_CMD_START     0x04
+#define FEATURE_TRANSPORT_CMD_STOP      0x05
+#define FEATURE_TRANSPORT_CMD_RESET     0x06
 
 static esp_err_t client_io_spi_del(sscma_client_io_t *io);
 static esp_err_t client_io_spi_write(sscma_client_io_t *io, const void *data, size_t len);
@@ -65,10 +65,8 @@ esp_err_t sscma_client_new_io_spi_bus(sscma_client_spi_bus_handle_t bus, sscma_c
     ESP_GOTO_ON_FALSE(spi_client_io, ESP_ERR_NO_MEM, err, TAG, "no mem for spi client io");
 
     spi_device_interface_config_t dev_config = {
-        .flags = SPI_DEVICE_HALFDUPLEX |
-                 (io_config->flags.lsb_first ? SPI_DEVICE_TXBIT_LSBFIRST : 0) |
-                 (io_config->flags.sio_mode ? SPI_DEVICE_3WIRE : 0) |
-                 (io_config->flags.cs_high_active ? SPI_DEVICE_POSITIVE_CS : 0),
+        .flags = SPI_DEVICE_HALFDUPLEX | (io_config->flags.lsb_first ? SPI_DEVICE_TXBIT_LSBFIRST : 0) | (io_config->flags.sio_mode ? SPI_DEVICE_3WIRE : 0)
+                 | (io_config->flags.cs_high_active ? SPI_DEVICE_POSITIVE_CS : 0),
         .clock_speed_hz = io_config->pclk_hz,
         .mode = io_config->spi_mode,
         .spics_io_num = io_config->cs_gpio_num,
@@ -215,7 +213,8 @@ static esp_err_t client_io_spi_write(sscma_client_io_t *io, const void *data, si
                 ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
                 spi_trans.tx_buffer = spi_trans.tx_buffer + chunk_size;
                 trans_len -= chunk_size;
-            } while (trans_len > 0);
+            }
+            while (trans_len > 0);
         }
 
         if (remain)
@@ -256,7 +255,8 @@ static esp_err_t client_io_spi_write(sscma_client_io_t *io, const void *data, si
                 ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
                 spi_trans.tx_buffer = spi_trans.tx_buffer + chunk_size;
                 trans_len -= chunk_size;
-            } while (trans_len > 0);
+            }
+            while (trans_len > 0);
         }
     }
 
@@ -285,7 +285,6 @@ static esp_err_t client_io_spi_read(sscma_client_io_t *io, void *data, size_t le
 
     if (data)
     {
-
         for (uint16_t i = 0; i < packets; i++)
         {
             trans_len = PACKET_SIZE;
@@ -322,7 +321,8 @@ static esp_err_t client_io_spi_read(sscma_client_io_t *io, void *data, size_t le
                 ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
                 spi_trans.tx_buffer = spi_trans.tx_buffer + chunk_size;
                 trans_len -= chunk_size;
-            } while (trans_len > 0);
+            }
+            while (trans_len > 0);
             if (spi_client_io->wait_delay > 0)
             {
                 vTaskDelay(pdMS_TO_TICKS(spi_client_io->wait_delay));
@@ -351,7 +351,8 @@ static esp_err_t client_io_spi_read(sscma_client_io_t *io, void *data, size_t le
                 ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
                 spi_trans.rx_buffer = spi_trans.rx_buffer + chunk_size;
                 trans_len -= chunk_size;
-            } while (trans_len > 0);
+            }
+            while (trans_len > 0);
         }
         if (remain)
         {
@@ -389,7 +390,8 @@ static esp_err_t client_io_spi_read(sscma_client_io_t *io, void *data, size_t le
                 ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
                 spi_trans.tx_buffer = spi_trans.tx_buffer + chunk_size;
                 trans_len -= chunk_size;
-            } while (trans_len > 0);
+            }
+            while (trans_len > 0);
 
             if (spi_client_io->wait_delay > 0)
             {
@@ -418,7 +420,8 @@ static esp_err_t client_io_spi_read(sscma_client_io_t *io, void *data, size_t le
                 ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
                 spi_trans.rx_buffer = spi_trans.rx_buffer + chunk_size;
                 trans_len -= chunk_size;
-            } while (trans_len > 0);
+            }
+            while (trans_len > 0);
         }
     }
 
@@ -430,7 +433,6 @@ err:
 
 static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
 {
-
     esp_err_t ret = ESP_OK;
     spi_transaction_t spi_trans = {};
     sscma_client_io_spi_t *spi_client_io = __containerof(io, sscma_client_io_spi_t, base);
@@ -506,7 +508,8 @@ static esp_err_t client_io_spi_available(sscma_client_io_t *io, size_t *len)
         ESP_GOTO_ON_ERROR(ret, err, TAG, "spi transmit (queue) failed");
         spi_trans.tx_buffer = spi_trans.tx_buffer + chunk_size;
         trans_len -= chunk_size;
-    } while (trans_len > 0);
+    }
+    while (trans_len > 0);
 
     spi_trans.length = 0;
     spi_trans.tx_buffer = NULL;

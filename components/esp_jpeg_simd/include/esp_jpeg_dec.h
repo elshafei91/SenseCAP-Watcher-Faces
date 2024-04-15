@@ -22,42 +22,45 @@ extern "C" {
 
 #include "esp_jpeg_common.h"
 
-#define DEFAULT_JPEG_DEC_CONFIG() {                           \
-    .output_type               = JPEG_RAW_TYPE_RGB565_LE,     \
-    .rotate                    = JPEG_ROTATE_0D,              \
-}
+#define DEFAULT_JPEG_DEC_CONFIG()                                                                                                                                                                      \
+    {                                                                                                                                                                                                  \
+        .output_type = JPEG_RAW_TYPE_RGB565_LE, .rotate = JPEG_ROTATE_0D,                                                                                                                              \
+    }
 
 #define JPEG_DEC_MAX_MARKER_CHECK_LEN (1024)
 
-typedef void* jpeg_dec_handle_t;
+typedef void *jpeg_dec_handle_t;
 
 /* Jpeg dec user need to config */
-typedef struct {
+typedef struct
+{
     jpeg_raw_type_t output_type; /*!< jpeg_dec_out_type 1:rgb888 0:rgb565 */
     jpeg_rotate_t rotate;        /*!< Supports 0, 90 180 270 degree clockwise rotation.
                                       Under width % 8 == 0. height % 8 = 0 conditions, rotation enabled. Otherwise unsupported */
 } jpeg_dec_config_t;
 
 /* Jpeg dec out info */
-typedef struct {
-    int width;                      /* Number of pixels in the horizontal direction */
-    int height;                     /* Number of pixels in the vertical direction */
-    int component_num;              /* Number of color component*/
-    uint8_t component_id[3];        /* ID of color component*/
-    uint8_t x_factory[3];           /* Size factory in the x direction*/
-    uint8_t y_factory[3];           /* Size factory in the y direction*/
-    uint8_t huffbits[2][2][16];     /* Huffman bit distribution tables [id][dcac] */
-    uint16_t huffdata[2][2][256];   /* Huffman decoded data tables [id][dcac] */
-    uint8_t qtid[3];                /* Quantization table ID of each component */
-    int16_t qt_tbl[4][64];          /* De-quantizer tables [id] */
+typedef struct
+{
+    int width;                    /* Number of pixels in the horizontal direction */
+    int height;                   /* Number of pixels in the vertical direction */
+    int component_num;            /* Number of color component*/
+    uint8_t component_id[3];      /* ID of color component*/
+    uint8_t x_factory[3];         /* Size factory in the x direction*/
+    uint8_t y_factory[3];         /* Size factory in the y direction*/
+    uint8_t huffbits[2][2][16];   /* Huffman bit distribution tables [id][dcac] */
+    uint16_t huffdata[2][2][256]; /* Huffman decoded data tables [id][dcac] */
+    uint8_t qtid[3];              /* Quantization table ID of each component */
+    int16_t qt_tbl[4][64];        /* De-quantizer tables [id] */
 } jpeg_dec_header_info_t;
 
 /* Jpeg dec io control */
-typedef struct {
-    unsigned char *inbuf;           /* The input buffer pointer */
-    int inbuf_len;                  /* The number of the input buffer */
-    int inbuf_remain;               /* Not used number of the in buffer */
-    unsigned char *outbuf;          /* The decoded data is placed.The buffer must be aligned 16 byte. */
+typedef struct
+{
+    unsigned char *inbuf;  /* The input buffer pointer */
+    int inbuf_len;         /* The number of the input buffer */
+    int inbuf_remain;      /* Not used number of the in buffer */
+    unsigned char *outbuf; /* The decoded data is placed.The buffer must be aligned 16 byte. */
 } jpeg_dec_io_t;
 
 /**

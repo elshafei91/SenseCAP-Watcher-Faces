@@ -2,43 +2,47 @@
  * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2024 Seeed Tech. Co., Ltd.
  */
 
+#include "esp_io_expander_pca95xx_16bit.h"
+
 #include <inttypes.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "driver/i2c.h"
 #include "esp_bit_defs.h"
 #include "esp_check.h"
+#include "esp_io_expander.h"
 #include "esp_log.h"
 
-#include "esp_io_expander.h"
-#include "esp_io_expander_pca95xx_16bit.h"
-
 /* Timeout of each I2C communication */
-#define I2C_TIMEOUT_MS          (10)
+#define I2C_TIMEOUT_MS (10)
 
-#define IO_COUNT                (16)
+#define IO_COUNT (16)
 
 /* Register address */
-#define INPUT_REG_ADDR          (0x00)
-#define OUTPUT_REG_ADDR         (0x02)
-#define DIRECTION_REG_ADDR      (0x06)
+#define INPUT_REG_ADDR     (0x00)
+#define OUTPUT_REG_ADDR    (0x02)
+#define DIRECTION_REG_ADDR (0x06)
 
 /* Default register value on power-up */
-#define DIR_REG_DEFAULT_VAL     (0xffff)
-#define OUT_REG_DEFAULT_VAL     (0xffff)
+#define DIR_REG_DEFAULT_VAL (0xffff)
+#define OUT_REG_DEFAULT_VAL (0xffff)
 
 /**
  * @brief Device Structure Type
  *
  */
-typedef struct {
+typedef struct
+{
     esp_io_expander_t base;
     i2c_port_t i2c_num;
     uint32_t i2c_address;
-    struct {
+    struct
+    {
         uint16_t direction;
         uint16_t output;
     } regs;
@@ -89,11 +93,10 @@ static esp_err_t read_input_reg(esp_io_expander_handle_t handle, uint32_t *value
 {
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
 
-    uint8_t temp[2] = {0, 0};
+    uint8_t temp[2] = { 0, 0 };
     // *INDENT-OFF*
-    ESP_RETURN_ON_ERROR(
-        i2c_master_write_read_device(pca->i2c_num, pca->i2c_address, (uint8_t[]){INPUT_REG_ADDR}, 1, (uint8_t*)&temp, 2, pdMS_TO_TICKS(I2C_TIMEOUT_MS)),
-        TAG, "Read input reg failed");
+    ESP_RETURN_ON_ERROR(i2c_master_write_read_device(pca->i2c_num, pca->i2c_address, (uint8_t[]) { INPUT_REG_ADDR }, 1, (uint8_t *)&temp, 2, pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG,
+        "Read input reg failed");
     // *INDENT-ON*
     *value = (((uint32_t)temp[1]) << 8) | (temp[0]);
     return ESP_OK;
@@ -104,10 +107,8 @@ static esp_err_t write_output_reg(esp_io_expander_handle_t handle, uint32_t valu
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
     value &= 0xffff;
 
-    uint8_t data[] = {OUTPUT_REG_ADDR, value & 0xff, value >> 8};
-    ESP_RETURN_ON_ERROR(
-        i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)),
-        TAG, "Write output reg failed");
+    uint8_t data[] = { OUTPUT_REG_ADDR, value & 0xff, value >> 8 };
+    ESP_RETURN_ON_ERROR(i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG, "Write output reg failed");
     pca->regs.output = value;
     return ESP_OK;
 }
@@ -125,10 +126,8 @@ static esp_err_t write_direction_reg(esp_io_expander_handle_t handle, uint32_t v
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
     value &= 0xffff;
 
-    uint8_t data[] = {DIRECTION_REG_ADDR, value & 0xff, value >> 8};
-    ESP_RETURN_ON_ERROR(
-        i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)),
-        TAG, "Write direction reg failed");
+    uint8_t data[] = { DIRECTION_REG_ADDR, value & 0xff, value >> 8 };
+    ESP_RETURN_ON_ERROR(i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG, "Write direction reg failed");
     pca->regs.direction = value;
     return ESP_OK;
 }

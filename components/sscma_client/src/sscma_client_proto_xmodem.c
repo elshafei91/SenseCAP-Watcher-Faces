@@ -12,24 +12,24 @@
 
 static const char *TAG = "sscma_client.proto.xmodem";
 
-#define XSOH 0x01 // Start Of Header
-#define XSTX 0x02
-#define XETX 0x03
-#define XEOT 0x04 // End Of Transfer
-#define XENQ 0x05
-#define XACK 0x06  // ACK
+#define XSOH  0x01 // Start Of Header
+#define XSTX  0x02
+#define XETX  0x03
+#define XEOT  0x04 // End Of Transfer
+#define XENQ  0x05
+#define XACK  0x06 // ACK
 #define XNACK 0x15 // NACK
-#define XETB 0x17  //
-#define XCAN 0x18  // CANCEL
-#define XC 0x43
-#define XEOF 0x1A
+#define XETB  0x17 //
+#define XCAN  0x18 // CANCEL
+#define XC    0x43
+#define XEOF  0x1A
 
 #define XMODEM_BLOCK_SIZE 128
 
-#define WRITE_BLOCK_MAX_RETRIES 15
-#define TRANSFER_ACK_TIMEOUT 30000         // 30 seconds
-#define TRANSFER_EOT_TIMEOUT 30000         // 30 seconds
-#define TRANSFER_ETB_TIMEOUT 30000         // 30 seconds
+#define WRITE_BLOCK_MAX_RETRIES      15
+#define TRANSFER_ACK_TIMEOUT         30000 // 30 seconds
+#define TRANSFER_EOT_TIMEOUT         30000 // 30 seconds
+#define TRANSFER_ETB_TIMEOUT         30000 // 30 seconds
 #define TRANSFER_WRITE_BLOCK_TIMEOUT 30000 // 30 seconds
 
 esp_err_t sscma_client_proto_xmodem_start(sscma_client_proto_handle_t proto);
@@ -38,8 +38,7 @@ esp_err_t sscma_client_proto_xmodem_finish(sscma_client_proto_handle_t proto);
 esp_err_t sscma_client_proto_xmodem_abort(sscma_client_proto_handle_t proto);
 esp_err_t sscma_client_proto_xmodem_del(sscma_client_proto_handle_t proto);
 
-typedef enum
-{
+typedef enum {
     INITIAL,
     WAIT_FOR_C,
     WAIT_FOR_C_TIMEOUT,
@@ -90,8 +89,7 @@ typedef struct
     uint8_t write_block_retries;
 } sscma_client_proto_xmodem_t;
 
-static inline bool xmodem_calculate_crc(const uint8_t *data, const uint32_t size,
-                                        uint16_t *result)
+static inline bool xmodem_calculate_crc(const uint8_t *data, const uint32_t size, uint16_t *result)
 {
     uint16_t crc = 0x0;
     uint32_t count = size;
@@ -118,8 +116,8 @@ static inline bool xmodem_calculate_crc(const uint8_t *data, const uint32_t size
                 {
                     crc = crc << 1;
                 }
-
-            } while (0 < --i);
+            }
+            while (0 < --i);
         }
         *result = ((crc & 0xFF) << 8) + ((crc >> 8) & 0xFF);
     }
@@ -127,8 +125,7 @@ static inline bool xmodem_calculate_crc(const uint8_t *data, const uint32_t size
     return status;
 }
 
-static inline bool xmodem_verify_packet(const xmodem_packet_t packet,
-                                        uint8_t expected_packet_id)
+static inline bool xmodem_verify_packet(const xmodem_packet_t packet, uint8_t expected_packet_id)
 {
     bool status = false;
     uint8_t crc_status = false;
@@ -136,10 +133,7 @@ static inline bool xmodem_verify_packet(const xmodem_packet_t packet,
 
     crc_status = xmodem_calculate_crc(packet.data, XMODEM_BLOCK_SIZE, &calculated_crc);
 
-    if (packet.preamble == XSOH &&
-        packet.id == expected_packet_id &&
-        packet.id_complement == 0xFF - packet.id &&
-        crc_status && calculated_crc == packet.crc.value)
+    if (packet.preamble == XSOH && packet.id == expected_packet_id && packet.id_complement == 0xFF - packet.id && crc_status && calculated_crc == packet.crc.value)
     {
         status = true;
     }
@@ -167,200 +161,183 @@ xmodem_state_t xmodem_process(sscma_client_proto_xmodem_t *xmodem)
 
     switch (xmodem->state)
     {
-    case INITIAL:
-    {
-        ESP_LOGD(TAG, "INITIAL");
-        xmodem->state = WAIT_FOR_C;
-        xmodem->cur_time = esp_timer_get_time();
-        break;
-    }
-    case WAIT_FOR_C:
-    {
-        ESP_LOGD(TAG, "WAIT_FOR_C");
-        if (sscma_client_io_available(xmodem->io, &rlen) == ESP_OK && rlen)
-        {
-            sscma_client_io_read(xmodem->io, &response, 1);
-            if (response == XC)
-            {
-                xmodem->state = WRITE_BLOCK;
-                xmodem->cur_time = esp_timer_get_time();
-            }
-        }
-        else if (xmodem_timeout(xmodem, TRANSFER_ACK_TIMEOUT))
-        {
-            xmodem->state = WAIT_FOR_C_TIMEOUT;
-        }
-        break;
-    }
-    case WRITE_BLOCK:
-    {
-        ESP_LOGD(TAG, "WRITE_BLOCK");
-        if (xmodem->buf == NULL || xmodem->total_len == 0)
-        {
+        case INITIAL: {
+            ESP_LOGD(TAG, "INITIAL");
+            xmodem->state = WAIT_FOR_C;
+            xmodem->cur_time = esp_timer_get_time();
             break;
         }
-        /* setup current packet */
-        if (xmodem->cur_packet.id != xmodem->cur_packet_id || xmodem->cur_packet_id == 1)
-        {
-            xmodem->cur_packet.preamble = XSOH;
-            xmodem->cur_packet.id = xmodem->cur_packet_id;
-            xmodem->cur_packet.id_complement = 0xFF - xmodem->cur_packet_id;
-            memset(xmodem->cur_packet.data, 0xFF, XMODEM_BLOCK_SIZE);
-            xmodem->xfer_size = xmodem->total_len - xmodem->xfer_len > XMODEM_BLOCK_SIZE ? XMODEM_BLOCK_SIZE : xmodem->total_len - xmodem->xfer_len;
-            memcpy(xmodem->cur_packet.data, xmodem->buf + xmodem->xfer_len, xmodem->xfer_size);
-            xmodem_calculate_crc(xmodem->cur_packet.data, XMODEM_BLOCK_SIZE, &xmodem->cur_packet.crc.value);
+        case WAIT_FOR_C: {
+            ESP_LOGD(TAG, "WAIT_FOR_C");
+            if (sscma_client_io_available(xmodem->io, &rlen) == ESP_OK && rlen)
+            {
+                sscma_client_io_read(xmodem->io, &response, 1);
+                if (response == XC)
+                {
+                    xmodem->state = WRITE_BLOCK;
+                    xmodem->cur_time = esp_timer_get_time();
+                }
+            }
+            else if (xmodem_timeout(xmodem, TRANSFER_ACK_TIMEOUT))
+            {
+                xmodem->state = WAIT_FOR_C_TIMEOUT;
+            }
+            break;
         }
-        sscma_client_io_write(xmodem->io, (uint8_t *)&xmodem->cur_packet, sizeof(xmodem_packet_t));
-        xmodem->cur_packet_id++;
-        xmodem->xfer_len += xmodem->xfer_size;
-        xmodem->state = WAIT_FOR_C_ACK;
-        xmodem->cur_time = esp_timer_get_time();
-
-        break;
-    }
-    case WAIT_WRITE_BLOCK:
-    {
-        if (xmodem->buf != NULL && xmodem->total_len != 0)
-        {
-            xmodem->state = WRITE_BLOCK;
-        }
-        break;
-    }
-    case WAIT_FOR_C_ACK:
-    {
-        ESP_LOGD(TAG, "WAIT_FOR_C_ACK");
-        if (sscma_client_io_available(xmodem->io, &rlen) == ESP_OK && rlen)
-        {
-            sscma_client_io_read(xmodem->io, &response, 1);
+        case WRITE_BLOCK: {
+            ESP_LOGD(TAG, "WRITE_BLOCK");
+            if (xmodem->buf == NULL || xmodem->total_len == 0)
+            {
+                break;
+            }
+            /* setup current packet */
+            if (xmodem->cur_packet.id != xmodem->cur_packet_id || xmodem->cur_packet_id == 1)
+            {
+                xmodem->cur_packet.preamble = XSOH;
+                xmodem->cur_packet.id = xmodem->cur_packet_id;
+                xmodem->cur_packet.id_complement = 0xFF - xmodem->cur_packet_id;
+                memset(xmodem->cur_packet.data, 0xFF, XMODEM_BLOCK_SIZE);
+                xmodem->xfer_size = xmodem->total_len - xmodem->xfer_len > XMODEM_BLOCK_SIZE ? XMODEM_BLOCK_SIZE : xmodem->total_len - xmodem->xfer_len;
+                memcpy(xmodem->cur_packet.data, xmodem->buf + xmodem->xfer_len, xmodem->xfer_size);
+                xmodem_calculate_crc(xmodem->cur_packet.data, XMODEM_BLOCK_SIZE, &xmodem->cur_packet.crc.value);
+            }
+            sscma_client_io_write(xmodem->io, (uint8_t *)&xmodem->cur_packet, sizeof(xmodem_packet_t));
+            xmodem->cur_packet_id++;
+            xmodem->xfer_len += xmodem->xfer_size;
+            xmodem->state = WAIT_FOR_C_ACK;
             xmodem->cur_time = esp_timer_get_time();
-            switch (response)
-            {
-            case XACK:
-            {
-                ESP_LOGD(TAG, "ACK");
-                xmodem->state = C_ACK_RECEIVED;
-                break;
-            }
-            case XNACK:
-            {
-                ESP_LOGD(TAG, "NACK");
-                xmodem->state = WRITE_BLOCK_FAILED;
-                break;
-            }
-            case XEOF:
-            {
-                ESP_LOGD(TAG, "EOF");
-                xmodem->state = COMPLETE;
-                break;
-            }
-            default:
-                break;
-            }
-        }
-        else if (xmodem_timeout(xmodem, TRANSFER_ACK_TIMEOUT))
-        {
-            xmodem->state = WRITE_BLOCK_TIMEOUT;
-        }
-        break;
-    }
-    case WRITE_BLOCK_FAILED:
-    {
-        ESP_LOGD(TAG, "WRITE_BLOCK_FAILED");
-        if (xmodem->write_block_retries > WRITE_BLOCK_MAX_RETRIES)
-        {
-            xmodem->state = ABORT_TRANSFER;
-        }
-        else
-        {
-            xmodem->state = WRITE_BLOCK;
-            xmodem->cur_packet_id--;
-            xmodem->xfer_len -= xmodem->xfer_size;
-            xmodem->write_block_retries++;
-        }
-        break;
-    }
-    case C_ACK_RECEIVED:
-    {
-        ESP_LOGD(TAG, "C_ACK_RECEIVED");
-        if (xmodem->xfer_len >= xmodem->total_len)
-        {
-            xmodem->total_len = 0;
-            xmodem->buf = NULL;
-            xmodem->state = WAIT_WRITE_BLOCK;
-        }
-        else
-        {
-            xmodem->write_block_retries = 0;
-            xmodem->state = WRITE_BLOCK;
-        }
 
-        break;
-    }
-    case WRITE_EOT:
-    {
-        ESP_LOGD(TAG, "WRITE_EOT");
-        ctrl = XEOT;
-        sscma_client_io_write(xmodem->io, (uint8_t *)&ctrl, sizeof(char));
-        xmodem->state = WAIT_FOR_EOT_ACK;
-        break;
-    }
-    case WAIT_FOR_EOT_ACK:
-    {
-        ESP_LOGD(TAG, "WAIT_FOR_EOT_ACK");
-        if (sscma_client_io_available(xmodem->io, &rlen) == ESP_OK && rlen)
-        {
-            sscma_client_io_read(xmodem->io, &response, 1);
-            switch (response)
+            break;
+        }
+        case WAIT_WRITE_BLOCK: {
+            if (xmodem->buf != NULL && xmodem->total_len != 0)
             {
-            case XACK:
-                xmodem->state = COMPLETE;
-                break;
-            case XNACK:
-                xmodem->state = ABORT_TRANSFER;
-                break;
-            default:
-                break;
+                xmodem->state = WRITE_BLOCK;
             }
+            break;
         }
-        else if (xmodem_timeout(xmodem, TRANSFER_EOT_TIMEOUT))
-        {
-            xmodem->state = TIMEOUT_EOT;
+        case WAIT_FOR_C_ACK: {
+            ESP_LOGD(TAG, "WAIT_FOR_C_ACK");
+            if (sscma_client_io_available(xmodem->io, &rlen) == ESP_OK && rlen)
+            {
+                sscma_client_io_read(xmodem->io, &response, 1);
+                xmodem->cur_time = esp_timer_get_time();
+                switch (response)
+                {
+                    case XACK: {
+                        ESP_LOGD(TAG, "ACK");
+                        xmodem->state = C_ACK_RECEIVED;
+                        break;
+                    }
+                    case XNACK: {
+                        ESP_LOGD(TAG, "NACK");
+                        xmodem->state = WRITE_BLOCK_FAILED;
+                        break;
+                    }
+                    case XEOF: {
+                        ESP_LOGD(TAG, "EOF");
+                        xmodem->state = COMPLETE;
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+            else if (xmodem_timeout(xmodem, TRANSFER_ACK_TIMEOUT))
+            {
+                xmodem->state = WRITE_BLOCK_TIMEOUT;
+            }
+            break;
         }
-        break;
-    }
-    case COMPLETE:
-    {
-        ESP_LOGD(TAG, "COMPLETE");
-        ctrl = XEOT;
-        sscma_client_io_write(xmodem->io, (uint8_t *)&ctrl, sizeof(char));
-        xmodem->state = FINAL;
-        break;
-    }
-    case ABORT_TRANSFER:
-    {
-        ESP_LOGD(TAG, "ABORT_TRANSFER");
-        ctrl = XCAN;
-        sscma_client_io_write(xmodem->io, (uint8_t *)&ctrl, sizeof(char));
-        xmodem->state = FAILED;
-        break;
-    }
-    case TIMEOUT_EOT:
-    {
-        ESP_LOGD(TAG, "TIMEOUT_EOT");
-        xmodem->state = ABORT_TRANSFER;
-        break;
-    }
-    case WRITE_BLOCK_TIMEOUT:
-    {
-        ESP_LOGD(TAG, "TIMEOUT_EOT");
-        xmodem->state = WRITE_BLOCK_FAILED;
-        break;
-    }
-    default:
-    {
-        xmodem->state = ABORT_TRANSFER;
-        break;
-    }
+        case WRITE_BLOCK_FAILED: {
+            ESP_LOGD(TAG, "WRITE_BLOCK_FAILED");
+            if (xmodem->write_block_retries > WRITE_BLOCK_MAX_RETRIES)
+            {
+                xmodem->state = ABORT_TRANSFER;
+            }
+            else
+            {
+                xmodem->state = WRITE_BLOCK;
+                xmodem->cur_packet_id--;
+                xmodem->xfer_len -= xmodem->xfer_size;
+                xmodem->write_block_retries++;
+            }
+            break;
+        }
+        case C_ACK_RECEIVED: {
+            ESP_LOGD(TAG, "C_ACK_RECEIVED");
+            if (xmodem->xfer_len >= xmodem->total_len)
+            {
+                xmodem->total_len = 0;
+                xmodem->buf = NULL;
+                xmodem->state = WAIT_WRITE_BLOCK;
+            }
+            else
+            {
+                xmodem->write_block_retries = 0;
+                xmodem->state = WRITE_BLOCK;
+            }
+
+            break;
+        }
+        case WRITE_EOT: {
+            ESP_LOGD(TAG, "WRITE_EOT");
+            ctrl = XEOT;
+            sscma_client_io_write(xmodem->io, (uint8_t *)&ctrl, sizeof(char));
+            xmodem->state = WAIT_FOR_EOT_ACK;
+            break;
+        }
+        case WAIT_FOR_EOT_ACK: {
+            ESP_LOGD(TAG, "WAIT_FOR_EOT_ACK");
+            if (sscma_client_io_available(xmodem->io, &rlen) == ESP_OK && rlen)
+            {
+                sscma_client_io_read(xmodem->io, &response, 1);
+                switch (response)
+                {
+                    case XACK:
+                        xmodem->state = COMPLETE;
+                        break;
+                    case XNACK:
+                        xmodem->state = ABORT_TRANSFER;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            else if (xmodem_timeout(xmodem, TRANSFER_EOT_TIMEOUT))
+            {
+                xmodem->state = TIMEOUT_EOT;
+            }
+            break;
+        }
+        case COMPLETE: {
+            ESP_LOGD(TAG, "COMPLETE");
+            ctrl = XEOT;
+            sscma_client_io_write(xmodem->io, (uint8_t *)&ctrl, sizeof(char));
+            xmodem->state = FINAL;
+            break;
+        }
+        case ABORT_TRANSFER: {
+            ESP_LOGD(TAG, "ABORT_TRANSFER");
+            ctrl = XCAN;
+            sscma_client_io_write(xmodem->io, (uint8_t *)&ctrl, sizeof(char));
+            xmodem->state = FAILED;
+            break;
+        }
+        case TIMEOUT_EOT: {
+            ESP_LOGD(TAG, "TIMEOUT_EOT");
+            xmodem->state = ABORT_TRANSFER;
+            break;
+        }
+        case WRITE_BLOCK_TIMEOUT: {
+            ESP_LOGD(TAG, "TIMEOUT_EOT");
+            xmodem->state = WRITE_BLOCK_FAILED;
+            break;
+        }
+        default: {
+            xmodem->state = ABORT_TRANSFER;
+            break;
+        }
     }
 
     return xmodem->state;
@@ -437,7 +414,8 @@ esp_err_t sscma_client_proto_xmodem_start(sscma_client_proto_handle_t proto)
             ret = ESP_ERR_TIMEOUT;
             break;
         }
-    } while ((esp_timer_get_time() - xmodem->cur_time) / 1000 < TRANSFER_ACK_TIMEOUT);
+    }
+    while ((esp_timer_get_time() - xmodem->cur_time) / 1000 < TRANSFER_ACK_TIMEOUT);
 
     xSemaphoreGive(xmodem->lock);
 
@@ -473,7 +451,8 @@ esp_err_t sscma_client_proto_xmodem_write(sscma_client_proto_handle_t proto, con
             ret = ESP_FAIL;
             break;
         }
-    } while (1);
+    }
+    while (1);
 
     xSemaphoreGive(xmodem->lock);
 
@@ -511,7 +490,8 @@ esp_err_t sscma_client_proto_xmodem_finish(sscma_client_proto_handle_t proto)
             ret = ESP_FAIL;
             break;
         }
-    } while (1);
+    }
+    while (1);
 
     xSemaphoreGive(xmodem->lock);
 
@@ -549,7 +529,8 @@ esp_err_t sscma_client_proto_xmodem_abort(sscma_client_proto_handle_t proto)
             ret = ESP_FAIL;
             break;
         }
-    } while (1);
+    }
+    while (1);
 
     xSemaphoreGive(xmodem->lock);
     return ret;
