@@ -230,7 +230,8 @@ static void sscma_client_process(void *arg)
                                                 break;
                                             }
                                         }
-                                    } while (next_req != first_req);
+                                    }
+                                    while (next_req != first_req);
                                 }
                                 if (!found)
                                 {
@@ -276,7 +277,8 @@ static void sscma_client_process(void *arg)
                                                     break;
                                                 }
                                             }
-                                        } while (next_req != first_req);
+                                        }
+                                        while (next_req != first_req);
                                     }
                                     if (!found)
                                     {
@@ -294,7 +296,6 @@ static void sscma_client_process(void *arg)
                             }
                             else if (type->valueint == CMD_TYPE_EVENT)
                             {
-
                                 sscma_client_request_t *first_req, *next_req = NULL;
                                 bool found = false;
                                 // discard all the events while AT+BREAK is found
@@ -309,7 +310,8 @@ static void sscma_client_process(void *arg)
                                             found = true;
                                             break;
                                         }
-                                    } while (next_req != first_req);
+                                    }
+                                    while (next_req != first_req);
                                 }
                                 if (client->on_event == NULL || found || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
                                 {
@@ -400,7 +402,8 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     }
     else
     {
-        res = xTaskCreatePinnedToCore(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task, config->process_task_affinity);
+        res = xTaskCreatePinnedToCore(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task,
+            config->process_task_affinity);
     }
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create process task failed");
 
@@ -410,7 +413,8 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     }
     else
     {
-        res = xTaskCreatePinnedToCore(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task, config->monitor_task_affinity);
+        res = xTaskCreatePinnedToCore(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task,
+            config->monitor_task_affinity);
     }
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create monitor task failed");
 
@@ -496,7 +500,8 @@ esp_err_t sscma_client_del(sscma_client_handle_t client)
                 uxListRemove(&(next_req->item));
                 vQueueDelete(next_req->reply);
                 free(next_req);
-            } while (next_req != first_req);
+            }
+            while (next_req != first_req);
         }
 
         free(client->request_list);
@@ -857,7 +862,7 @@ esp_err_t sscma_client_set_model(sscma_client_handle_t client, int model)
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
     int code = 0;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_MODEL CMD_SET "%d" CMD_SUFFIX, model);
 
     ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request model failed");
@@ -877,7 +882,7 @@ esp_err_t sscma_client_sample(sscma_client_handle_t client, int times)
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
     int code = 0;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_SAMPLE CMD_SET "%d" CMD_SUFFIX, times);
     ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request sample failed");
 
@@ -894,7 +899,7 @@ esp_err_t sscma_client_sample(sscma_client_handle_t client, int times)
 esp_err_t sscma_client_invoke(sscma_client_handle_t client, int times, bool fliter, bool show)
 {
     esp_err_t ret = ESP_OK;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
     int code = 0;
     sscma_client_reply_t reply;
 
@@ -916,7 +921,7 @@ esp_err_t sscma_client_set_sensor(sscma_client_handle_t client, int id, int opt_
 {
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
 
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_SENSOR CMD_SET "%d,%d,%d" CMD_SUFFIX, id, enable ? 1 : 0, opt_id);
 
@@ -986,7 +991,7 @@ esp_err_t sscma_client_set_iou_threshold(sscma_client_handle_t client, int thres
 {
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
 
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_TIOU CMD_SET "%d" CMD_SUFFIX, threshold);
 
@@ -1017,7 +1022,6 @@ esp_err_t sscma_client_get_iou_threshold(sscma_client_handle_t client, int *thre
         ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         if (ret == ESP_OK)
         {
-
             *threshold = get_int_from_object(reply.payload, "data");
         }
         sscma_client_reply_clear(&reply);
@@ -1030,7 +1034,7 @@ esp_err_t sscma_client_set_confidence_threshold(sscma_client_handle_t client, in
 {
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
 
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_TSCORE CMD_SET "%d" CMD_SUFFIX, threshold);
 
@@ -1061,7 +1065,6 @@ esp_err_t sscma_client_get_confidence_threshold(sscma_client_handle_t client, in
         ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         if (ret == ESP_OK)
         {
-
             *threshold = get_int_from_object(reply.payload, "data");
         }
         sscma_client_reply_clear(&reply);
@@ -1394,14 +1397,15 @@ esp_err_t sscma_client_ota_start(sscma_client_handle_t client, sscma_client_io_h
             }
         }
         vTaskDelay(5 / portTICK_PERIOD_MS);
-    } while ((esp_timer_get_time() - start) / 1000 < OTA_ENTER_TIMEOUT);
+    }
+    while ((esp_timer_get_time() - start) / 1000 < OTA_ENTER_TIMEOUT);
 
     ESP_GOTO_ON_ERROR(ret, err, TAG, "enter ota mode failed");
 
     // write offset config
     if (offset != 0)
     {
-        char config[12] = {0xC0, 0x5A, (offset >> 0) & 0xFF, (offset >> 8) & 0xFF, (offset >> 16) & 0xFF, (offset >> 24) & 0xFF, 0x00, 0x00, 0x00, 0x00, 0x5A, 0xC0};
+        char config[12] = { 0xC0, 0x5A, (offset >> 0) & 0xFF, (offset >> 8) & 0xFF, (offset >> 16) & 0xFF, (offset >> 24) & 0xFF, 0x00, 0x00, 0x00, 0x00, 0x5A, 0xC0 };
 
         ESP_GOTO_ON_ERROR(sscma_client_proto_start(client->protocol), err, TAG, "write config failed");
 
@@ -1440,7 +1444,8 @@ esp_err_t sscma_client_ota_start(sscma_client_handle_t client, sscma_client_io_h
                 }
             }
             vTaskDelay(5 / portTICK_PERIOD_MS);
-        } while ((esp_timer_get_time() - start) / 1000 < OTA_DONE_TIMEOUT);
+        }
+        while ((esp_timer_get_time() - start) / 1000 < OTA_DONE_TIMEOUT);
 
         ESP_GOTO_ON_ERROR(ret, err, TAG, "enter ota mode failed");
     }
@@ -1503,7 +1508,8 @@ esp_err_t sscma_client_ota_finish(sscma_client_handle_t client)
             }
         }
         vTaskDelay(5 / portTICK_PERIOD_MS);
-    } while ((esp_timer_get_time() - start) / 1000 < OTA_DONE_TIMEOUT);
+    }
+    while ((esp_timer_get_time() - start) / 1000 < OTA_DONE_TIMEOUT);
 
     ESP_GOTO_ON_ERROR(ret, err, TAG, "finish ota failed");
 
