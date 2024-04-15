@@ -23,7 +23,7 @@
 
 #include "sscma_client_types.h"
 #include "sscma_client_io.h"
-#include "sscma_client_proto.h"
+#include "sscma_client_flasher.h"
 #include "sscma_client_commands.h"
 #include "sscma_client_ops.h"
 
@@ -353,8 +353,7 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     ESP_GOTO_ON_FALSE(client, ESP_ERR_NO_MEM, err, TAG, "no mem for sscma client");
     client->io = io;
     client->inited = false;
-    client->io_ota = NULL;
-    client->protocol = NULL;
+    client->flasher = NULL;
 
     if (config->reset_gpio_num >= 0)
     {
@@ -364,11 +363,14 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
             ESP_GOTO_ON_FALSE(client->io_expander, ESP_ERR_INVALID_ARG, err, TAG, "invalid io expander");
             ESP_GOTO_ON_ERROR(esp_io_expander_set_dir(client->io_expander, config->reset_gpio_num, IO_EXPANDER_OUTPUT), err, TAG, "set GPIO direction failed");
         }
-        gpio_config_t io_conf = {
-            .mode = GPIO_MODE_INPUT,
-            .pin_bit_mask = 1ULL << config->reset_gpio_num,
-        };
-        ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "configure GPIO for RST line failed");
+        else
+        {
+            gpio_config_t io_conf = {
+                .mode = GPIO_MODE_INPUT,
+                .pin_bit_mask = 1ULL << config->reset_gpio_num,
+            };
+            ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "configure GPIO for RST line failed");
+        }
     }
 
     client->rx_buffer.data = (char *)malloc(config->rx_buffer_size);
@@ -638,7 +640,6 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for sscma to be ready
     }
 
-    ESP_LOGW(TAG, "reset done");
     vTaskResume(client->process_task);
     return ret;
 }
@@ -1302,157 +1303,21 @@ esp_err_t sscma_utils_prase_image_from_reply(const sscma_client_reply_t *reply, 
     return ESP_OK;
 }
 
-esp_err_t sscma_client_ota_start(sscma_client_handle_t client, sscma_client_io_handle_t io, size_t offset)
+esp_err_t sscma_client_ota_start(sscma_client_handle_t client, const sscma_client_flasher_handle_t flasher, size_t offset)
 {
     esp_err_t ret = ESP_OK;
-    int64_t start = 0;
-    size_t rlen = 0;
-    ESP_RETURN_ON_FALSE(client, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
 
-    if (client->io_ota != NULL)
+    ESP_RETURN_ON_FALSE(client && flasher, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+
+    if (client->flasher != NULL)
     {
-        if (io != NULL)
-        {
-            ESP_LOGW(TAG, "client OTA io already registered, overriding it");
-            client->io_ota = io;
-        }
+        ESP_LOGW(TAG, "client OTA flasher already registered, overriding it");
     }
-    else
-    {
-        ESP_RETURN_ON_FALSE(io, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
-        client->io_ota = io;
-    }
+    client->flasher = flasher;
 
-    if (client->protocol != NULL)
-    {
-        ESP_LOGW(TAG, "client OTA protocol already registered, overriding it");
-        ESP_RETURN_ON_ERROR(sscma_client_proto_delete(client->protocol), TAG, "Failed to delete protocol");
-        client->protocol = NULL;
-    }
-
-    ESP_RETURN_ON_ERROR(sscma_client_proto_xmodem_create(client->io_ota, &client->protocol), TAG, "Failed to create protocol");
-
-    // Suspend the process task
     vTaskSuspend(client->process_task);
 
-    // perform reset
-    if (client->reset_gpio_num >= 0)
-    {
-        if (client->io_expander)
-        {
-            esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level);
-            vTaskDelay(50 / portTICK_PERIOD_MS);
-            esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, !client->reset_level);
-            vTaskDelay(10);
-        }
-        else
-        {
-            gpio_config_t io_conf = {
-                .mode = GPIO_MODE_OUTPUT,
-                .pin_bit_mask = 1ULL << client->reset_gpio_num,
-            };
-            gpio_config(&io_conf);
-            gpio_set_level(client->reset_gpio_num, client->reset_level);
-            vTaskDelay(50 / portTICK_PERIOD_MS);
-            gpio_set_level(client->reset_gpio_num, !client->reset_level);
-            gpio_reset_pin(client->reset_gpio_num);
-            vTaskDelay(10);
-        }
-    }
-    else
-    {
-        ESP_GOTO_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), err, TAG, "request reset failed");
-        vTaskDelay(100 / portTICK_PERIOD_MS); // wait for sscma to be ready
-    }
-
-    // enter ota mode
-    client->tx_buffer.pos = 0;
-    start = esp_timer_get_time();
-    ret = ESP_ERR_TIMEOUT;
-    do
-    {
-        sscma_client_io_write(client->io_ota, OTA_ENTER_CMD, sizeof(OTA_ENTER_CMD) - 1);
-        if (sscma_client_io_available(client->io_ota, &rlen) == ESP_OK && rlen > 0)
-        {
-            if (rlen + client->rx_buffer.pos > client->rx_buffer.len)
-            {
-                ret = ESP_ERR_NO_MEM;
-                break;
-            }
-            for (int i = 0; i < rlen; i++)
-            {
-                char c = '\0';
-                sscma_client_io_read(client->io_ota, &c, 1);
-                if (c != '\0')
-                {
-                    client->rx_buffer.data[client->rx_buffer.pos++] = c;
-                }
-            }
-            client->rx_buffer.data[client->rx_buffer.pos] = 0;
-            if (strnstr(client->rx_buffer.data, OTA_ENTER_HINT, client->rx_buffer.pos) != NULL)
-            {
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                ret = ESP_OK;
-                break;
-            }
-        }
-        vTaskDelay(5 / portTICK_PERIOD_MS);
-    }
-    while ((esp_timer_get_time() - start) / 1000 < OTA_ENTER_TIMEOUT);
-
-    ESP_GOTO_ON_ERROR(ret, err, TAG, "enter ota mode failed");
-
-    // write offset config
-    if (offset != 0)
-    {
-        char config[12] = { 0xC0, 0x5A, (offset >> 0) & 0xFF, (offset >> 8) & 0xFF, (offset >> 16) & 0xFF, (offset >> 24) & 0xFF, 0x00, 0x00, 0x00, 0x00, 0x5A, 0xC0 };
-
-        ESP_GOTO_ON_ERROR(sscma_client_proto_start(client->protocol), err, TAG, "write config failed");
-
-        ESP_GOTO_ON_ERROR(sscma_client_proto_write(client->protocol, config, sizeof(config)), err, TAG, "write config failed");
-
-        ESP_GOTO_ON_ERROR(sscma_client_proto_finish(client->protocol), err, TAG, "write config failed");
-
-        client->tx_buffer.pos = 0;
-        start = esp_timer_get_time();
-        ret = ESP_ERR_TIMEOUT;
-        do
-        {
-            sscma_client_io_write(client->io_ota, OTA_ENTER_CMD, sizeof(OTA_ENTER_CMD) - 1);
-            if (sscma_client_io_available(client->io_ota, &rlen) == ESP_OK && rlen > 0)
-            {
-                if (rlen + client->rx_buffer.pos > client->rx_buffer.len)
-                {
-                    ret = ESP_ERR_NO_MEM;
-                    break;
-                }
-                for (int i = 0; i < rlen; i++)
-                {
-                    char c = '\0';
-                    sscma_client_io_read(client->io_ota, &c, 1);
-                    if (c != '\0')
-                    {
-                        client->rx_buffer.data[client->rx_buffer.pos++] = c;
-                    }
-                }
-                client->rx_buffer.data[client->rx_buffer.pos] = 0;
-                if (strnstr(client->rx_buffer.data, OTA_DONE_HINT, client->rx_buffer.pos) != NULL)
-                {
-                    sscma_client_write(client, "n", 1);
-                    ret = ESP_OK;
-                    break;
-                }
-            }
-            vTaskDelay(5 / portTICK_PERIOD_MS);
-        }
-        while ((esp_timer_get_time() - start) / 1000 < OTA_DONE_TIMEOUT);
-
-        ESP_GOTO_ON_ERROR(ret, err, TAG, "enter ota mode failed");
-    }
-
-    ESP_GOTO_ON_ERROR(sscma_client_proto_start(client->protocol), err, TAG, "start protocol failed");
-
-    return ret;
+    ESP_GOTO_ON_ERROR(sscma_client_flasher_start(client->flasher, offset), err, TAG, "start flasher failed");
 
 err:
     vTaskResume(client->process_task);
@@ -1463,60 +1328,28 @@ esp_err_t sscma_client_ota_write(sscma_client_handle_t client, const void *data,
 {
     esp_err_t ret = ESP_OK;
     ESP_RETURN_ON_FALSE(client && data && len, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
-    ESP_RETURN_ON_ERROR(sscma_client_proto_write(client->protocol, data, len), TAG, "write data failed");
+    ESP_GOTO_ON_ERROR(sscma_client_flasher_write(client->flasher, data, len), err, TAG, "write flasher failed");
+
+    return ret;
+
+err:
+    sscma_client_flasher_abort(client->flasher);
+    vTaskResume(client->process_task);
     return ret;
 }
 
 esp_err_t sscma_client_ota_finish(sscma_client_handle_t client)
 {
     esp_err_t ret = ESP_OK;
-    int64_t start = 0;
-    size_t rlen = 0;
     ESP_RETURN_ON_FALSE(client, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
-    ESP_GOTO_ON_ERROR(sscma_client_proto_finish(client->protocol), err, TAG, "finish protocol failed");
+    ESP_GOTO_ON_ERROR(sscma_client_flasher_finish(client->flasher), err, TAG, "finish flasher failed");
 
-    ESP_LOGI(TAG, "Waiting for OTA done...");
+    vTaskResume(client->process_task);
 
-    client->tx_buffer.pos = 0;
-    start = esp_timer_get_time();
-    ret = ESP_ERR_TIMEOUT;
-    do
-    {
-        sscma_client_io_write(client->io_ota, OTA_ENTER_CMD, sizeof(OTA_ENTER_CMD) - 1);
-        if (sscma_client_io_available(client->io_ota, &rlen) == ESP_OK && rlen > 0)
-        {
-            if (rlen + client->rx_buffer.pos > client->rx_buffer.len)
-            {
-                ret = ESP_ERR_NO_MEM;
-                break;
-            }
-            for (int i = 0; i < rlen; i++)
-            {
-                char c = '\0';
-                sscma_client_io_read(client->io_ota, &c, 1);
-                if (c != '\0')
-                {
-                    client->rx_buffer.data[client->rx_buffer.pos++] = c;
-                }
-            }
-            client->rx_buffer.data[client->rx_buffer.pos] = 0;
-            if (strnstr(client->rx_buffer.data, OTA_DONE_HINT, client->rx_buffer.pos) != NULL)
-            {
-                sscma_client_write(client, "y", 1);
-                ret = ESP_OK;
-                break;
-            }
-        }
-        vTaskDelay(5 / portTICK_PERIOD_MS);
-    }
-    while ((esp_timer_get_time() - start) / 1000 < OTA_DONE_TIMEOUT);
-
-    ESP_GOTO_ON_ERROR(ret, err, TAG, "finish ota failed");
-
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    return ret;
 
 err:
-    sscma_client_reset(client);
+    sscma_client_flasher_abort(client->flasher);
     vTaskResume(client->process_task);
     return ret;
 }
@@ -1525,7 +1358,7 @@ esp_err_t sscma_client_ota_abort(sscma_client_handle_t client)
 {
     esp_err_t ret = ESP_OK;
     ESP_RETURN_ON_FALSE(client, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
-    ESP_GOTO_ON_ERROR(sscma_client_proto_abort(client->protocol), err, TAG, "abort protocol failed");
+    ESP_GOTO_ON_ERROR(sscma_client_flasher_abort(client->flasher), err, TAG, "abort flasher failed");
 
 err:
     vTaskResume(client->process_task);

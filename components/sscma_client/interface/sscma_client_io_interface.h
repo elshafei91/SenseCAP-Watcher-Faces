@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 #include "esp_err.h"
-#include "sscma_client_io.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +61,15 @@ struct sscma_client_io_t
      *          - ESP_OK
      */
     esp_err_t (*available)(sscma_client_io_t *io, size_t *ret_avail);
+
+    /**
+     * @brief Flush data
+     *
+     * @param[in] io IO handle
+     * @return
+     *          - ESP_OK
+     */
+    esp_err_t (*flush)(sscma_client_io_t *io);
 };
 
 #ifdef __cplusplus
