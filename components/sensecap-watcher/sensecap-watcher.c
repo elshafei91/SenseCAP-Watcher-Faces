@@ -666,7 +666,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_SPD2010_CONFIG();
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &tp_handle));
-    
+
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = tp_handle,
@@ -696,6 +696,7 @@ lv_disp_t *bsp_lvgl_init(void)
             .buff_dma = false,
             .buff_spiram = true,
         } };
+    cfg.lvgl_port_cfg.task_stack = CONFIG_LVGL_TASK_STACK_SIZE;
     return bsp_lvgl_init_with_cfg(&cfg);
 }
 

@@ -6,8 +6,6 @@ targets:
 
 dependencies:
   idf: ">=5.2.0"
-  
-  lvgl/lvgl: "^8"
 
   espressif/esp_lvgl_port:
     override_path: "../esp_lvgl_port"

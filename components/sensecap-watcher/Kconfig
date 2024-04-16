@@ -1,4 +1,4 @@
-menu "SenseCAP Watcher BSP Configuration"
+menu "SenseCAP Watcher BSP configuration"
 
     config BSP_ERROR_CHECK
     bool "Enable error check in BSP"
@@ -13,7 +13,7 @@ menu "SenseCAP Watcher BSP Configuration"
     help
         "Audio mic value gain"
 
-    menu "LVGL Configuration"
+    menu "BSP LVGL configuration"
 
         config LVGL_DRAW_BUFF_HEIGHT
             int "LVGL DRAW BUFF HEIGHT(ROWS)"
@@ -21,6 +21,13 @@ menu "SenseCAP Watcher BSP Configuration"
             default 412
             help
                 "LVGL draw buffer height(rows)"
+        
+        config LVGL_TASK_STACK_SIZE
+            int "LVGL TASK STACK SIZE"
+            range 4096 40960
+            default 10240
+            help
+                "LVGL task stack size"
 
         config LVGL_INPUT_DEVICE_USE_KNOB
             bool "LVGL INPUT DEVICE USE KNOB"
@@ -36,7 +43,7 @@ menu "SenseCAP Watcher BSP Configuration"
     
     endmenu
 
-    menu "SSCMA Client Configuration"
+    menu "SSCMA configuration"
 
         config SSCMA_PROCESS_TASK_STACK_SIZE
             int "SSCMA PROCESS TASK STACK SIZE"
