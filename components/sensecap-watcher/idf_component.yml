@@ -6,11 +6,11 @@ targets:
 
 dependencies:
   idf: ">=5.2.0"
+  
   lvgl/lvgl: "^8"
 
   espressif/esp_lvgl_port:
-    version: ^1
-    public: true
+    override_path: "../esp_lvgl_port"
 
   espressif/esp_lcd_spd2010:
     version: ^1.0.1
