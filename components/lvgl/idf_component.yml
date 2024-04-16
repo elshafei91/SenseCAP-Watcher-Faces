@@ -7,3 +7,7 @@ repository_info:
   path: .
 url: https://lvgl.io/
 version: 8.4.0
+
+dependencies:
+  rlottie:
+    override_path: "../rlottie"

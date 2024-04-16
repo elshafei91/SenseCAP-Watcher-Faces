@@ -439,20 +439,14 @@ esp_err_t bsp_rtc_set_time(const struct tm *timeinfo)
 esp_err_t bsp_rtc_set_timer(uint32_t time_in_sec)
 {
     esp_err_t ret = ESP_OK;
-    uint8_t data = 0x00;
 
-    if (time_in_sec == 0)
-    { // disable timer
-        ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_TIMER_CTL, &data, 1));
-        ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_STATUS2, &data, 1));
-        return ESP_OK;
-    }
-    else if ((time_in_sec > 255 * 60) || (time_in_sec < 15))
+    if ((time_in_sec > 255 * 60) || (time_in_sec < 15))
     {
         ESP_LOGE(TAG, "RTC set timer - out of range");
         return ESP_ERR_INVALID_ARG;
     }
 
+    uint8_t data = 0x00;
     uint8_t freq = (time_in_sec > 255) ? 0b11 : 0b10; // 1/60 Hz or 1 Hz
     uint8_t cnt = (time_in_sec > 255) ? time_in_sec / 60 : time_in_sec;
 
@@ -652,6 +646,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
 
     /* Initialize touch HW */
     ESP_LOGI(TAG, "Initialize touch panel");
+
     const esp_lcd_touch_config_t tp_cfg = {
         .x_max = DRV_LCD_H_RES,
         .y_max = DRV_LCD_V_RES,
@@ -671,7 +666,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_SPD2010_CONFIG();
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &tp_handle));
-
+    
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = tp_handle,
