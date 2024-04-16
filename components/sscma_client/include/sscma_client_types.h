@@ -109,15 +109,16 @@ typedef struct
  * @param[in] user_ctx User context
  * @return None
  */
-typedef void (*sscma_client_event_cb_t)(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx);
+typedef void (*sscma_client_reply_cb_t)(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx);
 
 /**
  * @brief Type of SCCMA client callback
  */
 typedef struct
 {
-    sscma_client_event_cb_t on_event;
-    sscma_client_event_cb_t on_log;
+    sscma_client_reply_cb_t on_response;
+    sscma_client_reply_cb_t on_event;
+    sscma_client_reply_cb_t on_log;
 } sscma_client_callback_t;
 
 struct sscma_client_t
@@ -129,8 +130,9 @@ struct sscma_client_t
     bool inited;                           /* !< Whether inited */
     sscma_client_info_t info;              /* !< Info */
     sscma_client_model_t model;            /* !< Model */
-    sscma_client_event_cb_t on_event;      /* !< Callback function */
-    sscma_client_event_cb_t on_log;        /* !< Callback function */
+    sscma_client_reply_cb_t on_response;   /* !< Callback function */
+    sscma_client_reply_cb_t on_event;      /* !< Callback function */
+    sscma_client_reply_cb_t on_log;        /* !< Callback function */
     void *user_ctx;                        /* !< User context */
     esp_io_expander_handle_t io_expander;  /* !< IO expander handle */
     TaskHandle_t monitor_task;             /* !< Monitor task handle */

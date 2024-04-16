@@ -144,11 +144,18 @@ static void sscma_client_monitor(void *arg)
                 client->on_event(client, &reply, client->user_ctx);
             }
         }
-        else
+        else if (type->valueint == CMD_TYPE_LOG)
         {
             if (client->on_log)
             {
                 client->on_log(client, &reply, client->user_ctx);
+            }
+        }
+        else
+        {
+            if (client->on_response)
+            {
+                client->on_response(client, &reply, client->user_ctx);
             }
         }
         sscma_client_reply_clear(&reply);
@@ -190,12 +197,12 @@ static void sscma_client_process(void *arg)
                 if ((prefix = strnstr(client->rx_buffer.data, RESPONSE_PREFIX, suffix - client->rx_buffer.data)) != NULL)
                 {
                     int len = suffix - prefix + RESPONSE_SUFFIX_LEN;
-                    reply.data = (char *)malloc(len);
+                    reply.data = (char *)malloc(len + 1);
                     if (reply.data != NULL)
                     {
-                        reply.len = len - 1;
-                        memcpy(reply.data, prefix + 1, len - 1); // remove "\r" and "\n"
-                        reply.data[len - 1] = 0;
+                        reply.len = len;
+                        memcpy(reply.data, prefix, len);
+                        reply.data[len] = 0;
                         reply.payload = cJSON_Parse(reply.data);
                         if (reply.payload != NULL)
                         {
@@ -236,7 +243,10 @@ static void sscma_client_process(void *arg)
                                 if (!found)
                                 {
                                     ESP_LOGW(TAG, "request not found: %s", name->valuestring);
-                                    sscma_client_reply_clear(&reply);
+                                    if (client->on_response == NULL || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
+                                    {
+                                        sscma_client_reply_clear(&reply); // discard this reply
+                                    }
                                 }
                             }
                             else if (type->valueint == CMD_TYPE_LOG)
@@ -283,7 +293,10 @@ static void sscma_client_process(void *arg)
                                     if (!found)
                                     {
                                         ESP_LOGW(TAG, "request not found: %s", name->valuestring);
-                                        sscma_client_reply_clear(&reply);
+                                        if (client->on_log == NULL || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
+                                        {
+                                            sscma_client_reply_clear(&reply); // discard this reply
+                                        }
                                     }
                                 }
                                 else
@@ -420,6 +433,7 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     }
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create monitor task failed");
 
+    client->on_response = NULL;
     client->on_event = NULL;
     client->on_log = NULL;
     *ret_client = client;
@@ -670,6 +684,7 @@ esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const ssc
         ESP_LOGW(TAG, "callback on_log already registered, overriding it");
     }
 
+    client->on_response = callback->on_response;
     client->on_event = callback->on_event;
     client->on_log = callback->on_log;
     client->user_ctx = user_ctx;
