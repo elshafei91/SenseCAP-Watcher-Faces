@@ -1,6 +1,6 @@
 
-set(priv_requires "esp_mm" "esp_psram" "esp_lcd" "fatfs")
-set(requires "driver" "spiffs")
+set(priv_requires "esp_mm" "esp_psram" "esp_lcd" "fatfs" "esp_timer")
+set(requires "driver" "spiffs" "lvgl")
 
 idf_component_register(
     SRCS "sensecap-watcher.c"
