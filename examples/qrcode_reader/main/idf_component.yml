@@ -1,0 +1,11 @@
+## IDF Component Manager Manifest File
+dependencies:
+  espressif/quirc: "^1.2.0"
+  idf: ">=5.0"
+
+  sscma_client:
+    override_path: "../../../components/sscma_client"
+  indoor_ai_camera:
+    override_path: "../../../components/indoor_ai_camera"
+  esp_jpeg_simd: 
+    override_path: "../../../components/esp_jpeg_simd"
