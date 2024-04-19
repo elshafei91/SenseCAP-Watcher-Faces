@@ -23,6 +23,47 @@ static uint16_t io_exp_val = 0;
 static volatile bool io_exp_update = false;
 static void io_exp_isr_handler(void *arg) { io_exp_update = true; }
 
+esp_io_expander_handle_t bsp_io_expander_init()
+{
+    if (io_exp_handle != NULL)
+    {
+        return io_exp_handle;
+    }
+
+    ESP_LOGI(TAG, "Initialize IO I2C bus");
+    ESP_ERROR_CHECK(bsp_i2c_bus_init());
+
+    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM,
+                                          ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001,
+                                          &io_exp_handle);
+
+    esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
+    esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
+    esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+    esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
+
+    // esp_io_expander_print_state(io_exp_handle);
+
+    uint32_t pin_val = 0;
+    esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
+    io_exp_val = DRV_IO_EXP_OUTPUT_MASK | (uint16_t)pin_val;
+    ESP_LOGI(TAG, "IO expander initialized: %x", io_exp_val);
+
+    const gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << BSP_IO_EXPANDER_INT),
+        .intr_type = GPIO_INTR_NEGEDGE,
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = 1,
+    };
+    gpio_config(&io_conf);
+    gpio_set_intr_type(BSP_IO_EXPANDER_INT, GPIO_INTR_NEGEDGE);
+    gpio_install_isr_service(ESP_INTR_FLAG_SHARED);
+    gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
+
+    return io_exp_handle;
+}
+
 uint8_t bsp_exp_io_get_level(uint16_t pin_mask)
 {
     if (io_exp_update && (io_exp_handle != NULL))
@@ -126,7 +167,34 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
     return ret;
 }
 
-uint16_t bsp_bat_get_voltage(void)
+void bsp_system_deep_sleep(uint32_t time_in_sec)
+{
+    if (time_in_sec > 0) esp_sleep_enable_timer_wakeup(time_in_sec * 1000000);
+
+    esp_sleep_enable_ext0_wakeup(BSP_IO_EXPANDER_INT, 0);
+    rtc_gpio_pullup_en(BSP_IO_EXPANDER_INT);
+    rtc_gpio_pulldown_dis(BSP_IO_EXPANDER_INT);
+
+    esp_deep_sleep_start();
+}
+
+void bsp_system_reboot(void) {
+    bsp_exp_io_set_level(BSP_PWR_LCD, 0);
+    esp_restart();
+}
+
+void bsp_system_shutdown(void) {
+    bsp_exp_io_set_level(BSP_PWR_SYSTEM, 0);
+}
+
+#ifdef CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS
+void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps, const char *function_name)
+{
+    printf("%s failed to allocate %d bytes with 0x%X capabilities. \n",function_name, requested_size, caps);
+}
+#endif
+
+uint16_t bsp_battery_get_voltage(void)
 {
     static bool initialized = false;
     static adc_oneshot_unit_handle_t adc_handle;
@@ -167,11 +235,11 @@ uint16_t bsp_bat_get_voltage(void)
     return 0;
 }
 
-uint8_t bsp_bat_get_percentage(void)
+uint8_t bsp_battery_get_percent(void)
 {
     uint32_t voltage = 0;
     for (uint8_t i = 0; i < 10; i++) {
-        voltage += bsp_bat_get_voltage();
+        voltage += bsp_battery_get_voltage();
     }
     voltage /= 10;
     int percent = (voltage - 3400) * 100 / (4200 - 3400);
@@ -281,14 +349,8 @@ esp_err_t bsp_rtc_set_time(const struct tm *timeinfo)
     return ESP_OK;
 }
 
-void bsp_system_pwr_off(void) {
-    bsp_exp_io_set_level(BSP_PWR_SYSTEM, 0);
-}
-
 esp_err_t bsp_knob_btn_init(void *param)
 {
-    // esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
-
     esp_io_expander_handle_t io_exp = bsp_io_expander_init();
     if (io_exp == NULL)
     {
@@ -300,13 +362,11 @@ esp_err_t bsp_knob_btn_init(void *param)
 
 uint8_t bsp_knob_btn_get_key_value(void *param)
 {
-    // esp_io_expander_handle_t io_exp = *((esp_io_expander_handle_t *)param);
     return bsp_exp_io_get_level(BSP_KNOB_BTN);
 }
 
 esp_err_t bsp_knob_btn_deinit(void *param)
 {
-    // esp_io_expander_handle_t io_exp_handle = *((esp_io_expander_handle_t *)param);
     return esp_io_expander_del(io_exp_handle);
 }
 
@@ -515,6 +575,9 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
 
 lv_disp_t *bsp_lvgl_init(void)
 {
+#ifdef CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS
+    BSP_ERROR_CHECK_RETURN_NULL(heap_caps_register_failed_alloc_callback(heap_caps_alloc_failed_hook));
+#endif
     bsp_display_cfg_t cfg = {
         .lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
         .buffer_size = DRV_LCD_H_RES * LVGL_DRAW_BUFF_HEIGHT,
@@ -543,47 +606,6 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
 #endif
     }
     return disp;
-}
-
-esp_io_expander_handle_t bsp_io_expander_init()
-{
-    if (io_exp_handle != NULL)
-    {
-        return io_exp_handle;
-    }
-
-    ESP_LOGI(TAG, "Initialize IO I2C bus");
-    ESP_ERROR_CHECK(bsp_i2c_bus_init());
-
-    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM,
-                                          ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001,
-                                          &io_exp_handle);
-
-    esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
-    esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
-    esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
-    vTaskDelay(50 / portTICK_PERIOD_MS);
-    esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
-
-    esp_io_expander_print_state(io_exp_handle);
-
-    uint32_t pin_val = 0;
-    esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
-    io_exp_val = DRV_IO_EXP_OUTPUT_MASK | (uint16_t)pin_val;
-    ESP_LOGI(TAG, "IO expander initialized: %x", io_exp_val);
-
-    const gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << BSP_IO_EXPANDER_INT),
-        .intr_type = GPIO_INTR_NEGEDGE,
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = 1,
-    };
-    gpio_config(&io_conf);
-    gpio_set_intr_type(BSP_IO_EXPANDER_INT, GPIO_INTR_NEGEDGE);
-    gpio_install_isr_service(ESP_INTR_FLAG_SHARED);
-    gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
-
-    return io_exp_handle;
 }
 
 esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)

@@ -14,6 +14,7 @@
 #include "driver/i2c.h"
 #include "driver/spi_master.h"
 #include "driver/i2s_std.h"
+#include "driver/rtc_io.h"
 #include "esp_codec_dev.h"
 #include "esp_codec_dev_defaults.h"
 #include "iot_button.h"
@@ -34,6 +35,7 @@
 #include "esp_lvgl_port.h"
 #include "esp_vfs_fat.h"
 #include "esp_spiffs.h"
+#include "esp_sleep.h"
 #include "sdmmc_cmd.h"
 
 /* SPI */
@@ -265,12 +267,18 @@ extern "C"
         } flags;
     } bsp_display_cfg_t;
 
+    esp_err_t bsp_i2c_bus_init(void);
+    esp_err_t bsp_spi_bus_init(void);
+    
     esp_err_t bsp_rgb_init(void);
     esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b);
 
-    uint16_t bsp_bat_get_voltage(void);
-    uint8_t bsp_bat_get_percentage(void);
-    void bsp_system_pwr_off(void);
+    uint16_t bsp_battery_get_voltage(void);
+    uint8_t bsp_battery_get_percent(void);
+
+    void bsp_system_deep_sleep(uint32_t time_in_sec);
+    void bsp_system_reboot(void);
+    void bsp_system_shutdown(void);
 
     esp_err_t bsp_rtc_init(void);
     esp_err_t bsp_rtc_get_time(struct tm *timeinfo);
