@@ -12,6 +12,7 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "driver/i2c.h"
+#include "driver/uart.h"
 #include "driver/spi_master.h"
 #include "driver/i2s_std.h"
 #include "driver/rtc_io.h"
@@ -39,6 +40,9 @@
 #include "sdmmc_cmd.h"
 
 /* SPI */
+#define BSP_SPI2_HOST_SCLK (GPIO_NUM_4)
+#define BSP_SPI2_HOST_MOSI (GPIO_NUM_5)
+#define BSP_SPI2_HOST_MISO (GPIO_NUM_6)
 #define BSP_SPI3_HOST_SCLK (GPIO_NUM_7)
 #define BSP_SPI3_HOST_MISO (GPIO_NUM_8)
 #define BSP_SPI3_HOST_MOSI (GPIO_NUM_9)
@@ -55,6 +59,19 @@
 #define BSP_KNOB_A (GPIO_NUM_41)
 #define BSP_KNOB_B (GPIO_NUM_42)
 #define BSP_KNOB_BTN (IO_EXPANDER_PIN_NUM_3)
+
+/* Himax */
+#define BSP_HIMAX_UART_NUM (UART_NUM_1)
+#define BSP_HIMAX_UART_TX (GPIO_NUM_17)
+#define BSP_HIMAX_UART_RX (GPIO_NUM_18)
+#define BSP_HIMAX_SPI_NUM (SPI2_HOST)
+#define BSP_HIMAX_SPI_CS (GPIO_NUM_21)
+#define BSP_HIMAX_SPI_SYNC (IO_EXPANDER_PIN_NUM_6)
+
+/* SD Card */
+#define BSP_SD_SPI_NUM (SPI3_HOST)
+#define BSP_SD_SPI_CS (GPIO_NUM_20)
+#define BSP_SD_GPIO_DET (IO_EXPANDER_PIN_NUM_4)
 
 /* LCD */
 #define BSP_LCD_SPI_NUM (SPI3_HOST)
@@ -84,11 +101,6 @@
 #define BSP_AUDIO_I2S_LRCK (GPIO_NUM_12)
 #define BSP_AUDIO_I2S_DSIN (GPIO_NUM_15)
 #define BSP_AUDIO_I2S_DOUT (GPIO_NUM_16)
-
-/* SD Card */
-#define BSP_SD_SPI_NUM (SPI3_HOST)
-#define BSP_SD_SPI_CS (GPIO_NUM_20)
-#define BSP_SD_GPIO_DET (IO_EXPANDER_PIN_NUM_4)
 
 /* POWER */
 #define BSP_PWR_CHRG_DET (IO_EXPANDER_PIN_NUM_0)
@@ -269,6 +281,7 @@ extern "C"
 
     esp_err_t bsp_i2c_bus_init(void);
     esp_err_t bsp_spi_bus_init(void);
+    esp_err_t bsp_uart_bus_init(void);
     
     esp_err_t bsp_rgb_init(void);
     esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b);

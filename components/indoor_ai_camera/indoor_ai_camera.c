@@ -108,9 +108,13 @@ esp_err_t bsp_spi_bus_init(void)
         .sclk_io_num = BSP_SPI3_HOST_SCLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = 4000,
+        .max_transfer_sz = 4095,
     };
     ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
+    bus_cfg.mosi_io_num = BSP_SPI2_HOST_MOSI;
+    bus_cfg.miso_io_num = BSP_SPI2_HOST_MISO;
+    bus_cfg.sclk_io_num = BSP_SPI2_HOST_SCLK;
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
     initialized = true;
     return ESP_OK;
 }
@@ -131,6 +135,28 @@ esp_err_t bsp_i2c_bus_init(void)
         .master.clk_speed = BSP_GENERAL_I2C_CLK};
     BSP_ERROR_CHECK_RETURN_ERR(i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf));
     BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_SHARED));
+    initialized = true;
+    return ESP_OK;
+}
+
+esp_err_t bsp_uart_bus_init(void)
+{
+    static bool initialized = false;
+    if (initialized)
+    {
+        return ESP_OK;
+    }
+    uart_config_t uart_config = {
+        .baud_rate = 921600,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+    ESP_ERROR_CHECK(uart_param_config(BSP_HIMAX_UART_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(BSP_HIMAX_UART_NUM, BSP_HIMAX_UART_TX, BSP_HIMAX_UART_RX, -1, -1));
+    ESP_ERROR_CHECK(uart_driver_install(BSP_HIMAX_UART_NUM, 64 * 1024, 0, 0, NULL, ESP_INTR_FLAG_SHARED));
     initialized = true;
     return ESP_OK;
 }
@@ -170,6 +196,10 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
 void bsp_system_deep_sleep(uint32_t time_in_sec)
 {
     if (time_in_sec > 0) esp_sleep_enable_timer_wakeup(time_in_sec * 1000000);
+
+    uint32_t pin_mask_sleep = BSP_PWR_SDCARD | BSP_PWR_CODEC_PA | BSP_PWR_AUDIO | \
+                              BSP_PWR_GROVE | BSP_PWR_BAT_ADC | BSP_PWR_LCD | BSP_PWR_AI_CHIP;
+    if (io_exp_handle != NULL) esp_io_expander_set_level(io_exp_handle, pin_mask_sleep, 0);
 
     esp_sleep_enable_ext0_wakeup(BSP_IO_EXPANDER_INT, 0);
     rtc_gpio_pullup_en(BSP_IO_EXPANDER_INT);
