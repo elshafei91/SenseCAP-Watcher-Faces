@@ -217,6 +217,14 @@ void bsp_system_shutdown(void) {
     bsp_exp_io_set_level(BSP_PWR_SYSTEM, 0);
 }
 
+bool bsp_system_is_charging(void) {
+    return bsp_exp_io_get_level(BSP_PWR_CHRG_DET) == 0;
+}
+
+bool bsp_system_is_standby(void) {
+    return bsp_exp_io_get_level(BSP_PWR_STDBY_DET) == 0;
+}
+
 #ifdef CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS
 void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps, const char *function_name)
 {

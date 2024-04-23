@@ -292,6 +292,8 @@ extern "C"
     void bsp_system_deep_sleep(uint32_t time_in_sec);
     void bsp_system_reboot(void);
     void bsp_system_shutdown(void);
+    bool bsp_system_is_charging(void);
+    bool bsp_system_is_standby(void);
 
     esp_err_t bsp_rtc_init(void);
     esp_err_t bsp_rtc_get_time(struct tm *timeinfo);
