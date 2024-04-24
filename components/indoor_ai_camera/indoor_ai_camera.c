@@ -286,6 +286,31 @@ uint8_t bsp_battery_get_percent(void)
     return (uint8_t)percent;
 }
 
+inline static esp_err_t bsp_rtc_reg_write(uint8_t reg, uint8_t *val, size_t len)
+{
+    uint8_t data[8] = {0};
+    data[0] = reg;
+    memcpy(data + 1, val, len);
+    return i2c_master_write_to_device(
+        BSP_GENERAL_I2C_NUM, 
+        DRV_PCF8563_I2C_ADDR, 
+        data, 
+        len + 1, 
+        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
+    );
+}
+
+inline static esp_err_t bsp_rtc_reg_read(uint8_t reg, uint8_t *val, size_t len)
+{
+    return i2c_master_write_read_device(
+        BSP_GENERAL_I2C_NUM, 
+        DRV_PCF8563_I2C_ADDR, 
+        &reg, 1, 
+        val, len, 
+        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
+    );
+}
+
 esp_err_t bsp_rtc_init(void)
 {
     esp_err_t ret = ESP_OK;
@@ -295,21 +320,13 @@ esp_err_t bsp_rtc_init(void)
         return ret;
     }
 
-    uint8_t data[2] = {0x00, 0x00};
-    ret = i2c_master_write_to_device(
-        BSP_GENERAL_I2C_NUM, 
-        DRV_PCF8563_I2C_ADDR, 
-        data, 
-        sizeof(data), 
-        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
-    );
+    uint8_t data = 0x00;
+    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_STATUS1, &data, 1));
+    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_STATUS2, &data, 1));
 
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize RTC");
-        return ret;
-    }
+    // TODO: create feed dog timer ?
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t bsp_rtc_get_time(struct tm *timeinfo)
@@ -321,28 +338,21 @@ esp_err_t bsp_rtc_get_time(struct tm *timeinfo)
         return ret;
     }
 
-    uint8_t data[8] = {0};
-    data[0] = DRV_RTC_REG_TIME;
-    ret = i2c_master_write_read_device(
-        BSP_GENERAL_I2C_NUM, 
-        DRV_PCF8563_I2C_ADDR, 
-        data, 1, 
-        data + 1, sizeof(data) - 1, 
-        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
-    );
+    uint8_t data[7] = {0};
+    ret = bsp_rtc_reg_read(DRV_RTC_REG_TIME, data, sizeof(data));
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read time from RTC");
         return ret;
     }
 
     struct tm tm_data = {
-       .tm_sec =  BCD2DEC(data[1] & 0x7F),
-       .tm_min =  BCD2DEC(data[2] & 0x7F),
-       .tm_hour = BCD2DEC(data[3] & 0x3F),
-       .tm_mday = BCD2DEC(data[4] & 0x3F),
-       .tm_wday = BCD2DEC(data[5] & 0x07),
-       .tm_mon =  BCD2DEC(data[6] & 0x1F) - 1,
-       .tm_year = BCD2DEC(data[7]) + 2000 - 1900,
+       .tm_sec =  BCD2DEC(data[0] & 0x7F),
+       .tm_min =  BCD2DEC(data[1] & 0x7F),
+       .tm_hour = BCD2DEC(data[2] & 0x3F),
+       .tm_mday = BCD2DEC(data[3] & 0x3F),
+       .tm_wday = BCD2DEC(data[4] & 0x07),
+       .tm_mon =  BCD2DEC(data[5] & 0x1F) - 1,
+       .tm_year = BCD2DEC(data[6]) + 2000 - 1900,
     };
     *timeinfo = tm_data;
 
@@ -361,28 +371,43 @@ esp_err_t bsp_rtc_set_time(const struct tm *timeinfo)
 {
     esp_err_t ret = ESP_OK;
 
-    uint8_t data[8] = {0};
-    data[0] = DRV_RTC_REG_TIME;
-    data[1] = DEC2BCD(timeinfo->tm_sec);
-    data[2] = DEC2BCD(timeinfo->tm_min);
-    data[3] = DEC2BCD(timeinfo->tm_hour);
-    data[4] = DEC2BCD(timeinfo->tm_mday);
-    data[5] = DEC2BCD(timeinfo->tm_wday); // 0 - 6
-    data[6] = DEC2BCD(timeinfo->tm_mon + 1); // 0 - 11
-    data[7] = DEC2BCD(timeinfo->tm_year - 100);
+    uint8_t data[7] = {0};
+    data[0] = DEC2BCD(timeinfo->tm_sec);
+    data[1] = DEC2BCD(timeinfo->tm_min);
+    data[2] = DEC2BCD(timeinfo->tm_hour);
+    data[3] = DEC2BCD(timeinfo->tm_mday);
+    data[4] = DEC2BCD(timeinfo->tm_wday); // 0 - 6
+    data[5] = DEC2BCD(timeinfo->tm_mon + 1); // 0 - 11
+    data[6] = DEC2BCD(timeinfo->tm_year - 100);
 
-    ret = i2c_master_write_to_device(
-        BSP_GENERAL_I2C_NUM, 
-        DRV_PCF8563_I2C_ADDR, 
-        data, 
-        sizeof(data), 
-        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
-    );
-
+    ret = bsp_rtc_reg_write(DRV_RTC_REG_TIME, data, sizeof(data));
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set time to RTC");
         return ret;
     }
+
+    return ESP_OK;
+}
+
+esp_err_t bsp_rtc_set_timer(uint32_t time_in_sec)
+{
+    esp_err_t ret = ESP_OK;
+
+    if ((time_in_sec > 255 * 60) || (time_in_sec < 15)) {
+        ESP_LOGE(TAG, "RTC set timer - out of range");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    uint8_t data = 0x00;
+    uint8_t freq = (time_in_sec > 255) ? 0b11 : 0b10; // 1/60 Hz or 1 Hz
+    uint8_t cnt = (time_in_sec > 255) ? time_in_sec / 60 : time_in_sec;
+    
+    data = 0x80 | (freq & 0x03);
+    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_TIMER_CTL, &data, 1));
+    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_TIMER, &cnt, 1));
+
+    data = 0x11;
+    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_STATUS2, &data, 1));
 
     return ESP_OK;
 }

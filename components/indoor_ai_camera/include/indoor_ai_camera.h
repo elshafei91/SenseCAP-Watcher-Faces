@@ -141,8 +141,9 @@
 #define DRV_RTC_REG_STATUS2 (0x01)
 #define DRV_RTC_REG_TIME (0x02)
 #define DRV_RTC_REG_ALARM (0x09)
-#define DRV_RTC_REG_CONTROL (0x0d)
-#define DRV_RTC_REG_TIMER (0x0e)
+#define DRV_RTC_REG_CLKOUT (0x0d)
+#define DRV_RTC_REG_TIMER_CTL (0x0e)
+#define DRV_RTC_REG_TIMER (0x0f)
 
 #define DRV_ES8311_I2C_ADDR (0x30)
 #define DRV_ES7243_I2C_ADDR (0x26)
@@ -298,6 +299,7 @@ extern "C"
     esp_err_t bsp_rtc_init(void);
     esp_err_t bsp_rtc_get_time(struct tm *timeinfo);
     esp_err_t bsp_rtc_set_time(const struct tm *timeinfo);
+    esp_err_t bsp_rtc_set_timer(uint32_t time_in_sec);
 
     esp_err_t bsp_knob_btn_init(void *param);
     uint8_t bsp_knob_btn_get_key_value(void *param);
