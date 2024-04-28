@@ -73,7 +73,7 @@
 #define BSP_SSCMA_CLIENT_SPI_CS                (GPIO_NUM_21)
 #define BSP_SSCMA_CLIENT_SPI_SYNC              (IO_EXPANDER_PIN_NUM_6)
 #define BSP_SSCMA_CLIENT_SPI_SYNC_USE_EXPANDER (true)
-#define BSP_SSCMA_CLIENT_SPI_CLK               (1200000)
+#define BSP_SSCMA_CLIENT_SPI_CLK               (12 * 1000 * 1000)
 
 #define BSP_SSCMA_FLASHER_UART_NUM       (UART_NUM_1)
 #define BSP_SSCMA_FLASHER_UART_TX        (GPIO_NUM_17)
@@ -82,7 +82,7 @@
 
 /* SD Card */
 #define BSP_SD_SPI_NUM  (SPI2_HOST)
-#define BSP_SD_SPI_CS   (GPIO_NUM_45)
+#define BSP_SD_SPI_CS   (GPIO_NUM_46)
 #define BSP_SD_GPIO_DET (IO_EXPANDER_PIN_NUM_4)
 
 /* LCD */

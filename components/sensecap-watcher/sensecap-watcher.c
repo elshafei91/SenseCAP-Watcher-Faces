@@ -663,6 +663,10 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_SPD2010_CONFIG();
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &touch_handle));
+
+    // Wait for touch panel to be ready
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = touch_handle,
@@ -1061,6 +1065,20 @@ sscma_client_handle_t bsp_sscma_client_init()
 
     if (bsp_spi_bus_init() != ESP_OK)
         return NULL;
+
+    // !!!NOTE: SD Card use same SPI bus as sscma client, so we need to disable SD card CS pin first
+    const gpio_config_t io_config = {
+        .pin_bit_mask = (1ULL << BSP_SD_SPI_CS),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    esp_err_t ret = gpio_config(&io_config);
+    if (ret != ESP_OK)
+        return NULL;
+
+    gpio_set_level(BSP_SD_SPI_CS, 1);
 
     const sscma_client_io_spi_config_t spi_io_config = {
         .sync_gpio_num = BSP_SSCMA_CLIENT_SPI_SYNC,
