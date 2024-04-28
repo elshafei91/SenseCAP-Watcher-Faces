@@ -118,14 +118,14 @@ void app_main(void)
     else
     {
         ESP_LOGI(TAG, "sscma_client_ota_start success\n");
-        FILE *f = fopen("/spiffs/output.img", "r");
+        FILE *f = fopen("/spiffs/firmware.img", "r");
         if (f == NULL)
         {
-            ESP_LOGE(TAG, "open output.img failed\n");
+            ESP_LOGE(TAG, "open firmware.img failed\n");
         }
         else
         {
-            ESP_LOGI(TAG, "open output.img success\n");
+            ESP_LOGI(TAG, "open firmware.img success\n");
             size_t len = 0;
             char buf[128] = { 0 };
             do

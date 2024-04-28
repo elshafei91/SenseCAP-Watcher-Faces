@@ -16,6 +16,9 @@ static sscma_client_io_handle_t sscma_flasher_io_handle = NULL;
 static sscma_client_handle_t sscma_client_handle = NULL;
 static sscma_client_flasher_handle_t sscma_flasher_handle = NULL;
 
+static esp_lcd_panel_io_handle_t panel_io_handle = NULL;
+static esp_lcd_panel_handle_t panel_handle = NULL;
+
 static sdmmc_card_t *card;
 static esp_codec_dev_handle_t play_dev_handle;
 static esp_codec_dev_handle_t record_dev_handle;
@@ -563,6 +566,11 @@ err:
     return ret;
 }
 
+esp_lcd_panel_handle_t bsp_lcd_get_panel_handle()
+{
+    return panel_handle;
+}
+
 static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
 {
     assert(cfg != NULL);
@@ -572,15 +580,14 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
         return NULL;
 
     ESP_LOGD(TAG, "Initialize LCD panel");
-    esp_lcd_panel_io_handle_t io_handle = NULL;
-    esp_lcd_panel_handle_t panel_handle = NULL;
-    if (bsp_lcd_pannel_init(&panel_handle, &io_handle) != ESP_OK)
+
+    if (bsp_lcd_pannel_init(&panel_handle, &panel_io_handle) != ESP_OK)
         return NULL;
 
     /* Add LCD screen */
     ESP_LOGD(TAG, "Add LCD screen");
     const lvgl_port_display_cfg_t disp_cfg = {
-        .io_handle = io_handle,
+        .io_handle = panel_io_handle,
         .panel_handle = panel_handle,
         .buffer_size = cfg->buffer_size,
         .double_buffer = cfg->double_buffer,
@@ -664,15 +671,13 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &touch_handle));
 
-    // Wait for touch panel to be ready
-    vTaskDelay(50 / portTICK_PERIOD_MS);
-
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = touch_handle,
     };
     return lvgl_port_add_touch(&touch);
 }
+
 
 lv_disp_t *bsp_lvgl_init(void)
 {

@@ -183,9 +183,11 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
 
     if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK)
     {
-        lvgl_port_lock(0);
-        display_one_image(image, (const unsigned char *)img);
-        lvgl_port_unlock();
+        if (lvgl_port_lock(0))
+        {
+            display_one_image(image, (const unsigned char *)img);
+            lvgl_port_unlock();
+        }
 
         free(img);
     }
