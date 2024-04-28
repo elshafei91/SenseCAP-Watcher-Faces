@@ -4,12 +4,17 @@
 #include "esp_log.h"
 #include "esp_check.h"
 
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 static const char *TAG = "BSP";
 
 static led_strip_handle_t rgb_led_handle = NULL;
 static esp_io_expander_handle_t io_exp_handle = NULL;
+
+static sscma_client_io_handle_t sscma_client_io_handle = NULL;
+static sscma_client_io_handle_t sscma_flasher_io_handle = NULL;
+static sscma_client_handle_t sscma_client_handle = NULL;
+static sscma_client_flasher_handle_t sscma_flasher_handle = NULL;
 
 static sdmmc_card_t *card;
 static esp_codec_dev_handle_t play_dev_handle;
@@ -21,7 +26,44 @@ static const audio_codec_data_if_t *i2s_data_if = NULL;
 
 static uint16_t io_exp_val = 0;
 static volatile bool io_exp_update = false;
-static void io_exp_isr_handler(void *arg) { io_exp_update = true; }
+static void io_exp_isr_handler(void *arg)
+{
+    io_exp_update = true;
+}
+
+void bsp_i2c_detect(i2c_port_t i2c_num)
+{
+    uint8_t address;
+    printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\r\n");
+    for (int i = 0; i < 128; i += 16)
+    {
+        printf("%02x: ", i);
+        for (int j = 0; j < 16; j++)
+        {
+            fflush(stdout);
+            address = i + j;
+            i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+            i2c_master_start(cmd);
+            i2c_master_write_byte(cmd, (address << 1) | I2C_MASTER_WRITE, 0x1);
+            i2c_master_stop(cmd);
+            esp_err_t ret = i2c_master_cmd_begin(i2c_num, cmd, 50 / portTICK_PERIOD_MS);
+            i2c_cmd_link_delete(cmd);
+            if (ret == ESP_OK)
+            {
+                printf("%02x ", address);
+            }
+            else if (ret == ESP_ERR_TIMEOUT)
+            {
+                printf("UU ");
+            }
+            else
+            {
+                printf("-- ");
+            }
+        }
+        printf("\r\n");
+    }
+}
 
 esp_io_expander_handle_t bsp_io_expander_init()
 {
@@ -31,11 +73,9 @@ esp_io_expander_handle_t bsp_io_expander_init()
     }
 
     ESP_LOGI(TAG, "Initialize IO I2C bus");
-    ESP_ERROR_CHECK(bsp_i2c_bus_init());
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_i2c_bus_init());
 
-    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM,
-                                          ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001,
-                                          &io_exp_handle);
+    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_exp_handle);
 
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
@@ -102,19 +142,27 @@ esp_err_t bsp_spi_bus_init(void)
     {
         return ESP_OK;
     }
-    spi_bus_config_t bus_cfg = {
-        .mosi_io_num = BSP_SPI3_HOST_MOSI,
-        .miso_io_num = BSP_SPI3_HOST_MISO,
-        .sclk_io_num = BSP_SPI3_HOST_SCLK,
+    const spi_bus_config_t spi_cfg = {
+        .mosi_io_num = BSP_SPI2_HOST_MOSI,
+        .miso_io_num = BSP_SPI2_HOST_MISO,
+        .sclk_io_num = BSP_SPI2_HOST_SCLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .max_transfer_sz = 4095,
     };
-    ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
-    bus_cfg.mosi_io_num = BSP_SPI2_HOST_MOSI;
-    bus_cfg.miso_io_num = BSP_SPI2_HOST_MISO;
-    bus_cfg.sclk_io_num = BSP_SPI2_HOST_SCLK;
-    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
+    BSP_ERROR_CHECK_RETURN_ERR(spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO));
+
+    const spi_bus_config_t qspi_cfg = {
+        .sclk_io_num = BSP_SPI3_HOST_PCLK,
+        .data0_io_num = BSP_SPI3_HOST_DATA0,
+        .data1_io_num = BSP_SPI3_HOST_DATA1,
+        .data2_io_num = BSP_SPI3_HOST_DATA2,
+        .data3_io_num = BSP_SPI3_HOST_DATA3,
+        .max_transfer_sz = DRV_LCD_H_RES * DRV_LCD_V_RES * DRV_LCD_BITS_PER_PIXEL / 8,
+    };
+
+    BSP_ERROR_CHECK_RETURN_ERR(spi_bus_initialize(SPI3_HOST, &qspi_cfg, SPI_DMA_CH_AUTO));
+
     initialized = true;
     return ESP_OK;
 }
@@ -132,7 +180,8 @@ esp_err_t bsp_i2c_bus_init(void)
         .sda_pullup_en = GPIO_PULLUP_DISABLE,
         .scl_io_num = BSP_GENERAL_I2C_SCL,
         .scl_pullup_en = GPIO_PULLUP_DISABLE,
-        .master.clk_speed = BSP_GENERAL_I2C_CLK};
+        .master.clk_speed = BSP_GENERAL_I2C_CLK,
+    };
     BSP_ERROR_CHECK_RETURN_ERR(i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf));
     BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_SHARED));
     initialized = true;
@@ -154,9 +203,9 @@ esp_err_t bsp_uart_bus_init(void)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
-    ESP_ERROR_CHECK(uart_param_config(BSP_HIMAX_UART_NUM, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(BSP_HIMAX_UART_NUM, BSP_HIMAX_UART_TX, BSP_HIMAX_UART_RX, -1, -1));
-    ESP_ERROR_CHECK(uart_driver_install(BSP_HIMAX_UART_NUM, 64 * 1024, 0, 0, NULL, ESP_INTR_FLAG_SHARED));
+    BSP_ERROR_CHECK_RETURN_ERR(uart_param_config(BSP_SSCMA_FLASHER_UART_NUM, &uart_config));
+    BSP_ERROR_CHECK_RETURN_ERR(uart_set_pin(BSP_SSCMA_FLASHER_UART_NUM, BSP_SSCMA_FLASHER_UART_TX, BSP_SSCMA_FLASHER_UART_RX, -1, -1));
+    BSP_ERROR_CHECK_RETURN_ERR(uart_driver_install(BSP_SSCMA_FLASHER_UART_NUM, 64 * 1024, 0, 0, NULL, ESP_INTR_FLAG_SHARED));
     initialized = true;
     return ESP_OK;
 }
@@ -177,7 +226,7 @@ esp_err_t bsp_rgb_init()
         .flags.with_dma = false,
     };
 
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&bsp_strip_config, &bsp_rmt_config, &rgb_led_handle));
+    BSP_ERROR_CHECK_RETURN_ERR(led_strip_new_rmt_device(&bsp_strip_config, &bsp_rmt_config, &rgb_led_handle));
     led_strip_set_pixel(rgb_led_handle, 0, 0x00, 0x00, 0x00);
     led_strip_refresh(rgb_led_handle);
 
@@ -195,11 +244,12 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b)
 
 void bsp_system_deep_sleep(uint32_t time_in_sec)
 {
-    if (time_in_sec > 0) esp_sleep_enable_timer_wakeup(time_in_sec * 1000000);
+    if (time_in_sec > 0)
+        esp_sleep_enable_timer_wakeup(time_in_sec * 1000000);
 
-    uint32_t pin_mask_sleep = BSP_PWR_SDCARD | BSP_PWR_CODEC_PA | BSP_PWR_AUDIO | \
-                              BSP_PWR_GROVE | BSP_PWR_BAT_ADC | BSP_PWR_LCD | BSP_PWR_AI_CHIP;
-    if (io_exp_handle != NULL) esp_io_expander_set_level(io_exp_handle, pin_mask_sleep, 0);
+    uint32_t pin_mask_sleep = BSP_PWR_SDCARD | BSP_PWR_CODEC_PA | BSP_PWR_AUDIO | BSP_PWR_GROVE | BSP_PWR_BAT_ADC | BSP_PWR_LCD | BSP_PWR_AI_CHIP;
+    if (io_exp_handle != NULL)
+        esp_io_expander_set_level(io_exp_handle, pin_mask_sleep, 0);
 
     esp_sleep_enable_ext0_wakeup(BSP_IO_EXPANDER_INT, 0);
     rtc_gpio_pullup_en(BSP_IO_EXPANDER_INT);
@@ -208,27 +258,31 @@ void bsp_system_deep_sleep(uint32_t time_in_sec)
     esp_deep_sleep_start();
 }
 
-void bsp_system_reboot(void) {
+void bsp_system_reboot(void)
+{
     bsp_exp_io_set_level(BSP_PWR_LCD, 0);
     esp_restart();
 }
 
-void bsp_system_shutdown(void) {
+void bsp_system_shutdown(void)
+{
     bsp_exp_io_set_level(BSP_PWR_SYSTEM, 0);
 }
 
-bool bsp_system_is_charging(void) {
+bool bsp_system_is_charging(void)
+{
     return bsp_exp_io_get_level(BSP_PWR_CHRG_DET) == 0;
 }
 
-bool bsp_system_is_standby(void) {
+bool bsp_system_is_standby(void)
+{
     return bsp_exp_io_get_level(BSP_PWR_STDBY_DET) == 0;
 }
 
 #ifdef CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS
 void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps, const char *function_name)
 {
-    printf("%s failed to allocate %d bytes with 0x%X capabilities. \n",function_name, requested_size, caps);
+    printf("%s failed to allocate %d bytes with 0x%X capabilities. \n", function_name, requested_size, caps);
 }
 #endif
 
@@ -239,7 +293,7 @@ uint16_t bsp_battery_get_voltage(void)
     static adc_cali_handle_t cali_handle = NULL;
     if (!initialized)
     {
-        adc_oneshot_unit_init_cfg_t init_config = { 
+        adc_oneshot_unit_init_cfg_t init_config = {
             .unit_id = ADC_UNIT_1,
         };
         adc_oneshot_new_unit(&init_config, &adc_handle);
@@ -256,7 +310,8 @@ uint16_t bsp_battery_get_voltage(void)
             .atten = BSP_BAT_ADC_ATTEN,
             .bitwidth = ADC_BITWIDTH_DEFAULT,
         };
-        if (adc_cali_create_scheme_curve_fitting(&cali_config, &cali_handle) == ESP_OK) {
+        if (adc_cali_create_scheme_curve_fitting(&cali_config, &cali_handle) == ESP_OK)
+        {
             initialized = true;
         }
     }
@@ -276,7 +331,8 @@ uint16_t bsp_battery_get_voltage(void)
 uint8_t bsp_battery_get_percent(void)
 {
     uint32_t voltage = 0;
-    for (uint8_t i = 0; i < 10; i++) {
+    for (uint8_t i = 0; i < 10; i++)
+    {
         voltage += bsp_battery_get_voltage();
     }
     voltage /= 10;
@@ -288,41 +344,30 @@ uint8_t bsp_battery_get_percent(void)
 
 inline static esp_err_t bsp_rtc_reg_write(uint8_t reg, uint8_t *val, size_t len)
 {
-    uint8_t data[8] = {0};
+    uint8_t data[8] = { 0 };
     data[0] = reg;
     memcpy(data + 1, val, len);
-    return i2c_master_write_to_device(
-        BSP_GENERAL_I2C_NUM, 
-        DRV_PCF8563_I2C_ADDR, 
-        data, 
-        len + 1, 
-        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
-    );
+    return i2c_master_write_to_device(BSP_GENERAL_I2C_NUM, DRV_PCF8563_I2C_ADDR, data, len + 1, DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS);
 }
 
 inline static esp_err_t bsp_rtc_reg_read(uint8_t reg, uint8_t *val, size_t len)
 {
-    return i2c_master_write_read_device(
-        BSP_GENERAL_I2C_NUM, 
-        DRV_PCF8563_I2C_ADDR, 
-        &reg, 1, 
-        val, len, 
-        DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS
-    );
+    return i2c_master_write_read_device(BSP_GENERAL_I2C_NUM, DRV_PCF8563_I2C_ADDR, &reg, 1, val, len, DRV_PCF8563_TIMEOUT_MS / portTICK_PERIOD_MS);
 }
 
 esp_err_t bsp_rtc_init(void)
 {
     esp_err_t ret = ESP_OK;
     ret = bsp_i2c_bus_init();
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
         ESP_LOGE(TAG, "I2C bus initialization failed");
         return ret;
     }
 
     uint8_t data = 0x00;
-    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_STATUS1, &data, 1));
-    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_STATUS2, &data, 1));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_rtc_reg_write(DRV_RTC_REG_STATUS1, &data, 1));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_rtc_reg_write(DRV_RTC_REG_STATUS2, &data, 1));
 
     // TODO: create feed dog timer ?
 
@@ -333,36 +378,32 @@ esp_err_t bsp_rtc_get_time(struct tm *timeinfo)
 {
     esp_err_t ret = ESP_OK;
     ret = bsp_i2c_bus_init();
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
         ESP_LOGE(TAG, "I2C bus initialization failed");
         return ret;
     }
 
-    uint8_t data[7] = {0};
+    uint8_t data[7] = { 0 };
     ret = bsp_rtc_reg_read(DRV_RTC_REG_TIME, data, sizeof(data));
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
         ESP_LOGE(TAG, "Failed to read time from RTC");
         return ret;
     }
 
     struct tm tm_data = {
-       .tm_sec =  BCD2DEC(data[0] & 0x7F),
-       .tm_min =  BCD2DEC(data[1] & 0x7F),
-       .tm_hour = BCD2DEC(data[2] & 0x3F),
-       .tm_mday = BCD2DEC(data[3] & 0x3F),
-       .tm_wday = BCD2DEC(data[4] & 0x07),
-       .tm_mon =  BCD2DEC(data[5] & 0x1F) - 1,
-       .tm_year = BCD2DEC(data[6]) + 2000 - 1900,
+        .tm_sec = BCD2DEC(data[0] & 0x7F),
+        .tm_min = BCD2DEC(data[1] & 0x7F),
+        .tm_hour = BCD2DEC(data[2] & 0x3F),
+        .tm_mday = BCD2DEC(data[3] & 0x3F),
+        .tm_wday = BCD2DEC(data[4] & 0x07),
+        .tm_mon = BCD2DEC(data[5] & 0x1F) - 1,
+        .tm_year = BCD2DEC(data[6]) + 2000 - 1900,
     };
     *timeinfo = tm_data;
 
-    ESP_LOGI(TAG, "Current time: %d-%d-%d %d:%d:%d", 
-            timeinfo->tm_year + 1900, 
-            timeinfo->tm_mon + 1, 
-            timeinfo->tm_mday, 
-            timeinfo->tm_hour, 
-            timeinfo->tm_min, 
-            timeinfo->tm_sec);
+    ESP_LOGI(TAG, "Current time: %d-%d-%d %d:%d:%d", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
 
     return ESP_OK;
 }
@@ -371,17 +412,18 @@ esp_err_t bsp_rtc_set_time(const struct tm *timeinfo)
 {
     esp_err_t ret = ESP_OK;
 
-    uint8_t data[7] = {0};
+    uint8_t data[7] = { 0 };
     data[0] = DEC2BCD(timeinfo->tm_sec);
     data[1] = DEC2BCD(timeinfo->tm_min);
     data[2] = DEC2BCD(timeinfo->tm_hour);
     data[3] = DEC2BCD(timeinfo->tm_mday);
-    data[4] = DEC2BCD(timeinfo->tm_wday); // 0 - 6
+    data[4] = DEC2BCD(timeinfo->tm_wday);    // 0 - 6
     data[5] = DEC2BCD(timeinfo->tm_mon + 1); // 0 - 11
     data[6] = DEC2BCD(timeinfo->tm_year - 100);
 
     ret = bsp_rtc_reg_write(DRV_RTC_REG_TIME, data, sizeof(data));
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
         ESP_LOGE(TAG, "Failed to set time to RTC");
         return ret;
     }
@@ -393,7 +435,8 @@ esp_err_t bsp_rtc_set_timer(uint32_t time_in_sec)
 {
     esp_err_t ret = ESP_OK;
 
-    if ((time_in_sec > 255 * 60) || (time_in_sec < 15)) {
+    if ((time_in_sec > 255 * 60) || (time_in_sec < 15))
+    {
         ESP_LOGE(TAG, "RTC set timer - out of range");
         return ESP_ERR_INVALID_ARG;
     }
@@ -401,15 +444,15 @@ esp_err_t bsp_rtc_set_timer(uint32_t time_in_sec)
     uint8_t data = 0x00;
     uint8_t freq = (time_in_sec > 255) ? 0b11 : 0b10; // 1/60 Hz or 1 Hz
     uint8_t cnt = (time_in_sec > 255) ? time_in_sec / 60 : time_in_sec;
-    
+
     data = 0x80 | (freq & 0x03);
-    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_TIMER_CTL, &data, 1));
-    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_TIMER, &cnt, 1));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_rtc_reg_write(DRV_RTC_REG_TIMER_CTL, &data, 1));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_rtc_reg_write(DRV_RTC_REG_TIMER, &cnt, 1));
 
     data = 0x11;
-    ESP_ERROR_CHECK(bsp_rtc_reg_write(DRV_RTC_REG_STATUS2, &data, 1));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_rtc_reg_write(DRV_RTC_REG_STATUS2, &data, 1));
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t bsp_knob_btn_init(void *param)
@@ -435,26 +478,18 @@ esp_err_t bsp_knob_btn_deinit(void *param)
 
 static esp_err_t bsp_lcd_backlight_init()
 {
-    const ledc_channel_config_t backlight_channel = {
-        .gpio_num = BSP_LCD_GPIO_BL,
+    const ledc_channel_config_t backlight_channel = { .gpio_num = BSP_LCD_GPIO_BL,
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .channel = DRV_LCD_LEDC_CH,
         .intr_type = LEDC_INTR_DISABLE,
         .timer_sel = LEDC_TIMER_1,
         .duty = BIT(DRV_LCD_LEDC_DUTY_RES),
-        .hpoint = 0
-    };
-    const ledc_timer_config_t backlight_timer = {
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .duty_resolution = DRV_LCD_LEDC_DUTY_RES,
-        .timer_num = LEDC_TIMER_1,
-        .freq_hz = 5000,
-        .clk_cfg = LEDC_AUTO_CLK
-    };
-    ESP_ERROR_CHECK(ledc_timer_config(&backlight_timer));
-    ESP_ERROR_CHECK(ledc_channel_config(&backlight_channel));
+        .hpoint = 0 };
+    const ledc_timer_config_t backlight_timer = { .speed_mode = LEDC_LOW_SPEED_MODE, .duty_resolution = DRV_LCD_LEDC_DUTY_RES, .timer_num = LEDC_TIMER_1, .freq_hz = 5000, .clk_cfg = LEDC_AUTO_CLK };
+    BSP_ERROR_CHECK_RETURN_ERR(ledc_timer_config(&backlight_timer));
+    BSP_ERROR_CHECK_RETURN_ERR(ledc_channel_config(&backlight_channel));
 
-    ESP_ERROR_CHECK(bsp_lcd_brightness_set(80));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
 
     return ESP_OK;
 }
@@ -472,8 +507,8 @@ esp_err_t bsp_lcd_brightness_set(int brightness_percent)
 
     ESP_LOGD(TAG, "Setting LCD backlight: %d%%", brightness_percent);
     uint32_t duty_cycle = (BIT(DRV_LCD_LEDC_DUTY_RES) * (brightness_percent)) / 100;
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, DRV_LCD_LEDC_CH, duty_cycle));
-    ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, DRV_LCD_LEDC_CH));
+    BSP_ERROR_CHECK_RETURN_ERR(ledc_set_duty(LEDC_LOW_SPEED_MODE, DRV_LCD_LEDC_CH, duty_cycle));
+    BSP_ERROR_CHECK_RETURN_ERR(ledc_update_duty(LEDC_LOW_SPEED_MODE, DRV_LCD_LEDC_CH));
 
     return ESP_OK;
 }
@@ -486,32 +521,37 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
 
     ESP_LOGD(TAG, "Install panel IO");
     const esp_lcd_panel_io_spi_config_t io_config = {
-        .dc_gpio_num = BSP_LCD_GPIO_DC,
         .cs_gpio_num = BSP_LCD_SPI_CS,
+        .dc_gpio_num = -1,
+        .spi_mode = 3,
         .pclk_hz = DRV_LCD_PIXEL_CLK_HZ,
+        .trans_queue_depth = 2,
         .lcd_cmd_bits = DRV_LCD_CMD_BITS,
         .lcd_param_bits = DRV_LCD_PARAM_BITS,
-        .spi_mode = 0,
-        .trans_queue_depth = 2,
+        .flags = {
+            .quad_mode = true,
+        },
     };
-    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)BSP_LCD_SPI_NUM, &io_config, ret_io), err,
-                      TAG, "New panel IO failed");
+    spd2010_vendor_config_t vendor_config = {
+        .flags = {
+            .use_qspi_interface = 1,
+        },
+    };
+    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)BSP_LCD_SPI_NUM, &io_config, ret_io), err, TAG, "New panel IO failed");
 
     ESP_LOGD(TAG, "Install LCD driver");
     const esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = BSP_LCD_GPIO_RST, // Shared with Touch reset
-        .color_space = DRV_LCD_COLOR_SPACE,
+        .rgb_ele_order = DRV_LCD_RGB_ELEMENT_ORDER,
         .bits_per_pixel = DRV_LCD_BITS_PER_PIXEL,
+        .vendor_config = &vendor_config,
     };
-    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_gc9a01(*ret_io, &panel_config, ret_panel), err,
-                      TAG, "New panel failed");
+    ESP_GOTO_ON_ERROR(esp_lcd_new_panel_spd2010(*ret_io, &panel_config, ret_panel), err, TAG, "New panel failed");
 
-    ESP_ERROR_CHECK(esp_lcd_panel_reset(*ret_panel));
-    ESP_ERROR_CHECK(esp_lcd_panel_init(*ret_panel));
-    ESP_ERROR_CHECK(esp_lcd_panel_invert_color(*ret_panel, true));
-    ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(*ret_panel, DRV_LCD_SWAP_XY));
-    ESP_ERROR_CHECK(esp_lcd_panel_mirror(*ret_panel, DRV_LCD_MIRROR_X, DRV_LCD_MIRROR_Y));
-    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(*ret_panel, true));
+    BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_reset(*ret_panel));
+    BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_init(*ret_panel));
+    BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_mirror(*ret_panel, DRV_LCD_MIRROR_X, DRV_LCD_MIRROR_Y));
+    BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_disp_on_off(*ret_panel, true));
 
     return ret;
 err:
@@ -564,7 +604,6 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
 {
     ESP_LOGI(TAG, "Initialize knob input device");
     const static knob_config_t knob_cfg = {
-        .single_edge_trigger = 1,
         .default_direction = 0,
         .gpio_encoder_a = BSP_KNOB_A,
         .gpio_encoder_b = BSP_KNOB_B,
@@ -581,10 +620,7 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
             .priv = &io_exp_handle,
         },
     };
-    const lvgl_port_encoder_cfg_t encoder = {
-        .disp = disp,
-        .encoder_a_b = &knob_cfg,
-        .encoder_enter = &btn_config};
+    const lvgl_port_encoder_cfg_t encoder = { .disp = disp, .encoder_a_b = &knob_cfg, .encoder_enter = &btn_config };
     return lvgl_port_add_encoder(&encoder);
 }
 
@@ -592,15 +628,13 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
 {
     /* Initilize I2C */
     ESP_LOGI(TAG, "Initialize I2C bus");
-    const i2c_config_t i2c_conf = {
-        .mode = I2C_MODE_MASTER,
+    const i2c_config_t i2c_conf = { .mode = I2C_MODE_MASTER,
         .sda_io_num = BSP_TOUCH_I2C_SDA,
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_io_num = BSP_TOUCH_I2C_SCL,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = BSP_TOUCH_I2C_CLK};
-    if ((i2c_param_config(BSP_TOUCH_I2C_NUM, &i2c_conf) != ESP_OK) ||
-        (i2c_driver_install(BSP_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_SHARED) != ESP_OK))
+        .master.clk_speed = BSP_TOUCH_I2C_CLK };
+    if ((i2c_param_config(BSP_TOUCH_I2C_NUM, &i2c_conf) != ESP_OK) || (i2c_driver_install(BSP_TOUCH_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_SHARED) != ESP_OK))
     {
         ESP_LOGE(TAG, "I2C initialization failed");
         return NULL;
@@ -621,14 +655,14 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
         },
         .flags = {
             .swap_xy = DRV_LCD_SWAP_XY,
-            .mirror_x = !DRV_LCD_MIRROR_X,
+            .mirror_x = DRV_LCD_MIRROR_X,
             .mirror_y = DRV_LCD_MIRROR_Y,
         },
         .user_data = &io_exp_val,
     };
-    const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CHSC6X_CONFIG();
+    const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_SPD2010_CONFIG();
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
-    BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_chsc6x(tp_io_handle, &tp_cfg, &touch_handle));
+    BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &touch_handle));
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = touch_handle,
@@ -641,14 +675,13 @@ lv_disp_t *bsp_lvgl_init(void)
 #ifdef CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS
     BSP_ERROR_CHECK_RETURN_NULL(heap_caps_register_failed_alloc_callback(heap_caps_alloc_failed_hook));
 #endif
-    bsp_display_cfg_t cfg = {
-        .lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
+    bsp_display_cfg_t cfg = { .lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
         .buffer_size = DRV_LCD_H_RES * LVGL_DRAW_BUFF_HEIGHT,
         .double_buffer = LVGL_DRAW_BUFF_DOUBLE,
         .flags = {
             .buff_dma = false,
             .buff_spiram = true,
-        }};
+        } };
     return bsp_lvgl_init_with_cfg(&cfg);
 }
 
@@ -673,7 +706,7 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
 
 esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
 {
-    ESP_ERROR_CHECK(bsp_spi_bus_init());
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_spi_bus_init());
     bsp_io_expander_init();
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
@@ -681,11 +714,8 @@ esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_config.gpio_cs = BSP_SD_SPI_CS;
     slot_config.host_id = host.slot;
-    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-        .format_if_mount_failed = false,
-        .max_files = max_files,
-        .allocation_unit_size = 16 * 1024};
-    ESP_ERROR_CHECK(esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card));
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = { .format_if_mount_failed = false, .max_files = max_files, .allocation_unit_size = 16 * 1024 };
+    BSP_ERROR_CHECK_RETURN_ERR(esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card));
     sdmmc_card_print_info(stdout, card);
 
     return ESP_OK;
@@ -761,7 +791,8 @@ esp_err_t bsp_audio_init(const i2s_std_config_t *i2s_config)
     /* Setup I2S channels */
     i2s_std_config_t std_cfg_default = BSP_I2S_DUPLEX_MONO_CFG(DRV_AUDIO_SAMPLE_RATE);
     i2s_std_config_t *p_i2s_cfg = &std_cfg_default;
-    if (i2s_config != NULL) {
+    if (i2s_config != NULL)
+    {
         memcpy(p_i2s_cfg, i2s_config, sizeof(i2s_std_config_t));
     }
 
@@ -897,7 +928,8 @@ esp_err_t bsp_i2s_read(void *audio_buffer, size_t len, size_t *bytes_read, uint3
     *bytes_read = len;
 #if CONFIG_BSP_AUDIO_MIC_VALUE_GAIN > 0
     uint16_t *buffer = (uint16_t *)audio_buffer;
-    for (size_t i = 0; i < len / 2; i++) {
+    for (size_t i = 0; i < len / 2; i++)
+    {
         buffer[i] = buffer[i] << CONFIG_BSP_AUDIO_MIC_VALUE_GAIN;
     }
 #endif
@@ -998,7 +1030,8 @@ esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer
     esp_err_t ret = ESP_OK;
 
     ret = esp_codec_dev_read(record_dev_handle, (void *)buffer, buffer_len);
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
         ESP_LOGE(TAG, "Failed to read data from codec device");
     }
     // int audio_chunksize = buffer_len / (sizeof(int16_t) * DRV_AUDIO_I2S_CHANNEL);
@@ -1015,4 +1048,92 @@ esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer
 int bsp_get_feed_channel(void)
 {
     return DRV_AUDIO_I2S_CHANNEL;
+}
+
+sscma_client_handle_t bsp_sscma_client_init()
+{
+    static bool initialized = false;
+    if (initialized)
+        return sscma_client_handle;
+
+    if (bsp_io_expander_init() == NULL)
+        return NULL;
+
+    if (bsp_spi_bus_init() != ESP_OK)
+        return NULL;
+
+    const sscma_client_io_spi_config_t spi_io_config = {
+        .sync_gpio_num = BSP_SSCMA_CLIENT_SPI_SYNC,
+        .cs_gpio_num = BSP_SSCMA_CLIENT_SPI_CS,
+        .pclk_hz = BSP_SSCMA_CLIENT_SPI_CLK,
+        .spi_mode = 0,
+        .wait_delay = 2,
+        .user_ctx = NULL,
+        .io_expander = io_exp_handle,
+        .flags.sync_use_expander = BSP_SSCMA_CLIENT_RST_USE_EXPANDER,
+    };
+
+    sscma_client_new_io_spi_bus((sscma_client_spi_bus_handle_t)BSP_SSCMA_CLIENT_SPI_NUM, &spi_io_config, &sscma_client_io_handle);
+
+    sscma_client_config_t sscma_client_config = SSCMA_CLIENT_CONFIG_DEFAULT();
+
+    sscma_client_config.process_task_stack = CONFIG_SSCMA_PROCESS_TASK_STACK_SIZE;
+    sscma_client_config.monitor_task_stack = CONFIG_SSCMA_MONITOR_TASK_STACK_SIZE;
+    sscma_client_config.reset_gpio_num = BSP_SSCMA_CLIENT_RST;
+    sscma_client_config.io_expander = io_exp_handle;
+    sscma_client_config.flags.reset_use_expander = BSP_SSCMA_CLIENT_RST_USE_EXPANDER;
+
+    sscma_client_new(sscma_client_io_handle, &sscma_client_config, &sscma_client_handle);
+
+    initialized = true;
+
+    return sscma_client_handle;
+}
+
+sscma_client_flasher_handle_t bsp_sscma_flasher_init()
+{
+    static bool initialized = false;
+    if (initialized)
+        return sscma_flasher_handle;
+
+    if (bsp_io_expander_init() == NULL)
+        return NULL;
+
+    uart_config_t uart_config = {
+        .baud_rate = BSP_SSCMA_FLASHER_UART_BAUD_RATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+    int intr_alloc_flags = 0;
+
+#if CONFIG_UART_ISR_IN_IRAM
+    intr_alloc_flags = ESP_INTR_FLAG_IRAM;
+#endif
+
+    ESP_ERROR_CHECK(uart_driver_install(BSP_SSCMA_FLASHER_UART_NUM, 64 * 1024, 0, 0, NULL, intr_alloc_flags));
+    ESP_ERROR_CHECK(uart_param_config(BSP_SSCMA_FLASHER_UART_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(BSP_SSCMA_FLASHER_UART_NUM, BSP_SSCMA_FLASHER_UART_TX, BSP_SSCMA_FLASHER_UART_RX, -1, -1));
+
+    sscma_client_io_uart_config_t io_uart_config = {
+        .user_ctx = NULL,
+    };
+
+    sscma_client_new_io_uart_bus((sscma_client_uart_bus_handle_t)BSP_SSCMA_FLASHER_UART_NUM, &io_uart_config, &sscma_flasher_io_handle);
+
+    const sscma_client_flasher_we2_config_t flasher_config = {
+        .reset_gpio_num = BSP_SSCMA_CLIENT_RST,
+        .io_expander = io_exp_handle,
+        .flags.reset_use_expander = BSP_SSCMA_CLIENT_RST_USE_EXPANDER,
+        .flags.reset_high_active = false,
+        .user_ctx = NULL,
+    };
+
+    sscma_client_new_flasher_we2(sscma_flasher_io_handle, &flasher_config, &sscma_flasher_handle);
+
+    initialized = true;
+
+    return sscma_flasher_handle;
 }
