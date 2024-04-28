@@ -19,6 +19,7 @@
 #include "app_sr.h"
 #include "app_audio.h"
 #include "app_wifi.h"
+#include "app_ble.h"
 #include "app_time.h"
 #include "app_cmd.h"
 #include "app_sensecraft.h"
@@ -102,6 +103,7 @@ int board_init(void)
 int app_init(void)
 {
     app_wifi_init();
+    app_ble_init();
     app_time_init();
     app_cmd_init();
 
