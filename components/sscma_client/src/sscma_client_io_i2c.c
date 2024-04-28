@@ -277,5 +277,5 @@ static esp_err_t client_io_i2c_flush(sscma_client_io_t *io)
 
 err:
     xSemaphoreGive(i2c_client_io->lock);
-    return ESP_OK;
+    return ret;
 }
