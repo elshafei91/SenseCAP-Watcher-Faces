@@ -23,9 +23,6 @@
 
 #include "esp_jpeg_dec.h"
 
-#include "quirc.h"
-#include "isp.h"
-
 static const char *TAG = "main";
 
 esp_io_expander_handle_t io_expander = NULL;
@@ -33,8 +30,6 @@ sscma_client_handle_t client = NULL;
 
 lv_disp_t *lvgl_disp;
 lv_obj_t *image;
-
-struct quirc *qr;
 
 #define DECODED_STR_MAX_SIZE (48 * 1024)
 static unsigned char decoded_str[DECODED_STR_MAX_SIZE];
@@ -133,34 +128,6 @@ void display_one_image(lv_obj_t *image, const unsigned char *p_data)
         if (ret == ESP_OK)
         {
             lv_img_set_src(image, &img_dsc);
-            start = esp_timer_get_time();
-            int w, h;
-            int i, count;
-            quirc_decode_error_t error;
-            uint8_t *buf = quirc_begin(qr, &w, &h);
-            rgb565_to_gray(buf, img_dsc.data, 240, 240, 240, 240, ROTATION_UP, true);
-            quirc_end(qr);
-            count = quirc_count(qr);
-            ESP_LOGI(TAG, "Found %d QR codes.\n", count);
-            for (i = 0; i < count; i++)
-            {
-                struct quirc_code code;
-                struct quirc_data data;
-
-                quirc_extract(qr, i, &code);
-                error = quirc_decode(&code, &data);
-                if (!error)
-                {
-                    ESP_LOGI(TAG, "    Version: %d, ECC: %c, Mask: %d, Type: %d\n\n", data.version, "MLHQ"[data.ecc_level], data.mask, data.data_type);
-                    ESP_LOGI(TAG, "    Data: %s\n", data.payload);
-                }
-                else
-                {
-                    ESP_LOGI(TAG, "    Error: %d\n", error);
-                }
-            }
-            end = esp_timer_get_time();
-            ESP_LOGI(TAG, "QR Decode Time taken: %lld ms", (end - start) / 1000);
         }
     }
     else if (decode_ret == MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL)
@@ -230,10 +197,6 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
 
 void app_main(void)
 {
-    qr = quirc_new();
-    assert(qr != NULL);
-    quirc_resize(qr, IMG_WIDTH, IMG_HEIGHT);
-
     io_expander = bsp_io_expander_init();
     assert(io_expander != NULL);
     lvgl_disp = bsp_lvgl_init();

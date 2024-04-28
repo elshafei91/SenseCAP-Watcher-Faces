@@ -28,26 +28,9 @@
 
 #include "mqtt_client.h"
 
-#include "sscma_client_io.h"
-#include "sscma_client_flasher.h"
-#include "sscma_client_ops.h"
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
-#include <driver/usb_serial_jtag.h>
 static const char *TAG = "main";
-
-/* SPI settings */
-#define EXAMPLE_SSCMA_SPI_NUM    (SPI2_HOST)
-#define EXAMPLE_SSCMA_SPI_CLK_HZ (12 * 1000 * 1000)
-
-/* SPI pins */
-#define EXAMPLE_SSCMA_SPI_SCLK (4)
-#define EXAMPLE_SSCMA_SPI_MOSI (5)
-#define EXAMPLE_SSCMA_SPI_MISO (6)
-#define EXAMPLE_SSCMA_SPI_CS   (21)
-#define EXAMPLE_SSCMA_SPI_SYNC (IO_EXPANDER_PIN_NUM_6)
-
-#define EXAMPLE_SSCMA_RESET (IO_EXPANDER_PIN_NUM_7)
 
 /* The event group allows multiple bits for each event, but we only care about one event */
 /* - are we connected to the AP with an IP? */
@@ -57,7 +40,6 @@ static const char *TAG = "main";
 /* - are we connected to the MQTT Server? */
 #define MQTT_CONNECTED_BIT BIT2
 
-sscma_client_io_handle_t io = NULL;
 sscma_client_handle_t client = NULL;
 esp_io_expander_handle_t io_expander = NULL;
 
@@ -230,7 +212,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             break;
         case MQTT_EVENT_DATA:
             ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-            sscma_client_io_write(io, event->data, event->data_len);
+            sscma_client_write(client, event->data, event->data_len);
             break;
         case MQTT_EVENT_ERROR:
             ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -325,6 +307,8 @@ void app_main(void)
 {
     io_expander = bsp_io_expander_init();
     assert(io_expander != NULL);
+    client = bsp_sscma_client_init();
+    assert(client != NULL);
 
     ESP_LOGI(TAG, "[APP] Startup..");
     ESP_LOGI(TAG, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
@@ -334,36 +318,6 @@ void app_main(void)
 
     mqtt_intialize();
 
-    const spi_bus_config_t buscfg = {
-        .sclk_io_num = EXAMPLE_SSCMA_SPI_SCLK,
-        .mosi_io_num = EXAMPLE_SSCMA_SPI_MOSI,
-        .miso_io_num = EXAMPLE_SSCMA_SPI_MISO,
-        .quadwp_io_num = GPIO_NUM_NC,
-        .quadhd_io_num = GPIO_NUM_NC,
-        .max_transfer_sz = 4095,
-    };
-
-    ESP_ERROR_CHECK(spi_bus_initialize(EXAMPLE_SSCMA_SPI_NUM, &buscfg, SPI_DMA_CH_AUTO));
-
-    const sscma_client_io_spi_config_t spi_io_config = {
-        .sync_gpio_num = EXAMPLE_SSCMA_SPI_SYNC,
-        .cs_gpio_num = EXAMPLE_SSCMA_SPI_CS,
-        .pclk_hz = EXAMPLE_SSCMA_SPI_CLK_HZ,
-        .spi_mode = 0,
-        .wait_delay = 2,
-        .user_ctx = NULL,
-        .io_expander = io_expander,
-        .flags.sync_use_expander = true,
-    };
-
-    sscma_client_new_io_spi_bus((sscma_client_spi_bus_handle_t)EXAMPLE_SSCMA_SPI_NUM, &spi_io_config, &io);
-
-    sscma_client_config_t sscma_client_config = SSCMA_CLIENT_CONFIG_DEFAULT();
-    sscma_client_config.reset_gpio_num = EXAMPLE_SSCMA_RESET;
-    sscma_client_config.io_expander = io_expander;
-    sscma_client_config.flags.reset_use_expander = true;
-
-    ESP_ERROR_CHECK(sscma_client_new(io, &sscma_client_config, &client));
     const sscma_client_callback_t callback = {
         .on_response = on_response,
         .on_event = on_event,

@@ -4,4 +4,4 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 add_compile_options(-fdiagnostics-color=always)
 
-project(preview)
+project(sscma_client_monitor)
