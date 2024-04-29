@@ -314,6 +314,7 @@ esp_io_expander_handle_t bsp_io_expander_init();
 uint8_t bsp_exp_io_get_level(uint16_t pin_mask);
 esp_err_t bsp_exp_io_set_level(uint16_t pin_mask, uint8_t level);
 
+bool bsp_sdcard_is_inserted(void);
 esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files);
 esp_err_t bsp_sdcard_init_default(void);
 esp_err_t bsp_sdcard_deinit(char *mount_point);

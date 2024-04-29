@@ -701,6 +701,11 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
     return disp;
 }
 
+bool bsp_sdcard_is_inserted(void)
+{
+    return bsp_exp_io_get_level(BSP_SD_GPIO_DET) == 0;
+}
+
 esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
 {
     BSP_ERROR_CHECK_RETURN_ERR(bsp_spi_bus_init());
