@@ -31,14 +31,6 @@ static const audio_codec_data_if_t *i2s_data_if = NULL;
 
 static void (*btn_custom_cb)(void) = NULL;
 
-static uint16_t io_exp_val = 0;
-static volatile bool io_exp_update = false;
-
-static void io_exp_isr_handler(void *arg)
-{
-    io_exp_update = true;
-}
-
 static void bsp_btn_long_press_cb(void)
 {
     if (btn_custom_cb != NULL)
@@ -96,7 +88,14 @@ esp_io_expander_handle_t bsp_io_expander_init()
     ESP_LOGI(TAG, "Initialize IO I2C bus");
     BSP_ERROR_CHECK_RETURN_ERR(bsp_i2c_bus_init());
 
-    esp_io_expander_new_i2c_pca95xx_16bit(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_exp_handle);
+    const pca95xx_16bit_ex_config_t io_exp_config = {
+
+        .int_gpio = BSP_IO_EXPANDER_INT,
+        .isr_cb = NULL,
+        .user_ctx = NULL,
+    };
+
+    esp_io_expander_new_i2c_pca95xx_16bit_ex(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_exp_config, &io_exp_handle);
 
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
@@ -104,56 +103,24 @@ esp_io_expander_handle_t bsp_io_expander_init()
     vTaskDelay(50 / portTICK_PERIOD_MS);
     esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
 
-    // esp_io_expander_print_state(io_exp_handle);
-
     uint32_t pin_val = 0;
     esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
-    io_exp_val = DRV_IO_EXP_OUTPUT_MASK | (uint16_t)pin_val;
-    ESP_LOGI(TAG, "IO expander initialized: %x", io_exp_val);
-
-    const gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << BSP_IO_EXPANDER_INT),
-        .intr_type = GPIO_INTR_NEGEDGE,
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = 1,
-    };
-    gpio_config(&io_conf);
-    gpio_set_intr_type(BSP_IO_EXPANDER_INT, GPIO_INTR_NEGEDGE);
-    gpio_install_isr_service(ESP_INTR_FLAG_SHARED);
-    gpio_isr_handler_add(BSP_IO_EXPANDER_INT, io_exp_isr_handler, NULL);
+    ESP_LOGI(TAG, "IO expander initialized: %x", DRV_IO_EXP_OUTPUT_MASK | (uint16_t)pin_val);
 
     return io_exp_handle;
 }
 
 uint8_t bsp_exp_io_get_level(uint16_t pin_mask)
 {
-    if (io_exp_update && (io_exp_handle != NULL))
-    {
-        uint32_t pin_val = 0;
-        esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
-        io_exp_val = (io_exp_val & (~DRV_IO_EXP_INPUT_MASK)) | pin_val;
-        io_exp_update = false;
-    }
-
+    uint32_t pin_val = 0;
+    esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
     pin_mask &= DRV_IO_EXP_INPUT_MASK;
-    return (uint8_t)((io_exp_val & pin_mask) ? 1 : 0);
+    return (uint8_t)((pin_val & pin_mask) ? 1 : 0);
 }
 
 esp_err_t bsp_exp_io_set_level(uint16_t pin_mask, uint8_t level)
 {
-    esp_err_t ret = ESP_OK;
-    pin_mask &= DRV_IO_EXP_OUTPUT_MASK;
-    if (pin_mask ^ (io_exp_val & DRV_IO_EXP_OUTPUT_MASK))
-    { // Output pins changed
-        ret = esp_io_expander_set_level(io_exp_handle, pin_mask, level);
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE(TAG, "Failed to set output level");
-            return ret;
-        }
-        io_exp_val = (io_exp_val & (~pin_mask)) | (level ? pin_mask : 0);
-    }
-    return ret;
+    return esp_io_expander_set_level(io_exp_handle, pin_mask, level);
 }
 
 esp_err_t bsp_spi_bus_init(void)
@@ -677,7 +644,6 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
             .mirror_x = DRV_LCD_MIRROR_X,
             .mirror_y = DRV_LCD_MIRROR_Y,
         },
-        .user_data = &io_exp_val,
     };
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_SPD2010_CONFIG();
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
