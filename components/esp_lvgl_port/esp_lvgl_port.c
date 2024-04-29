@@ -147,6 +147,7 @@ static void lvgl_port_touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *
 static void lvgl_port_encoder_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
 static void lvgl_port_encoder_btn_down_handler(void *arg, void *arg2);
 static void lvgl_port_encoder_btn_up_handler(void *arg, void *arg2);
+static void lvgl_port_encoder_btn_long_handler(void *arg, void *arg2);
 #endif
 #ifdef ESP_LVGL_PORT_BUTTON_COMPONENT
 static void lvgl_port_navigation_buttons_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
@@ -435,6 +436,9 @@ lv_indev_t *lvgl_port_add_encoder(const lvgl_port_encoder_cfg_t *encoder_cfg)
 
     ESP_ERROR_CHECK(iot_button_register_cb(encoder_ctx->btn_handle, BUTTON_PRESS_DOWN, lvgl_port_encoder_btn_down_handler, encoder_ctx));
     ESP_ERROR_CHECK(iot_button_register_cb(encoder_ctx->btn_handle, BUTTON_PRESS_UP, lvgl_port_encoder_btn_up_handler, encoder_ctx));
+
+     if (encoder_cfg->encoder_enter->type == BUTTON_TYPE_CUSTOM && encoder_cfg->encoder_enter->custom_button_config.priv != NULL)
+    ESP_ERROR_CHECK(iot_button_register_cb(encoder_ctx->btn_handle, BUTTON_LONG_PRESS_START, lvgl_port_encoder_btn_long_handler, encoder_cfg->encoder_enter->custom_button_config.priv));
 
     encoder_ctx->btn_enter = false;
 
@@ -868,6 +872,15 @@ static void lvgl_port_encoder_btn_up_handler(void *arg, void *arg2)
         if (button == ctx->btn_handle) {
             ctx->btn_enter = false;
         }
+    }
+}
+
+static void lvgl_port_encoder_btn_long_handler(void *arg, void *arg2)
+{
+    void (*cb)(void) = arg2;
+    button_handle_t button = (button_handle_t)arg;
+    if (cb && button) {
+        cb();
     }
 }
 #endif

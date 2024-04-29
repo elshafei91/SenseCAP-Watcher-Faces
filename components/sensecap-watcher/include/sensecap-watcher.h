@@ -298,6 +298,7 @@ esp_err_t bsp_rtc_set_timer(uint32_t time_in_sec);
 esp_err_t bsp_knob_btn_init(void *param);
 uint8_t bsp_knob_btn_get_key_value(void *param);
 esp_err_t bsp_knob_btn_deinit(void *param);
+void bsp_set_btn_long_press_cb(void (*cb)(void));
 
 esp_err_t bsp_lcd_brightness_set(int brightness_percent);
 esp_lcd_panel_handle_t bsp_lcd_get_panel_handle(void);

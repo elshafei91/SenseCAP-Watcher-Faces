@@ -29,11 +29,27 @@ static i2s_chan_handle_t i2s_tx_chan = NULL;
 static i2s_chan_handle_t i2s_rx_chan = NULL;
 static const audio_codec_data_if_t *i2s_data_if = NULL;
 
+static void (*btn_custom_cb)(void) = NULL;
+
 static uint16_t io_exp_val = 0;
 static volatile bool io_exp_update = false;
+
 static void io_exp_isr_handler(void *arg)
 {
     io_exp_update = true;
+}
+
+static void bsp_btn_long_press_cb(void)
+{
+    if (btn_custom_cb != NULL)
+    {
+        btn_custom_cb();
+    }
+}
+
+void bsp_set_btn_long_press_cb(void (*cb)(void))
+{
+    btn_custom_cb = cb;
 }
 
 void bsp_i2c_detect(i2c_port_t i2c_num)
@@ -614,14 +630,14 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
     };
     const static button_config_t btn_config = {
         .type = BUTTON_TYPE_CUSTOM,
-        .long_press_time = 1000,
+        .long_press_time = 2000,
         .short_press_time = 200,
         .custom_button_config = {
             .active_level = 0,
             .button_custom_init = bsp_knob_btn_init,
             .button_custom_deinit = bsp_knob_btn_deinit,
             .button_custom_get_key_value = bsp_knob_btn_get_key_value,
-            .priv = &io_exp_handle,
+            .priv = bsp_btn_long_press_cb,
         },
     };
     const lvgl_port_encoder_cfg_t encoder = { .disp = disp, .encoder_a_b = &knob_cfg, .encoder_enter = &btn_config };
