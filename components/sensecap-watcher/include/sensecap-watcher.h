@@ -301,6 +301,7 @@ esp_err_t bsp_knob_btn_deinit(void *param);
 
 esp_err_t bsp_lcd_brightness_set(int brightness_percent);
 esp_lcd_panel_handle_t bsp_lcd_get_panel_handle(void);
+esp_lcd_touch_handle_t bsp_lcd_get_touch_handle(void);
 
 lv_disp_t *bsp_lvgl_init(void);
 lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg);

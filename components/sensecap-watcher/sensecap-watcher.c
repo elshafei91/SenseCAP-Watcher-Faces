@@ -18,6 +18,8 @@ static sscma_client_flasher_handle_t sscma_flasher_handle = NULL;
 
 static esp_lcd_panel_io_handle_t panel_io_handle = NULL;
 static esp_lcd_panel_handle_t panel_handle = NULL;
+static esp_lcd_panel_io_handle_t tp_io_handle = NULL;
+static esp_lcd_touch_handle_t tp_handle = NULL;
 
 static sdmmc_card_t *card;
 static esp_codec_dev_handle_t play_dev_handle;
@@ -566,11 +568,6 @@ err:
     return ret;
 }
 
-esp_lcd_panel_handle_t bsp_lcd_get_panel_handle()
-{
-    return panel_handle;
-}
-
 static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
 {
     assert(cfg != NULL);
@@ -649,8 +646,6 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
 
     /* Initialize touch HW */
     ESP_LOGI(TAG, "Initialize touch panel");
-    static esp_lcd_touch_handle_t touch_handle = NULL;
-    static esp_lcd_panel_io_handle_t tp_io_handle = NULL;
     const esp_lcd_touch_config_t tp_cfg = {
         .x_max = DRV_LCD_H_RES,
         .y_max = DRV_LCD_V_RES,
@@ -669,15 +664,24 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     };
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_SPD2010_CONFIG();
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
-    BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &touch_handle));
+    BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &tp_handle));
 
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
-        .handle = touch_handle,
+        .handle = tp_handle,
     };
     return lvgl_port_add_touch(&touch);
 }
 
+esp_lcd_panel_handle_t bsp_lcd_get_panel_handle()
+{
+    return panel_handle;
+}
+
+esp_lcd_touch_handle_t bsp_lcd_get_touch_handle()
+{
+    return tp_handle;
+}
 
 lv_disp_t *bsp_lvgl_init(void)
 {
