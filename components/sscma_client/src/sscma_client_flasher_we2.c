@@ -820,6 +820,8 @@ static esp_err_t sscma_client_flasher_we2_finish(sscma_client_flasher_handle_t f
 
     ESP_GOTO_ON_ERROR(ret, err, TAG, "finish ota failed");
 
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
 err:
     if (flasher_we2->reset_gpio_num >= 0)
     {

@@ -38,11 +38,11 @@ typedef struct
 
 #define SSCMA_CLIENT_CONFIG_DEFAULT()                                                                                                                                                                  \
     {                                                                                                                                                                                                  \
-        .reset_gpio_num = -1, .tx_buffer_size = 4096, .rx_buffer_size = 65536, .process_task_priority = 5, .process_task_stack = 2048, .process_task_affinity = -1, .monitor_task_priority = 4,        \
-        .monitor_task_stack = 4096, .monitor_task_affinity = -1, .event_queue_size = 5, .user_ctx = NULL,                                                                                              \
-        .flags                                                                                                                                                                                         \
-            = {.reset_active_high = false,                                                                                                                                                             \
-              }                                                                                                                                                                                        \
+        .reset_gpio_num = -1, .tx_buffer_size = 4096, .rx_buffer_size = 65536, .process_task_priority = 5, .process_task_stack = 4096, .process_task_affinity = -1, .monitor_task_priority = 4,        \
+        .monitor_task_stack = 10240, .monitor_task_affinity = -1, .event_queue_size = 2, .user_ctx = NULL,                                                                                             \
+        .flags = {                                                                                                                                                                                     \
+            .reset_active_high = false,                                                                                                                                                                \
+        },                                                                                                                                                                                             \
     }
 
 /**

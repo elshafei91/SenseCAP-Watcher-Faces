@@ -675,6 +675,8 @@ esp_err_t sscma_client_available(sscma_client_handle_t client, size_t *ret_avail
 
 esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const sscma_client_callback_t *callback, void *user_ctx)
 {
+    vTaskSuspend(client->process_task);
+
     if (client->on_event != NULL)
     {
         ESP_LOGW(TAG, "callback on_event already registered, overriding it");
@@ -688,6 +690,8 @@ esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const ssc
     client->on_event = callback->on_event;
     client->on_log = callback->on_log;
     client->user_ctx = user_ctx;
+
+    vTaskResume(client->process_task);
 
     return ESP_OK;
 }

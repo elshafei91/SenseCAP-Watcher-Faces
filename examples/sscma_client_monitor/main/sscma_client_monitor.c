@@ -1,6 +1,9 @@
 #include <dirent.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "driver/uart.h"
 #include "driver/i2c.h"
@@ -23,24 +26,22 @@
 
 #include "esp_jpeg_dec.h"
 
-#include "quirc.h"
-#include "isp.h"
-
 static const char *TAG = "main";
 
 esp_io_expander_handle_t io_expander = NULL;
 sscma_client_handle_t client = NULL;
+esp_lcd_panel_handle_t lcd_panel = NULL;
 
 lv_disp_t *lvgl_disp;
 lv_obj_t *image;
 
-struct quirc *qr;
+#define EXAMPLE_SAVE_IMAGE_TO_SD 0
 
 #define DECODED_STR_MAX_SIZE (48 * 1024)
 static unsigned char decoded_str[DECODED_STR_MAX_SIZE];
 
-#define IMG_WIDTH  240
-#define IMG_HEIGHT 240
+#define IMG_WIDTH  416
+#define IMG_HEIGHT 416
 static lv_img_dsc_t img_dsc = {
     .header.always_zero = 0,
     .header.w = IMG_WIDTH,
@@ -129,49 +130,41 @@ void display_one_image(lv_obj_t *image, const unsigned char *p_data)
         start = esp_timer_get_time();
         int ret = esp_jpeg_decoder_one_picture(decoded_str, output_len, img_dsc.data);
         end = esp_timer_get_time();
-        ESP_LOGI(TAG, "esp_jpeg_decoder_one_picture time:%lld ms", (end - start) / 1000);
+        ESP_LOGI(TAG, "esp_jpeg_decoder_one_picture take:%lld ms", (end - start) / 1000);
         if (ret == ESP_OK)
         {
             lv_img_set_src(image, &img_dsc);
-            start = esp_timer_get_time();
-            int w, h;
-            int i, count;
-            quirc_decode_error_t error;
-            uint8_t *buf = quirc_begin(qr, &w, &h);
-            rgb565_to_gray(buf, img_dsc.data, 240, 240, 240, 240, ROTATION_UP, true);
-            quirc_end(qr);
-            count = quirc_count(qr);
-            ESP_LOGI(TAG, "Found %d QR codes.\n", count);
-            for (i = 0; i < count; i++)
-            {
-                struct quirc_code code;
-                struct quirc_data data;
 
-                quirc_extract(qr, i, &code);
-                error = quirc_decode(&code, &data);
-                if (!error)
-                {
-                    ESP_LOGI(TAG, "    Version: %d, ECC: %c, Mask: %d, Type: %d\n\n", data.version, "MLHQ"[data.ecc_level], data.mask, data.data_type);
-                    ESP_LOGI(TAG, "    Data: %s\n", data.payload);
-                }
-                else
-                {
-                    ESP_LOGI(TAG, "    Error: %d\n", error);
-                }
+            //esp_lcd_panel_draw_bitmap(lcd_panel, 0, 0, IMG_HEIGHT, IMG_WIDTH, img_dsc.data);
+
+#if EXAMPLE_SAVE_IMAGE_TO_SD
+            static char file_name[50];
+            start = esp_timer_get_time();
+            sprintf(file_name, "/sdcard/save/_%lld.jpg", esp_timer_get_time());
+            FILE *fp = fopen(file_name, "wb");
+            if (fp != NULL)
+            {
+                fwrite(decoded_str, 1, output_len, fp);
+                fclose(fp);
+                end = esp_timer_get_time();
+                ESP_LOGI(TAG, "Save image to %s take %lld ms", file_name, (end - start) / 1000);
             }
-            end = esp_timer_get_time();
-            ESP_LOGI(TAG, "QR Decode Time taken: %lld ms", (end - start) / 1000);
+            else
+            {
+                ESP_LOGE(TAG, "Open file %s failed", file_name);
+            }
+#endif
         }
     }
     else if (decode_ret == MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL)
     {
         ESP_LOGE(TAG, "Buffer too small for decoding %d bytes %d output", str_len, output_len);
-        return;
     }
     else
     {
         ESP_LOGE(TAG, "Failed to decode Base64 string, error: %d", decode_ret);
     }
+    return;
 }
 
 void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
@@ -185,6 +178,7 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
     {
         if (lvgl_port_lock(0))
         {
+            ESP_LOGI(TAG, "Got a new image: %d bytes", img_size);
             display_one_image(image, (const unsigned char *)img);
             lvgl_port_unlock();
         }
@@ -218,6 +212,7 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
         }
         free(classes);
     }
+    return;
 }
 
 void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
@@ -232,16 +227,24 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
 
 void app_main(void)
 {
-    qr = quirc_new();
-    assert(qr != NULL);
-    quirc_resize(qr, IMG_WIDTH, IMG_HEIGHT);
-
     io_expander = bsp_io_expander_init();
     assert(io_expander != NULL);
     lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
     client = bsp_sscma_client_init();
     assert(client != NULL);
+
+#if EXAMPLE_SAVE_IMAGE_TO_SD
+    bsp_sdcard_init_default();
+    struct stat st;
+    if (stat("/sdcard/save", &st) == -1)
+    {
+        mkdir("/sdcard/save", 0755);
+    }
+#endif
+
+    lcd_panel = bsp_lcd_get_panel_handle();
+    assert(lcd_panel != NULL);
 
     // lvgl image
     image = lv_img_create(lv_scr_act());
@@ -305,8 +308,12 @@ void app_main(void)
     {
         printf("get model failed\n");
     }
-
-    sscma_client_set_sensor(client, 1, 0, true);
+    // opt id
+    // 0: 240 x 240
+    // 1: 416 x 416
+    // 2: 480 x 480
+    // 2: 640 x 480
+    sscma_client_set_sensor(client, 1, 1, true);
     vTaskDelay(50 / portTICK_PERIOD_MS);
 
     if (sscma_client_sample(client, -1) != ESP_OK)

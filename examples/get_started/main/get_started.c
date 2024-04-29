@@ -12,7 +12,7 @@
 #include "esp_check.h"
 #include "esp_heap_caps.h"
 #include "esp_spiffs.h"
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 extern void lv_demo_keypad_encoder(void);
 
