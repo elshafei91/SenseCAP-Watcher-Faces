@@ -17,7 +17,7 @@
 #include "esp_gatt_common_api.h"
 #include "esp_bt_main.h"
 
-
+#include "at_cmd.h"
 #include "app_ble.h"
 
 #define GATTS_TABLE_TAG "Watcher_BLE_Server"
@@ -373,13 +373,15 @@ esp_err_t app_ble_init(void)
     {
         ESP_LOGE(GATTS_TABLE_TAG, "%s set local  MTU failed: %s", __func__, esp_err_to_name(local_mtu_ret));
     }
-    xTaskCreate(watcher_ble_task, "watcher_ble_task", 4096 * 5, NULL, 10, NULL); // create BLE task
+    //xTaskCreate(watcher_ble_task, "watcher_ble_task", 4096 * 5, NULL, 10, NULL); // create BLE task
+    xTaskCreate(task_handle_AT_command, "task_handle_AT_command", 4096 * 5, NULL, 2, NULL); // create BLE task
     return ESP_OK;
 }
 void watcher_ble_task()
 {
     while (1)
     {
+        
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
@@ -747,13 +749,13 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
     case ESP_GAP_BLE_ADV_START_COMPLETE_EVT: // start adv finish
         if ((err = param->adv_start_cmpl.status) != ESP_BT_STATUS_SUCCESS)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "Advertising start failed: %s", esp_err_to_name(err)); // 判断广播是否完成
+            ESP_LOGE(GATTS_TABLE_TAG, "Advertising start failed: %s", esp_err_to_name(err)); // check if the advertising start is successful
         }
         break;
     case ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT: // stop adv finish
         if ((err = param->adv_stop_cmpl.status) != ESP_BT_STATUS_SUCCESS)
         {
-            ESP_LOGE(GATTS_TABLE_TAG, "Advertising stop failed: %s", esp_err_to_name(err)); // 判断广播是否停止
+            ESP_LOGE(GATTS_TABLE_TAG, "Advertising stop failed: %s", esp_err_to_name(err)); // check if the advertising stop is successful
         }
         else
         {
@@ -761,7 +763,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
         }
         break;
 #ifdef BLE_DEBUG
-    case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT: // 更新连接数参数事件
+    case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT: // update connection parameters
         ESP_LOGI(GATTS_TABLE_TAG, "update connection params status = %d, min_int = %d, max_int = %d,conn_int = %d,latency = %d, timeout = %d",
                  param->update_conn_params.status,
                  param->update_conn_params.min_int,
