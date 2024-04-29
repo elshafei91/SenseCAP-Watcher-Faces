@@ -582,6 +582,9 @@ static lv_disp_t *bsp_display_lcd_init(const bsp_display_cfg_t *cfg)
         .flags = {
             .buff_dma = cfg->flags.buff_dma,
             .buff_spiram = cfg->flags.buff_spiram,
+#if LVGL_VERSION_MAJOR == 9 && defined(CONFIG_LV_COLOR_16_SWAP)
+            .swap_bytes = true,
+#endif
         }};
 
     return lvgl_port_add_disp(&disp_cfg);
