@@ -21,6 +21,8 @@ typedef struct tf_module_timer
     int *p_output_evt_id;
     int output_evt_num;
     esp_timer_handle_t timer_handle;
+    int period_s;
+    int id;
 } tf_module_timer_t;
 
 tf_module_t * tf_module_timer_init(tf_module_timer_t *p_module_ins);

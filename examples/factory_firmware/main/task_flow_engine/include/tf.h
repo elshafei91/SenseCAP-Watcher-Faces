@@ -13,7 +13,7 @@ extern "C"
 {
 #endif
 
-#define TF_ENGINE_TASK_STACK_SIZE 1024
+#define TF_ENGINE_TASK_STACK_SIZE 1024 * 5
 #define TF_ENGINE_TASK_PRIO 5
 #define TF_ENGINE_QUEUE_SIZE 5
 
@@ -40,17 +40,20 @@ typedef struct tf_engine
     esp_event_loop_handle_t event_handle;
     tf_module_nodes_t module_nodes;
     TaskHandle_t task_handle;
-    StaticTask_t task_buf;
+    StaticTask_t *p_task_buf;
     StackType_t *p_task_stack_buf;
     QueueHandle_t queue_handle;
     SemaphoreHandle_t sem_handle;
     cJSON *cur_flow_root;
     tf_module_item_t *p_module_head;
+    int module_item_num;
 } tf_engine_t;
 
 esp_err_t tf_engine_init(void);
 
 esp_err_t tf_engine_run(void);
+
+esp_err_t tf_engine_stop(void);
 
 esp_err_t tf_engine_flow_set(const char *p_str, size_t len);
 

@@ -16,7 +16,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     tf_buffer_t * p_buf = (tf_buffer_t *)p_event_data;
     if( p_buf->type == TF_DATA_TYPE_BUFFER ) {
         if( p_buf->p_data != NULL ) {
-            printf("%s", p_buf->p_data); //use
+            printf("len:%d, data:%s",p_buf->len, p_buf->p_data); //use
             free(p_buf->p_data); // todo need fresh before free?
             p_buf->p_data = NULL;
         } else {

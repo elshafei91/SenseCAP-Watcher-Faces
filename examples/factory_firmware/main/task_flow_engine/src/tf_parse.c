@@ -153,7 +153,7 @@ int tf_parse_json_with_length(const char *p_str, size_t len,
     *pp_json_root = p_json_root;
     *pp_head = p_list_head;
 
-    return ret;
+    return module_item_num;
 
 err:
     if (p_json_root != NULL)
@@ -165,7 +165,7 @@ err:
         __module_item_free(p_list_head, module_item_num);
         free(p_list_head);
     }
-    return ret;
+    return -1;
 }
 
 int tf_parse_json(const char *p_str,

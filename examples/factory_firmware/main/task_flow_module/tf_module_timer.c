@@ -17,7 +17,11 @@ static void __timer_callback(void* p_arg)
     time_t now = 0;
     time(&now);
     
+    memset(buf, 0, sizeof(buf));
     len = snprintf(buf, sizeof(buf), "%d", now);
+    len+=1;
+
+    ESP_LOGI(TAG, "timer[%d]: %s", p_module_ins->id, buf);
 
     for(int i = 0; i < p_module_ins->output_evt_num; i++) {
         tf_buffer_t buf_data;
@@ -45,7 +49,7 @@ static int __start(void *p_module)
     if(ret != ESP_OK) {
         return NULL;
     }
-    esp_timer_start_periodic(p_module_ins->timer_handle, 1000000 * 5); //5s TODO from cfg
+    esp_timer_start_periodic(p_module_ins->timer_handle, 1000000 * p_module_ins->period_s);
     return 0;
 }
 static int __stop(void *p_module)
@@ -53,17 +57,30 @@ static int __stop(void *p_module)
     tf_module_timer_t *p_module_ins = (tf_module_timer_t *)p_module;
     esp_timer_stop(p_module_ins->timer_handle);
     esp_timer_delete(p_module_ins->timer_handle);
+    tf_free(p_module_ins->p_output_evt_id);
     return 0;
 }
 static int __cfg(void *p_module, cJSON *p_json)
 {
     tf_module_timer_t *p_module_ins = (tf_module_timer_t *)p_module;
+
+    cJSON *p_period = NULL;
+    p_period = cJSON_GetObjectItem(p_json, "period");
+    if (p_period == NULL || !cJSON_IsNumber(p_period))
+    {
+        ESP_LOGE(TAG, "params period err, default 5s");
+        p_module_ins->period_s = 5;
+        return ESP_FAIL;
+    } else {
+        ESP_LOGI(TAG, "params period %d", p_period->valueint);
+        p_module_ins->period_s = p_period->valueint;
+    }
     return 0;
 }
 static int __msgs_sub_set(void *p_module, int evt_id)
 {
     tf_module_timer_t *p_module_ins = (tf_module_timer_t *)p_module;
-
+    p_module_ins->id = evt_id;
     return 0;
 }
 

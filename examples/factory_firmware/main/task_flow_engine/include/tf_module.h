@@ -45,12 +45,12 @@ static inline int tf_module_cfg(tf_module_t *handle, cJSON *p_json)
     return handle->ops->cfg(handle->p_module, p_json);
 }
 
-static inline int tf_module_msg_sub_set(tf_module_t *handle, int evt_id)
+static inline int tf_module_msgs_sub_set(tf_module_t *handle, int evt_id)
 {
     return handle->ops->msgs_sub_set(handle->p_module, evt_id);
 }
 
-static inline int tf_module_msg_pub_set(tf_module_t *handle, int output_index, int *p_evt_id, int num)
+static inline int tf_module_msgs_pub_set(tf_module_t *handle, int output_index, int *p_evt_id, int num)
 {
     return handle->ops->msgs_pub_set(handle->p_module, output_index, p_evt_id, num);
 }
