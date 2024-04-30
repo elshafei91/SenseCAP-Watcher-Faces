@@ -29,6 +29,8 @@
 #include "app_taskengine.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
+#include "app_taskflow.h"
+
 
 #include "view.h"
 
@@ -101,6 +103,7 @@ int board_init(void)
 
 int app_init(void)
 {
+    app_taskflow_init();
     app_wifi_init();
     app_time_init();
     app_cmd_init();

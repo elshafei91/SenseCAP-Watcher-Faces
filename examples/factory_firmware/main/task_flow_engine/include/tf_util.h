@@ -27,9 +27,9 @@ extern "C"
 #define CONTAINER_OF(ptr, type, member) \
     ((type *)((char *)(ptr)-offsetof(type, member)))
 
-    void *tf_malloc(size_t sz);
+void *tf_malloc(size_t sz);
 
-    void tf_free(void *ptr);
+void tf_free(void *ptr);
 
 #ifdef __cplusplus
 }

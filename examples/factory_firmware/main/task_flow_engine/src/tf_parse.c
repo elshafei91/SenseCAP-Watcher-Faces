@@ -5,7 +5,7 @@
 #include "esp_log.h"
 #include "esp_check.h"
 
-static const char *TAG = "tf-parse";
+static const char *TAG = "tf.parse";
 
 static void __module_item_free(tf_module_item_t *p_item, int num)
 {

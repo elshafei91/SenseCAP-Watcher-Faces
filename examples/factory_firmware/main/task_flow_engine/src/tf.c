@@ -17,39 +17,45 @@ static int __modules_sort(tf_module_item_t *p_head, int num)
 }
 static int __modules_instance(tf_module_item_t *p_head, int num)
 {
-    return 0;  
-}   
-
+    return 0;
+}
+static int __modules_destroy(tf_module_item_t *p_head, int num)
+{
+    return 0;
+}
 static int __modules_start(tf_module_item_t *p_head, int num)
 {
-    return 0;  
+    return 0;
 }
 static int __modules_stop(tf_module_item_t *p_head, int num)
 {
-    return 0;  
+    return 0;
 }
 static int __modules_cfg(tf_module_item_t *p_head, int num)
 {
-    return 0;  
+    return 0;
 }
 
 static int __modules_msgs_sub_set(tf_module_item_t *p_head, int num)
 {
-    return 0;  
+    return 0;
 }
 static int __modules_msgs_pub_set(tf_module_item_t *p_head, int num)
 {
-    return 0;   
+    return 0;
 }
-static int __modules_delete(tf_module_item_t *p_head, int num)
-{
-    return 0;  
-}   
+
 
 static void __tf_engine_task(void *p_arg)
 {
+    tf_engine_t *p_engine = (tf_engine_t *)p_arg;
+    tf_flow_data_t  flow;
     while (1)
-    {
+    {   
+        if(xQueueReceive(p_engine->queue_handle, &flow, portMAX_DELAY) == pdPASS ) {
+            tf_parse_json( flow.p_data, &p_engine->cur_flow_root, &p_engine->p_module_head);
+        }
+
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
@@ -66,18 +72,49 @@ esp_err_t tf_engine_init(void)
         .task_name = "tf_event_task",
         .task_priority = 6,
         .task_stack_size = 1024 * 3,
-        .task_core_id = 0};
+        .task_core_id = 1
+    };
     ret = esp_event_loop_create(&event_task_args, &gp_engine->event_handle);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "event_loop_create failed");
 
     SLIST_INIT(&(gp_engine->module_nodes));
 
-    // TODO create task and queue
+    gp_engine->p_task_stack_buf = (StackType_t *)tf_malloc(TF_ENGINE_TASK_STACK_SIZE);
+    ESP_GOTO_ON_FALSE(gp_engine->p_task_stack_buf, ESP_ERR_NO_MEM, err, TAG, "no mem for tf engine task stack");
+
+    gp_engine->task_handle = xTaskCreateStatic(
+        __tf_engine_task,
+        "tf_engine_task",
+        TF_ENGINE_TASK_STACK_SIZE,
+        (void *)gp_engine,
+        TF_ENGINE_TASK_PRIO,
+        gp_engine->p_task_stack_buf,
+        &gp_engine->task_buf);
+
+    ESP_GOTO_ON_FALSE(gp_engine->task_handle, ESP_FAIL, err, TAG, "create task failed");
+
+    gp_engine->queue_handle = xQueueCreate(TF_ENGINE_QUEUE_SIZE, sizeof(tf_flow_data_t));
+    ESP_GOTO_ON_FALSE(gp_engine->queue_handle, ESP_FAIL, err, TAG, "create queue failed");
 
 err:
     if (gp_engine)
     {
-        free(gp_engine);
+        if (gp_engine->p_task_stack_buf)
+        {
+            tf_free(gp_engine->p_task_stack_buf);
+        }
+
+        if (gp_engine->task_handle)
+        {
+            vTaskDelete(gp_engine->task_handle);
+        }
+
+        if (gp_engine->queue_handle)
+        {
+            vQueueDelete(gp_engine->queue_handle);
+        }
+
+        tf_free(gp_engine);
         gp_engine = NULL;
     }
 
@@ -86,20 +123,41 @@ err:
 
 esp_err_t tf_engine_run(void)
 {
-    //TODO
+    // TODO
     return ESP_OK;
 }
 
-esp_err_t tf_engine_flow_set(const char *p_str)
+esp_err_t tf_engine_flow_set(const char *p_str, size_t len)
 {
-    //TODO send queue
+    assert(gp_engine);
+    esp_err_t ret = ESP_OK;
+    tf_flow_data_t flow;
+
+    if( p_str == NULL || len <= 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char *p_data = ( char *)tf_malloc(len);
+    if( p_data == NULL ) {
+        return ESP_ERR_NO_MEM;
+    }
+    memcpy(p_data, p_str, len);
+
+   
+    flow.p_data = p_data;
+    flow.len = len;
+
+    if( xQueueSend(gp_engine->queue_handle, &flow, portMAX_DELAY) != pdTRUE) {
+        tf_free(p_data);
+        return ESP_FAIL;
+    }
     return ESP_OK;
 }
 
 esp_err_t tf_module_register(const char *p_name,
                              const char *p_desc,
-                             tf_handle_t handle,
-                             tf_instance_handle_t instance_handler)
+                             const char *p_version,
+                             tf_module_mgmt_t *mgmt_handle)
 {
     assert(gp_engine);
     esp_err_t ret = ESP_OK;
@@ -130,8 +188,8 @@ esp_err_t tf_module_register(const char *p_name,
 
     p_node->p_name = p_name;
     p_node->p_desc = p_desc;
-    p_node->instance_handle = instance_handler;
-    p_node->handle = handle;
+    p_node->p_version = p_version;
+    p_node->mgmt_handle = mgmt_handle;
     SLIST_INSERT_HEAD(&(gp_engine->module_nodes), p_node, next);
 
     return ESP_OK;
