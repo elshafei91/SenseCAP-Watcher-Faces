@@ -21,11 +21,11 @@ typedef struct {
 
 #ifdef DEBUG_AT_CMD
 
-#define TASK_STATS_BUFFER_SIZE 10
+#define TASK_STATS_BUFFER_SIZE 50
 
 extern char * test_strings[];
 extern command_entry *commands;
-void vTaskMonitor(void *pvParameters);
+void vTaskMonitor(void *para);
 #endif
 
 

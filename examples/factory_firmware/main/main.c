@@ -111,7 +111,7 @@ int app_init(void)
     app_taskengine_init();
     app_rgb_init();
     app_sensecraft_init();
-    app_sscma_client_init();
+    //app_sscma_client_init();
     app_mqtt_client_init();
     app_sensecap_https_init();
     app_device_status_monitor_init();

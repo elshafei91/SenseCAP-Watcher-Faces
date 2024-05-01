@@ -25,6 +25,12 @@
             "\rAT+type3\n", // Added a test string without parameters
             NULL
     };
+    // array to hold task status
+    TaskStatus_t pxTaskStatusArray[TASK_STATS_BUFFER_SIZE];
+    // task number
+    UBaseType_t uxArraySize, x;
+    // total run time
+    uint32_t ulTotalRunTime;
 #endif
 
 //const char *pattern = "^\rAT\\+([^?=]+)(\\?|=([^\\n]*))?\n$"; // Made the parameters part optional
@@ -129,9 +135,10 @@ void task_handle_AT_command_old()
     char msgbuf[100];  // error buffer
     regmatch_t matches[2];  // matched strings
    
-    AT_command_reg();               //register the AT commands
+    
     while (1)
     {
+    AT_command_reg();               //register the AT commands
     // compile regular expression
     ret = regcomp(&regex, pattern, REG_EXTENDED);
     if (ret) {
@@ -167,10 +174,11 @@ void task_handle_AT_command_old()
         regerror(ret, &regex, msgbuf, sizeof(msgbuf));
         fprintf(stderr, "Regex match failed: %s\n", msgbuf);
     }
+    
     i++;
     }
     regfree(&regex);
-    //AT_command_free();
+    AT_command_free();
     vTaskDelay(1000 / portTICK_PERIOD_MS); // delay 1s
     }
 }
@@ -220,23 +228,17 @@ void task_handle_AT_command(){
     }
 
     regfree(&regex);
+    
     vTaskDelay(5000 / portTICK_PERIOD_MS); // delay 1s
     }
 
 }
 
 #ifdef DEBUG_AT_CMD
-void vTaskMonitor(void *pvParameters)
+void vTaskMonitor(void *para)
 {
-    // array to hold task status
-    TaskStatus_t pxTaskStatusArray[TASK_STATS_BUFFER_SIZE];
-    // task number
-    UBaseType_t uxArraySize, x;
-    // total run time
-    uint32_t ulTotalRunTime;
 
-    while (1)
-    {
+        while(1){
         //  get the number of tasks
         uxArraySize = uxTaskGetNumberOfTasks();
 
@@ -261,8 +263,6 @@ void vTaskMonitor(void *pvParameters)
 
         // wait for 5 seconds
         vTaskDelay(pdMS_TO_TICKS(5000));
-    }
+        }
 }
-
-
 #endif

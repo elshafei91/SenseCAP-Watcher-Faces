@@ -1,63 +1,67 @@
 #pragma once
 
+
+// defination  space 
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <inttypes.h>
+
 #include "esp_err.h"
 #include "cJSON.h"
-
-
+#include "nvs_flash.h"
+#include "esp_gatts_api.h"
+#include "sdkconfig.h"
 #include "app_cmd.h" //AT cmd driver
+/*----------------------------------------------------*/
+//DEBUG MODE defination 
+#define BLE_DEBUG
+#define GATTS_TABLE_TAG  "GATTS_TABLE"
+#define GATTS_TAG "Watcher_BLE_Server"
 
-#define ble_at_sprintf(s, ...) sprintf((char *)(s), ##__VA_ARGS__)
-#define WATCHER_BLE_DATA_MAX_LEN (512)
-#define WATCHER_BLE_CMD_MAX_LEN (20)
-#define WATCHER_BLE_STATUS_MAX_LEN (20)
-#define WATCHER_BLE_DATA_BUFF_MAX_LEN (2 * 1024)
 
-#define CHAR_DECLARATION_SIZE (sizeof(uint8_t))
+/**--------------------------------------------------------------------------------*/
+//data defination place 
 
-#define PROFILE_APP_IDX 0
-#define PROFILE_NUM 1
 
-#define CONFIG_watcher_BLE_SERVICE_UUID_TEST 0x00FF
-#define CONFIG_watcher_BLE_CHAR_UUID_TEST_A 0xFF01
-#define CONFIG_watcher_BLE_CHAR_UUID_TEST_B 0xFF02
-#define CONFIG_watcher_BLE_CHAR_UUID_TEST_C 0xFF03
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#define GATTS_SERVICE_UUID_TEST_A 0x00FF
+#define GATTS_CHAR_UUID_TEST_A 0xFF01
+#define GATTS_DESCR_UUID_TEST_A 0x3333
+#define GATTS_NUM_HANDLE_TEST_A 7
 
-    // Attributes Table element
-    enum
-    {
-    WATCHER_BLE_IDX_SVC,
-    watcher_ble_IDX_CHAR_A,
-    watcher_ble_IDX_CHAR_VAL_A,
-    watcher_ble_IDX_CHAR_CFG_A,
-    watcher_ble_IDX_CHAR_B,
-    watcher_ble_IDX_CHAR_VAL_B,
-    watcher_ble_IDX_CHAR_C,
-    watcher_ble_IDX_CHAR_VAL_C,
-    WATCHER_BLE_IDX_NB
-    };
+#define GATTS_CHAR_UUID_TEST_B 0xEE01
+#define GATTS_DESCR_UUID_TEST_B 0x2222
+#define GATTS_NUM_HANDLE_TEST_B 4
 
-    esp_err_t app_ble_init(void);
 
-    esp_err_t app_ble_recv_event(void);
+#define TEST_DEVICE_NAME "010203040506070809-WACH"
 
-    esp_err_t app_ble_send_event(void);
+#define GATTS_DEMO_CHAR_VAL_LEN_MAX 0x40
 
-// if used
-#ifdef BLE_DEBUG
+#define PREPARE_BUF_MAX_SIZE 102400
 
-    esp_err_t app_Ble_Debug(void);
+#define PROFILE_NUM 2
+#define PROFILE_A_APP_ID 0
 
-#endif
+/*-----------------------------------------------------------------------------------*/
 
-#ifdef __cplusplus
-}
-#endif
+//config defination place 
+#define adv_config_flag (1 << 0)
+#define scan_rsp_config_flag (1 << 1)
+#define CONFIG_SET_RAW_ADV_DATA
+
+
+
+
+
+/*------------------------------------------------------------------------------------*/
+// function declaration
+
+esp_err_t app_ble_init(void);
+void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+
+
+
+void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size); // Tool Function
