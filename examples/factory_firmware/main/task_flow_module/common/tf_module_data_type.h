@@ -1,6 +1,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,6 +28,20 @@ typedef struct {
     uint32_t len;
 } tf_buffer_t;
 
+struct tf_data_image
+{
+    uint8_t *p_buf;
+    uint32_t len;
+    time_t   time;
+};
+
+typedef struct tf_data_images
+{
+    uint8_t  type;
+    struct tf_data_image img_small;
+    struct tf_data_image img_large;
+    //todo add inference data ?
+} tf_data_images_t;
 
 #ifdef __cplusplus
 }
