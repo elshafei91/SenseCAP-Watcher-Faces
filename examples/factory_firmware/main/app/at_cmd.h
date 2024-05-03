@@ -26,7 +26,7 @@ typedef struct {
 } message_event_t;
 #pragma pack(pop) // 恢复之前的对齐状态
 
-extern message_event_t msg_at;
+
 
 #define DEBUG_AT_CMD
 

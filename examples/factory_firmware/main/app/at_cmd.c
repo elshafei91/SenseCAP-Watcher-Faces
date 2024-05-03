@@ -137,7 +137,7 @@ void handle_eui_command(char *params)
 static void hex_to_string(uint8_t *hex, int hex_size, char *output)
 {
     esp_log_buffer_hex("HEX TAG1", hex, hex_size);
-    for (int i = 1; i <= hex_size; i++)
+    for (int i = 0; i <= hex_size; i++)
     {
         output[i] = (char)hex[i];
     }
@@ -147,6 +147,8 @@ static void hex_to_string(uint8_t *hex, int hex_size, char *output)
 esp_event_loop_handle_t at_event_loop_handle;
 
 ESP_EVENT_DEFINE_BASE(AT_EVENTS);
+
+
 void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     // 事件数据传递

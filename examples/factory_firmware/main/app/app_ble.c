@@ -32,6 +32,9 @@ uint8_t watcher_name[] = {'-', 'W', 'A', 'C', 'H'};
 static uint8_t char1_str[] = {0x11, 0x22, 0x33};
 static uint8_t char2_str[] = {0x44, 0x55, 0x66};
 
+
+static uint16_t char_handl_rx;
+static uint16_t char_handl_tx;
 esp_attr_value_t gatts_char_write_val =
     {
         .attr_max_len = GATTS_DEMO_CHAR_VAL_LEN_MAX,
@@ -95,8 +98,8 @@ struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = {
         .gatts_if = ESP_GATT_IF_NONE, /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
     }};
 
-esp_gatt_char_prop_t watcher_property = 0;
-
+esp_gatt_char_prop_t watcher_write_property = 0;
+esp_gatt_char_prop_t watcher_read_property = 1;
 
 static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
@@ -259,6 +262,7 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
         message_event_t msg_at={.msg=prepare_write_env->prepare_buf,.size=prepare_write_env->prepare_len};
         esp_log_buffer_hex("HEX TAG2", msg_at.msg, msg_at.size);
         esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, sizeof(msg_at), portMAX_DELAY);
+        vTaskDelay(1000/portTICK_PERIOD_MS);
         free(prepare_write_env->prepare_buf);
         prepare_write_env->prepare_buf = NULL;
     }
@@ -367,7 +371,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                 uint16_t descr_value = param->write.value[1] << 8 | param->write.value[0];
                 if (descr_value == 0x0001)
                 {
-                    if (watcher_property & ESP_GATT_CHAR_PROP_BIT_NOTIFY)
+                    if (watcher_write_property & ESP_GATT_CHAR_PROP_BIT_NOTIFY)
                     {
                         ESP_LOGI(GATTS_TAG, "notify enable");
                         uint8_t notify_data[15];
@@ -382,7 +386,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                 }
                 else if (descr_value == 0x0002)
                 {
-                    if (watcher_property & ESP_GATT_CHAR_PROP_BIT_INDICATE)
+                    if (watcher_read_property & ESP_GATT_CHAR_PROP_BIT_INDICATE)
                     {
                         ESP_LOGI(GATTS_TAG, "indicate enable");
                         uint8_t indicate_data[15];
@@ -438,23 +442,22 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
 
         esp_ble_gatts_start_service(gl_profile_tab[PROFILE_WATCHER_APP_ID].service_handle);
 
-        watcher_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
-
+        watcher_write_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 
 
         esp_err_t add_char_ret = esp_ble_gatts_add_char(gl_profile_tab[PROFILE_WATCHER_APP_ID].service_handle, &gl_profile_tab[PROFILE_WATCHER_APP_ID].char_uuid_write,
                                                         ESP_GATT_PERM_WRITE,
-                                                        watcher_property,
+                                                        watcher_write_property,
                                                         &gatts_char_write_val, NULL);
         if (add_char_ret)
         {
             ESP_LOGE(GATTS_TAG, "add char1 failed, error code =%x", add_char_ret);
         }
 
-
+        watcher_write_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
         add_char_ret = esp_ble_gatts_add_char(gl_profile_tab[PROFILE_WATCHER_APP_ID].service_handle, &gl_profile_tab[PROFILE_WATCHER_APP_ID].char_uuid_read,
                                               ESP_GATT_PERM_READ ,
-                                              watcher_property,
+                                              watcher_read_property,
                                               &gatts_char_read_val, NULL);
         if (add_char_ret)
         {
@@ -496,6 +499,8 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         {
             ESP_LOGE(GATTS_TAG, "add char descr failed, error code =%x", add_descr_ret);
         }
+        //if(param ->add_char.char_uuid.uuid.uuid128=="")
+
         break;
     }
     case ESP_GATTS_ADD_CHAR_DESCR_EVT:
