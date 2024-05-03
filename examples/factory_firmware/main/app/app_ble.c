@@ -203,7 +203,7 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
             }
             if (status == ESP_GATT_OK && prepare_write_env->prepare_buf == NULL)
             {
-                prepare_write_env->prepare_buf = (uint8_t *)malloc(PREPARE_BUF_MAX_SIZE * sizeof(uint8_t));
+                prepare_write_env->prepare_buf = heap_caps_malloc(PREPARE_BUF_MAX_SIZE * sizeof(uint8_t), MALLOC_CAP_SPIRAM);
                 ESP_LOGE(GATTS_TAG, "CHECK_POINT01");
                 prepare_write_env->prepare_len = 0;
                 if (prepare_write_env->prepare_buf == NULL)
@@ -213,7 +213,7 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
                 }
             }
 
-            esp_gatt_rsp_t *gatt_rsp = (esp_gatt_rsp_t *)malloc(sizeof(esp_gatt_rsp_t));
+            esp_gatt_rsp_t *gatt_rsp = (esp_gatt_rsp_t *)heap_caps_malloc(sizeof(esp_gatt_rsp_t), MALLOC_CAP_SPIRAM);
             if (gatt_rsp)
             {
                 gatt_rsp->attr_value.len = param->write.len;
