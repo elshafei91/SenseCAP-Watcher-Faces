@@ -1,5 +1,5 @@
-
-#pragma once
+#ifndef AT_CMD_HEAD
+#define AT_CMD_HEAD
 #include <regex.h>
 #include "uhash.h"
 #include <string.h>
@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include <esp_event_loop.h>
 
 
 
@@ -16,6 +17,16 @@ typedef struct {
     void (*func)(char *params);     // Function pointer to the function that will process the command
     UT_hash_handle hh;      // Makes this structure hashable
 }command_entry;
+
+
+#pragma pack(push, 1) // 压栈保存当前的对齐状态，设置为1字节对齐
+typedef struct {
+    uint8_t * msg;
+    int size;
+} message_event_t;
+#pragma pack(pop) // 恢复之前的对齐状态
+
+extern message_event_t msg_at;
 
 #define DEBUG_AT_CMD
 
@@ -48,3 +59,14 @@ void handle_device_command(char *params);   //device info
 void handle_wifi_command(char *params);     //wifi command
 void handle_token(char *params);            //token command
 void handle_eui_command(char *params);      //eui command
+
+void init_event_loop_and_task(void);
+
+extern esp_event_base_t const AT_EVENTS;
+static const char * AT_EVENTS_TAG ="AT_EVENTS";
+#define AT_EVENTS_COMMAND_ID 0x6F
+#define AT_EVENTS_RESPONSE_ID 0x70
+#define MEMORY_SIZE  (1024)
+
+extern esp_event_loop_handle_t  at_event_loop_handle;
+#endif

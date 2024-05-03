@@ -130,12 +130,6 @@ static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned s
     }
 }
 
-static void hex_to_string(uint8_t *hex, size_t hex_size, char *output) {
-    for (size_t i = 0; i < hex_size; i++) {
-        output[i] = (char) hex[i];
-    }
-    output[hex_size] = '\0';  
-}
 
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
@@ -262,6 +256,9 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     }
     if (prepare_write_env->prepare_buf)
     {
+        message_event_t msg_at={.msg=prepare_write_env->prepare_buf,.size=prepare_write_env->prepare_len};
+        esp_log_buffer_hex("HEX TAG2", msg_at.msg, msg_at.size);
+        esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, sizeof(msg_at), portMAX_DELAY);
         free(prepare_write_env->prepare_buf);
         prepare_write_env->prepare_buf = NULL;
     }
@@ -446,7 +443,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
 
 
         esp_err_t add_char_ret = esp_ble_gatts_add_char(gl_profile_tab[PROFILE_WATCHER_APP_ID].service_handle, &gl_profile_tab[PROFILE_WATCHER_APP_ID].char_uuid_write,
-                                                        ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+                                                        ESP_GATT_PERM_WRITE,
                                                         watcher_property,
                                                         &gatts_char_write_val, NULL);
         if (add_char_ret)
@@ -456,7 +453,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
 
 
         add_char_ret = esp_ble_gatts_add_char(gl_profile_tab[PROFILE_WATCHER_APP_ID].service_handle, &gl_profile_tab[PROFILE_WATCHER_APP_ID].char_uuid_read,
-                                              ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+                                              ESP_GATT_PERM_READ ,
                                               watcher_property,
                                               &gatts_char_read_val, NULL);
         if (add_char_ret)
@@ -655,7 +652,7 @@ esp_err_t app_ble_init(void)
     {
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
-    xTaskCreate(task_handle_AT_command, "task_handle_AT_command", 2048 * 2, NULL, 2, NULL);     // handle AT command
+    init_event_loop_and_task();
 #ifdef DEBUG_AT_CMD
     // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
 #endif
