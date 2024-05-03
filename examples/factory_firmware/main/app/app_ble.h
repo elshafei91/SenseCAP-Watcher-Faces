@@ -43,7 +43,7 @@
 #define PREPARE_BUF_MAX_SIZE 102400
 
 #define PROFILE_NUM 2
-#define PROFILE_A_APP_ID 0
+#define PROFILE_WATCHER_APP_ID 0
 
 /*-----------------------------------------------------------------------------------*/
 
@@ -60,8 +60,6 @@
 // function declaration
 
 esp_err_t app_ble_init(void);
-void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
 
-
-void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size); // Tool Function
