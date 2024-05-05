@@ -8,7 +8,8 @@
 #include <string.h>
 #include <inttypes.h>
 #include <esp_event_loop.h>
-
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
 
 
 
@@ -19,12 +20,25 @@ typedef struct {
 }command_entry;
 
 
-#pragma pack(push, 1) // 压栈保存当前的对齐状态，设置为1字节对齐
+#pragma pack(push, 1)
 typedef struct {
     uint8_t * msg;
     int size;
 } message_event_t;
-#pragma pack(pop) // 恢复之前的对齐状态
+#pragma pack(pop) 
+
+
+typedef struct {
+    char * response;  // 存储回应字符串
+    int length;           // 字符串长度
+} AT_Response;
+
+
+extern SemaphoreHandle_t AT_response_semaphore;
+
+extern QueueHandle_t AT_response_queue;
+
+
 
 
 
@@ -61,6 +75,8 @@ void handle_token(char *params);            //token command
 void handle_eui_command(char *params);      //eui command
 
 void init_event_loop_and_task(void);
+
+void AT_cmd_init();
 
 extern esp_event_base_t const AT_EVENTS;
 static const char * AT_EVENTS_TAG ="AT_EVENTS";

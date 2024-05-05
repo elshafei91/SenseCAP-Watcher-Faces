@@ -32,9 +32,6 @@ uint8_t watcher_name[] = {'-', 'W', 'A', 'C', 'H'};
 static uint8_t char1_str[] = {0x11, 0x22, 0x33};
 static uint8_t char2_str[] = {0x44, 0x55, 0x66};
 
-
-static uint16_t char_handl_rx;
-static uint16_t char_handl_tx;
 esp_attr_value_t gatts_char_write_val =
     {
         .attr_max_len = GATTS_DEMO_CHAR_VAL_LEN_MAX,
@@ -49,7 +46,7 @@ esp_attr_value_t gatts_char_read_val =
         .attr_value = char2_str,
 };
 
-uint8_t adv_config_done = 0;    
+uint8_t adv_config_done = 0;
 
 uint8_t watcher_adv_data_RAW[] = {
     0x05, 0x03, 0x86, 0x28, 0x86, 0xA8,
@@ -67,6 +64,8 @@ struct gatts_profile_inst
     uint16_t service_handle;
     esp_gatt_srvc_id_t service_id;
     uint16_t char_handle;
+    uint16_t char_handl_rx;
+    uint16_t char_handl_tx;
     esp_bt_uuid_t char_uuid_write;
     esp_bt_uuid_t char_uuid_read;
     esp_gatt_perm_t perm;
@@ -106,9 +105,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
 static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size);
 static void hex_to_string(uint8_t *hex, size_t hex_size, char *output);
 
-
-
-
 static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size) // Tool Function
 {
     for (unsigned char i = 0; i < Size; i++)
@@ -132,7 +128,6 @@ static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned s
         }
     }
 }
-
 
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
@@ -251,7 +246,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC)
     {
         esp_log_buffer_hex(GATTS_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
-        
     }
     else
     {
@@ -259,14 +253,34 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     }
     if (prepare_write_env->prepare_buf)
     {
-        message_event_t msg_at={.msg=prepare_write_env->prepare_buf,.size=prepare_write_env->prepare_len};
+        message_event_t msg_at = {.msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len};
         esp_log_buffer_hex("HEX TAG2", msg_at.msg, msg_at.size);
         esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, sizeof(msg_at), portMAX_DELAY);
-        vTaskDelay(1000/portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         free(prepare_write_env->prepare_buf);
         prepare_write_env->prepare_buf = NULL;
+
+        AT_Response msg_at_response;
+        if (xQueueReceive(AT_response_queue, &msg_at_response, portMAX_DELAY) == pdTRUE)
+        {   
+            esp_err_t ret = esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, 
+                                                        gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, 
+                                                        gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx, 
+                                                        msg_at_response.length, 
+                                                        (uint8_t *)msg_at_response.response, 
+                                                        false);
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE("GATTS_TAG", " Notification failed%x", ret);
+            }
+            else
+            {
+                ESP_LOGE(GATTS_TAG, "No response from AT command%s", msg_at_response.response);
+            }
+            free(msg_at_response.response);
+        }
+        prepare_write_env->prepare_len = 0;
     }
-    prepare_write_env->prepare_len = 0;
 }
 
 void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
@@ -444,7 +458,6 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
 
         watcher_write_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 
-
         esp_err_t add_char_ret = esp_ble_gatts_add_char(gl_profile_tab[PROFILE_WATCHER_APP_ID].service_handle, &gl_profile_tab[PROFILE_WATCHER_APP_ID].char_uuid_write,
                                                         ESP_GATT_PERM_WRITE,
                                                         watcher_write_property,
@@ -453,12 +466,13 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         {
             ESP_LOGE(GATTS_TAG, "add char1 failed, error code =%x", add_char_ret);
         }
-
-        watcher_write_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+        ESP_LOGI("add_WRITE_HANDL", "gl_profile_tab[PROFILE_WATCHER_APP_ID].cha_handl_attr: %d", param->add_char.attr_handle);
+        watcher_read_property = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
         add_char_ret = esp_ble_gatts_add_char(gl_profile_tab[PROFILE_WATCHER_APP_ID].service_handle, &gl_profile_tab[PROFILE_WATCHER_APP_ID].char_uuid_read,
-                                              ESP_GATT_PERM_READ ,
+                                              ESP_GATT_PERM_READ,
                                               watcher_read_property,
                                               &gatts_char_read_val, NULL);
+        ESP_LOGI("add_READ_HANDL", "gl_profile_tab[PROFILE_WATCHER_APP_ID].cha_handl_attr: %d", param->add_char.attr_handle);                                      
         if (add_char_ret)
         {
             ESP_LOGE(GATTS_TAG, "add char2 failed, error code =%x", add_char_ret);
@@ -468,39 +482,16 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         break;
     case ESP_GATTS_ADD_CHAR_EVT:
     {
-        uint16_t length = 0;
-        const uint8_t *prf_char;
-
-        uint8_t char_uuid_read[ESP_UUID_LEN_128] = {0x16, 0x96, 0x24, 0x47, 0xC6, 0x23, 0x61, 0xBA, 0xD9, 0x4B, 0x4D, 0x1E, 0x43, 0x53, 0x53, 0x49};
-
         ESP_LOGI(GATTS_TAG, "ADD_CHAR_EVT, status %d,  attr_handle %d, service_handle %d",
                  param->add_char.status, param->add_char.attr_handle, param->add_char.service_handle);
         gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle = param->add_char.attr_handle;
-        gl_profile_tab[PROFILE_WATCHER_APP_ID].descr_uuid.len = ESP_UUID_LEN_128;
-        for (int i = 0; i < ESP_UUID_LEN_128; i++)
-        {
-            gl_profile_tab[PROFILE_WATCHER_APP_ID].descr_uuid.uuid.uuid128[i] = char_uuid_read[i];
-        }
+        gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx = param->add_char.attr_handle;
+        gl_profile_tab[PROFILE_WATCHER_APP_ID].descr_uuid.len = ESP_UUID_LEN_16;
+        gl_profile_tab[PROFILE_WATCHER_APP_ID].descr_uuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
 
-        esp_err_t get_attr_ret = esp_ble_gatts_get_attr_value(param->add_char.attr_handle, &length, &prf_char);
-        if (get_attr_ret == ESP_FAIL)
-        {
-            ESP_LOGE(GATTS_TAG, "ILLEGAL HANDLE");
-        }
-
-        ESP_LOGI(GATTS_TAG, "the gatts demo char length = %x", length);
-        for (int i = 0; i < length; i++)
-        {
-            ESP_LOGI(GATTS_TAG, "prf_char[%x] =%x", i, prf_char[i]);
-        }
-        esp_err_t add_descr_ret = esp_ble_gatts_add_char_descr(gl_profile_tab[PROFILE_WATCHER_APP_ID].service_handle, &gl_profile_tab[PROFILE_WATCHER_APP_ID].descr_uuid,
-                                                               ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, NULL, NULL);
-        if (add_descr_ret)
-        {
-            ESP_LOGE(GATTS_TAG, "add char descr failed, error code =%x", add_descr_ret);
-        }
-        //if(param ->add_char.char_uuid.uuid.uuid128=="")
-
+        esp_ble_gatts_add_char_descr(gl_profile_tab[PROFILE_WATCHER_APP_ID].service_handle, &gl_profile_tab[PROFILE_WATCHER_APP_ID].descr_uuid,
+                                     ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+                                     NULL, NULL);
         break;
     }
     case ESP_GATTS_ADD_CHAR_DESCR_EVT:
@@ -657,7 +648,7 @@ esp_err_t app_ble_init(void)
     {
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
-    init_event_loop_and_task();
+    AT_cmd_init();
 #ifdef DEBUG_AT_CMD
     // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
 #endif

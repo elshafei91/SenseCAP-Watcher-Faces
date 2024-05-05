@@ -32,6 +32,14 @@ UBaseType_t uxArraySize, x;
 uint32_t ulTotalRunTime;
 #endif
 
+
+
+SemaphoreHandle_t AT_response_semaphore;
+QueueHandle_t AT_response_queue;
+void create_AT_response_queue();
+void init_AT_response_semaphore();
+void send_at_response(AT_Response *AT_Response);
+AT_Response create_at_response(const char* message);
 const char *pattern = "^\rAT\\+([^?=]+)(\\?|=([^\\n]*))?\n$"; // Made the parameters part optional
 
 command_entry *commands = NULL; // Global variable to store the commands
@@ -122,6 +130,27 @@ void handle_wifi_command(char *params)
         printf("Password not found in JSON\n");
     }
     printf("Handling wifi command\n");
+    AT_Response response = create_at_response("AT_OK");
+    send_at_response(&response);
+    for (int i = 0; i < 3; i++) {
+        // Append the loop index to the response string
+        char *new_response = malloc(strlen(response.response) + 2); // +2 for the extra character and null terminator
+        if (new_response == NULL) {
+            // Handle memory allocation failure
+            break;
+        }
+        strcpy(new_response, response.response);
+        new_response[strlen(response.response)] = '0' + i; // Convert index to character
+        new_response[strlen(response.response) + 1] = '\0'; // Null-terminate the string
+
+        // Update the response structure with the modified string
+        free(response.response);
+        response.response = new_response;
+
+        // Send the modified response
+        send_at_response(&response);
+    }
+
 }
 
 void handle_token(char *params)
@@ -230,12 +259,69 @@ void init_event_loop_and_task(void)
 
     // 创建事件循环
     ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &at_event_loop_handle));
-
+    
     // 注册事件处理器
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(at_event_loop_handle, AT_EVENTS, ESP_EVENT_ANY_ID, task_handle_AT_command, NULL, NULL));
 
     ESP_LOGE(AT_EVENTS_TAG, "Event loop created and handler registered");
 }
+
+
+
+
+
+void create_AT_response_queue(){
+    AT_response_queue =xQueueCreate(10, sizeof(AT_Response));
+}
+
+void init_AT_response_semaphore(){
+    AT_response_semaphore=xSemaphoreCreateBinary();
+    xSemaphoreGive(AT_response_semaphore);
+}
+
+void send_at_response(AT_Response *AT_Response){
+    if(xSemaphoreTake(AT_response_semaphore, portMAX_DELAY)){
+        if(!xQueueSend(AT_response_queue, AT_Response, 0)){
+            printf("Failed to send AT response\n");
+        }
+        xSemaphoreGive(AT_response_semaphore);
+    }
+}
+
+AT_Response create_at_response(const char* message) {
+    AT_Response response;
+    if (message) {
+        // 分配足够的内存来存储响应字符串
+        response.response = heap_caps_malloc(strlen(message) + 1,MALLOC_CAP_SPIRAM); // +1 for null terminator
+        if (response.response) {
+            strcpy(response.response, message);
+            response.length = strlen(message);
+        } else {
+            printf("Failed to allocate memory for AT response\n");
+            // 处理内存分配失败的情况
+            response.response = NULL;
+            response.length = 0;
+        }
+    } else {
+        // 处理空消息输入的情况
+        response.response = NULL;
+        response.length = 0;
+    }
+    return response;
+}
+
+
+void AT_cmd_init(){
+    create_AT_response_queue();
+    init_AT_response_semaphore();
+    init_event_loop_and_task();
+}
+
+
+
+
+
+
 
 #ifdef DEBUG_AT_CMD
 void vTaskMonitor(void *para)
