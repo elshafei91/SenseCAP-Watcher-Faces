@@ -30,8 +30,8 @@ typedef struct {
 
 
 typedef struct {
-    char * response;  // 存储回应字符串
-    int length;           // 字符串长度
+    char * response;  
+    int length;           
 } AT_Response;
 
 

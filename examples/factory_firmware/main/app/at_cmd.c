@@ -54,13 +54,13 @@ void exec_command(command_entry **commands, const char *name, char *params, char
 {
     command_entry *entry;
     char full_command[128];
-    snprintf(full_command, sizeof(full_command), "%s%c", name, query); // 区分命令名和类型
+    snprintf(full_command, sizeof(full_command), "%s%c", name, query); // Append the query character to the command name
     HASH_FIND_STR(*commands, full_command, entry);
     if (entry)
     {
-        if (query == '?')
+        if (query == '?')   // If the query character is '?', then the command is a query command
         {
-            entry->func(NULL); // 对于查询型命令，不传递任何参数
+            entry->func(NULL); 
         }
         else
         {
@@ -76,10 +76,11 @@ void exec_command(command_entry **commands, const char *name, char *params, char
 void AT_command_reg(){  // Register the AT commands
     add_command(&commands, "type1=", handle_type_1_command);
     add_command(&commands, "device=", handle_device_command);
-    add_command(&commands, "wifi=", handle_wifi_set);   // 处理WiFi设置
-    add_command(&commands, "wifi?", handle_wifi_query); // 处理WiFi查询
+    add_command(&commands, "wifi=", handle_wifi_set);   
+    add_command(&commands, "wifi?", handle_wifi_query); 
     add_command(&commands, "eui=", handle_eui_command);
     add_command(&commands, "token=", handle_token);
+    add_command(&commands, "Wifi_Table?", handle_token);
 }
 
 
@@ -139,12 +140,38 @@ void handle_wifi_set(char *params)
         printf("Password not found in JSON\n");
     }
     printf("Handling wifi command\n");
-    AT_Response response = create_at_response("AT_OK");
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddStringToObject(data, "Ssid", ssid);
+    cJSON_AddStringToObject(data, "Rssi", "2");  
+    cJSON_AddStringToObject(data, "Encryption", "WPA");  
+    char *json_string = cJSON_Print(root);
+    printf("JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
     send_at_response(&response);
+    cJSON_Delete(root);
 }
 
 void handle_wifi_query(char *params)
 {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateObject();
+    // 填充 JSON 对象
+    cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data);
+    cJSON_AddStringToObject(data, "Ssid", "SEEED-2.4G");
+    cJSON_AddStringToObject(data, "Rssi", "2");  
+    cJSON_AddStringToObject(data, "Encryption", "WPA");  
+    char *json_string = cJSON_Print(root);
+    printf("JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
+    send_at_response(&response);
+    cJSON_Delete(root);
     printf("Handling token command\n");
 }
 void handle_token(char *params)
@@ -173,7 +200,6 @@ ESP_EVENT_DEFINE_BASE(AT_EVENTS);
 
 void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-    // 事件数据传递
     size_t memory_size = MEMORY_SIZE;
     message_event_t *msg_at = (message_event_t *)event_data;
     char *test_strings = (char *)heap_caps_malloc(memory_size, MALLOC_CAP_SPIRAM);
@@ -189,7 +215,6 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
         hex_to_string(msg_at->msg, msg_at->size, test_strings);
         printf("recv: %.*s\n", 1024, test_strings);
     }
-    // 事件数据传递完成
 
     regex_t regex;
     int ret;
@@ -239,7 +264,7 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
     vTaskDelay(5000 / portTICK_PERIOD_MS); // delay 1s
 }
 
-// 注册事件处理器和创建发送任务的函数
+
 void init_event_loop_and_task(void)
 {
     esp_event_loop_args_t loop_args = {
@@ -249,10 +274,10 @@ void init_event_loop_and_task(void)
         .task_stack_size = 2048 * 2,
         .task_core_id = tskNO_AFFINITY};
 
-    // 创建事件循环
+
     ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &at_event_loop_handle));
 
-    // 注册事件处理器
+
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(at_event_loop_handle, AT_EVENTS, ESP_EVENT_ANY_ID, task_handle_AT_command, NULL, NULL));
 
     ESP_LOGE(AT_EVENTS_TAG, "Event loop created and handler registered");
@@ -286,7 +311,7 @@ AT_Response create_at_response(const char *message)
     AT_Response response;
     if (message)
     {
-        // 分配足够的内存来存储响应字符串
+        
         response.response = heap_caps_malloc(strlen(message) + 1, MALLOC_CAP_SPIRAM); // +1 for null terminator
         if (response.response)
         {
@@ -296,14 +321,14 @@ AT_Response create_at_response(const char *message)
         else
         {
             printf("Failed to allocate memory for AT response\n");
-            // 处理内存分配失败的情况
+            
             response.response = NULL;
             response.length = 0;
         }
     }
     else
     {
-        // 处理空消息输入的情况
+       
         response.response = NULL;
         response.length = 0;
     }
