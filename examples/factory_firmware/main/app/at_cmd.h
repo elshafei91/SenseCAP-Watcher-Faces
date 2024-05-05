@@ -11,6 +11,7 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 
+#include "app_wifi.h"
 
 
 typedef struct {
@@ -63,14 +64,15 @@ void AT_command_reg();      //  Function to register the AT commands
 void AT_command_free();     // Function to free the memory allocated for the commands
 
 void add_command(command_entry ** commands,const char *name ,void (*func)(char *params));   // Function to add a command to the list of commands
-void exec_command(command_entry **commands, const char *name,char *params);                 // Function to execute a command
+void exec_command(command_entry **commands, const char *name, char *params, char query);            // Function to execute a command
 
 void task_handle_AT_command(); // Function to handle the AT command select witch command to execute
 
 
 void handle_type_1_command(char *params);   //test command
 void handle_device_command(char *params);   //device info
-void handle_wifi_command(char *params);     //wifi command
+void handle_wifi_set(char *params);     //wifi command
+void handle_wifi_query(char *params); 
 void handle_token(char *params);            //token command
 void handle_eui_command(char *params);      //eui command
 

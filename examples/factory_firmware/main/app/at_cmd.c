@@ -32,15 +32,13 @@ UBaseType_t uxArraySize, x;
 uint32_t ulTotalRunTime;
 #endif
 
-
-
 SemaphoreHandle_t AT_response_semaphore;
 QueueHandle_t AT_response_queue;
 void create_AT_response_queue();
 void init_AT_response_semaphore();
 void send_at_response(AT_Response *AT_Response);
-AT_Response create_at_response(const char* message);
-const char *pattern = "^\rAT\\+([^?=]+)(\\?|=([^\\n]*))?\n$"; // Made the parameters part optional
+AT_Response create_at_response(const char *message);
+const char *pattern = "^\rAT\\+([a-zA-Z0-9]+)(\\?|=([^\\n]*))?\n$";
 
 command_entry *commands = NULL; // Global variable to store the commands
 
@@ -51,14 +49,23 @@ void add_command(command_entry **commands, const char *name, void (*func)(char *
     entry->func = func;                                                    // Assign the function pointer to the new entry
     HASH_ADD_STR(*commands, command_name, entry);                          // Add the new entry to the hash table
 }
-void exec_command(command_entry **commands, const char *name, char *params)
+
+void exec_command(command_entry **commands, const char *name, char *params, char query)
 {
     command_entry *entry;
-    printf("command name is:%s\n", name);
-    HASH_FIND_STR(*commands, name, entry); // Find the entry with the given name
+    char full_command[128];
+    snprintf(full_command, sizeof(full_command), "%s%c", name, query); // 区分命令名和类型
+    HASH_FIND_STR(*commands, full_command, entry);
     if (entry)
     {
-        entry->func(params); // Execute the function if the entry is found
+        if (query == '?')
+        {
+            entry->func(NULL); // 对于查询型命令，不传递任何参数
+        }
+        else
+        {
+            entry->func(params);
+        }
     }
     else
     {
@@ -66,14 +73,16 @@ void exec_command(command_entry **commands, const char *name, char *params)
     }
 }
 
-void AT_command_reg()
-{ // Register the AT commands
-    add_command(&commands, "type1", handle_type_1_command);
-    add_command(&commands, "device", handle_device_command);
-    add_command(&commands, "wifi", handle_wifi_command);
-    add_command(&commands, "eui", handle_eui_command);
-    add_command(&commands, "token", handle_token);
+void AT_command_reg(){  // Register the AT commands
+    add_command(&commands, "type1=", handle_type_1_command);
+    add_command(&commands, "device=", handle_device_command);
+    add_command(&commands, "wifi=", handle_wifi_set);   // 处理WiFi设置
+    add_command(&commands, "wifi?", handle_wifi_query); // 处理WiFi查询
+    add_command(&commands, "eui=", handle_eui_command);
+    add_command(&commands, "token=", handle_token);
 }
+
+
 void AT_command_free()
 {
     command_entry *current_command, *tmp;
@@ -95,7 +104,7 @@ void handle_device_command(char *params)
     printf("Handling device command\n");
 }
 
-void handle_wifi_command(char *params)
+void handle_wifi_set(char *params)
 {
     char ssid[100];
     char password[100];
@@ -134,6 +143,10 @@ void handle_wifi_command(char *params)
     send_at_response(&response);
 }
 
+void handle_wifi_query(char *params)
+{
+    printf("Handling token command\n");
+}
 void handle_token(char *params)
 {
     printf("Handling token command\n");
@@ -158,7 +171,6 @@ esp_event_loop_handle_t at_event_loop_handle;
 
 ESP_EVENT_DEFINE_BASE(AT_EVENTS);
 
-
 void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     // 事件数据传递
@@ -173,7 +185,7 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
     if (base == AT_EVENTS && id == AT_EVENTS_COMMAND_ID)
     {
         printf("AT command received\n");
-        esp_log_buffer_hex("HEX TAG3",msg_at->msg, msg_at->size);
+        esp_log_buffer_hex("HEX TAG3", msg_at->msg, msg_at->size);
         hex_to_string(msg_at->msg, msg_at->size, test_strings);
         printf("recv: %.*s\n", 1024, test_strings);
     }
@@ -193,7 +205,6 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
     //         "\rAT+type3\n", // Added a test string without parameters
     //         NULL
     // };
-    AT_command_reg();
     regmatch_t matches[4];
     ret = regexec(&regex, test_strings, 4, matches, 0);
     if (!ret)
@@ -210,8 +221,8 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
                      (int)(matches[3].rm_eo - matches[3].rm_so),
                      test_strings + matches[3].rm_so);
         }
-
-        exec_command(&commands, command_type, params);
+        char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';     
+        exec_command(&commands, command_type, params,query_type);
     }
     else if (ret == REG_NOMATCH)
     {
@@ -240,50 +251,58 @@ void init_event_loop_and_task(void)
 
     // 创建事件循环
     ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &at_event_loop_handle));
-    
+
     // 注册事件处理器
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(at_event_loop_handle, AT_EVENTS, ESP_EVENT_ANY_ID, task_handle_AT_command, NULL, NULL));
 
     ESP_LOGE(AT_EVENTS_TAG, "Event loop created and handler registered");
 }
 
-
-
-
-
-void create_AT_response_queue(){
-    AT_response_queue =xQueueCreate(10, sizeof(AT_Response));
+void create_AT_response_queue()
+{
+    AT_response_queue = xQueueCreate(10, sizeof(AT_Response));
 }
 
-void init_AT_response_semaphore(){
-    AT_response_semaphore=xSemaphoreCreateBinary();
+void init_AT_response_semaphore()
+{
+    AT_response_semaphore = xSemaphoreCreateBinary();
     xSemaphoreGive(AT_response_semaphore);
 }
 
-void send_at_response(AT_Response *AT_Response){
-    if(xSemaphoreTake(AT_response_semaphore, portMAX_DELAY)){
-        if(!xQueueSend(AT_response_queue, AT_Response, 0)){
+void send_at_response(AT_Response *AT_Response)
+{
+    if (xSemaphoreTake(AT_response_semaphore, portMAX_DELAY))
+    {
+        if (!xQueueSend(AT_response_queue, AT_Response, 0))
+        {
             printf("Failed to send AT response\n");
         }
         xSemaphoreGive(AT_response_semaphore);
     }
 }
 
-AT_Response create_at_response(const char* message) {
+AT_Response create_at_response(const char *message)
+{
     AT_Response response;
-    if (message) {
+    if (message)
+    {
         // 分配足够的内存来存储响应字符串
-        response.response = heap_caps_malloc(strlen(message) + 1,MALLOC_CAP_SPIRAM); // +1 for null terminator
-        if (response.response) {
+        response.response = heap_caps_malloc(strlen(message) + 1, MALLOC_CAP_SPIRAM); // +1 for null terminator
+        if (response.response)
+        {
             strcpy(response.response, message);
             response.length = strlen(message);
-        } else {
+        }
+        else
+        {
             printf("Failed to allocate memory for AT response\n");
             // 处理内存分配失败的情况
             response.response = NULL;
             response.length = 0;
         }
-    } else {
+    }
+    else
+    {
         // 处理空消息输入的情况
         response.response = NULL;
         response.length = 0;
@@ -291,18 +310,12 @@ AT_Response create_at_response(const char* message) {
     return response;
 }
 
-
-void AT_cmd_init(){
+void AT_cmd_init()
+{
     create_AT_response_queue();
     init_AT_response_semaphore();
     init_event_loop_and_task();
 }
-
-
-
-
-
-
 
 #ifdef DEBUG_AT_CMD
 void vTaskMonitor(void *para)
