@@ -263,22 +263,30 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
         AT_Response msg_at_response;
         if (xQueueReceive(AT_response_queue, &msg_at_response, portMAX_DELAY) == pdTRUE)
         {   
+            uint8_t *response_data =NULL;
+            if(msg_at_response.length>0&&msg_at_response.response!=NULL);
+            response_data =(uint8_t*) heap_caps_malloc(msg_at_response.length, MALLOC_CAP_SPIRAM);
+            if(response_data ==NULL){
+                ESP_LOGE(GATTS_TAG, "No memory to send response");
+            }
+            else{
+                memcpy(response_data, msg_at_response.response, msg_at_response.length);
+            }
             esp_err_t ret = esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, 
                                                         gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, 
                                                         gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx, 
                                                         msg_at_response.length, 
                                                         (uint8_t *)msg_at_response.response, 
                                                         false);
-            if (ret != ESP_OK)
-            {
-                ESP_LOGE("GATTS_TAG", " Notification failed%x", ret);
+            if(ret != ESP_OK){
+                ESP_LOGE(GATTS_TAG, "Send notify failed");
             }
-            else
-            {
-                ESP_LOGE(GATTS_TAG, "No response from AT command%s", msg_at_response.response);
+            else{
+                ESP_LOGI(GATTS_TAG, "Send notify success");
             }
-            free(msg_at_response.response);
+            free(response_data);                                           
         }
+        free(msg_at_response.response);
         prepare_write_env->prepare_len = 0;
     }
 }

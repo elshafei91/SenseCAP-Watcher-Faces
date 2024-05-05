@@ -132,25 +132,6 @@ void handle_wifi_command(char *params)
     printf("Handling wifi command\n");
     AT_Response response = create_at_response("AT_OK");
     send_at_response(&response);
-    for (int i = 0; i < 3; i++) {
-        // Append the loop index to the response string
-        char *new_response = malloc(strlen(response.response) + 2); // +2 for the extra character and null terminator
-        if (new_response == NULL) {
-            // Handle memory allocation failure
-            break;
-        }
-        strcpy(new_response, response.response);
-        new_response[strlen(response.response)] = '0' + i; // Convert index to character
-        new_response[strlen(response.response) + 1] = '\0'; // Null-terminate the string
-
-        // Update the response structure with the modified string
-        free(response.response);
-        response.response = new_response;
-
-        // Send the modified response
-        send_at_response(&response);
-    }
-
 }
 
 void handle_token(char *params)
