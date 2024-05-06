@@ -7,19 +7,25 @@
 // Set the maximum log level for this source file
 #define LOG_SSCMA_LEVEL ESP_LOG_DEBUG
 #endif
+
+#include "driver/gpio.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/list.h"
 #include "cJSON.h"
 #include "mbedtls/base64.h"
-#include "sscma_client_types.h"
-#include "sscma_client_io.h"
-#include "sscma_client_commands.h"
-#include "sscma_client_ops.h"
-#include "driver/gpio.h"
+
 #include "esp_log.h"
 #include "esp_check.h"
+#include "esp_timer.h"
+
+#include "sscma_client_types.h"
+#include "sscma_client_io.h"
+#include "sscma_client_flasher.h"
+#include "sscma_client_commands.h"
+#include "sscma_client_ops.h"
 
 static const char *TAG = "sscma_client";
 
@@ -138,11 +144,18 @@ static void sscma_client_monitor(void *arg)
                 client->on_event(client, &reply, client->user_ctx);
             }
         }
-        else
+        else if (type->valueint == CMD_TYPE_LOG)
         {
             if (client->on_log)
             {
                 client->on_log(client, &reply, client->user_ctx);
+            }
+        }
+        else
+        {
+            if (client->on_response)
+            {
+                client->on_response(client, &reply, client->user_ctx);
             }
         }
         sscma_client_reply_clear(&reply);
@@ -184,12 +197,12 @@ static void sscma_client_process(void *arg)
                 if ((prefix = strnstr(client->rx_buffer.data, RESPONSE_PREFIX, suffix - client->rx_buffer.data)) != NULL)
                 {
                     int len = suffix - prefix + RESPONSE_SUFFIX_LEN;
-                    reply.data = (char *)malloc(len);
+                    reply.data = (char *)malloc(len + 1);
                     if (reply.data != NULL)
                     {
-                        reply.len = len - 1;
-                        memcpy(reply.data, prefix + 1, len - 1); // remove "\r" and "\n"
-                        reply.data[len - 1] = 0;
+                        reply.len = len;
+                        memcpy(reply.data, prefix, len);
+                        reply.data[len] = 0;
                         reply.payload = cJSON_Parse(reply.data);
                         if (reply.payload != NULL)
                         {
@@ -224,12 +237,16 @@ static void sscma_client_process(void *arg)
                                                 break;
                                             }
                                         }
-                                    } while (next_req != first_req);
+                                    }
+                                    while (next_req != first_req);
                                 }
                                 if (!found)
                                 {
                                     ESP_LOGW(TAG, "request not found: %s", name->valuestring);
-                                    sscma_client_reply_clear(&reply);
+                                    if (client->on_response == NULL || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
+                                    {
+                                        sscma_client_reply_clear(&reply); // discard this reply
+                                    }
                                 }
                             }
                             else if (type->valueint == CMD_TYPE_LOG)
@@ -270,12 +287,16 @@ static void sscma_client_process(void *arg)
                                                     break;
                                                 }
                                             }
-                                        } while (next_req != first_req);
+                                        }
+                                        while (next_req != first_req);
                                     }
                                     if (!found)
                                     {
                                         ESP_LOGW(TAG, "request not found: %s", name->valuestring);
-                                        sscma_client_reply_clear(&reply);
+                                        if (client->on_log == NULL || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
+                                        {
+                                            sscma_client_reply_clear(&reply); // discard this reply
+                                        }
                                     }
                                 }
                                 else
@@ -288,7 +309,6 @@ static void sscma_client_process(void *arg)
                             }
                             else if (type->valueint == CMD_TYPE_EVENT)
                             {
-
                                 sscma_client_request_t *first_req, *next_req = NULL;
                                 bool found = false;
                                 // discard all the events while AT+BREAK is found
@@ -303,7 +323,8 @@ static void sscma_client_process(void *arg)
                                             found = true;
                                             break;
                                         }
-                                    } while (next_req != first_req);
+                                    }
+                                    while (next_req != first_req);
                                 }
                                 if (client->on_event == NULL || found || xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
                                 {
@@ -345,6 +366,7 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     ESP_GOTO_ON_FALSE(client, ESP_ERR_NO_MEM, err, TAG, "no mem for sscma client");
     client->io = io;
     client->inited = false;
+    client->flasher = NULL;
 
     if (config->reset_gpio_num >= 0)
     {
@@ -354,11 +376,14 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
             ESP_GOTO_ON_FALSE(client->io_expander, ESP_ERR_INVALID_ARG, err, TAG, "invalid io expander");
             ESP_GOTO_ON_ERROR(esp_io_expander_set_dir(client->io_expander, config->reset_gpio_num, IO_EXPANDER_OUTPUT), err, TAG, "set GPIO direction failed");
         }
-        gpio_config_t io_conf = {
-            .mode = GPIO_MODE_INPUT,
-            .pin_bit_mask = 1ULL << config->reset_gpio_num,
-        };
-        ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "configure GPIO for RST line failed");
+        else
+        {
+            gpio_config_t io_conf = {
+                .mode = GPIO_MODE_INPUT,
+                .pin_bit_mask = 1ULL << config->reset_gpio_num,
+            };
+            ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "configure GPIO for RST line failed");
+        }
     }
 
     client->rx_buffer.data = (char *)malloc(config->rx_buffer_size);
@@ -392,7 +417,8 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     }
     else
     {
-        res = xTaskCreatePinnedToCore(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task, config->process_task_affinity);
+        res = xTaskCreatePinnedToCore(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task,
+            config->process_task_affinity);
     }
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create process task failed");
 
@@ -402,10 +428,12 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     }
     else
     {
-        res = xTaskCreatePinnedToCore(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task, config->monitor_task_affinity);
+        res = xTaskCreatePinnedToCore(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task,
+            config->monitor_task_affinity);
     }
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create monitor task failed");
 
+    client->on_response = NULL;
     client->on_event = NULL;
     client->on_log = NULL;
     *ret_client = client;
@@ -488,7 +516,8 @@ esp_err_t sscma_client_del(sscma_client_handle_t client)
                 uxListRemove(&(next_req->item));
                 vQueueDelete(next_req->reply);
                 free(next_req);
-            } while (next_req != first_req);
+            }
+            while (next_req != first_req);
         }
 
         free(client->request_list);
@@ -591,16 +620,19 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
 {
     esp_err_t ret = ESP_OK;
     vTaskSuspend(client->process_task);
+
+    client->rx_buffer.pos = 0;
+    client->tx_buffer.pos = 0;
+
     // perform hardware reset
     if (client->reset_gpio_num >= 0)
     {
         if (client->io_expander)
         {
             esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, client->reset_level);
-            vTaskDelay(50 / portTICK_PERIOD_MS);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
             esp_io_expander_set_level(client->io_expander, client->reset_gpio_num, !client->reset_level);
             vTaskDelay(200 / portTICK_PERIOD_MS);
-            sscma_client_request(client, CMD_PREFIX CMD_AT_BREAK CMD_SUFFIX, NULL, false, 0);
         }
         else
         {
@@ -614,7 +646,6 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
             gpio_set_level(client->reset_gpio_num, !client->reset_level);
             vTaskDelay(200 / portTICK_PERIOD_MS);
             gpio_reset_pin(client->reset_gpio_num);
-            sscma_client_request(client, CMD_PREFIX CMD_AT_BREAK CMD_SUFFIX, NULL, false, 0);
         }
     }
     else
@@ -622,7 +653,7 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
         // ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_RESET CMD_SUFFIX, NULL, false, 0), TAG, "request reset failed");
         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for sscma to be ready
     }
-    ESP_LOGW(TAG, "reset done");
+
     vTaskResume(client->process_task);
     return ret;
 }
@@ -644,6 +675,8 @@ esp_err_t sscma_client_available(sscma_client_handle_t client, size_t *ret_avail
 
 esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const sscma_client_callback_t *callback, void *user_ctx)
 {
+    vTaskSuspend(client->process_task);
+
     if (client->on_event != NULL)
     {
         ESP_LOGW(TAG, "callback on_event already registered, overriding it");
@@ -653,9 +686,12 @@ esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const ssc
         ESP_LOGW(TAG, "callback on_log already registered, overriding it");
     }
 
+    client->on_response = callback->on_response;
     client->on_event = callback->on_event;
     client->on_log = callback->on_log;
     client->user_ctx = user_ctx;
+
+    vTaskResume(client->process_task);
 
     return ESP_OK;
 }
@@ -846,7 +882,7 @@ esp_err_t sscma_client_set_model(sscma_client_handle_t client, int model)
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
     int code = 0;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_MODEL CMD_SET "%d" CMD_SUFFIX, model);
 
     ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request model failed");
@@ -866,7 +902,7 @@ esp_err_t sscma_client_sample(sscma_client_handle_t client, int times)
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
     int code = 0;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_SAMPLE CMD_SET "%d" CMD_SUFFIX, times);
     ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request sample failed");
 
@@ -883,7 +919,7 @@ esp_err_t sscma_client_sample(sscma_client_handle_t client, int times)
 esp_err_t sscma_client_invoke(sscma_client_handle_t client, int times, bool fliter, bool show)
 {
     esp_err_t ret = ESP_OK;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
     int code = 0;
     sscma_client_reply_t reply;
 
@@ -905,7 +941,7 @@ esp_err_t sscma_client_set_sensor(sscma_client_handle_t client, int id, int opt_
 {
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
 
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_SENSOR CMD_SET "%d,%d,%d" CMD_SUFFIX, id, enable ? 1 : 0, opt_id);
 
@@ -975,7 +1011,7 @@ esp_err_t sscma_client_set_iou_threshold(sscma_client_handle_t client, int thres
 {
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
 
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_TIOU CMD_SET "%d" CMD_SUFFIX, threshold);
 
@@ -1006,7 +1042,6 @@ esp_err_t sscma_client_get_iou_threshold(sscma_client_handle_t client, int *thre
         ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         if (ret == ESP_OK)
         {
-
             *threshold = get_int_from_object(reply.payload, "data");
         }
         sscma_client_reply_clear(&reply);
@@ -1019,7 +1054,7 @@ esp_err_t sscma_client_set_confidence_threshold(sscma_client_handle_t client, in
 {
     esp_err_t ret = ESP_OK;
     sscma_client_reply_t reply;
-    char cmd[64] = {0};
+    char cmd[64] = { 0 };
 
     snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_TSCORE CMD_SET "%d" CMD_SUFFIX, threshold);
 
@@ -1050,7 +1085,6 @@ esp_err_t sscma_client_get_confidence_threshold(sscma_client_handle_t client, in
         ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
         if (ret == ESP_OK)
         {
-
             *threshold = get_int_from_object(reply.payload, "data");
         }
         sscma_client_reply_clear(&reply);
@@ -1059,7 +1093,7 @@ esp_err_t sscma_client_get_confidence_threshold(sscma_client_handle_t client, in
     return ret;
 }
 
-esp_err_t sscma_utils_fetch_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t **boxes, int *num_boxes)
+esp_err_t sscma_utils_fetch_boxes_from_reply(const sscma_client_reply_t *reply, sscma_client_box_t **boxes, int *num_boxes)
 {
     esp_err_t ret = ESP_OK;
 
@@ -1100,7 +1134,7 @@ esp_err_t sscma_utils_fetch_boxes_from_reply(sscma_client_reply_t *reply, sscma_
     return ret;
 }
 
-esp_err_t sscma_utils_prase_boxes_from_reply(sscma_client_reply_t *reply, sscma_client_box_t *boxes, int max_boxes, int *num_boxes)
+esp_err_t sscma_utils_prase_boxes_from_reply(const sscma_client_reply_t *reply, sscma_client_box_t *boxes, int max_boxes, int *num_boxes)
 {
     esp_err_t ret = ESP_OK;
 
@@ -1137,7 +1171,7 @@ esp_err_t sscma_utils_prase_boxes_from_reply(sscma_client_reply_t *reply, sscma_
 
     return ret;
 }
-esp_err_t sscma_utils_fetch_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t **classes, int *num_classes)
+esp_err_t sscma_utils_fetch_classes_from_reply(const sscma_client_reply_t *reply, sscma_client_class_t **classes, int *num_classes)
 {
     esp_err_t ret = ESP_OK;
 
@@ -1174,7 +1208,7 @@ esp_err_t sscma_utils_fetch_classes_from_reply(sscma_client_reply_t *reply, sscm
     return ret;
 }
 
-esp_err_t sscma_utils_prase_classes_from_reply(sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes)
+esp_err_t sscma_utils_prase_classes_from_reply(const sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes)
 {
     esp_err_t ret = ESP_OK;
 
@@ -1208,7 +1242,7 @@ esp_err_t sscma_utils_prase_classes_from_reply(sscma_client_reply_t *reply, sscm
     return ret;
 }
 
-esp_err_t sscma_utils_fetch_image_from_reply(sscma_client_reply_t *reply, char **image, int *image_size)
+esp_err_t sscma_utils_fetch_image_from_reply(const sscma_client_reply_t *reply, char **image, int *image_size)
 {
     ESP_RETURN_ON_FALSE(reply && image && image_size, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
 
@@ -1249,7 +1283,7 @@ esp_err_t sscma_utils_fetch_image_from_reply(sscma_client_reply_t *reply, char *
     return ESP_OK;
 }
 
-esp_err_t sscma_utils_prase_image_from_reply(sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size)
+esp_err_t sscma_utils_prase_image_from_reply(const sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size)
 {
     ESP_RETURN_ON_FALSE(reply && image && image_size, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
 
@@ -1286,4 +1320,66 @@ esp_err_t sscma_utils_prase_image_from_reply(sscma_client_reply_t *reply, char *
     strcpy(image, image_str);
 
     return ESP_OK;
+}
+
+esp_err_t sscma_client_ota_start(sscma_client_handle_t client, const sscma_client_flasher_handle_t flasher, size_t offset)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(client && flasher, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+
+    if (client->flasher != NULL)
+    {
+        ESP_LOGW(TAG, "client OTA flasher already registered, overriding it");
+    }
+    client->flasher = flasher;
+
+    vTaskSuspend(client->process_task);
+
+    ESP_GOTO_ON_ERROR(sscma_client_flasher_start(client->flasher, offset), err, TAG, "start flasher failed");
+
+err:
+    vTaskResume(client->process_task);
+    return ret;
+}
+
+esp_err_t sscma_client_ota_write(sscma_client_handle_t client, const void *data, size_t len)
+{
+    esp_err_t ret = ESP_OK;
+    ESP_RETURN_ON_FALSE(client && data && len, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+    ESP_GOTO_ON_ERROR(sscma_client_flasher_write(client->flasher, data, len), err, TAG, "write flasher failed");
+
+    return ret;
+
+err:
+    sscma_client_flasher_abort(client->flasher);
+    vTaskResume(client->process_task);
+    return ret;
+}
+
+esp_err_t sscma_client_ota_finish(sscma_client_handle_t client)
+{
+    esp_err_t ret = ESP_OK;
+    ESP_RETURN_ON_FALSE(client, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+    ESP_GOTO_ON_ERROR(sscma_client_flasher_finish(client->flasher), err, TAG, "finish flasher failed");
+
+    vTaskResume(client->process_task);
+
+    return ret;
+
+err:
+    sscma_client_flasher_abort(client->flasher);
+    vTaskResume(client->process_task);
+    return ret;
+}
+
+esp_err_t sscma_client_ota_abort(sscma_client_handle_t client)
+{
+    esp_err_t ret = ESP_OK;
+    ESP_RETURN_ON_FALSE(client, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
+    ESP_GOTO_ON_ERROR(sscma_client_flasher_abort(client->flasher), err, TAG, "abort flasher failed");
+
+err:
+    vTaskResume(client->process_task);
+    return ret;
 }
