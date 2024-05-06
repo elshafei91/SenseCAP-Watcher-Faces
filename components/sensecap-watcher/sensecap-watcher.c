@@ -719,6 +719,11 @@ bool bsp_sdcard_is_inserted(void)
 
 esp_err_t bsp_sdcard_init(char *mount_point, size_t max_files)
 {
+    if (card != NULL)
+    {
+        return ESP_OK;
+    }
+
     BSP_ERROR_CHECK_RETURN_ERR(bsp_spi_bus_init());
     bsp_io_expander_init();
 
@@ -760,6 +765,11 @@ esp_err_t bsp_sdcard_deinit_default(void)
 
 esp_err_t bsp_spiffs_init(char *mount_point, size_t max_files)
 {
+    static bool inited = false;
+    if (inited)
+    {
+        return ESP_OK;
+    }
     esp_vfs_spiffs_conf_t conf = {
         .base_path = mount_point,
         .partition_label = "storage",
