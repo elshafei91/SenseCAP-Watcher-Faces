@@ -16,6 +16,7 @@ static sscma_client_io_handle_t sscma_flasher_io_handle = NULL;
 static sscma_client_handle_t sscma_client_handle = NULL;
 static sscma_client_flasher_handle_t sscma_flasher_handle = NULL;
 
+static lv_disp_t *lvgl_disp = NULL;
 static esp_lcd_panel_io_handle_t panel_io_handle = NULL;
 static esp_lcd_panel_handle_t panel_handle = NULL;
 static esp_lcd_panel_io_handle_t tp_io_handle = NULL;
@@ -693,17 +694,22 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
         return NULL;
     if (bsp_lcd_backlight_init() != ESP_OK)
         return NULL;
-    lv_disp_t *disp = bsp_display_lcd_init(cfg);
-    if (disp != NULL)
+    lvgl_disp = bsp_display_lcd_init(cfg);
+    if (lvgl_disp != NULL)
     {
 #if CONFIG_LVGL_INPUT_DEVICE_USE_KNOB
-        bsp_knob_indev_init(disp);
+        bsp_knob_indev_init(lvgl_disp);
 #endif
 #if CONFIG_LVGL_INPUT_DEVICE_USE_TP
-        bsp_touch_indev_init(disp);
+        bsp_touch_indev_init(lvgl_disp);
 #endif
     }
-    return disp;
+    return lvgl_disp;
+}
+
+lv_disp_t *bsp_lvgl_get_disp(void)
+{
+    return lvgl_disp;
 }
 
 bool bsp_sdcard_is_inserted(void)
