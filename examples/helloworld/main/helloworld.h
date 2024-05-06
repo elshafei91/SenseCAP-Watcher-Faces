@@ -1,7 +1,7 @@
 /*
- * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024 Seeed Tech. Co., Ltd.
  *
- * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #pragma once
@@ -25,6 +25,4 @@
  *
  * To be used in comparisons, such as HELLO_WORLD_VERSION >= HELLO_WORLD_VERSION_VAL(4, 0, 0)
  */
-#define HELLO_WORLD_VERSION HELLO_WORLD_VERSION_VAL(HELLO_WORLD_VERSION_MAJOR, \
-                                                    HELLO_WORLD_VERSION_MINOR, \
-                                                    HELLO_WORLD_VERSION_PATCH)
+#define HELLO_WORLD_VERSION HELLO_WORLD_VERSION_VAL(HELLO_WORLD_VERSION_MAJOR, HELLO_WORLD_VERSION_MINOR, HELLO_WORLD_VERSION_PATCH)

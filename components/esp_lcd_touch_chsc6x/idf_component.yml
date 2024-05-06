@@ -1,6 +1,6 @@
 version: "1.0.0"
 description: ESP LCD Touch CHSC6X - touch controller CHSC6X
-url: https://github.com/espressif/esp-bsp/blob/master/components/lcd_touch/esp_lcd_touch_tt21100/esp_lcd_touch_tt21100.c
+url: https://github.com/Seeed-Studio/SenseCAP-Watcher/tree/main/components/esp_lcd_touch_chsc6x
 dependencies:
   idf: ">=4.4.2"
   esp_lcd_touch:

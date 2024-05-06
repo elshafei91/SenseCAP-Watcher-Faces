@@ -96,5 +96,6 @@ to setup the built toolchain used by SSCMA examples. Currently we're using the l
 ## License
 
 ```
-These examples are covered under MIT License.
+This project is released under the Apache 2.0 license.
+```
 
