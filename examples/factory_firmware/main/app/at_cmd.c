@@ -38,7 +38,7 @@ void create_AT_response_queue();
 void init_AT_response_semaphore();
 void send_at_response(AT_Response *AT_Response);
 AT_Response create_at_response(const char *message);
-const char *pattern = "^\rAT\\+([a-zA-Z0-9]+)(\\?|=([^\\n]*))?\n$";
+const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=([^\\n]*))?\r\n$";
 
 command_entry *commands = NULL; // Global variable to store the commands
 
@@ -311,12 +311,14 @@ AT_Response create_at_response(const char *message)
     AT_Response response;
     if (message)
     {
-        
-        response.response = heap_caps_malloc(strlen(message) + 1, MALLOC_CAP_SPIRAM); // +1 for null terminator
+        const char *suffix = "\r\nok\r\n";
+        size_t total_length = strlen(message) + strlen(suffix) + 1;
+        response.response = heap_caps_malloc(total_length, MALLOC_CAP_SPIRAM); // +1 for null terminator
         if (response.response)
         {
             strcpy(response.response, message);
-            response.length = strlen(message);
+            strcat(response.response, suffix);
+            response.length = strlen(response.response);
         }
         else
         {
@@ -328,7 +330,6 @@ AT_Response create_at_response(const char *message)
     }
     else
     {
-       
         response.response = NULL;
         response.length = 0;
     }
