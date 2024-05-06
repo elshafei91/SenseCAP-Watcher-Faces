@@ -46,6 +46,7 @@ void bsp_set_btn_long_press_cb(void (*cb)(void))
 
 void bsp_i2c_detect(i2c_port_t i2c_num)
 {
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_i2c_bus_init());
     uint8_t address;
     printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\r\n");
     for (int i = 0; i < 128; i += 16)
@@ -102,6 +103,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
     vTaskDelay(50 / portTICK_PERIOD_MS);
     esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
 
     uint32_t pin_val = 0;
     esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
