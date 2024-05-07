@@ -19,6 +19,7 @@ static esp_err_t client_io_uart_del(sscma_client_io_t *io);
 static esp_err_t client_io_uart_write(sscma_client_io_t *io, const void *data, size_t len);
 static esp_err_t client_io_uart_read(sscma_client_io_t *io, void *data, size_t len);
 static esp_err_t client_io_uart_available(sscma_client_io_t *io, size_t *len);
+static esp_err_t client_io_uart_flush(sscma_client_io_t *io);
 
 typedef struct
 {
@@ -28,7 +29,7 @@ typedef struct
     void *user_ctx;         // User context
 } sscma_client_io_uart_t;
 
-esp_err_t sscma_client_new_io_uart_bus(sscma_client_uart_bus_handle_t bus, sscma_client_io_uart_config_t *io_config, sscma_client_io_handle_t *ret_io)
+esp_err_t sscma_client_new_io_uart_bus(sscma_client_uart_bus_handle_t bus, const sscma_client_io_uart_config_t *io_config, sscma_client_io_handle_t *ret_io)
 {
 #if CONFIG_SSCMA_ENABLE_DEBUG_LOG
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
@@ -46,6 +47,7 @@ esp_err_t sscma_client_new_io_uart_bus(sscma_client_uart_bus_handle_t bus, sscma
     uart_client_io->base.write = client_io_uart_write;
     uart_client_io->base.read = client_io_uart_read;
     uart_client_io->base.available = client_io_uart_available;
+    uart_client_io->base.flush = client_io_uart_flush;
 
     uart_client_io->lock = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(uart_client_io->lock, ESP_ERR_NO_MEM, err, TAG, "no mem for mutex");
@@ -132,4 +134,11 @@ static esp_err_t client_io_uart_available(sscma_client_io_t *io, size_t *len)
 
 err:
     return ret;
+}
+
+static esp_err_t client_io_uart_flush(sscma_client_io_t *io)
+{
+    sscma_client_io_uart_t *uart_client_io = __containerof(io, sscma_client_io_uart_t, base);
+    ESP_RETURN_ON_ERROR(uart_flush(uart_client_io->uart_port), TAG, "uart flush failed");
+    return ESP_OK;
 }

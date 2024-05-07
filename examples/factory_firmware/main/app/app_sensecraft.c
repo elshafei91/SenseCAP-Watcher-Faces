@@ -13,7 +13,7 @@
 #include "esp_crt_bundle.h"
 #include "cJSON.h"
 
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "app_sensecraft.h"
 #include "event_loops.h"

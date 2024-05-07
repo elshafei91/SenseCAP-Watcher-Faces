@@ -10,7 +10,7 @@
 #include "esp_app_desc.h"
 #include "cJSON.h"
 
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "event_loops.h"
 #include "data_defs.h"
@@ -126,7 +126,7 @@ void task_app_init(void *p_arg)
     // UI init
     view_init();
 
-    app_init();
+    // app_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,

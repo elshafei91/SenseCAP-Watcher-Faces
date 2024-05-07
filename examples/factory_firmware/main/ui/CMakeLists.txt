@@ -1,72 +1,70 @@
 SET(SOURCES components/ui_comp_menucomponent.c
     components/ui_comp.c
-    screens/ui_seeed_studio.c
-    screens/ui_virtual.c
-    screens/ui_mainscreen.c
-    screens/ui_nocurrentT.c
-    screens/ui_waitingtask.c
-    screens/ui_atask_down.c
-    screens/ui_preview_detection.c
-    screens/ui_ltaskscreen.c
-    screens/ui_ltask_view.c
-    screens/ui_ltask_back.c
-    screens/ui_ha.c
-    screens/ui_setting.c
+    screens/ui_Page_Start.c
+    screens/ui_Page_Vir.c
+    screens/ui_Page_main.c
+    screens/ui_Page_Connect.c
+    screens/ui_Page_nwifi.c
+    screens/ui_Page_CurTask1.c
+    screens/ui_Page_CurTask2.c
+    screens/ui_Page_CurTask3.c
+    screens/ui_Page_ViewAva.c
+    screens/ui_Page_ViewLive.c
+    screens/ui_Page_LocTask.c
+    screens/ui_Page_Set.c
+    screens/ui_Page_brivol.c
+    screens/ui_Page_SAbout.c
+    screens/ui_Page_Swipe.c
+    screens/ui_Page_STime.c
+    screens/ui_Page_HA.c
     ui.c
     components/ui_comp_hook.c
     ui_helpers.c
-    ui_events.c
     images/ui_img_logo_png.c
-    images/ui_img_onboard_demo_png.c
-    images/ui_img_19533631.c
-    images/ui_img_current_task_png.c
-    images/ui_img_1721754357.c
-    images/ui_img_2022210068.c
-    images/ui_img_ha_png.c
+    images/ui_img_page_main_png.c
+    images/ui_img_task_template_png.c
+    images/ui_img_1798082340.c
+    images/ui_img_currenttask_png.c
+    images/ui_img_476189949.c
+    images/ui_img_extension_png.c
+    images/ui_img_335953020.c
     images/ui_img_setting_png.c
-    images/ui_img_457376777.c
+    images/ui_img_setting_f_png.c
     images/ui_img_wifi_4_png.c
     images/ui_img_battery_5_png.c
-    images/ui_img_cancel_png.c
-    images/ui_img_human1_png.c
-    images/ui_img_human2_png.c
-    images/ui_img_apple1_png.c
-    images/ui_img_apple2_png.c
-    images/ui_img_gesture1_png.c
-    images/ui_img_gesture2_png.c
-    images/ui_img_back1_png.c
-    images/ui_img_back2_png.c
-    images/ui_img_setting__png.c
-    images/ui_img_appled1_png.c
-    images/ui_img_appled2_png.c
-    images/ui_img_appled3_png.c
-    images/ui_img_battery_1_png.c
-    images/ui_img_battery_2_png.c
-    images/ui_img_battery_3_png.c
-    images/ui_img_battery_4_png.c
-    images/ui_img_gesture_detection1_png.c
-    images/ui_img_gesture_detection2_png.c
-    images/ui_img_gesture_detection3_png.c
-    images/ui_img_gesture_detection4_png.c
-    images/ui_img_gesture_detection5_png.c
-    images/ui_img_gesture_detection6_png.c
-    images/ui_img_humand1_png.c
-    images/ui_img_humand2_png.c
-    images/ui_img_humand3_png.c
-    images/ui_img_humand4_png.c
-    images/ui_img_virtual1_png.c
-    images/ui_img_virtual2_png.c
-    images/ui_img_virtual3_png.c
-    images/ui_img_virtual4_png.c
-    images/ui_img_virtual5_png.c
-    images/ui_img_virtual6_png.c
+    images/ui_img_ble_png.c
+    images/ui_img_app_qr_png.c
+    images/ui_img_button_cancel_png.c
+    images/ui_img_arrow_png.c
+    images/ui_img_error_png.c
+    images/ui_img_gradient_png.c
+    images/ui_img_template1_png.c
+    images/ui_img_template1_f_png.c
+    images/ui_img_template2_png.c
+    images/ui_img_template2_f_png.c
+    images/ui_img_template3_png.c
+    images/ui_img_template3_f_png.c
+    images/ui_img_back_png.c
+    images/ui_img_1822480148.c
+    images/ui_img_human_png.c
+    images/ui_img_1870802764.c
+    images/ui_img_487263452.c
+    images/ui_img_pet_png.c
+    images/ui_img_gesture_png.c
+    images/ui_img_880045930.c
+    images/ui_img_template_add_png.c
+    images/ui_img_swipe_png.c
+    images/ui_img_left_png.c
     images/ui_img_wifi_0_png.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c
     images/ui_img_wifi_3_png.c
-    images/ui_img_wifi_disconnect_png.c
-    images/ui_img_wifi_nonnet_png.c
     fonts/ui_font_Font1.c
+    fonts/ui_font_fontbold26.c
+    fonts/ui_font_font_bold.c
+    images/ui_img_human_d_png.c
+    images/ui_img_gesture_d_png.c
+    images/ui_img_dog_d_png.c
     )
 
 add_library(ui ${SOURCES})

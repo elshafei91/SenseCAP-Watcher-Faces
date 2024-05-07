@@ -2,7 +2,7 @@
 
 #include "esp_timer.h"
 
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "app_rgb.h"
 #include "event_loops.h"

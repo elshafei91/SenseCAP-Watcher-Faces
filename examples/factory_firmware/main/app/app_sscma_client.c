@@ -13,7 +13,7 @@
 
 #include "sscma_client_io.h"
 #include "sscma_client_ops.h"
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "app_sscma_client.h"
 #include "event_loops.h"
@@ -93,7 +93,6 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
             struct view_data_image_invoke invoke;
             sscma_client_box_t *boxes = NULL;
             int box_count = 0;
-            g_predet = 1;
 
             if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) != ESP_OK) {
                 break;
@@ -122,7 +121,6 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
                     invoke.boxes[i].score = boxes[i].score;
                     invoke.boxes[i].target = boxes[i].target;
                 }
-                g_predet = 2;
             }
             lvgl_port_lock(0);
             view_image_preview_flush(&invoke);
