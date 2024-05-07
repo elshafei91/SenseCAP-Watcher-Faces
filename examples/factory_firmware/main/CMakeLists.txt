@@ -4,6 +4,9 @@ file(GLOB_RECURSE UI_SRCS ${UI_DIR}/*.c)
 set(APP_DIR ./app)
 file(GLOB_RECURSE APP_SRCS ${APP_DIR}/*.c)
 
+set(PM_DIR ./PageManager)
+file(GLOB_RECURSE PM_SRCS ${PM_DIR}/*.c)
+
 set(VIEW_DIR ./view)
 file(GLOB_RECURSE VIEW_SRCS ${VIEW_DIR}/*.c)
 
@@ -18,12 +21,14 @@ idf_component_register(
         ${APP_SRCS}
         ${VIEW_SRCS}
         ${UTIL_SRCS}
+        ${PM_SRCS}
     INCLUDE_DIRS
         "."
         ${UI_DIR}
         ${APP_DIR}
         ${VIEW_DIR}
         ${UTIL_DIR}
+        ${PM_DIR}
 )
 
 if (CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG)
