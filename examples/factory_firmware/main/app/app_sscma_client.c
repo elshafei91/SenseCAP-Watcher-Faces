@@ -13,7 +13,7 @@
 
 #include "sscma_client_io.h"
 #include "sscma_client_ops.h"
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "app_sscma_client.h"
 #include "event_loops.h"

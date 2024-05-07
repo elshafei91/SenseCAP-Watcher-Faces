@@ -3,7 +3,7 @@
 #include "view_alarm.h"
 #include "view_group.h"
 #include "view_status_bar.h"
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "ui.h"
 #include "util.h"

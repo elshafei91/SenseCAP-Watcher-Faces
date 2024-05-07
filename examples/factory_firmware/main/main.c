@@ -10,7 +10,7 @@
 #include "esp_app_desc.h"
 #include "cJSON.h"
 
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "event_loops.h"
 #include "data_defs.h"

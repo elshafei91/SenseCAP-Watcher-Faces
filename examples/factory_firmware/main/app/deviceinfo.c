@@ -8,7 +8,7 @@
 #include "esp_event.h"
 #include "esp_app_desc.h"
 
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "deviceinfo.h"
 #include "storage.h"
@@ -55,7 +55,7 @@ static void __deviceinfo_task(void *p_arg)
 
     //mqtt connected implies time has been synced
     //send once after boot
-    g_device_status.battery_per = bsp_bat_get_percentage();
+    g_device_status.battery_per = bsp_battery_get_percent();
 
     //mqtt pub
     app_mqtt_client_report_device_status(&g_device_status);
@@ -63,7 +63,7 @@ static void __deviceinfo_task(void *p_arg)
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(30000));
 
-        batnow = bsp_bat_get_percentage();
+        batnow = bsp_battery_get_percent();
         if (g_device_status.battery_per - batnow > 10 || batnow == 0) {
             g_device_status.battery_per = batnow;
             //mqtt pub
