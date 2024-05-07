@@ -20,7 +20,7 @@
 #include "esp_vfs.h"
 #include "file_iterator.h"
 
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "app_sr.h"
 #include "app_audio.h"

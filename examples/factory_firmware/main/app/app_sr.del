@@ -26,7 +26,7 @@
 #include "esp_mn_iface.h"
 #include "model_path.h"
 #include "app_audio.h"
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 static const char *TAG = "app_sr";
 
