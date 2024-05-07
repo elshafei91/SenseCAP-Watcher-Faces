@@ -32,6 +32,83 @@ UBaseType_t uxArraySize, x;
 uint32_t ulTotalRunTime;
 #endif
 
+// Data Structure
+/*-----------------------------------*/
+// wifi table
+typedef struct
+{
+    char *ssid;
+    char *rssi;
+    char *encryption;
+} WiFiEntry;
+
+typedef struct
+{
+    WiFiEntry *entries;
+    int size;
+    int capacity;
+} WiFiStack;
+
+/*-----------------------------------*/
+
+// Data Structure process function
+
+void initWiFiStack(WiFiStack *stack, int capacity)
+{
+    // stack->entries = (WiFiEntry*)malloc(capacity * sizeof(WiFiEntry));
+    stack->entries = (WiFiEntry *)heap_caps_malloc(capacity * sizeof(WiFiEntry), MALLOC_CAP_SPIRAM);
+    stack->size = 0;
+    stack->capacity = capacity;
+}
+
+void pushWiFiStack(WiFiStack *stack, WiFiEntry entry)
+{
+    if (stack->size >= stack->capacity)
+    {
+        stack->capacity *= 2;
+        stack->entries = (WiFiEntry *)realloc(stack->entries, stack->capacity * sizeof(WiFiEntry));
+    }
+    stack->entries[stack->size++] = entry;
+}
+
+void freeWiFiStack(WiFiStack *stack)
+{
+    free(stack->entries);
+    stack->entries = NULL;
+    stack->size = 0;
+    stack->capacity = 0;
+}
+
+cJSON *create_wifi_entry_json(WiFiEntry *entry)
+{
+    cJSON *wifi_json = cJSON_CreateObject();
+    cJSON_AddStringToObject(wifi_json, "Ssid", entry->ssid);
+    cJSON_AddStringToObject(wifi_json, "Rssi", entry->rssi);
+    cJSON_AddStringToObject(wifi_json, "Encryption", entry->encryption);
+    return wifi_json;
+}
+
+cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi,WiFiStack *stack_connected_wifi)
+{
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *scanned_array = cJSON_CreateArray();
+    cJSON *connected_array = cJSON_CreateArray();
+    for(int i =0;i<stack_connected_wifi->size;i++){
+        cJSON_AddItemToArray(connected_array, create_wifi_entry_json(&stack_connected_wifi->entries[i]));
+    }
+
+    for (int i = 0; i < stack_scnned_wifi->size; i++)
+    {
+        cJSON_AddItemToArray(scanned_array, create_wifi_entry_json(&stack_scnned_wifi->entries[i]));
+    }
+    cJSON_AddItemToObject(root, "Connected_Wifi", connected_array);
+    cJSON_AddItemToObject(root, "Scanned_Wifi", scanned_array);
+    return root;
+}
+
+// AT command system layer
+/*----------------------------------------------------------------------------------------------------*/
 SemaphoreHandle_t AT_response_semaphore;
 QueueHandle_t AT_response_queue;
 void create_AT_response_queue();
@@ -58,9 +135,9 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     HASH_FIND_STR(*commands, full_command, entry);
     if (entry)
     {
-        if (query == '?')   // If the query character is '?', then the command is a query command
+        if (query == '?') // If the query character is '?', then the command is a query command
         {
-            entry->func(NULL); 
+            entry->func(NULL);
         }
         else
         {
@@ -73,26 +150,18 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     }
 }
 
-void AT_command_reg(){  // Register the AT commands
+void AT_command_reg()
+{ // Register the AT commands
     add_command(&commands, "type1=", handle_type_1_command);
     add_command(&commands, "device=", handle_device_command);
-    add_command(&commands, "wifi=", handle_wifi_set);   
-    add_command(&commands, "wifi?", handle_wifi_query); 
+    add_command(&commands, "wifi=", handle_wifi_set);
+    add_command(&commands, "wifi?", handle_wifi_query);
     add_command(&commands, "eui=", handle_eui_command);
     add_command(&commands, "token=", handle_token);
-    add_command(&commands, "Wifi_Table?", handle_token);
+    add_command(&commands, "wifitable?", handle_wifi_table);
 }
 
 
-void AT_command_free()
-{
-    command_entry *current_command, *tmp;
-    HASH_ITER(hh, commands, current_command, tmp)
-    {
-        HASH_DEL(commands, current_command); // Delete the entry from the hash table
-        free(current_command);               // Free the memory allocated for the entry
-    }
-}
 
 void handle_type_1_command(char *params)
 {
@@ -147,8 +216,8 @@ void handle_wifi_set(char *params)
     cJSON_AddNumberToObject(root, "code", 0);
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "Ssid", ssid);
-    cJSON_AddStringToObject(data, "Rssi", "2");  
-    cJSON_AddStringToObject(data, "Encryption", "WPA");  
+    cJSON_AddStringToObject(data, "Rssi", "2");
+    cJSON_AddStringToObject(data, "Encryption", "WPA");
     char *json_string = cJSON_Print(root);
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
@@ -165,17 +234,43 @@ void handle_wifi_query(char *params)
     cJSON_AddNumberToObject(root, "code", 0);
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "Ssid", "SEEED-2.4G");
-    cJSON_AddStringToObject(data, "Rssi", "2");  
-    cJSON_AddStringToObject(data, "Encryption", "WPA");  
+    cJSON_AddStringToObject(data, "Rssi", "2");
+    cJSON_AddStringToObject(data, "Encryption", "WPA");
     char *json_string = cJSON_Print(root);
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
-    printf("Handling token command\n");
+    printf("Handling wifi query command\n");
 }
+
+void handle_wifi_table(char *params)
+{
+
+    WiFiStack wifiStack_scanned;
+    WiFiStack wifiStack_connected;
+    initWiFiStack(&wifiStack_scanned, 10);
+    initWiFiStack(&wifiStack_connected, 10);
+    pushWiFiStack(&wifiStack_connected, (WiFiEntry){"Network0_connected", "-60", "WPA"});
+    pushWiFiStack(&wifiStack_connected, (WiFiEntry){"Network1_connected", "-70", "WPA2"});
+    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network1", "-70", "WPA2"});
+    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network2", "-80", "WEP"});
+    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network3", "-90", "WPA"});
+    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network4", "-100", "WPA2"});
+    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network5", "-110", "WPA"});
+    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network6", "-120", "WPA2"});
+    cJSON* json = create_wifi_stack_json(&wifiStack_scanned,&wifiStack_connected);
+    char* json_str = cJSON_Print(json);
+
+    AT_Response response = create_at_response(json_str);
+    printf("JSON String: %s\n", json_str);
+    send_at_response(&response);
+    printf("Handling wifi table command\n");
+}
+
 void handle_token(char *params)
 {
+
     printf("Handling token command\n");
 }
 
@@ -223,17 +318,11 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
     {
         printf("Could not compile regex\n");
     }
-
-    // char *test_strings[] = {
-    //         "\rAT+type1?\n",
-    //         "\rAT+wifi={\"Ssid\":\"Watcher_Wifi\",\"Password\":\"12345678\"}\n",
-    //         "\rAT+type3\n", // Added a test string without parameters
-    //         NULL
-    // };
     regmatch_t matches[4];
     ret = regexec(&regex, test_strings, 4, matches, 0);
     if (!ret)
     {
+        printf("recv_in mache: %.*s\n", 1024, test_strings);
         char command_type[20];
         snprintf(command_type, sizeof(command_type), "%.*s",
                  (int)(matches[1].rm_eo - matches[1].rm_so),
@@ -246,8 +335,8 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
                      (int)(matches[3].rm_eo - matches[3].rm_so),
                      test_strings + matches[3].rm_so);
         }
-        char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';     
-        exec_command(&commands, command_type, params,query_type);
+        char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
+        exec_command(&commands, command_type, params, query_type);
     }
     else if (ret == REG_NOMATCH)
     {
@@ -261,9 +350,8 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
     }
     free(test_strings);
     regfree(&regex);
-    vTaskDelay(5000 / portTICK_PERIOD_MS); // delay 1s
+    vTaskDelay(5000 / portTICK_PERIOD_MS); // delay 5s
 }
-
 
 void init_event_loop_and_task(void)
 {
@@ -274,9 +362,7 @@ void init_event_loop_and_task(void)
         .task_stack_size = 2048 * 2,
         .task_core_id = tskNO_AFFINITY};
 
-
     ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &at_event_loop_handle));
-
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(at_event_loop_handle, AT_EVENTS, ESP_EVENT_ANY_ID, task_handle_AT_command, NULL, NULL));
 
@@ -323,7 +409,7 @@ AT_Response create_at_response(const char *message)
         else
         {
             printf("Failed to allocate memory for AT response\n");
-            
+
             response.response = NULL;
             response.length = 0;
         }
@@ -337,12 +423,28 @@ AT_Response create_at_response(const char *message)
 }
 
 void AT_cmd_init()
-{
+{   
     create_AT_response_queue();
     init_AT_response_semaphore();
     init_event_loop_and_task();
-}
 
+    //command data struct initialization
+    //initWiFiStack(&wifiStack, 10);
+
+}
+void AT_command_free()
+{
+    command_entry *current_command, *tmp;
+    HASH_ITER(hh, commands, current_command, tmp)
+    {
+        HASH_DEL(commands, current_command); // Delete the entry from the hash table
+        free(current_command);               // Free the memory allocated for the entry
+    }
+
+    //data struct free
+    //free(json_str);
+    //freeWiFiStack(&wifiStack);
+}
 #ifdef DEBUG_AT_CMD
 void vTaskMonitor(void *para)
 {

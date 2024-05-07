@@ -75,6 +75,10 @@ void handle_wifi_set(char *params);     //wifi command
 void handle_wifi_query(char *params); 
 void handle_token(char *params);            //token command
 void handle_eui_command(char *params);      //eui command
+void handle_wifi_table(char *params);       //wifi table command    
+
+
+
 
 void init_event_loop_and_task(void);
 
