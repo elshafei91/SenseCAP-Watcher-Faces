@@ -84,7 +84,6 @@ prepare_type_env_t prepare_write_env;
 
 prepare_type_env_t tiny_write_env;
 
-static int unvert_tab;
 
 esp_ble_adv_params_t adv_params = {
     .adv_int_min = 0x20,
@@ -98,14 +97,16 @@ esp_ble_adv_params_t adv_params = {
 struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = {
     [PROFILE_WATCHER_APP_ID] = {
         .gatts_cb = gatts_profile_event_handler,
-        .gatts_if = ESP_GATT_IF_NONE, /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
+        .gatts_if = ESP_GATT_IF_NONE, 
     }};
 
+//  watcher service property
 esp_gatt_char_prop_t watcher_write_property = 0;
 esp_gatt_char_prop_t watcher_read_property = 1;
 
 static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
+//  tool function
 static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size);
 static void hex_to_string(uint8_t *hex, size_t hex_size, char *output);
 
@@ -373,61 +374,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     }
 }
 
-static void watcher_exec_write_event_env_old(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
-{
-    if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC)
-    {
-        esp_log_buffer_hex(GATTS_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
-    }
-    else
-    {
-        ESP_LOGI(GATTS_TAG, "ESP_GATT_PREP_WRITE_CANCEL");
-    }
-    if (prepare_write_env->prepare_buf)
-    {
-        message_event_t msg_at = {.msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len};
-        esp_log_buffer_hex("HEX TAG2", msg_at.msg, msg_at.size);
-        esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, sizeof(msg_at), portMAX_DELAY);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        free(prepare_write_env->prepare_buf);
-        prepare_write_env->prepare_buf = NULL;
-
-        AT_Response msg_at_response;
-        if (xQueueReceive(AT_response_queue, &msg_at_response, portMAX_DELAY) == pdTRUE)
-        {
-            uint8_t *response_data = NULL;
-            if (msg_at_response.length > 0 && msg_at_response.response != NULL)
-                ;
-            response_data = (uint8_t *)heap_caps_malloc(msg_at_response.length, MALLOC_CAP_SPIRAM);
-            if (response_data == NULL)
-            {
-                ESP_LOGE(GATTS_TAG, "No memory to send response");
-            }
-            else
-            {
-                memcpy(response_data, msg_at_response.response, msg_at_response.length);
-            }
-            esp_err_t ret = esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if,
-                                                        gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id,
-                                                        gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx,
-                                                        msg_at_response.length,
-                                                        (uint8_t *)msg_at_response.response,
-                                                        false);
-            if (ret != ESP_OK)
-            {
-                ESP_LOGE(GATTS_TAG, "Send notify failed");
-            }
-            else
-            {
-                ESP_LOGI(GATTS_TAG, "Send notify success");
-            }
-            free(response_data);
-        }
-        free(msg_at_response.response);
-        prepare_write_env->prepare_len = 0;
-    }
-}
-
 void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     switch (event)
@@ -521,10 +467,10 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
     case ESP_GATTS_WRITE_EVT:
     {
         ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %" PRIu32 ", handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
-        unvert_tab=0;
+
         if (!param->write.is_prep)
         {
-            unvert_tab =1;
+            
             ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT_TAG, value len %d, value :", param->write.len);
             esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
 
