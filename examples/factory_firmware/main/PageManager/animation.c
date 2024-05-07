@@ -60,10 +60,10 @@ void menu_scroll_cb(lv_event_t *e)
 
     lv_area_t cont_a;
     lv_obj_get_coords(cont, &cont_a);
-    int32_t cont_x_center = lv_area_get_width(&cont_a) / 2; // 改为使用宽度的中心点
+    int32_t cont_x_center = lv_area_get_width(&cont_a) / 2; // Change to use the center point of the width
     // ESP_LOGI(TAG, "cont_x_center: %d", cont_x_center);
 
-    // int32_t r = lv_obj_get_height(cont); // 改为使用宽度作为半径
+    // int32_t r = lv_obj_get_height(cont); // Change to use the width as the radius
     int32_t r = 140;
 
     uint32_t i;
@@ -75,9 +75,9 @@ void menu_scroll_cb(lv_event_t *e)
         lv_area_t child_a;
         lv_obj_get_coords(child, &child_a);
 
-        int32_t child_x_center = child_a.x1 + lv_area_get_width(&child_a) / 2; // 改为计算宽度的中心点
+        int32_t child_x_center = child_a.x1 + lv_area_get_width(&child_a) / 2; // Change to calculate the center point of the width
 
-        int32_t diff_x = child_x_center - cont_x_center; // 改为计算水平方向的差异
+        int32_t diff_x = child_x_center - cont_x_center; // Change to calculate the horizontal difference
         diff_x = LV_ABS(diff_x);
 
         /*Get the y of diff_x on a circle.*/
@@ -85,17 +85,17 @@ void menu_scroll_cb(lv_event_t *e)
         /*If diff_x is out of the circle use the last point of the circle (the radius).*/
         if (diff_x >= r)
         {
-            y = -r; // 改为在下方半圆弧，y坐标为负值
+            y = -r; // Change to use a negative value for y on the lower semicircle
         }
         else
         {
-            /*Use Pythagoras theorem to get y from radius and x*/
+            /*Use Pythagoras theorem to get y from radius and x.*/
             uint32_t y_sqr = r * r - diff_x * diff_x;
             lv_sqrt_res_t res;
-            lv_sqrt(y_sqr, &res, 0x8000); // 使用 lvgl 的内置 sqrt 函数
-            y = -(r - res.i);             // 改为在下方半圆弧，y坐标为负值
+            lv_sqrt(y_sqr, &res, 0x8000); // Use the built-in sqrt function from lvgl
+            y = -(r - res.i);             // Change to use a negative value for y on the lower semicircle
         }
-        /*Translate the item by the calculated Y coordinate*/
+        /*Translate the item by the calculated Y coordinate.*/
         lv_obj_set_style_translate_y(child, y, 0);
         // ESP_LOGI(TAG, "The value is: %" PRId32 "\n", y);
     }
