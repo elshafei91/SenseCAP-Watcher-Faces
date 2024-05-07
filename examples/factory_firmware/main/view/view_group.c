@@ -5,11 +5,6 @@ static lv_group_t *g_knob_op_group = NULL;
 
 extern lv_obj_t *ui_model_name;
 
-lv_group_t * g_main;
-lv_indev_t * cur_drv;
-
-int g_model_id = 1;
-
 static void sceen_event_cb(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
@@ -41,14 +36,14 @@ static void sceen_event_cb(lv_event_t * e)
 
 int view_group_init(void)
 {
-    g_main = lv_group_create();
-    cur_drv = NULL;
-    while((cur_drv = lv_indev_get_next(cur_drv))) {
-        if(cur_drv->driver->type == LV_INDEV_TYPE_ENCODER) {
-            lv_indev_set_group(cur_drv, g_main);
-            break; // 假设只有一个编码器，找到后即停止
-        }
-    }
+    // g_main = lv_group_create();
+    // cur_drv = NULL;
+    // while((cur_drv = lv_indev_get_next(cur_drv))) {
+    //     if(cur_drv->driver->type == LV_INDEV_TYPE_ENCODER) {
+    //         lv_indev_set_group(cur_drv, g_main);
+    //         break; // 假设只有一个编码器，找到后即停止
+    //     }
+    // }
     return 0;
 }
 

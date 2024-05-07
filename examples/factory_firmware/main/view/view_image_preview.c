@@ -28,7 +28,7 @@ static lv_obj_t * ui_class_name[IMAGE_INVOKED_BOXES];
 
 static uint8_t *image_buf;
 
-extern int g_model_id;
+int g_model_id;
 int view_image_preview_init(lv_obj_t *ui_screen)
 {
     image_buf = malloc(IMG_240_240_BUF_SIZE);
@@ -47,7 +47,7 @@ int view_image_preview_init(lv_obj_t *ui_screen)
     // lv_obj_set_style_text_color(ui_model_name, lv_palette_main(LV_PALETTE_GREEN), LV_PART_MAIN | LV_STATE_DEFAULT );
     lv_obj_set_style_bg_color(ui_model_name, lv_palette_main(LV_PALETTE_GREEN), LV_PART_MAIN | LV_STATE_DEFAULT );
     lv_obj_set_style_bg_opa( ui_model_name, 255, LV_PART_MAIN| LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_model_name, &lv_font_montserrat_16, LV_PART_MAIN| LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_model_name, &lv_font_montserrat_26, LV_PART_MAIN| LV_STATE_DEFAULT);
 
 #ifdef IMAGE_INVOKED_BOXES_DISPLAY_ENABLE
     for (size_t i = 0; i < IMAGE_INVOKED_BOXES; i++)
@@ -58,7 +58,7 @@ int view_image_preview_init(lv_obj_t *ui_screen)
         ui_class_name[i]= lv_label_create( ui_screen);
         lv_obj_set_width( ui_class_name[i], LV_SIZE_CONTENT);  /// 1
         lv_obj_set_height( ui_class_name[i], LV_SIZE_CONTENT);   /// 1
-        lv_obj_set_style_text_font(ui_class_name[i], &lv_font_montserrat_16, LV_PART_MAIN| LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(ui_class_name[i], &lv_font_montserrat_26, LV_PART_MAIN| LV_STATE_DEFAULT);
         lv_obj_add_flag( ui_class_name[i], LV_OBJ_FLAG_HIDDEN);
     
     }
