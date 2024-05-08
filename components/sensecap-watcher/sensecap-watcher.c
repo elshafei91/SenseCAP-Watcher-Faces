@@ -32,6 +32,17 @@ static const audio_codec_data_if_t *i2s_data_if = NULL;
 
 static void (*btn_custom_cb)(void) = NULL;
 
+void bsp_lvgl_rounder_cb(struct _lv_disp_drv_t *disp_drv, lv_area_t *area)
+{
+    uint16_t x1 = area->x1;
+    uint16_t x2 = area->x2;
+
+    // round the start of coordinate down to the nearest 4M number
+    area->x1 = (x1 >> 2) << 2;
+    // round the end of coordinate up to the nearest 4N+3 number
+    area->x2 = ((x2 >> 2) << 2) + 3;
+}
+
 static void bsp_btn_long_press_cb(void)
 {
     if (btn_custom_cb != NULL)
@@ -697,6 +708,8 @@ lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg)
     lvgl_disp = bsp_display_lcd_init(cfg);
     if (lvgl_disp != NULL)
     {
+        lvgl_disp->driver->rounder_cb = bsp_lvgl_rounder_cb;
+
 #if CONFIG_LVGL_INPUT_DEVICE_USE_KNOB
         bsp_knob_indev_init(lvgl_disp);
 #endif
