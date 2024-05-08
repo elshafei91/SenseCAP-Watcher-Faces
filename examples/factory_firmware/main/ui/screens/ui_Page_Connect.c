@@ -169,7 +169,6 @@ void ui_Page_Connect_screen_init(void)
     lv_obj_set_height(ui_conn_QR, 160);
     lv_obj_set_align(ui_conn_QR, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_conn_QR, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_img_src(ui_conn_QR, &ui_img_app_qr_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_conn_spinner = lv_spinner_create(ui_Page_Connect, 1000, 90);
     lv_obj_set_width(ui_conn_spinner, 40);

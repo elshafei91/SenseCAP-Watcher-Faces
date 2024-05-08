@@ -41,7 +41,7 @@ int view_group_init(void)
     // while((cur_drv = lv_indev_get_next(cur_drv))) {
     //     if(cur_drv->driver->type == LV_INDEV_TYPE_ENCODER) {
     //         lv_indev_set_group(cur_drv, g_main);
-    //         break; // 假设只有一个编码器，找到后即停止
+    //         break;
     //     }
     // }
     return 0;

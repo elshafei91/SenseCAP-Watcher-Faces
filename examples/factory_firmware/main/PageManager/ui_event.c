@@ -7,6 +7,8 @@
 #include "esp_log.h"
 #include "pm.h"
 #include "animation.h"
+#include "data_defs.h"
+#include "event_loops.h"
 
 static const char * TAG = "ui_event:";
 
@@ -83,7 +85,7 @@ void main2f_cb(lv_event_t * e)
 
 void main3c_cb(lv_event_t * e)
 {
-
+	
 }
 
 void main3f_cb(lv_event_t * e)
@@ -738,6 +740,17 @@ static void Page_ConnAPP_Mate()
 	lv_obj_add_flag(ui_conn_panel2, LV_OBJ_FLAG_HIDDEN);     /// Flags
 	lv_obj_clear_flag(ui_arrow1, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_add_flag(ui_arrow2, LV_OBJ_FLAG_HIDDEN);
+
+	lv_color_t bg_color = lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 5);
+    lv_color_t fg_color = lv_palette_darken(LV_PALETTE_BLUE, 4);
+
+	lv_obj_t * qr = lv_qrcode_create(ui_conn_QR, 150, fg_color, bg_color);
+	const char * data = "https://sensecap-mate-download.seeed.cc/";
+    lv_qrcode_update(qr, data, strlen(data));
+    lv_obj_center(qr);
+
+
+
 }
 
 static void Page_ConnAPP_BLE()
@@ -747,6 +760,23 @@ static void Page_ConnAPP_BLE()
 	lv_obj_clear_flag(ui_conn_panel2, LV_OBJ_FLAG_HIDDEN);     /// Flags
 	lv_obj_add_flag(ui_arrow1, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_clear_flag(ui_arrow2, LV_OBJ_FLAG_HIDDEN);
+
+	lv_color_t bg_color = lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 5);
+    lv_color_t fg_color = lv_palette_darken(LV_PALETTE_BLUE, 4);
+
+	lv_obj_t * qr = lv_qrcode_create(ui_conn_QR, 150, fg_color, bg_color);
+
+	// const char * eui = "2CF7F16222800000";
+	// const char * key = "F9CD0B7FF5077448";
+	// const char * param = "0:1000206";
+	// const char * bt = "202003536222500012";
+
+	// char data[128];
+	
+    // snprintf(data, sizeof(data), "%s:%s:%s:%s", eui, key, param, bt);
+	// const char * data = "010203040506070809";
+    lv_qrcode_update(qr, sn_data, strlen(sn_data));
+    lv_obj_center(qr);
 }
 
 static void Task_end()

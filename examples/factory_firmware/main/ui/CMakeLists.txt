@@ -65,6 +65,8 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_human_d_png.c
     images/ui_img_gesture_d_png.c
     images/ui_img_dog_d_png.c
+    images/ui_img_wifi_disconnect_png.c
+    images/ui_img_wifi_nonnet_png.c
     )
 
 add_library(ui ${SOURCES})
