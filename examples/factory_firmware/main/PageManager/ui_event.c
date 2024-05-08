@@ -646,6 +646,9 @@ void setappc_cb(lv_event_t * e)
 {
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
 	Page_ConnAPP_Mate();
+	const char *data = "010203040506070809";
+    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
+                                    &data, 19, portMAX_DELAY);
 }
 
 void slidervc_cb(lv_event_t * e)
@@ -764,16 +767,9 @@ static void Page_ConnAPP_BLE()
 	lv_color_t bg_color = lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 5);
     lv_color_t fg_color = lv_palette_darken(LV_PALETTE_BLUE, 4);
 
-	lv_obj_t * qr = lv_qrcode_create(ui_conn_QR, 150, fg_color, bg_color);
+	lv_obj_t * qr = lv_qrcode_create(ui_conn_QR, 160, fg_color, bg_color);
 
-	// const char * eui = "2CF7F16222800000";
-	// const char * key = "F9CD0B7FF5077448";
-	// const char * param = "0:1000206";
-	// const char * bt = "202003536222500012";
 
-	// char data[128];
-	
-    // snprintf(data, sizeof(data), "%s:%s:%s:%s", eui, key, param, bt);
 	// const char * data = "010203040506070809";
     lv_qrcode_update(qr, sn_data, strlen(sn_data));
     lv_obj_center(qr);

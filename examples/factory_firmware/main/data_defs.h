@@ -196,7 +196,7 @@ struct view_data_device_status
     uint8_t battery_per;
 };
 
-extern char sn_data[17];
+extern char sn_data[19];
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
