@@ -19,6 +19,7 @@
 #include "app_sr.h"
 #include "app_audio.h"
 #include "app_wifi.h"
+#include "app_ble.h"
 #include "app_time.h"
 #include "app_cmd.h"
 #include "app_sensecraft.h"
@@ -102,19 +103,19 @@ int board_init(void)
 int app_init(void)
 {
     app_wifi_init();
-    app_time_init();
-    app_cmd_init();
+    app_ble_init();
+    // app_time_init();
+    // app_cmd_init();
 
-    tasklist_init();
-    app_taskengine_init();
-    app_rgb_init();
-    app_sensecraft_init();
-    app_sscma_client_init();
-    app_mqtt_client_init();
-    app_sensecap_https_init();
-    app_device_status_monitor_init();
-
-    // app_sr_start(false);
+    // tasklist_init();
+    // app_taskengine_init();
+    // app_rgb_init();
+    // app_sensecraft_init();
+    // //app_sscma_client_init();
+    // app_mqtt_client_init();
+    // app_sensecap_https_init();
+    // app_device_status_monitor_init();
+    //app_sr_start(false);
 
     return ESP_OK;
 }
@@ -124,7 +125,7 @@ void task_app_init(void *p_arg)
     // UI init
     view_init();
 
-    // app_init();
+    app_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
