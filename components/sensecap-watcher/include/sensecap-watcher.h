@@ -306,6 +306,7 @@ esp_lcd_touch_handle_t bsp_lcd_get_touch_handle(void);
 
 lv_disp_t *bsp_lvgl_init(void);
 lv_disp_t *bsp_lvgl_init_with_cfg(const bsp_display_cfg_t *cfg);
+lv_disp_t *bsp_lvgl_get_disp(void);
 
 sscma_client_handle_t bsp_sscma_client_init();
 sscma_client_flasher_handle_t bsp_sscma_flasher_init();
