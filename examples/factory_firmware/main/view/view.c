@@ -16,7 +16,7 @@
 
 static const char *TAG = "view";
 
-char sn_data[19];
+char sn_data[18];
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
@@ -91,10 +91,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         case VIEW_EVENT_SN_CODE:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_SN_CODE");
             const char** _sn_data = (const char**)event_data;
-            strncpy(sn_data, *_sn_data, 18);
-            sn_data[18] = '\0';
-            ESP_LOGI(TAG, "Received SN data: %s", *_sn_data);
-            ESP_LOGI(TAG, "sn_data: %s", sn_data);
+            strcpy(sn_data, *_sn_data);
+            // ESP_LOGI(TAG, "Received SN data: %s", *_sn_data);
+            // ESP_LOGI(TAG, "sn_data: %s", sn_data);
 
             break;
         }
