@@ -23,6 +23,11 @@
 
 #include "at_cmd.h"
 #include "app_ble.h"
+#include "system_layer.h"
+#include "app_device_info.h"
+#include "app_wifi.h"
+
+
 
 /*-----------------------------------------------------------------------------------*/
 // variable defination place
@@ -109,7 +114,7 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
 //  tool function
 static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size);
 static void hex_to_string(uint8_t *hex, size_t hex_size, char *output);
-
+static void hexstr_to_bytes(const char *hexstr, uint8_t *buffer, size_t buffer_len);
 static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size) // Tool Function
 {
     for (unsigned char i = 0; i < Size; i++)
@@ -134,6 +139,14 @@ static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned s
     }
 }
 
+static void hexstr_to_bytes(const char *hexstr, uint8_t *buffer, size_t buffer_len) {
+    size_t i = 0;
+    while (i < buffer_len) {
+        // Take two characters from the hex string, convert them to a byte, and store in the buffer
+        sscanf(hexstr + 2*i, "%2hhx", &buffer[i]);
+        i++;
+    }
+}
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event)
@@ -380,6 +393,8 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
     {
     case ESP_GATTS_REG_EVT:
         uint8_t watcher_sn_buffer_t[18] = {0};
+        uint8_t* sn =get_sn(BLE_CALLER);
+        memcpy(watcher_sn_buffer, sn, sizeof(watcher_sn_buffer));
         hexTonum(watcher_sn_buffer_t, watcher_sn_buffer, sizeof(watcher_sn_buffer));
         uint8_t send_buffer[32] = {0};
         uint8_t device_buffer[32] = {0};

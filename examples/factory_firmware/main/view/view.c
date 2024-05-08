@@ -9,7 +9,8 @@
 #include "util.h"
 #include "ui_helpers.h"
 #include <time.h>
-
+#include "system_layer.h"
+#include "app_device_info.h"
 #include "pm.h"
 #include "animation.h"
 
@@ -90,6 +91,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         }
         case VIEW_EVENT_SN_CODE:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_SN_CODE");
+            
             const char** _sn_data = (const char**)event_data;
             strcpy(sn_data, *_sn_data);
             // ESP_LOGI(TAG, "Received SN data: %s", *_sn_data);

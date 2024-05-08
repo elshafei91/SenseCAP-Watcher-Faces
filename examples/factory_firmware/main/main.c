@@ -30,7 +30,7 @@
 #include "app_taskengine.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
-
+#include "system_layer.h"
 #include "view.h"
 
 static const char *TAG = "app_main";
@@ -102,11 +102,12 @@ int board_init(void)
 
 int app_init(void)
 {
+    system_layer_init();
     app_wifi_init();
     app_ble_init();
     // app_time_init();
     app_cmd_init();
-
+    
     // tasklist_init();
     // app_taskengine_init();
     // app_rgb_init();

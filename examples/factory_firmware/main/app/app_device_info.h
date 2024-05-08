@@ -1,12 +1,11 @@
 #ifndef APP_SN_H
 #define APP_SN_H
-
+#include "stdint.h"
 // Your code goes here
 
 
-
-void get_SN(int caller);
-
+uint8_t * get_sn(int caller);
+void app_device_info_init();
 
 
 

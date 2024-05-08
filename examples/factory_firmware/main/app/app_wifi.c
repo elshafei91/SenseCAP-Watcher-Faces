@@ -443,13 +443,16 @@ void set_wifi_config(wifi_config* config){
 
 
 void wifi_config_layer(void) {
-    configASSERT( ( uint32_t ) 1 == 1UL );
     while(1){
-
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+            
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 }
 
+
+void app_wifi_config_layer_init(){
+       xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 *2, NULL, 10, NULL);
+}
 int app_wifi_init(void)
 {
     __g_wifi_mutex = xSemaphoreCreateMutex();
@@ -459,23 +462,24 @@ int app_wifi_init(void)
     __wifi_cfg_init();
 
     xTaskCreate(&__app_wifi_task, "__app_wifi_task", 1024 * 5, NULL, 10, NULL);
+ 
 
-    StaticTask_t wifi_config_layer_task_buffer;
-    StackType_t *wifi_config_layer_stack_buffer = heap_caps_malloc(WIFI_CONFIG_LAYER_STACK_SIZE * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    if (wifi_config_layer_stack_buffer)
-    {
-        xTaskCreateStatic(&wifi_config_layer,
-            "wifi_config_layer",            // wifi_config_layer
-            WIFI_CONFIG_LAYER_STACK_SIZE,   // 1024*5
-            NULL,                           // NULL
-            2,                             // 10
-            wifi_config_layer_stack_buffer, // wifi_config_layer_stack_buffer
-            &wifi_config_layer_task_buffer); // wifi_config_layer_task_buffer
-    }
-    else
-    {
-        ESP_LOGE(TAG, "wifi_config_layer_task_buffer or wifi_config_layer_stack_buffer malloc failed");
-    }
+    // StaticTask_t wifi_config_layer_task_buffer;
+    // StackType_t *wifi_config_layer_stack_buffer = heap_caps_malloc(WIFI_CONFIG_LAYER_STACK_SIZE * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    // if (wifi_config_layer_stack_buffer)
+    // {
+    //     xTaskCreateStatic(&wifi_config_layer,
+    //         "wifi_config_layer",            // wifi_config_layer
+    //         WIFI_CONFIG_LAYER_STACK_SIZE,   // 1024*5
+    //         NULL,                           // NULL
+    //         5,                             // 10
+    //         wifi_config_layer_stack_buffer, // wifi_config_layer_stack_buffer
+    //         &wifi_config_layer_task_buffer); // wifi_config_layer_task_buffer
+    // }
+    // else
+    // {
+    //     ESP_LOGE(TAG, "wifi_config_layer_task_buffer or wifi_config_layer_stack_buffer malloc failed");
+    // }
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());

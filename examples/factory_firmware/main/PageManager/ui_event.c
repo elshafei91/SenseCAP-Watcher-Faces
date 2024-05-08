@@ -9,7 +9,8 @@
 #include "animation.h"
 #include "data_defs.h"
 #include "event_loops.h"
-
+#include "app_device_info.h"
+#include "system_layer.h"
 static const char * TAG = "ui_event:";
 
 static void Page_ConnAPP_BLE();
@@ -112,6 +113,7 @@ void connc_cb(lv_event_t * e)
 
 void arr1c_cb(lv_event_t * e)
 {
+	
 	Page_ConnAPP_BLE();
 }
 
@@ -646,6 +648,7 @@ void setappc_cb(lv_event_t * e)
 {
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
 	Page_ConnAPP_Mate();
+	get_sn(UI_CALLER);
 }
 
 void slidervc_cb(lv_event_t * e)
