@@ -10,6 +10,28 @@ extern "C" {
 
 int app_wifi_init(void);
 
+
+//wifi config_sys layer Data structure
+typedef struct {
+    char* ssid;
+    char* password;
+    char* security;
+    int caller;
+} wifi_config;
+
+typedef struct{
+    bool is_connected;
+    char* ip_address;
+    int signal_strength;
+}wifi_status;   
+
+//wifi config_sys layer API
+
+void get_wifi_status(int caller);
+
+void set_wifi_config(wifi_config* config);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -256,7 +256,7 @@ enum {
     VIEW_EVENT_ALARM_OFF, //NULL
 
     VIEW_EVENT_TASKLIST_EXIST,        //uint32_t, 1 or 0, tell UI if there's already a tasklist running
-
+    
     VIEW_EVENT_ALL,
 };
 
