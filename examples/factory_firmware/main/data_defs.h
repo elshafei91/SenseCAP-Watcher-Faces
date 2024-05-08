@@ -196,6 +196,7 @@ struct view_data_device_status
     uint8_t battery_per;
 };
 
+extern char sn_data[17];
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
@@ -211,6 +212,9 @@ enum {
 
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
+
+    VIEW_EVENT_SN_CODE,
+    VIEW_EVENT_BLE_STATUS,
 
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL

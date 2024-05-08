@@ -366,6 +366,8 @@ LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets\wifi_3.png
 LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_gesture_d_png);
 LV_IMG_DECLARE(ui_img_human_d_png);
+LV_IMG_DECLARE(ui_img_wifi_disconnect_png);
+LV_IMG_DECLARE(ui_img_wifi_nonnet_png);
 
 LV_FONT_DECLARE(ui_font_Font1);
 LV_FONT_DECLARE(ui_font_fontbold26);

@@ -207,7 +207,7 @@ void ui_Page_main_screen_init(void)
     lv_obj_set_style_text_font(ui_maintime, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_mainwifi = lv_img_create(ui_Devicep);
-    lv_img_set_src(ui_mainwifi, &ui_img_wifi_4_png);
+    lv_img_set_src(ui_mainwifi, &ui_img_wifi_disconnect_png);
     lv_obj_set_width(ui_mainwifi, LV_SIZE_CONTENT);   /// 18
     lv_obj_set_height(ui_mainwifi, LV_SIZE_CONTENT);    /// 18
     lv_obj_set_align(ui_mainwifi, LV_ALIGN_CENTER);
@@ -234,8 +234,8 @@ void ui_Page_main_screen_init(void)
     lv_obj_add_flag(ui_mainble, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
     lv_obj_clear_flag(ui_mainble, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_img_set_zoom(ui_mainble, 200);
-    lv_obj_set_style_img_recolor(ui_mainble, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_img_recolor_opa(ui_mainble, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_img_recolor(ui_mainble, lv_color_hex(0x171515), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_img_recolor_opa(ui_mainble, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_maintitle = lv_label_create(ui_Page_main);
     lv_obj_set_width(ui_maintitle, 237);
