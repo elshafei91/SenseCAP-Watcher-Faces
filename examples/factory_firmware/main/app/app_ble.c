@@ -26,11 +26,15 @@
 #include "system_layer.h"
 #include "app_device_info.h"
 #include "app_wifi.h"
-
+#include "event_loops.h"
+#include "data_defs.h"
 
 
 /*-----------------------------------------------------------------------------------*/
 // variable defination place
+
+static int ble_status = BLE_DISCONNECTED;
+
 uint8_t watcher_sn_buffer[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09};
 uint8_t watcher_name[] = {'-', 'W', 'A', 'C', 'H'};
 
@@ -623,6 +627,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         break;
     case ESP_GATTS_CONNECT_EVT:
     {
+        ble_status = BLE_CONNECTED;
         AT_command_reg();
         esp_ble_conn_update_params_t conn_params = {0};
         memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
@@ -644,6 +649,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_DISCONNECT_EVT, disconnect reason 0x%x", param->disconnect.reason);
         AT_command_free();
         esp_ble_gap_start_advertising(&adv_params);
+        ble_status = BLE_DISCONNECTED;
         break;
     case ESP_GATTS_CONF_EVT:
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_CONF_EVT, status %d attr_handle %d", param->conf.status, param->conf.handle);
@@ -794,3 +800,45 @@ void app_ble_stop(void)
     app_ble_deinit();
 }
 
+void get_ble_status(int caller){
+    switch (caller)
+    {
+        case UI_CALLER:{
+            if (ble_status == BLE_CONNECTED){
+                // send BLE_CONNECTED to UI
+                bool status = true;
+                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, 
+                                    &status, 1, portMAX_DELAY);
+            } else {
+                bool status = true;
+                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, 
+                                    &status, 1, portMAX_DELAY);
+            }
+            break;
+        }
+    }
+}
+
+SemaphoreHandle_t ble_status_mutex = NULL;
+
+void set_ble_status(int caller, int status){
+    switch (caller)
+    {
+        case UI_CALLER:{
+
+            break;
+        }
+    }
+}
+
+
+void wifi_config_layer(void) {
+    while(1){
+        
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+void app_wifi_config_layer_init(){
+       xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 *2, NULL, 10, NULL);
+}

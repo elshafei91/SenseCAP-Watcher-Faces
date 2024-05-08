@@ -17,7 +17,7 @@
 #define SN_TAG                    "SN_TAG"
 #define APP_DEVICE_INFO_MAX_STACK 4096
 
-uint8_t SN[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x10};
+uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x10 };
 
 SemaphoreHandle_t MUTEX_SN = NULL;
 
@@ -35,17 +35,21 @@ uint8_t *get_sn(int caller)
         {
             case BLE_CALLER:
                 ESP_LOGI(SN_TAG, "BLE get sn");
-                
+
                 result = SN;
                 xSemaphoreGive(MUTEX_SN);
                 break;
             case UI_CALLER:
                 ESP_LOGI(SN_TAG, "UI get sn");
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, &SN, sizeof(SN), portMAX_DELAY);
-                xSemaphoreGive(MUTEX_SN);
-                break;
-            default:
-                ESP_LOGI(SN_TAG, "Unknown caller");
+                int len = sizeof(SN) / sizeof(SN[0]);
+                char str[len * 2 + 1];
+                for (int i = 0; i < len; i++)
+                {
+                    sprintf(&str[2 * i], "%02x", SN[i]); 
+                }
+                str[2 * len] = '\0'; 
+                printf("SN: %s\n", str);
+                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, &str, sizeof(str), portMAX_DELAY);
                 xSemaphoreGive(MUTEX_SN);
                 break;
         }
