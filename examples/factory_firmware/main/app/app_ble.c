@@ -114,7 +114,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
 //  tool function
 static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size);
 static void hex_to_string(uint8_t *hex, size_t hex_size, char *output);
-static void hexstr_to_bytes(const char *hexstr, uint8_t *buffer, size_t buffer_len);
 static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size) // Tool Function
 {
     for (unsigned char i = 0; i < Size; i++)
@@ -139,14 +138,6 @@ static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned s
     }
 }
 
-static void hexstr_to_bytes(const char *hexstr, uint8_t *buffer, size_t buffer_len) {
-    size_t i = 0;
-    while (i < buffer_len) {
-        // Take two characters from the hex string, convert them to a byte, and store in the buffer
-        sscanf(hexstr + 2*i, "%2hhx", &buffer[i]);
-        i++;
-    }
-}
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event)
@@ -222,7 +213,7 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
                     status = ESP_GATT_NO_RESOURCES;
                 }
             }
-
+            
             esp_gatt_rsp_t *gatt_rsp = (esp_gatt_rsp_t *)heap_caps_malloc(sizeof(esp_gatt_rsp_t), MALLOC_CAP_SPIRAM);
             if (gatt_rsp)
             {
@@ -779,3 +770,27 @@ esp_err_t app_ble_init(void)
 #endif
     return ESP_OK;
 }
+
+
+void app_ble_deinit(void)
+{
+    esp_bluedroid_disable();
+    esp_bluedroid_deinit();
+    esp_bt_controller_disable();
+    esp_bt_controller_deinit();
+    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
+}
+
+
+void app_ble_start(void)
+{
+    app_ble_init();
+    esp_ble_gap_start_advertising(&adv_params);
+}
+
+void app_ble_stop(void)
+{
+    esp_ble_gap_stop_advertising();
+    app_ble_deinit();
+}
+

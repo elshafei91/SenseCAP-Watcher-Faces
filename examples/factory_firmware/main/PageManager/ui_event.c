@@ -648,13 +648,7 @@ void setappc_cb(lv_event_t * e)
 {
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
 	Page_ConnAPP_Mate();
-<<<<<<< HEAD
 	get_sn(UI_CALLER);
-=======
-	const char *data = "010203040506070809";
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
-                                    &data, 19, portMAX_DELAY);
->>>>>>> feat/factory_fw_ui
 }
 
 void slidervc_cb(lv_event_t * e)
