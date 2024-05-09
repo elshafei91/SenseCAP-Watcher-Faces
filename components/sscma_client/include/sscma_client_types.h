@@ -59,18 +59,12 @@ typedef struct
 typedef struct
 {
     int id;                                        /* !< ID */
-    int size;                                      /* !< Size */
     char *uuid;                                    /* !< UUID */
     char *name;                                    /*!< Name */
     char *ver;                                     /*!< Version */
-    char *type;                                    /*!< Type */
-    char *category;                                /*!< Category */
-    char *algorithm;                               /*!< Algorithm */
-    char *description;                             /*!< Description */
-    char *classes[SSCMA_CLIENT_MODEL_MAX_CLASSES]; /*!< Classes */
-    char *token;                                   /*!< Token */
     char *url;                                     /*!< URL */
-    char *manufacturer;                            /*!< Manufacturer */
+    char *checksum;                                /*!< Checksum */
+    char *classes[SSCMA_CLIENT_MODEL_MAX_CLASSES]; /*!< Classes */
 } sscma_client_model_t;
 
 typedef struct

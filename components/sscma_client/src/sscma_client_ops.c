@@ -560,34 +560,17 @@ esp_err_t sscma_client_del(sscma_client_handle_t client)
         {
             free(client->model.name);
         }
-        if (client->model.category != NULL)
+        if (client->model.ver != NULL)
         {
-            free(client->model.category);
+            free(client->model.ver);
         }
-
-        if (client->model.manufacturer != NULL)
-        {
-            free(client->model.manufacturer);
-        }
-
-        if (client->model.description != NULL)
-        {
-            free(client->model.description);
-        }
-
-        if (client->model.url != NULL)
+        if (client->model.url)
         {
             free(client->model.url);
         }
-
-        if (client->model.algorithm != NULL)
+        if (client->model.checksum)
         {
-            free(client->model.algorithm);
-        }
-
-        if (client->model.token != NULL)
-        {
-            free(client->model.token);
+            free(client->model.checksum);
         }
         for (int i = 0; i < sizeof(client->model.classes) / sizeof(client->model.classes[0]); i++)
         {
@@ -847,34 +830,41 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
                         cJSON *root = cJSON_Parse(model_data);
                         if (root != NULL)
                         {
-                            fetch_string_from_object(root, "model_id", &client->model.uuid);
-                            
-                            if (client->model.uuid == NULL)
+                            // parse model infomation
+                            // old format
+                            if (cJSON_GetObjectItem(root, "uuid") != NULL)
                             {
                                 fetch_string_from_object(root, "uuid", &client->model.uuid);
-                            }
-                            fetch_string_from_object(root, "model_name", &client->model.name);
-                            if (client->model.name == NULL)
-                            {
                                 fetch_string_from_object(root, "name", &client->model.name);
-                            }
-                            if (client->model.size)
-                            {
-                                client->model.size = get_int_from_object(root, "size");
-                            }
-                            fetch_string_from_object(root, "version", &client->model.ver);
-                            fetch_string_from_object(root, "category", &client->model.category);
-                            fetch_string_from_object(root, "algorithm", &client->model.algorithm);
-                            fetch_string_from_object(root, "url", &client->model.url);
-                            fetch_string_from_object(root, "key", &client->model.token);
-                            fetch_string_from_object(root, "author", &client->model.manufacturer);
-                            fetch_string_from_object(root, "description", &client->model.description);
-                            cJSON *classes = cJSON_GetObjectItem(root, "classes");
-                            if (classes != NULL && cJSON_IsArray(classes))
-                            {
-                                for (int i = 0; i < cJSON_GetArraySize(classes); i++)
+                                fetch_string_from_object(root, "version", &client->model.ver);
+                                fetch_string_from_object(root, "url", &client->model.url);
+                                fetch_string_from_object(root, "checksum", &client->model.checksum);
+                                cJSON *classes = cJSON_GetObjectItem(root, "classes");
+                                if (classes != NULL && cJSON_IsArray(classes))
                                 {
-                                    fetch_string_from_array(classes, i, &client->model.classes[i]);
+                                    int classes_len = cJSON_GetArraySize(classes) > SSCMA_CLIENT_MODEL_MAX_CLASSES ? SSCMA_CLIENT_MODEL_MAX_CLASSES : cJSON_GetArraySize(classes);
+                                    for (int i = 0; i < classes_len; i++)
+                                    {
+                                        fetch_string_from_array(classes, i, &client->model.classes[i]);
+                                    }
+                                }
+                            }
+                            // new format
+                            else if (cJSON_GetObjectItem(root, "model_id") != NULL)
+                            {
+                                fetch_string_from_object(root, "model_id", &client->model.uuid);
+                                fetch_string_from_object(root, "model_name", &client->model.name);
+                                fetch_string_from_object(root, "version", &client->model.ver);
+                                fetch_string_from_object(root, "url", &client->model.url);
+                                fetch_string_from_object(root, "checksum", &client->model.checksum);
+                                cJSON *classes = cJSON_GetObjectItem(root, "classes");
+                                if (classes != NULL && cJSON_IsArray(classes))
+                                {
+                                    int classes_len = cJSON_GetArraySize(classes) > SSCMA_CLIENT_MODEL_MAX_CLASSES ? SSCMA_CLIENT_MODEL_MAX_CLASSES : cJSON_GetArraySize(classes);
+                                    for (int i = 0; i < classes_len; i++)
+                                    {
+                                        fetch_string_from_array(classes, i, &client->model.classes[i]);
+                                    }
                                 }
                             }
                         }
