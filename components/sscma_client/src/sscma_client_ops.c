@@ -847,8 +847,19 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
                         cJSON *root = cJSON_Parse(model_data);
                         if (root != NULL)
                         {
-                            fetch_string_from_object(root, "uuid", &client->model.uuid);
-                            fetch_string_from_object(root, "name", &client->model.name);
+                            fetch_string_from_object(root, "model_id", &client->model.uuid);
+                            if (client->model.uuid == NULL)
+                            {
+                                fetch_string_from_object(root, "uuid", &client->model.uuid);
+                            }
+                            fetch_string_from_object(root, "model_name", &client->model.name);
+                            if (client->model.name == NULL)
+                            {
+                                fetch_string_from_object(root, "name", &client->model.name);
+                            }
+                            if(client->model.size){
+                                client->model.size = get_int_from_object(root, "size");
+                            }
                             fetch_string_from_object(root, "version", &client->model.ver);
                             fetch_string_from_object(root, "category", &client->model.category);
                             fetch_string_from_object(root, "algorithm", &client->model.algorithm);

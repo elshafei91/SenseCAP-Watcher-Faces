@@ -56,6 +56,7 @@ typedef struct
 typedef struct
 {
     int id;             /* !< ID */
+    int size;           /* !< Size */
     char *uuid;         /* !< UUID */
     char *name;         /*!< Name */
     char *ver;          /*!< Version */
