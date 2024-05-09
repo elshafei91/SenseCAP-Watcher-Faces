@@ -26,6 +26,7 @@ void main4f_cb(lv_event_t * e);
 void connc_cb(lv_event_t * e);
 void arr1c_cb(lv_event_t * e);
 void arr2c_cb(lv_event_t * e);
+void wifichange_cb(lv_event_t * e);
 void nwific_cb(lv_event_t * e);
 void ntaskb1c_cb(lv_event_t * e);
 void ntaskb2c_cb(lv_event_t * e);
@@ -119,6 +120,7 @@ void slidervc_cb(lv_event_t * e);
 void sliderr_cb(lv_event_t * e);
 void stbtn_cb(lv_event_t * e);
 void timesc_cb(lv_event_t * e);
+void hap_cb(lv_event_t * e);
 
 #ifdef __cplusplus
 } /*extern "C"*/

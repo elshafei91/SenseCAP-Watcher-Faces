@@ -10,7 +10,8 @@
 #include "data_defs.h"
 #include "event_loops.h"
 #include "app_device_info.h"
-#include "system_layer.h"
+#include "lv_examples.h"
+
 static const char * TAG = "ui_event:";
 
 static void Page_ConnAPP_BLE();
@@ -53,7 +54,9 @@ static void set_obj_style_focused(lv_obj_t * obj, lv_obj_t * obj_text)
 
 void startload_cb(lv_event_t * e)
 {
-	_ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_Vir_screen_init);
+	lv_obj_t * lottie = lv_rlottie_create_from_file(lv_scr_act(), 150, 150, "/spiffs/test_1.json");
+    lv_obj_center(lottie);
+	// _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_Vir_screen_init);
 }
 
 void virtualp_cb(lv_event_t * e)
@@ -86,7 +89,21 @@ void main2f_cb(lv_event_t * e)
 
 void main3c_cb(lv_event_t * e)
 {
-	
+	// lv_obj_t * rlottie_screen = lv_obj_create(NULL);
+	// lv_obj_set_style_bg_color(rlottie_screen, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	// lv_scr_load_anim(rlottie_screen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 50, false);
+
+	// lv_obj_t * lottie = lv_rlottie_create_from_file(rlottie_screen, 100, 100, "/spiffs/lottie_pikachu.json");
+	lv_obj_t * lottie = lv_rlottie_create_from_file(lv_scr_act(), 100, 100,
+                                                    "lvgl/examples/libs/rlottie/lv_example_rlottie_approve.json");
+    // lv_rlottie_set_current_frame(lottie, 20);
+	// lv_rlottie_set_play_mode(lottie, LV_RLOTTIE_CTRL_PLAY | LV_RLOTTIE_CTRL_BACKWARD | LV_RLOTTIE_CTRL_LOOP);
+    lv_obj_center(lottie);
+
+	// lv_obj_t * label = lv_label_create(rlottie_screen);
+    // lv_label_set_text(label, "Rlottie is not installed");
+    // lv_obj_center(label);
 }
 
 void main3f_cb(lv_event_t * e)
@@ -113,13 +130,17 @@ void connc_cb(lv_event_t * e)
 
 void arr1c_cb(lv_event_t * e)
 {
-	
 	Page_ConnAPP_BLE();
 }
 
 void arr2c_cb(lv_event_t * e)
 {
 	Page_ConnAPP_Mate();
+}
+
+void wifichange_cb(lv_event_t * e)
+{
+	
 }
 
 void nwific_cb(lv_event_t * e)
@@ -576,6 +597,7 @@ void setblec_cb(lv_event_t * e)
 	{
 	case 0:
 		lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+
 		break;
 	case 1:
 		lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
@@ -648,10 +670,7 @@ void setappc_cb(lv_event_t * e)
 {
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
 	Page_ConnAPP_Mate();
-<<<<<<< HEAD
-=======
-	get_sn(UI_CALLER);
->>>>>>> feat/factory_fw_ble
+	get_sn(0);
 }
 
 void slidervc_cb(lv_event_t * e)
@@ -738,6 +757,11 @@ void brire_cb(lv_event_t * e)
 
 }
 
+void hap_cb(lv_event_t * e)
+{
+
+}
+
 // Page status bundle
 static void Page_ConnAPP_Mate()
 {
@@ -772,9 +796,8 @@ static void Page_ConnAPP_BLE()
 
 	lv_obj_t * qr = lv_qrcode_create(ui_conn_QR, 160, fg_color, bg_color);
 
-
-	// const char * data = "010203040506070809";
-    lv_qrcode_update(qr, sn_data, strlen(sn_data));
+	const char * data = "w1:2CF7F1C244810047B047D1D58BC7F8FB:1:1000205:114993002224800072";
+    lv_qrcode_update(qr, data, strlen(data));
     lv_obj_center(qr);
 }
 

@@ -4,6 +4,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     screens/ui_Page_Vir.c
     screens/ui_Page_main.c
     screens/ui_Page_Connect.c
+    screens/ui_Page_Wifi.c
     screens/ui_Page_nwifi.c
     screens/ui_Page_CurTask1.c
     screens/ui_Page_CurTask2.c
@@ -30,12 +31,12 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_335953020.c
     images/ui_img_setting_png.c
     images/ui_img_setting_f_png.c
-    images/ui_img_wifi_4_png.c
+    images/ui_img_wifi_disconnect_png.c
     images/ui_img_battery_5_png.c
     images/ui_img_ble_png.c
-    images/ui_img_app_qr_png.c
     images/ui_img_button_cancel_png.c
     images/ui_img_arrow_png.c
+    images/ui_img_wifi_4_png.c
     images/ui_img_error_png.c
     images/ui_img_gradient_png.c
     images/ui_img_template1_png.c
@@ -53,20 +54,19 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_gesture_png.c
     images/ui_img_880045930.c
     images/ui_img_template_add_png.c
+    images/ui_img_setback_png.c
     images/ui_img_swipe_png.c
     images/ui_img_left_png.c
     images/ui_img_wifi_0_png.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c
     images/ui_img_wifi_3_png.c
+    images/ui_img_dog_d_png.c
+    images/ui_img_gesture_d_png.c
+    images/ui_img_human_d_png.c
+    images/ui_img_wifi_nonnet_png.c
     fonts/ui_font_Font1.c
     fonts/ui_font_fontbold26.c
-    fonts/ui_font_font_bold.c
-    images/ui_img_human_d_png.c
-    images/ui_img_gesture_d_png.c
-    images/ui_img_dog_d_png.c
-    images/ui_img_wifi_disconnect_png.c
-    images/ui_img_wifi_nonnet_png.c
-    )
+    fonts/ui_font_font_bold.c)
 
 add_library(ui ${SOURCES})

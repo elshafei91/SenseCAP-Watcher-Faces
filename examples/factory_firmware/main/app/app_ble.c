@@ -832,13 +832,13 @@ void set_ble_status(int caller, int status){
 }
 
 
-void wifi_config_layer(void) {
-    while(1){
+// void wifi_config_layer(void) {
+//     while(1){
         
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-}
+//         vTaskDelay(1000 / portTICK_PERIOD_MS);
+//     }
+// }
 
-void app_wifi_config_layer_init(){
-       xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 *2, NULL, 10, NULL);
-}
+// void app_wifi_config_layer_init(){
+//        xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 *2, NULL, 10, NULL);
+// }

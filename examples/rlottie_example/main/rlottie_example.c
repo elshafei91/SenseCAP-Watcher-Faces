@@ -10,8 +10,8 @@ extern const uint8_t lv_rlottie_eye[];
 
 void testRlottie(void){
     //lv_obj_t *lottie = lv_rlottie_create_from_raw(lv_scr_act(), 200, 200, (const void *)lv_rlottie_eye);
-    lv_obj_t * lottie = lv_rlottie_create_from_file(lv_scr_act(), 240, 240, "/spiffs/lottie_pikachu.json");
-    lv_rlottie_set_current_frame(lottie, 20);
+    lv_obj_t * lottie = lv_rlottie_create_from_file(lv_scr_act(), 300, 300, "/spiffs/test_1.json");
+    // lv_rlottie_set_current_frame(lottie, 20);
     lv_obj_center(lottie);
 }
 
