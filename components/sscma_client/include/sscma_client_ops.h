@@ -154,7 +154,7 @@ esp_err_t sscma_client_request(sscma_client_handle_t client, const char *cmd, ss
  * @brief Get SCCMA client info
  *
  * @param[in] client SCCMA client handle
- * @param[in] info pointer to sscma_client_info_t
+ * @param[in] info Copyer to sscma_client_info_t
  * @param[in] cached true if info is cached
  * @return
  *          - ESP_OK on success
@@ -165,7 +165,7 @@ esp_err_t sscma_client_get_info(sscma_client_handle_t client, sscma_client_info_
  * @brief Send request to SCCMA clien
  *
  * @param[in] client SCCMA client handle
- * @param[in] model pointer to sscma_client_model_t
+ * @param[in] model Copyer to sscma_client_model_t
  * @param[in] cached true if model is cached
  * @return
  *          - ESP_OK on success
@@ -176,7 +176,7 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
  * @brief Set model
  *
  * @param[in] client SCCMA client handle
- * @param[in] model pointer to sscma_client_model_t
+ * @param[in] model Copyer to sscma_client_model_t
  * @return
  *          - ESP_OK on success
  */
@@ -198,7 +198,7 @@ esp_err_t sscma_client_set_sensor(sscma_client_handle_t client, int id, int opt_
  * @brief Get sensor
  *
  * @param[in] client SCCMA client handle
- * @param[in] sensor pointer to sscma_client_sensor_t
+ * @param[in] sensor Copyer to sscma_client_sensor_t
  * @return
  *          - ESP_OK on success
  */
@@ -310,6 +310,48 @@ esp_err_t sscma_utils_fetch_classes_from_reply(const sscma_client_reply_t *reply
  *    - ESP_OK
  */
 esp_err_t sscma_utils_copy_classes_from_reply(const sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes);
+
+/**
+ * Fetch points from sscma client reply
+ * @param[in] reply sscma client reply
+ * @param[out] points sscma client points
+ * @param[out] num_points number of points
+ * @return
+ *    - ESP_OK
+ */
+esp_err_t sscma_utils_fetch_points_from_reply(const sscma_client_reply_t *reply, sscma_client_point_t **points, int *num_points);
+
+/**
+ * Prase points from sscma client reply
+ * @param[in] reply sscma client reply
+ * @param[out] points sscma client points
+ * @param[in] max_points max number of points
+ * @param[out] num_points number of points
+ * @return
+ *    - ESP_OK
+ */
+esp_err_t sscma_utils_copy_points_from_reply(const sscma_client_reply_t *reply, sscma_client_point_t *points, int max_points, int *num_points);
+
+/**
+ * Fetch keypoints from sscma client reply
+ * @param[in] reply sscma client reply
+ * @param[out] keypoints sscma client keypoints
+ * @param[out] num_keypoints number of keypoints
+ * @return
+ *    - ESP_OK
+ */
+esp_err_t sscma_utils_fetch_keypoints_from_reply(const sscma_client_reply_t *reply, sscma_client_keypoint_t **keypoints, int *num_keypoints);
+
+/**
+ * Prase keypoints from sscma client reply
+ * @param[in] reply sscma client reply
+ * @param[out] keypoints sscma client keypoints
+ * @param[in] max_keypoints max number of keypoints
+ * @param[out] num_keypoints number of keypoints
+ * @return
+ *    - ESP_OK
+ */
+esp_err_t sscma_utils_copy_keypoints_from_reply(const sscma_client_reply_t *reply, sscma_client_keypoint_t *keypoints, int max_keypoints, int *num_keypoints);
 
 /**
  * Fetch image from sscma client reply

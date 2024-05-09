@@ -44,7 +44,7 @@ const int error_map[] = {
 
 #define SSCMA_CLIENT_CMD_ERROR_CODE(err) (error_map[(err & 0x0F) > (CMD_EUNKNOWN - 1) ? (CMD_EUNKNOWN - 1) : (err & 0x0F)])
 
-static void fetch_string_common(cJSON *object, cJSON *field, char **target)
+static inline void fetch_string_common(cJSON *object, cJSON *field, char **target)
 {
     if (field == NULL || !cJSON_IsString(field))
     {
@@ -848,6 +848,7 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
                         if (root != NULL)
                         {
                             fetch_string_from_object(root, "model_id", &client->model.uuid);
+                            
                             if (client->model.uuid == NULL)
                             {
                                 fetch_string_from_object(root, "uuid", &client->model.uuid);
@@ -857,7 +858,8 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
                             {
                                 fetch_string_from_object(root, "name", &client->model.name);
                             }
-                            if(client->model.size){
+                            if (client->model.size)
+                            {
                                 client->model.size = get_int_from_object(root, "size");
                             }
                             fetch_string_from_object(root, "version", &client->model.ver);
@@ -1246,6 +1248,198 @@ esp_err_t sscma_utils_copy_classes_from_reply(const sscma_client_reply_t *reply,
             {
                 classes[i].target = get_int_from_array(item, 0);
                 classes[i].score = get_int_from_array(item, 1);
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_utils_fetch_points_from_reply(const sscma_client_reply_t *reply, sscma_client_point_t **points, int *num_points)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(reply != NULL, ESP_ERR_INVALID_ARG, TAG, "reply is NULL");
+    ESP_RETURN_ON_FALSE(points != NULL, ESP_ERR_INVALID_ARG, TAG, "points is NULL");
+    ESP_RETURN_ON_FALSE(num_points != NULL, ESP_ERR_INVALID_ARG, TAG, "num_points is NULL");
+    ESP_RETURN_ON_FALSE(cJSON_IsObject(reply->payload), ESP_ERR_INVALID_ARG, TAG, "reply is not object");
+
+    *points = NULL;
+    *num_points = 0;
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (data != NULL)
+    {
+        cJSON *ponits_data = cJSON_GetObjectItem(data, "points");
+        if (ponits_data == NULL)
+            return ESP_OK;
+        *num_points = cJSON_GetArraySize(ponits_data);
+        if (*num_points == 0)
+            return ESP_OK;
+        *points = malloc(sizeof(sscma_client_point_t) * (*num_points));
+        ESP_RETURN_ON_FALSE(*points != NULL, ESP_ERR_NO_MEM, TAG, "malloc points failed");
+        for (int i = 0; i < *num_points; i++)
+        {
+            cJSON *item = cJSON_GetArrayItem(ponits_data, i);
+            if (item != NULL)
+            {
+                (*points)[i].x = get_int_from_array(item, 0);
+                (*points)[i].y = get_int_from_array(item, 1);
+                (*points)[i].z = 0;
+                (*points)[i].score = get_int_from_array(item, 2);
+                (*points)[i].target = get_int_from_array(item, 3);
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_utils_copy_points_from_reply(const sscma_client_reply_t *reply, sscma_client_point_t *points, int max_points, int *num_points)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(reply != NULL, ESP_ERR_INVALID_ARG, TAG, "reply is NULL");
+    ESP_RETURN_ON_FALSE(points != NULL, ESP_ERR_INVALID_ARG, TAG, "points is NULL");
+    ESP_RETURN_ON_FALSE(num_points != NULL, ESP_ERR_INVALID_ARG, TAG, "num_points is NULL");
+    ESP_RETURN_ON_FALSE(cJSON_IsObject(reply->payload), ESP_ERR_INVALID_ARG, TAG, "reply is not object");
+
+    *num_points = 0;
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (data != NULL)
+    {
+        cJSON *ponits_data = cJSON_GetObjectItem(data, "points");
+        if (ponits_data == NULL)
+            return ESP_OK;
+        *num_points = cJSON_GetArraySize(ponits_data);
+        if (*num_points == 0)
+            return ESP_OK;
+        *num_points = cJSON_GetArraySize(ponits_data) > max_points ? max_points : cJSON_GetArraySize(ponits_data);
+        for (int i = 0; i < *num_points; i++)
+        {
+            cJSON *item = cJSON_GetArrayItem(ponits_data, i);
+            if (item != NULL)
+            {
+                points[i].x = get_int_from_array(item, 0);
+                points[i].y = get_int_from_array(item, 1);
+                points[i].z = 0;
+                points[i].score = get_int_from_array(item, 2);
+                points[i].target = get_int_from_array(item, 3);
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_utils_fetch_keypoints_from_reply(const sscma_client_reply_t *reply, sscma_client_keypoint_t **keypoints, int *num_keypoints)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(reply != NULL, ESP_ERR_INVALID_ARG, TAG, "reply is NULL");
+    ESP_RETURN_ON_FALSE(keypoints != NULL, ESP_ERR_INVALID_ARG, TAG, "keypoints is NULL");
+    ESP_RETURN_ON_FALSE(num_keypoints != NULL, ESP_ERR_INVALID_ARG, TAG, "num_keypoints is NULL");
+    ESP_RETURN_ON_FALSE(cJSON_IsObject(reply->payload), ESP_ERR_INVALID_ARG, TAG, "reply is not object");
+
+    *keypoints = NULL;
+    *num_keypoints = 0;
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (data != NULL)
+    {
+        cJSON *keypoints_data = cJSON_GetObjectItem(data, "keypoints");
+        if (keypoints_data == NULL)
+            return ESP_OK;
+        *num_keypoints = cJSON_GetArraySize(keypoints_data);
+        if (*num_keypoints == 0)
+            return ESP_OK;
+        *keypoints = malloc(sizeof(sscma_client_keypoint_t) * (*num_keypoints));
+        ESP_RETURN_ON_FALSE(*keypoints != NULL, ESP_ERR_NO_MEM, TAG, "malloc keypoints failed");
+        for (int i = 0; i < *num_keypoints; i++)
+        {
+            cJSON *item = cJSON_GetArrayItem(keypoints_data, i);
+            if (item != NULL)
+            {
+                cJSON *box = cJSON_GetArrayItem(item, 0);
+                cJSON *points = cJSON_GetArrayItem(item, 1);
+                if (box != NULL && points != NULL)
+                {
+                    (*keypoints)[i].box.x = get_int_from_array(box, 0);
+                    (*keypoints)[i].box.y = get_int_from_array(box, 1);
+                    (*keypoints)[i].box.w = get_int_from_array(box, 2);
+                    (*keypoints)[i].box.h = get_int_from_array(box, 3);
+                    (*keypoints)[i].box.score = get_int_from_array(box, 4);
+                    (*keypoints)[i].box.target = get_int_from_array(box, 5);
+                    (*keypoints)[i].points_num = cJSON_GetArraySize(points) > SSCMA_CLIENT_MODEL_KEYPOINTS_MAX ? SSCMA_CLIENT_MODEL_KEYPOINTS_MAX : cJSON_GetArraySize(points);
+                    for (int j = 0; j < (*keypoints)[i].points_num; j++)
+                    {
+                        cJSON *point = cJSON_GetArrayItem(points, j);
+                        if (point != NULL)
+                        {
+                            (*keypoints)[i].points[j].x = get_int_from_array(point, 0);
+                            (*keypoints)[i].points[j].y = get_int_from_array(point, 1);
+                            (*keypoints)[i].points[j].z = 0;
+                            (*keypoints)[i].points[j].score = get_int_from_array(point, 2);
+                            (*keypoints)[i].points[j].target = get_int_from_array(point, 3);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return ret;
+}
+
+esp_err_t sscma_utils_copy_keypoints_from_reply(const sscma_client_reply_t *reply, sscma_client_keypoint_t *keypoints, int max_keypoints, int *num_keypoints)
+{
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(reply != NULL, ESP_ERR_INVALID_ARG, TAG, "reply is NULL");
+    ESP_RETURN_ON_FALSE(keypoints != NULL, ESP_ERR_INVALID_ARG, TAG, "keypoints is NULL");
+    ESP_RETURN_ON_FALSE(num_keypoints != NULL, ESP_ERR_INVALID_ARG, TAG, "num_keypoints is NULL");
+    ESP_RETURN_ON_FALSE(cJSON_IsObject(reply->payload), ESP_ERR_INVALID_ARG, TAG, "reply is not object");
+
+    *num_keypoints = 0;
+
+    cJSON *data = cJSON_GetObjectItem(reply->payload, "data");
+    if (data != NULL)
+    {
+        cJSON *keypoints_data = cJSON_GetObjectItem(data, "keypoints");
+        if (keypoints_data == NULL)
+            return ESP_OK;
+        *num_keypoints = cJSON_GetArraySize(keypoints_data) > max_keypoints ? max_keypoints : cJSON_GetArraySize(keypoints_data);
+
+        for (int i = 0; i < *num_keypoints; i++)
+        {
+            cJSON *item = cJSON_GetArrayItem(keypoints_data, i);
+            if (item != NULL)
+            {
+                cJSON *box = cJSON_GetArrayItem(item, 0);
+                cJSON *points = cJSON_GetArrayItem(item, 1);
+                if (box != NULL && points != NULL)
+                {
+                    keypoints[i].box.x = get_int_from_array(box, 0);
+                    keypoints[i].box.y = get_int_from_array(box, 1);
+                    keypoints[i].box.w = get_int_from_array(box, 2);
+                    keypoints[i].box.h = get_int_from_array(box, 3);
+                    keypoints[i].box.score = get_int_from_array(box, 4);
+                    keypoints[i].box.target = get_int_from_array(box, 5);
+                    keypoints[i].points_num = cJSON_GetArraySize(points) > SSCMA_CLIENT_MODEL_KEYPOINTS_MAX ? SSCMA_CLIENT_MODEL_KEYPOINTS_MAX : cJSON_GetArraySize(points);
+                    for (int j = 0; j < keypoints[i].points_num; j++)
+                    {
+                        cJSON *point = cJSON_GetArrayItem(points, j);
+                        if (point != NULL)
+                        {
+                            keypoints[i].points[j].x = get_int_from_array(point, 0);
+                            keypoints[i].points[j].y = get_int_from_array(point, 1);
+                            keypoints[i].points[j].z = 0;
+                            keypoints[i].points[j].score = get_int_from_array(point, 2);
+                            keypoints[i].points[j].target = get_int_from_array(point, 3);
+                        }
+                    }
+                }
             }
         }
     }

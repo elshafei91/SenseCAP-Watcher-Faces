@@ -135,7 +135,7 @@ void display_one_image(lv_obj_t *image, const unsigned char *p_data)
         {
             lv_img_set_src(image, &img_dsc);
 
-            //esp_lcd_panel_draw_bitmap(lcd_panel, 0, 0, IMG_HEIGHT, IMG_WIDTH, img_dsc.data);
+            // esp_lcd_panel_draw_bitmap(lcd_panel, 0, 0, IMG_HEIGHT, IMG_WIDTH, img_dsc.data);
 
 #if EXAMPLE_SAVE_IMAGE_TO_SD
             static char file_name[50];
@@ -212,6 +212,41 @@ void on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, v
         }
         free(classes);
     }
+
+    sscma_client_point_t *points = NULL;
+    int point_count = 0;
+    if (sscma_utils_fetch_points_from_reply(reply, &points, &point_count) == ESP_OK)
+    {
+        if (point_count > 0)
+        {
+            for (int i = 0; i < point_count; i++)
+            {
+                printf("[point %d]: x=%d, y=%d, z=%d, score=%d, target=%d\n", i, points[i].x, points[i].y, points[i].z, points[i].score, points[i].target);
+            }
+        }
+        free(points);
+    }
+
+    sscma_client_keypoint_t *keypoints = NULL;
+    int keypoints_count = 0;
+    if (sscma_utils_fetch_keypoints_from_reply(reply, &keypoints, &keypoints_count) == ESP_OK)
+    {
+        if (keypoints_count > 0)
+        {
+            for (int i = 0; i < keypoints_count; i++)
+            {
+                printf("[keypoint %d]: [x=%d, y=%d, w=%d, h=%d, score=%d, target=%d]\n", i, keypoints[i].box.x, keypoints[i].box.y, keypoints[i].box.w, keypoints[i].box.h, keypoints[i].box.score,
+                    keypoints[i].box.target);
+                for (int j = 0; j < keypoints[i].points_num; j++)
+                {
+                    printf("\t [point %d]: [x=%d, y=%d, z=%d, score=%d, target=%d]\n", j, keypoints[i].points[j].x, keypoints[i].points[j].y, keypoints[i].points[j].z, keypoints[i].points[j].score,
+                        keypoints[i].points[j].target);
+                }
+            }
+        }
+        free(keypoints);
+    }
+
     return;
 }
 
@@ -316,7 +351,12 @@ void app_main(void)
     sscma_client_set_sensor(client, 1, 1, true);
     vTaskDelay(50 / portTICK_PERIOD_MS);
 
-    if (sscma_client_sample(client, -1) != ESP_OK)
+    // if (sscma_client_sample(client, -1) != ESP_OK)
+    // {
+    //     printf("sample failed\n");
+    // }
+
+    if (sscma_client_invoke(client, -1, false, true) != ESP_OK)
     {
         printf("sample failed\n");
     }

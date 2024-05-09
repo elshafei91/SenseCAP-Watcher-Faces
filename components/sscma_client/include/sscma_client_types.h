@@ -13,6 +13,9 @@
 
 #include "esp_io_expander.h"
 
+#define SSCMA_CLIENT_MODEL_MAX_CLASSES   80
+#define SSCMA_CLIENT_MODEL_KEYPOINTS_MAX 80
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,18 +58,19 @@ typedef struct
 
 typedef struct
 {
-    int id;             /* !< ID */
-    int size;           /* !< Size */
-    char *uuid;         /* !< UUID */
-    char *name;         /*!< Name */
-    char *ver;          /*!< Version */
-    char *category;     /*!< Category */
-    char *algorithm;    /*!< Algorithm */
-    char *description;  /*!< Description */
-    char *classes[80];  /*!< Classes */
-    char *token;        /*!< Token */
-    char *url;          /*!< URL */
-    char *manufacturer; /*!< Manufacturer */
+    int id;                                        /* !< ID */
+    int size;                                      /* !< Size */
+    char *uuid;                                    /* !< UUID */
+    char *name;                                    /*!< Name */
+    char *ver;                                     /*!< Version */
+    char *type;                                    /*!< Type */
+    char *category;                                /*!< Category */
+    char *algorithm;                               /*!< Algorithm */
+    char *description;                             /*!< Description */
+    char *classes[SSCMA_CLIENT_MODEL_MAX_CLASSES]; /*!< Classes */
+    char *token;                                   /*!< Token */
+    char *url;                                     /*!< URL */
+    char *manufacturer;                            /*!< Manufacturer */
 } sscma_client_model_t;
 
 typedef struct
@@ -102,6 +106,13 @@ typedef struct
     uint8_t score;
     uint8_t target;
 } sscma_client_point_t;
+
+typedef struct
+{
+    sscma_client_box_t box;
+    uint8_t points_num;
+    sscma_client_point_t points[SSCMA_CLIENT_MODEL_KEYPOINTS_MAX];
+} sscma_client_keypoint_t;
 
 /**
  * @brief Callback function of SCCMA client
