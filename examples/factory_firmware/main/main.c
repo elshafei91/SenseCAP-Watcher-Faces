@@ -23,7 +23,6 @@
 #include "app_cmd.h"
 #include "app_sensecraft.h"
 #include "app_tasklist.h"
-#include "app_sscma_client.h"
 #include "app_sensecap_https.h"
 #include "app_mqtt_client.h"
 #include "app_taskengine.h"
@@ -112,7 +111,6 @@ int app_init(void)
     app_taskengine_init();
     app_rgb_init();
     app_sensecraft_init();
-    app_sscma_client_init();
     app_mqtt_client_init();
     app_sensecap_https_init();
     app_device_status_monitor_init();
