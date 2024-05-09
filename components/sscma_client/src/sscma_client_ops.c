@@ -1096,6 +1096,37 @@ esp_err_t sscma_client_get_confidence_threshold(sscma_client_handle_t client, in
     return ret;
 }
 
+esp_err_t sscma_client_set_model_info(sscma_client_handle_t client, const char *model_info)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply;
+    size_t length = 0;
+    static char cmd[4000] = { 0 };
+    ESP_RETURN_ON_FALSE(model_info != NULL, ESP_ERR_INVALID_ARG, TAG, "model_info is NULL");
+
+    snprintf(cmd, sizeof(cmd), CMD_PREFIX CMD_AT_INFO CMD_SET "\"");
+
+    if (mbedtls_base64_encode((unsigned char *)&cmd[strlen(cmd)], sizeof(cmd) - strlen(cmd) - CMD_SUFFIX_LEN, &length, (const unsigned char *)model_info, strlen(model_info)) != 0)
+    {
+        ESP_LOGE(TAG, "mbedtls_base64_encode failed %d %d", sizeof(cmd) - strlen(cmd) - CMD_SUFFIX_LEN, length);
+        return ESP_ERR_NO_MEM;
+    }
+
+    // already restricted to 4000
+    strcat(cmd, "\"" CMD_SUFFIX);
+
+    ESP_RETURN_ON_ERROR(sscma_client_request(client, cmd, &reply, true, CMD_WAIT_DELAY), TAG, "request set model info failed");
+
+    if (reply.payload != NULL)
+    {
+        int code = get_int_from_object(reply.payload, "code");
+        ret = SSCMA_CLIENT_CMD_ERROR_CODE(code);
+        sscma_client_reply_clear(&reply);
+    }
+
+    return ret;
+}
+
 esp_err_t sscma_utils_fetch_boxes_from_reply(const sscma_client_reply_t *reply, sscma_client_box_t **boxes, int *num_boxes)
 {
     esp_err_t ret = ESP_OK;

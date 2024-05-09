@@ -270,6 +270,15 @@ esp_err_t sscma_client_set_confidence_threshold(sscma_client_handle_t client, in
 esp_err_t sscma_client_get_confidence_threshold(sscma_client_handle_t client, int *threshold);
 
 /**
+ * @brief Set model info
+ * @param[in] client SCCMA client handle
+ * @param[in] model_info model info
+ * @return
+ *          - ESP_OK on success
+ */
+esp_err_t sscma_client_set_model_info(sscma_client_handle_t client, const char *model_info);
+
+/**
  * Fetch boxes and classes from sscma client reply
  * @param[in] reply sscma client reply
  * @param[out] boxes sscma client boxes
