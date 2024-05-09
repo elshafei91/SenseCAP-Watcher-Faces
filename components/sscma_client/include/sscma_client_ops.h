@@ -288,7 +288,7 @@ esp_err_t sscma_utils_fetch_boxes_from_reply(const sscma_client_reply_t *reply, 
  * @return
  *    - ESP_OK
  */
-esp_err_t sscma_utils_prase_boxes_from_reply(const sscma_client_reply_t *reply, sscma_client_box_t *boxes, int max_boxes, int *num_boxes);
+esp_err_t sscma_utils_copy_boxes_from_reply(const sscma_client_reply_t *reply, sscma_client_box_t *boxes, int max_boxes, int *num_boxes);
 
 /**
  * Fetch classes from sscma client reply
@@ -309,7 +309,7 @@ esp_err_t sscma_utils_fetch_classes_from_reply(const sscma_client_reply_t *reply
  * @return
  *    - ESP_OK
  */
-esp_err_t sscma_utils_prase_classes_from_reply(const sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes);
+esp_err_t sscma_utils_copy_classes_from_reply(const sscma_client_reply_t *reply, sscma_client_class_t *classes, int max_classes, int *num_classes);
 
 /**
  * Fetch image from sscma client reply
@@ -330,7 +330,7 @@ esp_err_t sscma_utils_fetch_image_from_reply(const sscma_client_reply_t *reply, 
  * @return
  *    - ESP_OK
  */
-esp_err_t sscma_utils_prase_image_from_reply(const sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size);
+esp_err_t sscma_utils_copy_image_from_reply(const sscma_client_reply_t *reply, char *image, int max_image_size, int *image_size);
 
 /**
  * Start ota
