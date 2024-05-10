@@ -31,6 +31,7 @@ int view_alarm_init(lv_obj_t *ui_screen)
     lv_obj_set_height(ui_alarm_indicator, 412);
     lv_obj_set_align(ui_alarm_indicator, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);     /// Flags
+    lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_arc_set_value(ui_alarm_indicator, 100);
     lv_arc_set_bg_angles(ui_alarm_indicator, 0, 360);
     lv_obj_set_style_arc_color(ui_alarm_indicator, lv_color_hex(0x4040FF), LV_PART_MAIN | LV_STATE_DEFAULT);
