@@ -18,7 +18,6 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_x(ui_wifip1, 0);
     lv_obj_set_y(ui_wifip1, -50);
     lv_obj_set_align(ui_wifip1, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_wifip1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_wifip1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -72,6 +71,7 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_x(ui_wifip2, 0);
     lv_obj_set_y(ui_wifip2, -50);
     lv_obj_set_align(ui_wifip2, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_wifip2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_wifip2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_wifip2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
