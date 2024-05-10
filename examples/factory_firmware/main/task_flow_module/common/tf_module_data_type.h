@@ -20,6 +20,7 @@ enum {
     TF_DATA_TYPE_FLOAT32,
     TF_DATA_TYPE_FLOAT64,
     TF_DATA_TYPE_BUFFER,
+    TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE,
 };
 
 typedef struct {
@@ -27,21 +28,6 @@ typedef struct {
     uint8_t *p_data;
     uint32_t len;
 } tf_buffer_t;
-
-struct tf_data_image
-{
-    uint8_t *p_buf;
-    uint32_t len;
-    time_t   time;
-};
-
-typedef struct tf_data_images
-{
-    uint8_t  type;
-    struct tf_data_image img_small;
-    struct tf_data_image img_large;
-    //todo add inference data ?
-} tf_data_images_t;
 
 #ifdef __cplusplus
 }
