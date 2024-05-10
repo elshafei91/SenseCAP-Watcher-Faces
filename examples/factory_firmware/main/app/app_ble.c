@@ -5,6 +5,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "esp_system.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -106,7 +108,7 @@ struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = { [PROFILE_WATCHER_APP_I
 //  watcher service property
 esp_gatt_char_prop_t watcher_write_property = 0;
 esp_gatt_char_prop_t watcher_read_property = 1;
-
+void ble_config_layer(void);
 static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 //  tool function
@@ -581,6 +583,8 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             break;
         case ESP_GATTS_CONNECT_EVT: {
             ble_status = BLE_CONNECTED;
+            bool status = true;
+            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, &status, 1, portMAX_DELAY);
             AT_command_reg();
             esp_ble_conn_update_params_t conn_params = { 0 };
             memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
@@ -601,6 +605,8 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             AT_command_free();
             esp_ble_gap_start_advertising(&adv_params);
             ble_status = BLE_DISCONNECTED;
+            bool status = false;
+            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, &status, 1, portMAX_DELAY);
             break;
         case ESP_GATTS_CONF_EVT:
             ESP_LOGI(GATTS_TAG, "ESP_GATTS_CONF_EVT, status %d attr_handle %d", param->conf.status, param->conf.handle);
@@ -669,15 +675,14 @@ esp_err_t app_ble_init(void)
     }
     ESP_ERROR_CHECK(ret);
 #endif
+    
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
-
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     ret = esp_bt_controller_init(&bt_cfg);
     if (ret)
     {
         ESP_LOGE(GATTS_TAG, "%s initialize controller failed: %s", __func__, esp_err_to_name(ret));
     }
-
     ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
     if (ret)
     {
@@ -720,6 +725,8 @@ esp_err_t app_ble_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     AT_cmd_init();
+    xTaskCreate(ble_config_layer, "ble_config_layer", 1024, NULL, 2, NULL);
+    
 #ifdef DEBUG_AT_CMD
     // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
 #endif
@@ -737,7 +744,54 @@ void app_ble_deinit(void)
 
 void app_ble_start(void)
 {
-    app_ble_init();
+    esp_err_t ret;
+    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    ret = esp_bt_controller_init(&bt_cfg);
+    if (ret)
+    {
+        ESP_LOGE(GATTS_TAG, "%s initialize controller failed: %s", __func__, esp_err_to_name(ret));
+    }
+    ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
+    if (ret)
+    {
+        ESP_LOGE(GATTS_TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
+    }
+
+    ret = esp_bluedroid_init();
+    if (ret)
+    {
+        ESP_LOGE(GATTS_TAG, "%s init bluetooth failed: %s", __func__, esp_err_to_name(ret));
+    }
+    ret = esp_bluedroid_enable();
+    if (ret)
+    {
+        ESP_LOGE(GATTS_TAG, "%s enable bluetooth failed: %s", __func__, esp_err_to_name(ret));
+    }
+
+    ret = esp_ble_gatts_register_callback(gatts_event_handler);
+    if (ret)
+    {
+        ESP_LOGE(GATTS_TAG, "gatts register error, error code = %x", ret);
+    }
+    ret = esp_ble_gap_register_callback(gap_event_handler);
+    if (ret)
+    {
+        ESP_LOGE(GATTS_TAG, "gap register error, error code = %x", ret);
+    }
+    ret = esp_ble_gatts_app_register(PROFILE_WATCHER_APP_ID);
+    if (ret)
+    {
+        ESP_LOGE(GATTS_TAG, "gatts app register error, error code = %x", ret);
+    }
+    if (ret)
+    {
+        ESP_LOGE(GATTS_TAG, "gatts app register error, error code = %x", ret);
+    }
+    esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
+    if (local_mtu_ret)
+    {
+        ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
+    }
     esp_ble_gap_start_advertising(&adv_params);
 }
 
@@ -760,9 +814,12 @@ void get_ble_status(int caller)
             }
             else
             {
-                bool status = true;
+                bool status = false;
                 esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, &status, 1, portMAX_DELAY);
             }
+            break;
+        }
+        case AT_CMD_CALLER: {
             break;
         }
     }
@@ -775,10 +832,11 @@ void set_ble_status(int caller, int status)
     switch (caller)
     {
         case UI_CALLER: {
-            xSemaphoreTake(ble_status_mutex, portMAX_DELAY);
+            xSemaphoreGive(ble_status_mutex);
+            vTaskDelay(1000);
             break;
         }
-        case AT_CMD_CALLER:{
+        case AT_CMD_CALLER: {
             break;
         }
     }
@@ -792,8 +850,16 @@ void ble_config_layer(void)
     }
     while (1)
     {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        if (xSemaphoreTake(ble_status_mutex, portMAX_DELAY) == pdTRUE)
+        {
+            if (ble_status == BLE_DISCONNECTED)
+            {
+                app_ble_start();
+            }
+            else if (ble_status == BLE_CONNECTED)
+            {
+                app_ble_deinit();
+            }
+        }
     }
 }
-
-
