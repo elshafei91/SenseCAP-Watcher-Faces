@@ -223,8 +223,8 @@ void ui_Page_main_screen_init(void)
     lv_obj_set_align(ui_mainb, LV_ALIGN_LEFT_MID);
     lv_obj_add_flag(ui_mainb, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
     lv_obj_clear_flag(ui_mainb, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_img_recolor(ui_mainb, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_img_recolor_opa(ui_mainb, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_img_recolor(ui_mainb, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_img_recolor_opa(ui_mainb, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_mainble = lv_img_create(ui_Devicep);
     lv_img_set_src(ui_mainble, &ui_img_ble_png);

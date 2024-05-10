@@ -17,7 +17,7 @@
 
 static const char *TAG = "view";
 
-char sn_data[19];
+char sn_data[64];
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
@@ -31,34 +31,34 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         //     // lv_obj_clear_flag(ui_wifi_status, LV_OBJ_FLAG_HIDDEN);
         //     // lv_obj_clear_flag(ui_battery_status, LV_OBJ_FLAG_HIDDEN);
         // }
-        // case VIEW_EVENT_TIME: {
-        //     ESP_LOGI(TAG, "event: VIEW_EVENT_TIME");
-            // bool time_format_24 = true;
-            // if( event_data) {
-            //     time_format_24 = *( bool *)event_data;
-            // } 
+        case VIEW_EVENT_TIME: {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_TIME");
+            bool time_format_24 = true;
+            if( event_data) {
+                time_format_24 = *( bool *)event_data;
+            } 
             
-            // time_t now = 0;
-            // struct tm timeinfo = { 0 };
-            // char *p_wday_str;
+            time_t now = 0;
+            struct tm timeinfo = { 0 };
+            char *p_wday_str;
 
-            // time(&now);
-            // localtime_r(&now, &timeinfo);
+            time(&now);
+            localtime_r(&now, &timeinfo);
             // char buf_h[3];
             // char buf_m[3];
             // char buf[6];
-            // int hour = timeinfo.tm_hour;
+            int hour = timeinfo.tm_hour;
 
-            // if( ! time_format_24 ) {
-            //     if( hour>=13 && hour<=23) {
-            //         hour = hour-12;
-            //     }
-            // }
-            // char buf1[32];
-            // lv_snprintf(buf1, sizeof(buf1), "%02d/%02d/%04d %02d:%02d",timeinfo.tm_mday, timeinfo.tm_mon+1, timeinfo.tm_year+1900, hour, timeinfo.tm_min);
-            // lv_label_set_text(ui_maintime, buf1);
-        //     break;
-        // }
+            if( ! time_format_24 ) {
+                if( hour>=13 && hour<=23) {
+                    hour = hour-12;
+                }
+            }
+            char buf1[32];
+            lv_snprintf(buf1, sizeof(buf1), "%02d:%02d",hour, timeinfo.tm_min);
+            lv_label_set_text(ui_maintime, buf1);
+            break;
+        }
 
         case VIEW_EVENT_WIFI_ST: {
             ESP_LOGI("view", "event: VIEW_EVENT_WIFI_ST");
@@ -91,10 +91,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         }
         case VIEW_EVENT_SN_CODE:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_SN_CODE");
-            
+         
             const char* _sn_data = (const char*)event_data;
-            strncpy(sn_data, _sn_data, 18);
-            sn_data[18] = '\0';
+            strncpy(sn_data, _sn_data, 64);
+            sn_data[64] = '\0';
             ESP_LOGI(TAG, "Received SN data: %s", _sn_data);
             ESP_LOGI(TAG, "sn_data: %s", sn_data);
 
@@ -112,10 +112,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             else{
                 lv_obj_set_style_img_recolor(ui_mainble, lv_color_hex(0x171515), LV_PART_MAIN | LV_STATE_DEFAULT);
             }
-
-
             break;
         }
+
+        
 
         default:
             break;
