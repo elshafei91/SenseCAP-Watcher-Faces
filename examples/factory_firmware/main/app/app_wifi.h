@@ -24,10 +24,11 @@ typedef struct {
 
 extern TaskHandle_t xTask_wifi_config_layer;  
 
+extern 
 //wifi config_sys layer API
 
 
-void set_wifi_config(wifi_config* config);
+int set_wifi_config(wifi_config* config);
 
 //wifi config_sys layer init
 void app_wifi_config_layer_init();

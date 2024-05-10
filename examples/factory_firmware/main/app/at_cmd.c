@@ -21,6 +21,7 @@
 #include "uhash.h"
 #include "at_cmd.h"
 #include "cJSON.h"
+#include "system_layer.h"
 
 #ifdef DEBUG_AT_CMD
 char *test_strings[] = { "\rAT+type1?\n", "\rAT+wifi={\"Ssid\":\"Watcher_Wifi\",\"Password\":\"12345678\"}\n",
@@ -57,7 +58,8 @@ SemaphoreHandle_t wifi_stack_semaphore;
 /*-----------------------------------*/
 
 // Data Structure process function
-void wifi_stack_semaphore_init(){
+void wifi_stack_semaphore_init()
+{
     wifi_stack_semaphore = xSemaphoreCreateMutex();
 }
 void initWiFiStack(WiFiStack *stack, int capacity)
@@ -68,7 +70,7 @@ void initWiFiStack(WiFiStack *stack, int capacity)
 }
 
 void pushWiFiStack(WiFiStack *stack, WiFiEntry entry)
-{   
+{
     // Acquire the semaphore to protect the critical section
     xSemaphoreTake(wifi_stack_semaphore, portMAX_DELAY);
 
@@ -222,8 +224,17 @@ void handle_wifi_set(char *params)
     cJSON *root = cJSON_CreateObject();
     cJSON *data = cJSON_CreateObject();
 
+    int code = 0;
+    wifi_config *config = (wifi_config *)heap_caps_malloc(sizeof(wifi_config), MALLOC_CAP_SPIRAM);
+    strncpy(config->ssid, ssid, sizeof(config->ssid) - 1);
+    config->ssid[sizeof(config->ssid) - 1] = '\0'; // Ensure null-termination
+
+    strncpy(config->password, password, sizeof(config->password) - 1);
+    config->password[sizeof(config->password) - 1] = '\0'; // Ensure null-termination
+    config->caller = AT_CMD_CALLER;
+    code = set_wifi_config(config);
     cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
-    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddNumberToObject(root, "code", code);
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "Ssid", ssid);
     cJSON_AddStringToObject(data, "Rssi", "2");
@@ -328,7 +339,7 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
     ret = regexec(&regex, test_strings, 4, matches, 0);
     if (!ret)
     {
-        printf("recv_in mache: %.*s\n", 1024, test_strings);
+        printf("recv_in match: %.*s\n", 1024, test_strings);
         char command_type[20];
         snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
 
@@ -452,7 +463,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     {
         case VIEW_EVENT_WIFI_LIST_REQ:
             p_cfg = (struct view_data_wifi_config *)event_data;
-            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) {p_cfg->ssid, "", "" });
+            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { p_cfg->ssid, "", "" });
         case VIEW_EVENT_WIFI_LIST:
             p_cfg = (struct view_data_wifi_config *)event_data;
             char *authmode_s;
@@ -473,7 +484,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             {
                 authmode_s = "NONE";
             }
-            pushWiFiStack(&wifiStack_scanned, (WiFiEntry){ p_cfg->ssid, p_cfg->rssi, authmode_s});
+            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { p_cfg->ssid, p_cfg->rssi, authmode_s });
         default:
             break;
     }

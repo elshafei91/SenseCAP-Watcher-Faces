@@ -102,9 +102,12 @@ int board_init(void)
 
 int app_init(void)
 {
-    system_layer_init();
+    
     app_wifi_init();
-    app_ble_init();
+    system_layer_init();
+    xTaskNotifyGive(xTask_wifi_config_layer);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    //app_ble_init();
     app_time_init();
     app_cmd_init();
     

@@ -155,12 +155,20 @@ static void __ip_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 TaskHandle_t xTask_wifi_config_layer;
 static int __wifi_scan()
 {
-    wifi_ap_record_t *p_ap_info = NULL;
-    uint16_t number;
-    uint16_t ap_count;
+    wifi_ap_record_t *p_ap_info = (wifi_ap_record_t *)heap_caps_malloc(5 * sizeof(wifi_ap_record_t), MALLOC_CAP_SPIRAM);
+    uint16_t number = 5;
+    uint16_t ap_count=0;
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
-    esp_wifi_scan_start(NULL, true);
+    esp_err_t ret=esp_wifi_scan_start(NULL, true);
+    if(ret!=ESP_OK)
+    {
+        ESP_LOGE(TAG, "wifi scan start failed");
+        return -1;
+    }
+    else{
+        ESP_LOGI(TAG, "wifi scan start success");
+    }
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, p_ap_info));
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
     ESP_LOGI(TAG, " scan ap cont: %d", ap_count);
@@ -414,8 +422,9 @@ static void __wifi_cfg_init(void)
     memset(&_g_wifi_cfg, 0, sizeof(_g_wifi_cfg));
 }
 
-void set_wifi_config(wifi_config *config)
+int set_wifi_config(wifi_config *config)
 {
+    int result = 0;
     switch (config->caller)
     {
         case UI_CALLER: {
@@ -424,12 +433,27 @@ void set_wifi_config(wifi_config *config)
         }
         case AT_CMD_CALLER: {
             // code
+            struct view_data_wifi_config outer_config;
+            memset(outer_config.ssid, 0, sizeof(outer_config.ssid));
+            strncpy(outer_config.ssid , config->ssid, sizeof(outer_config.ssid ) - 1);
+            outer_config.ssid[sizeof(outer_config.ssid) - 1] = '\0';
+            if(config->password != NULL){
+                outer_config.have_password=1;
+            }
+            else{
+                outer_config.have_password=0;
+            }
+            strncpy(outer_config.password, config->password,sizeof(outer_config.password) - 1);
+            outer_config.password[sizeof(outer_config.password) - 1] = '\0';
+
+            result=esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &outer_config, sizeof(struct view_data_wifi_config), portMAX_DELAY);
             break;
         }
         default: {
             break;
         }
     }
+    return result;
 }
 
 void wifi_config_layer(void *pvParameters)
@@ -437,13 +461,14 @@ void wifi_config_layer(void *pvParameters)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        ESP_LOGE(TAG, "wifi_config_layer");
         __wifi_scan();
     }
 }
 
 void app_wifi_config_layer_init()
 {
-    xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 2, NULL, 4, &xTask_wifi_config_layer);
+    xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 5, NULL, 4, &xTask_wifi_config_layer);
 }
 int app_wifi_init(void)
 {

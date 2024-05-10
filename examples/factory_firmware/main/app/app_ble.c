@@ -251,11 +251,8 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
     {
         message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
         esp_log_buffer_hex("HEX TAG2", msg_at.msg, msg_at.size);
-        esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, sizeof(msg_at), portMAX_DELAY);
+        esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, msg_at.size, portMAX_DELAY);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        free(prepare_write_env->prepare_buf);
-        prepare_write_env->prepare_buf = NULL;
-
         AT_Response msg_at_response;
         if (xQueueReceive(AT_response_queue, &msg_at_response, portMAX_DELAY) == pdTRUE)
         {
@@ -287,7 +284,8 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
                     esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx,
                         remaining_bytes, response_data + (segments * 20), false);
                 }
-
+                free(prepare_write_env->prepare_buf);
+                prepare_write_env->prepare_buf = NULL;
                 free(response_data);
             }
         }
@@ -675,7 +673,7 @@ esp_err_t app_ble_init(void)
     }
     ESP_ERROR_CHECK(ret);
 #endif
-    
+
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     ret = esp_bt_controller_init(&bt_cfg);
@@ -725,8 +723,8 @@ esp_err_t app_ble_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     AT_cmd_init();
-    xTaskCreate(ble_config_layer, "ble_config_layer", 1024, NULL, 2, NULL);
-    
+    xTaskCreate(ble_config_layer, "ble_config_layer", 4096, NULL, 2, NULL);
+
 #ifdef DEBUG_AT_CMD
     // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
 #endif
