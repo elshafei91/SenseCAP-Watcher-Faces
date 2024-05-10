@@ -725,7 +725,7 @@ esp_err_t app_ble_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     AT_cmd_init();
-    xTaskCreate(ble_config_layer, "ble_config_layer", 1024, NULL, 2, NULL);
+    xTaskCreate(ble_config_layer, "ble_config_layer", 4096, NULL, 2, NULL);
     
 #ifdef DEBUG_AT_CMD
     // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
@@ -833,7 +833,7 @@ void set_ble_status(int caller, int status)
     {
         case UI_CALLER: {
             xSemaphoreGive(ble_status_mutex);
-            vTaskDelay(1000);
+            // vTaskDelay(1000);
             break;
         }
         case AT_CMD_CALLER: {

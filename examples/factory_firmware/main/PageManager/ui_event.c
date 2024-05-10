@@ -10,6 +10,7 @@
 #include "data_defs.h"
 #include "event_loops.h"
 #include "app_device_info.h"
+#include "app_ble.h"
 #include "lv_examples.h"
 
 static const char * TAG = "ui_event:";
@@ -580,12 +581,15 @@ void setblec_cb(lv_event_t * e)
 	btn_state = lv_obj_get_state(ui_setblesw);
 	switch (btn_state)
 	{
-	case 0:
-		lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
-
-		break;
 	case 1:
 		lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
+		ESP_LOGI(TAG, "ble_btn_status: off");
+
+		break;
+	case 0:
+		lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+		ESP_LOGI(TAG, "ble_btn_status: on");
+		set_ble_status(0,1);
 		break;
 	
 	default:
