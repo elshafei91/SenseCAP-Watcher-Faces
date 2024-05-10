@@ -13,6 +13,10 @@
 #include "app_ble.h"
 #include "lv_examples.h"
 
+static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
+static int32_t vs_value;		//volume value
+static int32_t bs_value;		//brightness value
+
 static const char * TAG = "ui_event:";
 
 static void Page_ConnAPP_BLE();
@@ -100,7 +104,7 @@ void main3f_cb(lv_event_t * e)
 
 void main4c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_set_group, 12, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void main4f_cb(lv_event_t * e)
@@ -111,7 +115,7 @@ void main4f_cb(lv_event_t * e)
 
 void connc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_set_group, 12, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void arr1c_cb(lv_event_t * e)
@@ -552,7 +556,7 @@ void abbledf_cb(lv_event_t * e)
 
 void paboutc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_set_group, 12, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void setbackc_cb(lv_event_t * e)
@@ -605,9 +609,11 @@ void setrgbc_cb(lv_event_t * e)
 	{
 	case 0:
 		lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
+
 		break;
 	case 1:
 		lv_obj_clear_state(ui_setrgbsw, LV_STATE_CHECKED);
+
 		break;
 	
 	default:
@@ -623,9 +629,11 @@ void setwwc_cb(lv_event_t * e)
 	{
 	case 0:
 		lv_obj_add_state(ui_setwwsw, LV_STATE_CHECKED);
+
 		break;
 	case 1:
 		lv_obj_clear_state(ui_setwwsw, LV_STATE_CHECKED);
+		
 		break;
 	
 	default:
@@ -635,12 +643,14 @@ void setwwc_cb(lv_event_t * e)
 
 void setdownc_cb(lv_event_t * e)
 {
+	swipe_id = 0;
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
 	Page_shutdown();
 }
 
 void setfac_cb(lv_event_t * e)
 {
+	swipe_id = 1;
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
 	Page_facreset();
 }
@@ -684,7 +694,19 @@ void sliderr_cb(lv_event_t * e)
 	int32_t slider_value =  lv_slider_get_value(ui_spsilder);
 	if(slider_value>80)
 	{
-		lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_main_screen_init);
+		switch (swipe_id)
+		{
+		case 0:
+			esp_restart();
+			break;
+
+		case 1:
+			lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_main_screen_init);
+			break;
+		
+		default:
+			break;
+		}
 	}
 	lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
 	lv_obj_set_style_bg_color(ui_spsilder, lv_color_hex(0xD47C2A), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -701,7 +723,7 @@ void stbtn_cb(lv_event_t * e)
 void preset_cb(lv_event_t * e)
 {
 
-	lv_pm_open_page(g_main, ui_Page_set_group, 12, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void timebtn_cb(lv_event_t * e)
@@ -718,7 +740,6 @@ void timesc_cb(lv_event_t * e)
 
 void volvc_cb(lv_event_t * e)
 {
-	static int32_t vs_value;
 	vs_value =  lv_slider_get_value(ui_vslider);
 
 	char vs_buffer[10];
@@ -728,12 +749,11 @@ void volvc_cb(lv_event_t * e)
 
 void volre_cb(lv_event_t * e)
 {
-
+	// write volume value into nvs and post event
 }
 
 void brivc_cb(lv_event_t * e)
 {
-	static int32_t bs_value;
 	bs_value =  lv_slider_get_value(ui_bslider);
 
 	char bs_buffer[10];
@@ -743,7 +763,7 @@ void brivc_cb(lv_event_t * e)
 
 void brire_cb(lv_event_t * e)
 {
-
+	// write brightness value into nvs and post event
 }
 
 void hap_cb(lv_event_t * e)

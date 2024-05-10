@@ -31,6 +31,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         //     // lv_obj_clear_flag(ui_wifi_status, LV_OBJ_FLAG_HIDDEN);
         //     // lv_obj_clear_flag(ui_battery_status, LV_OBJ_FLAG_HIDDEN);
         // }
+        case VIEW_EVENT_BATTERY_ST:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_BATTERY_ST");
+            struct view_data_device_status * bat_st = (struct view_data_device_status *)event_data;
+            ESP_LOGI(TAG, "battery_voltage: %d", bat_st->battery_per);
+            break;
+        } 
+
         case VIEW_EVENT_TIME: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TIME");
             bool time_format_24 = true;
@@ -169,9 +176,9 @@ int view_init(void)
                                                             VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, 
                                                             __view_event_handler, NULL, NULL));  
     
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
-    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_TASKLIST_EXIST, 
-    //                                                         __view_event_handler, NULL, NULL));  
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
+                                                            __view_event_handler, NULL, NULL));  
 
     return 0;
 }
