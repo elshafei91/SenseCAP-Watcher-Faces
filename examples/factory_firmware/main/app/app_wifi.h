@@ -7,7 +7,8 @@ extern "C" {
 
 // #define  PING_TEST_IP "192.168.100.1"
 #include <stdbool.h>
-
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
  #define  PING_TEST_IP "223.5.5.5"
 
 int app_wifi_init(void);
@@ -21,15 +22,10 @@ typedef struct {
     int caller;
 } wifi_config;
 
-typedef struct{
-    bool is_connected;
-    char* ip_address;
-    int signal_strength;
-}wifi_status;   
+extern TaskHandle_t xTask_wifi_config_layer;  
 
 //wifi config_sys layer API
 
-void get_wifi_status(int caller);
 
 void set_wifi_config(wifi_config* config);
 

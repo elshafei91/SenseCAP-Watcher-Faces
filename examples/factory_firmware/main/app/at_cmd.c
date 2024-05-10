@@ -13,17 +13,19 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_event.h"
+#include "app_wifi.h"
+#include "esp_wifi.h"
+#include "event_loops.h"
+#include "data_defs.h"
 #include "portmacro.h"
 #include "uhash.h"
 #include "at_cmd.h"
 #include "cJSON.h"
 
 #ifdef DEBUG_AT_CMD
-char *test_strings[] = {
-    "\rAT+type1?\n",
-    "\rAT+wifi={\"Ssid\":\"Watcher_Wifi\",\"Password\":\"12345678\"}\n",
+char *test_strings[] = { "\rAT+type1?\n", "\rAT+wifi={\"Ssid\":\"Watcher_Wifi\",\"Password\":\"12345678\"}\n",
     "\rAT+type3\n", // Added a test string without parameters
-    NULL};
+    NULL };
 // array to hold task status
 TaskStatus_t pxTaskStatusArray[TASK_STATS_BUFFER_SIZE];
 // task number
@@ -49,26 +51,36 @@ typedef struct
     int capacity;
 } WiFiStack;
 
+static WiFiStack wifiStack_scanned;
+static WiFiStack wifiStack_connected;
+SemaphoreHandle_t wifi_stack_semaphore;
 /*-----------------------------------*/
 
 // Data Structure process function
-
+void wifi_stack_semaphore_init(){
+    wifi_stack_semaphore = xSemaphoreCreateMutex();
+}
 void initWiFiStack(WiFiStack *stack, int capacity)
 {
-    // stack->entries = (WiFiEntry*)malloc(capacity * sizeof(WiFiEntry));
     stack->entries = (WiFiEntry *)heap_caps_malloc(capacity * sizeof(WiFiEntry), MALLOC_CAP_SPIRAM);
     stack->size = 0;
     stack->capacity = capacity;
 }
 
 void pushWiFiStack(WiFiStack *stack, WiFiEntry entry)
-{
+{   
+    // Acquire the semaphore to protect the critical section
+    xSemaphoreTake(wifi_stack_semaphore, portMAX_DELAY);
+
     if (stack->size >= stack->capacity)
     {
         stack->capacity *= 2;
         stack->entries = (WiFiEntry *)realloc(stack->entries, stack->capacity * sizeof(WiFiEntry));
     }
     stack->entries[stack->size++] = entry;
+
+    // Release the semaphore to allow other tasks to access the critical section
+    xSemaphoreGive(wifi_stack_semaphore);
 }
 
 void freeWiFiStack(WiFiStack *stack)
@@ -88,13 +100,13 @@ cJSON *create_wifi_entry_json(WiFiEntry *entry)
     return wifi_json;
 }
 
-cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi,WiFiStack *stack_connected_wifi)
+cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_connected_wifi)
 {
-
     cJSON *root = cJSON_CreateObject();
     cJSON *scanned_array = cJSON_CreateArray();
     cJSON *connected_array = cJSON_CreateArray();
-    for(int i =0;i<stack_connected_wifi->size;i++){
+    for (int i = 0; i < stack_connected_wifi->size; i++)
+    {
         cJSON_AddItemToArray(connected_array, create_wifi_entry_json(&stack_connected_wifi->entries[i]));
     }
 
@@ -160,8 +172,6 @@ void AT_command_reg()
     add_command(&commands, "token=", handle_token);
     add_command(&commands, "wifitable?", handle_wifi_table);
 }
-
-
 
 void handle_type_1_command(char *params)
 {
@@ -246,21 +256,18 @@ void handle_wifi_query(char *params)
 
 void handle_wifi_table(char *params)
 {
-
-    WiFiStack wifiStack_scanned;
-    WiFiStack wifiStack_connected;
-    initWiFiStack(&wifiStack_scanned, 10);
-    initWiFiStack(&wifiStack_connected, 10);
-    pushWiFiStack(&wifiStack_connected, (WiFiEntry){"Network0_connected", "-60", "WPA"});
-    pushWiFiStack(&wifiStack_connected, (WiFiEntry){"Network1_connected", "-70", "WPA2"});
-    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network1", "-70", "WPA2"});
-    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network2", "-80", "WEP"});
-    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network3", "-90", "WPA"});
-    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network4", "-100", "WPA2"});
-    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network5", "-110", "WPA"});
-    pushWiFiStack(&wifiStack_scanned, (WiFiEntry){"Network6", "-120", "WPA2"});
-    cJSON* json = create_wifi_stack_json(&wifiStack_scanned,&wifiStack_connected);
-    char* json_str = cJSON_Print(json);
+    xTaskNotifyGive(xTask_wifi_config_layer);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network0_connected", "-60", "WPA" });
+    // pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network1_connected", "-70", "WPA2" });
+    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network1", "-70", "WPA2" });
+    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network2", "-80", "WEP" });
+    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network3", "-90", "WPA" });
+    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network4", "-100", "WPA2" });
+    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network5", "-110", "WPA" });
+    pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+    cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
+    char *json_str = cJSON_Print(json);
 
     AT_Response response = create_at_response(json_str);
     printf("JSON String: %s\n", json_str);
@@ -270,7 +277,6 @@ void handle_wifi_table(char *params)
 
 void handle_token(char *params)
 {
-
     printf("Handling token command\n");
 }
 
@@ -324,16 +330,12 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
     {
         printf("recv_in mache: %.*s\n", 1024, test_strings);
         char command_type[20];
-        snprintf(command_type, sizeof(command_type), "%.*s",
-                 (int)(matches[1].rm_eo - matches[1].rm_so),
-                 test_strings + matches[1].rm_so);
+        snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
 
         char params[100] = "";
         if (matches[3].rm_so != -1)
         {
-            snprintf(params, sizeof(params), "%.*s",
-                     (int)(matches[3].rm_eo - matches[3].rm_so),
-                     test_strings + matches[3].rm_so);
+            snprintf(params, sizeof(params), "%.*s", (int)(matches[3].rm_eo - matches[3].rm_so), test_strings + matches[3].rm_so);
         }
         char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
         exec_command(&commands, command_type, params, query_type);
@@ -355,12 +357,7 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
 
 void init_event_loop_and_task(void)
 {
-    esp_event_loop_args_t loop_args = {
-        .queue_size = 20,
-        .task_name = "task_AT_command",
-        .task_priority = uxTaskPriorityGet(NULL),
-        .task_stack_size = 2048 * 2,
-        .task_core_id = tskNO_AFFINITY};
+    esp_event_loop_args_t loop_args = { .queue_size = 20, .task_name = "task_AT_command", .task_priority = uxTaskPriorityGet(NULL), .task_stack_size = 2048 * 2, .task_core_id = tskNO_AFFINITY };
 
     ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &at_event_loop_handle));
 
@@ -423,14 +420,15 @@ AT_Response create_at_response(const char *message)
 }
 
 void AT_cmd_init()
-{   
+{
     create_AT_response_queue();
     init_AT_response_semaphore();
+    wifi_stack_semaphore_init();
     init_event_loop_and_task();
-
-    //command data struct initialization
-    //initWiFiStack(&wifiStack, 10);
-
+    initWiFiStack(&wifiStack_scanned, 10);
+    initWiFiStack(&wifiStack_connected, 10);
+    // command data struct initialization
+    // initWiFiStack(&wifiStack, 10);
 }
 void AT_command_free()
 {
@@ -441,14 +439,45 @@ void AT_command_free()
         free(current_command);               // Free the memory allocated for the entry
     }
 
-    //data struct free
-    //free(json_str);
-    //freeWiFiStack(&wifiStack);
+    // data struct free
+    // free(json_str);
+    // freeWiFiStack(&wifiStack);
 }
+
+// event_handle
+static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+{
+    switch (id)
+    {
+        case VIEW_EVENT_WIFI_LIST:
+            struct view_data_wifi_st *p_cfg = (struct view_data_wifi_config *)event_data;
+            char *authmode_s;
+            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+            if (p_cfg->authmode == WIFI_AUTH_WEP)
+            {
+                authmode_s = "WEP";
+            }
+            else if (p_cfg->authmode == WIFI_AUTH_WPA_PSK)
+            {
+                authmode_s = "WPA_PSK";
+            }
+            else if (p_cfg->authmode == WIFI_AUTH_WPA2_PSK)
+            {
+                authmode_s = "WPA2_PSK";
+            }
+            else
+            {
+                authmode_s = "NONE";
+            }
+            pushWiFiStack(&wifiStack_scanned, (WiFiEntry){ p_cfg->ssid, p_cfg->rssi, authmode_s});
+        default:
+            break;
+    }
+}
+
 #ifdef DEBUG_AT_CMD
 void vTaskMonitor(void *para)
 {
-
     while (1)
     {
         //  get the number of tasks
@@ -466,15 +495,13 @@ void vTaskMonitor(void *para)
         // output the task status
         for (x = 0; x < uxArraySize; x++)
         {
-            printf("Task %s:\n\tState: %u\n\tPriority: %u\n\tStack High Water Mark: %lu\n",
-                   pxTaskStatusArray[x].pcTaskName,
-                   pxTaskStatusArray[x].eCurrentState,
-                   pxTaskStatusArray[x].uxCurrentPriority,
-                   pxTaskStatusArray[x].usStackHighWaterMark);
+            printf("Task %s:\n\tState: %u\n\tPriority: %u\n\tStack High Water Mark: %lu\n", pxTaskStatusArray[x].pcTaskName, pxTaskStatusArray[x].eCurrentState, pxTaskStatusArray[x].uxCurrentPriority,
+                pxTaskStatusArray[x].usStackHighWaterMark);
         }
 
         // wait for 5 seconds
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
+
 #endif
