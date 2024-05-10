@@ -54,9 +54,7 @@ static void set_obj_style_focused(lv_obj_t * obj, lv_obj_t * obj_text)
 
 void startload_cb(lv_event_t * e)
 {
-	lv_obj_t * lottie = lv_rlottie_create_from_file(lv_scr_act(), 150, 150, "/spiffs/test_1.json");
-    lv_obj_center(lottie);
-	// _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_Vir_screen_init);
+	_ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_Vir_screen_init);
 }
 
 void virtualp_cb(lv_event_t * e)
@@ -95,11 +93,11 @@ void main3c_cb(lv_event_t * e)
 	// lv_scr_load_anim(rlottie_screen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 50, false);
 
 	// lv_obj_t * lottie = lv_rlottie_create_from_file(rlottie_screen, 100, 100, "/spiffs/lottie_pikachu.json");
-	lv_obj_t * lottie = lv_rlottie_create_from_file(lv_scr_act(), 100, 100,
-                                                    "lvgl/examples/libs/rlottie/lv_example_rlottie_approve.json");
+	// lv_obj_t * lottie = lv_rlottie_create_from_file(lv_scr_act(), 100, 100,
+    //                                                 "lvgl/examples/libs/rlottie/lv_example_rlottie_approve.json");
     // lv_rlottie_set_current_frame(lottie, 20);
 	// lv_rlottie_set_play_mode(lottie, LV_RLOTTIE_CTRL_PLAY | LV_RLOTTIE_CTRL_BACKWARD | LV_RLOTTIE_CTRL_LOOP);
-    lv_obj_center(lottie);
+    // lv_obj_center(lottie);
 
 	// lv_obj_t * label = lv_label_create(rlottie_screen);
     // lv_label_set_text(label, "Rlottie is not installed");
@@ -796,8 +794,7 @@ static void Page_ConnAPP_BLE()
 
 	lv_obj_t * qr = lv_qrcode_create(ui_conn_QR, 160, fg_color, bg_color);
 
-	const char * data = "w1:2CF7F1C244810047B047D1D58BC7F8FB:1:1000205:114993002224800072";
-    lv_qrcode_update(qr, data, strlen(data));
+    lv_qrcode_update(qr, sn_data, strlen(sn_data));
     lv_obj_center(qr);
 }
 

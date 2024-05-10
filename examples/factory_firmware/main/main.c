@@ -105,8 +105,8 @@ int app_init(void)
     system_layer_init();
     app_wifi_init();
     app_ble_init();
-    // app_time_init();
-    // app_cmd_init();
+    app_time_init();
+    app_cmd_init();
     
     // tasklist_init();
     // app_taskengine_init();
