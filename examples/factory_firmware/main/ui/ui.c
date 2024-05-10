@@ -95,12 +95,14 @@ lv_obj_t * ui_arrow2;
 // SCREEN: ui_Page_Wifi
 void ui_Page_Wifi_screen_init(void);
 lv_obj_t * ui_Page_Wifi;
-lv_obj_t * ui_wifip;
+lv_obj_t * ui_wifip1;
 lv_obj_t * ui_wifiicon;
 lv_obj_t * ui_wifissid;
 void ui_event_wifichange(lv_event_t * e);
 lv_obj_t * ui_wifichange;
 lv_obj_t * ui_wifibtnt;
+lv_obj_t * ui_wifip2;
+lv_obj_t * ui_wifissid2;
 void ui_event_wificancel(lv_event_t * e);
 lv_obj_t * ui_wificancel;
 
@@ -171,7 +173,6 @@ lv_obj_t * ui_livbtn1;
 lv_obj_t * ui_liv1;
 void ui_event_livbtn2(lv_event_t * e);
 lv_obj_t * ui_livbtn2;
-lv_obj_t * ui_localarm2;
 lv_obj_t * ui_viewlivp2;
 lv_obj_t * ui_livt;
 

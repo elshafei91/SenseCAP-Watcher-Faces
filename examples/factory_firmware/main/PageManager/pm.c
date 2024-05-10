@@ -14,6 +14,7 @@ lv_obj_t *ui_Page_main_group[4];
 lv_obj_t *ui_Page_template_group[7];
 lv_obj_t *ui_Page_set_group[12];
 lv_obj_t *group_view[2];
+lv_obj_t *group_ha[1];
 // lv_obj_t *group_dev[5];
 
 void lv_pm_init(void)
@@ -57,6 +58,8 @@ void lv_pm_init(void)
 
     group_view[0] = ui_Page_ViewAva;
     group_view[1] = ui_Page_ViewLive;
+
+    group_ha[0] = ui_Page_HA;
 
 
     // group_dev[0] = ui_dnt2;

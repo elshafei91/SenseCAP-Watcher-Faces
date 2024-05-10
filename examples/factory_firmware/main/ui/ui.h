@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#include "lvgl.h"
+#include "lvgl/lvgl.h"
 
 #include "ui_helpers.h"
 #include "components/ui_comp.h"
@@ -94,12 +94,14 @@ extern lv_obj_t * ui_arrow2;
 // SCREEN: ui_Page_Wifi
 void ui_Page_Wifi_screen_init(void);
 extern lv_obj_t * ui_Page_Wifi;
-extern lv_obj_t * ui_wifip;
+extern lv_obj_t * ui_wifip1;
 extern lv_obj_t * ui_wifiicon;
 extern lv_obj_t * ui_wifissid;
 void ui_event_wifichange(lv_event_t * e);
 extern lv_obj_t * ui_wifichange;
 extern lv_obj_t * ui_wifibtnt;
+extern lv_obj_t * ui_wifip2;
+extern lv_obj_t * ui_wifissid2;
 void ui_event_wificancel(lv_event_t * e);
 extern lv_obj_t * ui_wificancel;
 // SCREEN: ui_Page_nwifi
@@ -158,7 +160,6 @@ extern lv_obj_t * ui_livbtn1;
 extern lv_obj_t * ui_liv1;
 void ui_event_livbtn2(lv_event_t * e);
 extern lv_obj_t * ui_livbtn2;
-extern lv_obj_t * ui_localarm2;
 extern lv_obj_t * ui_viewlivp2;
 extern lv_obj_t * ui_livt;
 // SCREEN: ui_Page_LocTask
@@ -337,7 +338,7 @@ LV_IMG_DECLARE(ui_img_extension_png);    // assets\extension.png
 LV_IMG_DECLARE(ui_img_335953020);    // assets\extension-2.png
 LV_IMG_DECLARE(ui_img_setting_png);    // assets\setting.png
 LV_IMG_DECLARE(ui_img_setting_f_png);    // assets\setting_f.png
-LV_IMG_DECLARE(ui_img_wifi_disconnect_png);    // assets\wifi_disconnect.png
+LV_IMG_DECLARE(ui_img_wifi_nonnet_png);    // assets\wifi_nonnet.png
 LV_IMG_DECLARE(ui_img_battery_5_png);    // assets\battery_5.png
 LV_IMG_DECLARE(ui_img_ble_png);    // assets\ble.png
 LV_IMG_DECLARE(ui_img_button_cancel_png);    // assets\button_cancel.png
@@ -370,7 +371,7 @@ LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets\wifi_3.png
 LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_gesture_d_png);
 LV_IMG_DECLARE(ui_img_human_d_png);
-LV_IMG_DECLARE(ui_img_wifi_nonnet_png);
+LV_IMG_DECLARE(ui_img_wifi_disconnect_png);
 
 LV_FONT_DECLARE(ui_font_Font1);
 LV_FONT_DECLARE(ui_font_fontbold26);

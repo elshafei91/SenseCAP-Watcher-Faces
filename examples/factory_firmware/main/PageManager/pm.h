@@ -11,6 +11,7 @@ extern lv_obj_t *ui_Page_template_group[7];
 extern lv_obj_t *ui_Page_set_group[12];
 
 extern lv_obj_t *group_view[2];
+extern lv_obj_t *group_ha[1];
 // extern lv_obj_t *group_dev[5];
 
 typedef struct
