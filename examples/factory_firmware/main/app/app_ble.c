@@ -778,6 +778,9 @@ void set_ble_status(int caller, int status)
             xSemaphoreTake(ble_status_mutex, portMAX_DELAY);
             break;
         }
+        case AT_CMD_CALLER:{
+            break;
+        }
     }
 }
 

@@ -447,10 +447,14 @@ void AT_command_free()
 // event_handle
 static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
+    struct view_data_wifi_st *p_cfg;
     switch (id)
     {
+        case VIEW_EVENT_WIFI_LIST_REQ:
+            p_cfg = (struct view_data_wifi_config *)event_data;
+            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) {p_cfg->ssid, "", "" });
         case VIEW_EVENT_WIFI_LIST:
-            struct view_data_wifi_st *p_cfg = (struct view_data_wifi_config *)event_data;
+            p_cfg = (struct view_data_wifi_config *)event_data;
             char *authmode_s;
             pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
             if (p_cfg->authmode == WIFI_AUTH_WEP)
