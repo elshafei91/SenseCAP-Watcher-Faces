@@ -10,6 +10,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "esp_wifi.h"
 #include "cJSON.h"
 
 #include "sscma_client_types.h"
@@ -40,6 +41,7 @@ struct view_data_wifi_st
     bool   is_network;  //is connect network
     char   ssid[32];
     int8_t rssi;
+    wifi_auth_mode_t authmode;
 };
 
 
@@ -215,7 +217,7 @@ enum {
 
     VIEW_EVENT_SN_CODE,
     VIEW_EVENT_BLE_STATUS,
-
+    
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
     VIEW_EVENT_WIFI_CONNECT,    // struct view_data_wifi_config

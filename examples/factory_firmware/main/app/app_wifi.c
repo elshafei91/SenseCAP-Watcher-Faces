@@ -21,6 +21,7 @@
 #include "data_defs.h"
 #include "event_loops.h"
 #include "system_layer.h"
+#include "at_cmd.h"
 
 #define WIFI_CONFIG_LAYER_STACK_SIZE 10240
 #define WIFI_CONNECTED_BIT           BIT0
@@ -151,8 +152,11 @@ static void __ip_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     }
 }
 
-static int __wifi_scan(wifi_ap_record_t *p_ap_info, uint16_t number)
+TaskHandle_t xTask_wifi_config_layer;
+static int __wifi_scan()
 {
+    wifi_ap_record_t *p_ap_info = NULL;
+    uint16_t number;
     uint16_t ap_count;
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -161,9 +165,17 @@ static int __wifi_scan(wifi_ap_record_t *p_ap_info, uint16_t number)
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
     ESP_LOGI(TAG, " scan ap cont: %d", ap_count);
 
+    struct view_data_wifi_st wifi_table_element;
     for (int i = 0; (i < number) && (i < ap_count); i++)
     {
         ESP_LOGI(TAG, "SSID: %s, RSSI:%d, Channel: %d", p_ap_info[i].ssid, p_ap_info[i].rssi, p_ap_info[i].primary);
+        wifi_table_element.rssi = p_ap_info[i].rssi;
+        wifi_table_element.is_connected = false;
+        wifi_table_element.is_network = false;
+        wifi_table_element.is_connecting = false;
+        wifi_table_element.authmode = p_ap_info[i].authmode;
+        strcpy(wifi_table_element.ssid, (char *)p_ap_info[i].ssid); // 是否能对齐
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST, &wifi_table_element, sizeof(struct view_data_wifi_st), portMAX_DELAY);
     }
     return ap_count;
 }
@@ -402,56 +414,36 @@ static void __wifi_cfg_init(void)
     memset(&_g_wifi_cfg, 0, sizeof(_g_wifi_cfg));
 }
 
-
-
-void get_wifi_status(int caller){
-    switch (caller)
-    {
-        case UI_CALLER:{
-            // code
-            break;
-        }
-        case AT_CMD_CALLER:{
-            // code
-            break;
-        }
-        default:{
-            break;
-        }
-    }
-}
-
-
-
-void set_wifi_config(wifi_config* config){
+void set_wifi_config(wifi_config *config)
+{
     switch (config->caller)
     {
-        case UI_CALLER:{
+        case UI_CALLER: {
             // code
             break;
         }
-        case AT_CMD_CALLER:{
+        case AT_CMD_CALLER: {
             // code
             break;
         }
-        default:{
+        default: {
             break;
         }
     }
-
 }
 
-
-void wifi_config_layer(void) {
-    while(1){
-            
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
+void wifi_config_layer(void *pvParameters)
+{
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        __wifi_scan();
     }
 }
 
-
-void app_wifi_config_layer_init(){
-       xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 *2, NULL, 10, NULL);
+void app_wifi_config_layer_init()
+{
+    xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 2, NULL, 4, &xTask_wifi_config_layer);
 }
 int app_wifi_init(void)
 {
@@ -462,7 +454,6 @@ int app_wifi_init(void)
     __wifi_cfg_init();
 
     xTaskCreate(&__app_wifi_task, "__app_wifi_task", 1024 * 5, NULL, 10, NULL);
- 
 
     // StaticTask_t wifi_config_layer_task_buffer;
     // StackType_t *wifi_config_layer_stack_buffer = heap_caps_malloc(WIFI_CONFIG_LAYER_STACK_SIZE * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
@@ -502,8 +493,17 @@ int app_wifi_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, __view_event_handler, NULL, NULL));
 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST, __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST_REQ, __view_event_handler, NULL, NULL));
+
     wifi_config_t wifi_cfg;
+    struct view_data_wifi_st wifi_table_element_connected;
+
     esp_wifi_get_config(WIFI_IF_STA, &wifi_cfg);
+    // wifi_table_element_connected.= wifi_cfg.sta.password;
+    strcpy(wifi_table_element_connected.ssid, (char *)wifi_cfg.sta.ssid);
+    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST_REQ, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
 
     if (strlen((const char *)wifi_cfg.sta.ssid))
     {
