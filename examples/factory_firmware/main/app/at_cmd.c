@@ -38,22 +38,10 @@ uint32_t ulTotalRunTime;
 // Data Structure
 /*-----------------------------------*/
 // wifi table
-typedef struct
-{
-    char *ssid;
-    char *rssi;
-    char *encryption;
-} WiFiEntry;
 
-typedef struct
-{
-    WiFiEntry *entries;
-    int size;
-    int capacity;
-} WiFiStack;
 
-static WiFiStack wifiStack_scanned;
-static WiFiStack wifiStack_connected;
+
+
 SemaphoreHandle_t wifi_stack_semaphore;
 /*-----------------------------------*/
 
@@ -267,8 +255,9 @@ void handle_wifi_query(char *params)
 
 void handle_wifi_table(char *params)
 {
+    initWiFiStack(&wifiStack_scanned, 6);
     xTaskNotifyGive(xTask_wifi_config_layer);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
     // pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network0_connected", "-60", "WPA" });
     // pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network1_connected", "-70", "WPA2" });
     // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network1", "-70", "WPA2" });
@@ -284,6 +273,7 @@ void handle_wifi_table(char *params)
     printf("JSON String: %s\n", json_str);
     send_at_response(&response);
     printf("Handling wifi table command\n");
+    freeWiFiStack(&wifiStack_scanned);
 }
 
 void handle_token(char *params)

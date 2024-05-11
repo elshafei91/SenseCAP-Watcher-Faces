@@ -84,6 +84,15 @@ void init_event_loop_and_task(void);
 
 void AT_cmd_init();
 
+
+
+
+
+void pushWiFiStack(WiFiStack *stack, WiFiEntry entry);
+void freeWiFiStack(WiFiStack *stack);
+void initWiFiStack(WiFiStack *stack, int capacity);
+void wifi_stack_semaphore_init();
+
 extern esp_event_base_t const AT_EVENTS;
 static const char * AT_EVENTS_TAG ="AT_EVENTS";
 #define AT_EVENTS_COMMAND_ID 0x6F

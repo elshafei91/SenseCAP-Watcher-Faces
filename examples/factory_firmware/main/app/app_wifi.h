@@ -21,15 +21,30 @@ typedef struct {
     char* security;
     int caller;
 } wifi_config;
+typedef struct
+{
+    char *ssid;
+    char *rssi;
+    char *encryption;
+} WiFiEntry;
+
+typedef struct
+{
+    WiFiEntry *entries;
+    int size;
+    int capacity;
+} WiFiStack;
+
+extern WiFiStack wifiStack_scanned;
+extern WiFiStack wifiStack_connected;
 
 extern TaskHandle_t xTask_wifi_config_layer;  
 
-extern 
 //wifi config_sys layer API
 
 
 int set_wifi_config(wifi_config* config);
-
+void wifi_scan(void);
 //wifi config_sys layer init
 void app_wifi_config_layer_init();
 
