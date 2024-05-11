@@ -39,10 +39,9 @@ uint32_t ulTotalRunTime;
 /*-----------------------------------*/
 // wifi table
 
-
-
-
 SemaphoreHandle_t wifi_stack_semaphore;
+static int network_connect_flag;
+static struct view_data_wifi_st current_connected_wifi;
 /*-----------------------------------*/
 
 // Data Structure process function
@@ -212,16 +211,49 @@ void handle_wifi_set(char *params)
     cJSON *root = cJSON_CreateObject();
     cJSON *data = cJSON_CreateObject();
 
-    int code = 0;
     wifi_config *config = (wifi_config *)heap_caps_malloc(sizeof(wifi_config), MALLOC_CAP_SPIRAM);
-    strncpy(config->ssid, ssid, sizeof(config->ssid) - 1);
-    config->ssid[sizeof(config->ssid) - 1] = '\0'; // Ensure null-termination
+    if (config == NULL)
+    {
+        ESP_LOGE("AT_CMD_CALLER", "Failed to allocate memory for wifi_config");
+        return;
+    }
 
-    strncpy(config->password, password, sizeof(config->password) - 1);
-    config->password[sizeof(config->password) - 1] = '\0'; // Ensure null-termination
+    
+    if (json_ssid && json_ssid->valuestring)
+    {
+        strncpy(config->ssid, json_ssid->valuestring, sizeof(config->ssid) - 1);
+        config->ssid[sizeof(config->ssid) - 1] = '\0'; 
+    }
+    else
+    {
+        ESP_LOGE("AT_CMD_CALLER", "Invalid JSON SSID");
+        config->ssid[0] = '\0';
+    }
+
+    if (json_password && json_password->valuestring)
+    {
+        strncpy(config->password, json_password->valuestring, sizeof(config->password) - 1);
+        config->password[sizeof(config->password) - 1] = '\0'; 
+    }
+    else
+    {
+        ESP_LOGE("AT_CMD_CALLER", "Invalid JSON Password");
+        config->password[0] = '\0';
+    }
+
     config->caller = AT_CMD_CALLER;
-    code = set_wifi_config(config);
-    cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
+
+    ESP_LOGE("AT_CMD_CALLER die01_ssid", "base:%s, memcpy:%s", json_ssid->valuestring, config->ssid);
+    ESP_LOGE("AT_CMD_CALLER die01_password", "base:%s, memcpy:%s", json_password->valuestring, config->password);
+
+    int code = ! current_connected_wifi.is_connected;  // read doc
+    set_wifi_config(config);
+    if (code != 0)
+    {
+        ESP_LOGE("AT_CMD_CALLER", "Failed to set wifi config, error code: %d", code);
+    }
+
+    cJSON_AddStringToObject(root, "name", config->ssid);
     cJSON_AddNumberToObject(root, "code", code);
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "Ssid", ssid);
@@ -238,13 +270,13 @@ void handle_wifi_query(char *params)
 {
     cJSON *root = cJSON_CreateObject();
     cJSON *data = cJSON_CreateObject();
-    // 填充 JSON 对象
+    // add json obj
     cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
-    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddNumberToObject(root, "code", network_connect_flag); // finish
     cJSON_AddItemToObject(root, "data", data);
-    cJSON_AddStringToObject(data, "Ssid", "SEEED-2.4G");
-    cJSON_AddStringToObject(data, "Rssi", "2");
-    cJSON_AddStringToObject(data, "Encryption", "WPA");
+    cJSON_AddStringToObject(data, "Ssid", current_connected_wifi.ssid);
+    cJSON_AddStringToObject(data, "Rssi", current_connected_wifi.rssi);
+    // cJSON_AddStringToObject(data, "Encryption", "WPA");
     char *json_string = cJSON_Print(root);
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
@@ -258,13 +290,6 @@ void handle_wifi_table(char *params)
     initWiFiStack(&wifiStack_scanned, 6);
     xTaskNotifyGive(xTask_wifi_config_layer);
     vTaskDelay(5000 / portTICK_PERIOD_MS);
-    // pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network0_connected", "-60", "WPA" });
-    // pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network1_connected", "-70", "WPA2" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network1", "-70", "WPA2" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network2", "-80", "WEP" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network3", "-90", "WPA" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network4", "-100", "WPA2" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network5", "-110", "WPA" });
     pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
     char *json_str = cJSON_Print(json);
@@ -446,6 +471,7 @@ void AT_command_free()
 }
 
 // event_handle
+
 static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     struct view_data_wifi_st *p_cfg;
@@ -457,7 +483,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
         case VIEW_EVENT_WIFI_LIST:
             p_cfg = (struct view_data_wifi_config *)event_data;
             char *authmode_s;
-            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+            pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network6", "-120", "WPA2" });
             if (p_cfg->authmode == WIFI_AUTH_WEP)
             {
                 authmode_s = "WEP";
@@ -474,7 +500,23 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             {
                 authmode_s = "NONE";
             }
-            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { p_cfg->ssid, p_cfg->rssi, authmode_s });
+            pushWiFiStack(&wifiStack_connected, (WiFiEntry) { p_cfg->ssid, p_cfg->rssi, authmode_s });
+        case VIEW_EVENT_WIFI_ST:
+            static bool fist = true;
+            ESP_LOGI("AT_CMD_EVENT_READ:", "event: VIEW_EVENT_WIFI_ST");
+            struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
+            if (p_st->is_network)
+            { // todo
+                current_connected_wifi.rssi = p_st->rssi;
+                strcpy(current_connected_wifi.ssid, p_st->ssid);
+                network_connect_flag = 1;
+            }
+            else
+            {
+                network_connect_flag = 0;
+            }
+            break;
+
         default:
             break;
     }

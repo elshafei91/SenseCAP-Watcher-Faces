@@ -16,8 +16,8 @@ int app_wifi_init(void);
 
 //wifi config_sys layer Data structure
 typedef struct {
-    char* ssid;
-    char* password;
+    char ssid[32];
+    char password[64];
     char* security;
     int caller;
 } wifi_config;
