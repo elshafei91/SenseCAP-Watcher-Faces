@@ -15,4 +15,10 @@ menu "Factory Firmware Example Configuration"
         default "n"
         help
             Enable debug log level for this factory firmware example project
+
+    config EXAMPLE_SKIP_COMMON_NAME_CHECK
+        bool "Skip server certificate CN fieldcheck"
+        default y
+        help
+            This allows you to skip the validation of OTA server certificate CN field.
 endmenu

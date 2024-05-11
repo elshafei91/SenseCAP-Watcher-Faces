@@ -94,8 +94,8 @@ static void __wifi_event_handler(void* arg, esp_event_base_t event_base,
             
             esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
             
-            struct view_data_wifi_connet_ret_msg msg;
-            msg.ret = 0;
+            struct view_data_wifi_connect_result_msg msg;
+            msg.result = 0;
             strcpy(msg.msg, "Connection successful");
             esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
             break;
@@ -122,8 +122,8 @@ static void __wifi_event_handler(void* arg, esp_event_base_t event_base,
                 esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
                 
                 char *p_str = "";
-                struct view_data_wifi_connet_ret_msg msg;
-                msg.ret = 0;
+                struct view_data_wifi_connect_result_msg msg;
+                msg.result = 1;
                 strcpy(msg.msg, "Connection failure");
                 esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
             }

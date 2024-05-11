@@ -30,6 +30,7 @@
 #include "app_rgb.h"
 #include "deviceinfo.h"
 #include "util.h"
+#include "app_ota.h"
 
 #include "view.h"
 
@@ -123,6 +124,7 @@ int app_init(void)
     app_mqtt_client_init();
     app_sensecap_https_init();
     app_device_status_monitor_init();
+    app_ota_init();
 
     // app_sr_start(false);
 

@@ -253,7 +253,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     //wifi connection state changed
     case VIEW_EVENT_WIFI_ST:
     {
-        static bool fist = true;
         ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_ST");
         struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
         if (p_st->is_network)
