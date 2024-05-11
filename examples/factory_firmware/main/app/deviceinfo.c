@@ -68,6 +68,7 @@ static void __deviceinfo_task(void *p_arg)
             g_device_status.battery_per = batnow;
             //mqtt pub
             app_mqtt_client_report_device_status(&g_device_status);
+            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
         }
     }
 }

@@ -31,14 +31,13 @@ images/ui_img_extension_png.c
 images/ui_img_335953020.c
 images/ui_img_setting_png.c
 images/ui_img_setting_f_png.c
-images/ui_img_wifi_disconnect_png.c
+images/ui_img_wifi_nonnet_png.c
 images/ui_img_battery_5_png.c
 images/ui_img_ble_png.c
 images/ui_img_button_cancel_png.c
 images/ui_img_arrow_png.c
 images/ui_img_wifi_4_png.c
 images/ui_img_error_png.c
-images/ui_img_gradient_png.c
 images/ui_img_template1_png.c
 images/ui_img_template1_f_png.c
 images/ui_img_template2_png.c

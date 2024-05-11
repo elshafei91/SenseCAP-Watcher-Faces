@@ -63,22 +63,6 @@ void ui_Page_ViewLive_screen_init(void)
     lv_obj_set_style_shadow_color(ui_livbtn2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_livbtn2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_localarm2 = lv_arc_create(ui_Page_ViewLive);
-    lv_obj_set_width(ui_localarm2, 412);
-    lv_obj_set_height(ui_localarm2, 412);
-    lv_obj_set_align(ui_localarm2, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_localarm2, LV_OBJ_FLAG_HIDDEN);     /// Flags
-    lv_arc_set_value(ui_localarm2, 100);
-    lv_arc_set_bg_angles(ui_localarm2, 0, 360);
-    lv_obj_set_style_arc_color(ui_localarm2, lv_color_hex(0x4040FF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_opa(ui_localarm2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    lv_obj_set_style_arc_width(ui_localarm2, 40, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_img_src(ui_localarm2, &ui_img_gradient_png, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-
-    lv_obj_set_style_bg_color(ui_localarm2, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_localarm2, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
-
     ui_viewlivp2 = lv_obj_create(ui_Page_ViewLive);
     lv_obj_set_width(ui_viewlivp2, 412);
     lv_obj_set_height(ui_viewlivp2, 412);

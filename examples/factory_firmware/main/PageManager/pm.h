@@ -8,10 +8,10 @@ extern lv_indev_t *cur_drv;
 
 extern lv_obj_t *ui_Page_main_group[4];
 extern lv_obj_t *ui_Page_template_group[7];
-extern lv_obj_t *ui_Page_set_group[12];
+extern lv_obj_t *ui_Page_set_group[11];
 
 extern lv_obj_t *group_view[2];
-// extern lv_obj_t *group_dev[5];
+extern lv_obj_t *group_ha[1];
 
 typedef struct
 {

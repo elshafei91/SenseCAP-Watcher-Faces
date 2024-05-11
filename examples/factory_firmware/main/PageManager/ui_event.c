@@ -10,7 +10,12 @@
 #include "data_defs.h"
 #include "event_loops.h"
 #include "app_device_info.h"
+#include "app_ble.h"
 #include "lv_examples.h"
+
+static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
+static int32_t vs_value;		//volume value
+static int32_t bs_value;		//brightness value
 
 static const char * TAG = "ui_event:";
 
@@ -87,21 +92,8 @@ void main2f_cb(lv_event_t * e)
 
 void main3c_cb(lv_event_t * e)
 {
-	// lv_obj_t * rlottie_screen = lv_obj_create(NULL);
-	// lv_obj_set_style_bg_color(rlottie_screen, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-
-	// lv_scr_load_anim(rlottie_screen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 50, false);
-
-	// lv_obj_t * lottie = lv_rlottie_create_from_file(rlottie_screen, 100, 100, "/spiffs/lottie_pikachu.json");
-	// lv_obj_t * lottie = lv_rlottie_create_from_file(lv_scr_act(), 100, 100,
-    //                                                 "lvgl/examples/libs/rlottie/lv_example_rlottie_approve.json");
-    // lv_rlottie_set_current_frame(lottie, 20);
-	// lv_rlottie_set_play_mode(lottie, LV_RLOTTIE_CTRL_PLAY | LV_RLOTTIE_CTRL_BACKWARD | LV_RLOTTIE_CTRL_LOOP);
-    // lv_obj_center(lottie);
-
-	// lv_obj_t * label = lv_label_create(rlottie_screen);
-    // lv_label_set_text(label, "Rlottie is not installed");
-    // lv_obj_center(label);
+	esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, NULL, 0, portMAX_DELAY);
+	// lv_pm_open_page(g_main, group_ha, 1, PM_ADD_OBJS_TO_GROUP, &ui_Page_HA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_HA_screen_init);
 }
 
 void main3f_cb(lv_event_t * e)
@@ -112,7 +104,7 @@ void main3f_cb(lv_event_t * e)
 
 void main4c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_set_group, 12, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void main4f_cb(lv_event_t * e)
@@ -123,7 +115,7 @@ void main4f_cb(lv_event_t * e)
 
 void connc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_set_group, 12, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void arr1c_cb(lv_event_t * e)
@@ -564,7 +556,7 @@ void abbledf_cb(lv_event_t * e)
 
 void paboutc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_set_group, 12, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void setbackc_cb(lv_event_t * e)
@@ -593,12 +585,15 @@ void setblec_cb(lv_event_t * e)
 	btn_state = lv_obj_get_state(ui_setblesw);
 	switch (btn_state)
 	{
-	case 0:
-		lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
-
-		break;
 	case 1:
 		lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
+		ESP_LOGI(TAG, "ble_btn_status: off");
+		set_ble_status(0,2);
+		break;
+	case 0:
+		lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+		ESP_LOGI(TAG, "ble_btn_status: on");
+		set_ble_status(0,1);
 		break;
 	
 	default:
@@ -614,9 +609,11 @@ void setrgbc_cb(lv_event_t * e)
 	{
 	case 0:
 		lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
+
 		break;
 	case 1:
 		lv_obj_clear_state(ui_setrgbsw, LV_STATE_CHECKED);
+
 		break;
 	
 	default:
@@ -632,9 +629,11 @@ void setwwc_cb(lv_event_t * e)
 	{
 	case 0:
 		lv_obj_add_state(ui_setwwsw, LV_STATE_CHECKED);
+
 		break;
 	case 1:
 		lv_obj_clear_state(ui_setwwsw, LV_STATE_CHECKED);
+		
 		break;
 	
 	default:
@@ -644,12 +643,14 @@ void setwwc_cb(lv_event_t * e)
 
 void setdownc_cb(lv_event_t * e)
 {
+	swipe_id = 0;
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
 	Page_shutdown();
 }
 
 void setfac_cb(lv_event_t * e)
 {
+	swipe_id = 1;
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
 	Page_facreset();
 }
@@ -693,7 +694,19 @@ void sliderr_cb(lv_event_t * e)
 	int32_t slider_value =  lv_slider_get_value(ui_spsilder);
 	if(slider_value>80)
 	{
-		lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_main_screen_init);
+		switch (swipe_id)
+		{
+		case 0:
+			esp_restart();
+			break;
+
+		case 1:
+			lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_main_screen_init);
+			break;
+		
+		default:
+			break;
+		}
 	}
 	lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
 	lv_obj_set_style_bg_color(ui_spsilder, lv_color_hex(0xD47C2A), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -710,7 +723,7 @@ void stbtn_cb(lv_event_t * e)
 void preset_cb(lv_event_t * e)
 {
 
-	lv_pm_open_page(g_main, ui_Page_set_group, 12, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void timebtn_cb(lv_event_t * e)
@@ -727,7 +740,6 @@ void timesc_cb(lv_event_t * e)
 
 void volvc_cb(lv_event_t * e)
 {
-	static int32_t vs_value;
 	vs_value =  lv_slider_get_value(ui_vslider);
 
 	char vs_buffer[10];
@@ -737,12 +749,11 @@ void volvc_cb(lv_event_t * e)
 
 void volre_cb(lv_event_t * e)
 {
-
+	// write volume value into nvs and post event
 }
 
 void brivc_cb(lv_event_t * e)
 {
-	static int32_t bs_value;
 	bs_value =  lv_slider_get_value(ui_bslider);
 
 	char bs_buffer[10];
@@ -752,12 +763,12 @@ void brivc_cb(lv_event_t * e)
 
 void brire_cb(lv_event_t * e)
 {
-
+	// write brightness value into nvs and post event
 }
 
 void hap_cb(lv_event_t * e)
 {
-
+	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 // Page status bundle

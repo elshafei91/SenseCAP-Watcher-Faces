@@ -207,7 +207,7 @@ void ui_Page_main_screen_init(void)
     lv_obj_set_style_text_font(ui_maintime, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_mainwifi = lv_img_create(ui_Devicep);
-    lv_img_set_src(ui_mainwifi, &ui_img_wifi_disconnect_png);
+    lv_img_set_src(ui_mainwifi, &ui_img_wifi_nonnet_png);
     lv_obj_set_width(ui_mainwifi, LV_SIZE_CONTENT);   /// 18
     lv_obj_set_height(ui_mainwifi, LV_SIZE_CONTENT);    /// 18
     lv_obj_set_align(ui_mainwifi, LV_ALIGN_CENTER);

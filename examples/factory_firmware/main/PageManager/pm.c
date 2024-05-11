@@ -12,9 +12,9 @@ lv_group_t *g_main;
 lv_indev_t *cur_drv;
 lv_obj_t *ui_Page_main_group[4];
 lv_obj_t *ui_Page_template_group[7];
-lv_obj_t *ui_Page_set_group[12];
+lv_obj_t *ui_Page_set_group[11];
 lv_obj_t *group_view[2];
-// lv_obj_t *group_dev[5];
+lv_obj_t *group_ha[1];
 
 void lv_pm_init(void)
 {
@@ -50,20 +50,15 @@ void lv_pm_init(void)
     ui_Page_set_group[5] = ui_setbri;
     ui_Page_set_group[6] = ui_setrgb;
     ui_Page_set_group[7] = ui_setww;
-    ui_Page_set_group[8] = ui_settime;
-    ui_Page_set_group[9] = ui_setdev;
-    ui_Page_set_group[10] = ui_setdown;
-    ui_Page_set_group[11] = ui_setfac;
+    ui_Page_set_group[8] = ui_setdev;
+    ui_Page_set_group[9] = ui_setdown;
+    ui_Page_set_group[10] = ui_setfac;
 
     group_view[0] = ui_Page_ViewAva;
     group_view[1] = ui_Page_ViewLive;
 
+    group_ha[0] = ui_Page_HA;
 
-    // group_dev[0] = ui_dnt2;
-    // group_dev[1] = ui_svt2;
-    // group_dev[2] = ui_snt2;
-    // group_dev[3] = ui_euit2;
-    // group_dev[4] = ui_blet2;
 
 
 #if PM_PAGE_PRINTER
@@ -89,7 +84,8 @@ void lv_pm_init(void)
     scroll_anim_enable();
 }
 
-// lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+// lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_main_screen_init);
+
 void lv_pm_open_page(lv_group_t *group, lv_obj_t *page_obj, uint8_t len, pm_operation_t operation, 
                      lv_obj_t **target, lv_scr_load_anim_t fademode, int spd, int delay, void (*target_init)(void))
 {
@@ -101,7 +97,23 @@ void lv_pm_open_page(lv_group_t *group, lv_obj_t *page_obj, uint8_t len, pm_oper
     g_page_record.g_curpage = *target;
     if (*target == NULL)
         target_init();
+
+
+#if PM_PAGE_PRINTER
+    if(g_page_record.g_prepage)
+    {
+        const char *prepage_name = lv_obj_get_user_data(g_page_record.g_prepage);
+        ESP_LOGI(TAG, "The Previous Page : %s", prepage_name);
+    }
+    if(g_page_record.g_curpage)
+    {
+        const char *curpage_name = lv_obj_get_user_data(g_page_record.g_curpage);
+        ESP_LOGI(TAG, "The Current  Page : %s", curpage_name);
+    }
+#endif
     
+
+
     switch (operation) {
         case PM_ADD_OBJS_TO_GROUP:
             if ((group != NULL) && (page_obj != NULL))
@@ -119,19 +131,6 @@ void lv_pm_open_page(lv_group_t *group, lv_obj_t *page_obj, uint8_t len, pm_oper
         lv_pm_obj_group(group, page_obj, len);
 
     lv_scr_load_anim(*target, fademode, spd, 50, false);
-
-#if PM_PAGE_PRINTER
-    if(g_page_record.g_prepage)
-    {
-        const char *prepage_name = lv_obj_get_user_data(g_page_record.g_prepage);
-        ESP_LOGI(TAG, "The Previous Page : %s", prepage_name);
-    }
-    if(g_page_record.g_curpage)
-    {
-        const char *curpage_name = lv_obj_get_user_data(g_page_record.g_curpage);
-        ESP_LOGI(TAG, "The Current  Page : %s", curpage_name);
-    }
-#endif
 }
 
 
