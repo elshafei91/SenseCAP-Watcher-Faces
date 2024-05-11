@@ -252,9 +252,9 @@ void handle_wifi_set(char *params)
     {
         ESP_LOGE("AT_CMD_CALLER", "Failed to set wifi config, error code: %d", code);
     }
-
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     cJSON_AddStringToObject(root, "name", config->ssid);
-    cJSON_AddNumberToObject(root, "code", code);
+    cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "Ssid", ssid);
     cJSON_AddStringToObject(data, "Rssi", "2");

@@ -42,7 +42,7 @@ static SemaphoreHandle_t __g_net_check_sem;
 static int s_retry_num = 0;
 static int wifi_retry_max = 3;
 static bool __g_ping_done = true;
-
+int wifi_connect_failed_reason;
 static EventGroupHandle_t __wifi_event_group;
 
 static const char *TAG = "app-wifi";
@@ -155,6 +155,9 @@ static void __ip_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 TaskHandle_t xTask_wifi_config_layer;
 WiFiStack wifiStack_scanned;
 WiFiStack wifiStack_connected;
+
+/***Already abandoned**/
+/*
 static int __wifi_scan()
 {
     wifi_ap_record_t *p_ap_info = (wifi_ap_record_t *)heap_caps_malloc(5 * sizeof(wifi_ap_record_t), MALLOC_CAP_SPIRAM);
@@ -185,12 +188,16 @@ static int __wifi_scan()
         wifi_table_element.is_network = false;
         wifi_table_element.is_connecting = false;
         wifi_table_element.authmode = p_ap_info[i].authmode;
-        strcpy(wifi_table_element.ssid, (char *)p_ap_info[i].ssid); // 是否能对齐
+        strcpy(wifi_table_element.ssid, (char *)p_ap_info[i].ssid); 
         esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST, &wifi_table_element, sizeof(struct view_data_wifi_st), portMAX_DELAY);
     }
     return ap_count;
 }
+*/
+/***************/
 
+/*----------------------------------------------------------------------------------------------------------*/
+/*add scanned wifi entry  into wifi stack*/
 static const char *print_auth_mode(int authmode)
 {
     switch (authmode)
@@ -369,6 +376,9 @@ void wifi_scan(void)
     }
 }
 
+
+/*---------------------------------------------------------------------------------------------------------*/
+/*basic wifi connect function*/
 static int __wifi_connect(const char *p_ssid, const char *p_password, int retry_num)
 {
     wifi_retry_max = retry_num; // todo
@@ -391,8 +401,11 @@ static int __wifi_connect(const char *p_ssid, const char *p_password, int retry_
 
     esp_wifi_stop();
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-
+    ESP_LOGE("CONNECT_TAG_die01","wifi_connect_failed_reason is %d",wifi_connect_failed_reason);
+    wifi_connect_failed_reason = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    ESP_LOGE("CONNECT_TAG_die02","wifi_connect_failed_reason is %d",wifi_connect_failed_reason);
+ 
+    
     _g_wifi_cfg.is_cfg = true;
 
     struct view_data_wifi_st st = { 0 };
@@ -565,6 +578,9 @@ static void __app_wifi_task(void *p_arg)
     }
 }
 
+
+/*------------------------------------------------------------------------------------------------------------*/
+/*wifi event_loop process handler*/
 static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     switch (id)
@@ -599,6 +615,9 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             break;
     }
 }
+
+/*------------------------------------------------------------------------------------------------------------*/
+
 
 static void __wifi_cfg_init(void)
 {

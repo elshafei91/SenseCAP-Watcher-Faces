@@ -1,7 +1,6 @@
 #ifndef APP_BLE_H
 #define APP_BLE_H
 
-// defination  space 
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
