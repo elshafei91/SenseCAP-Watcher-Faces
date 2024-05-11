@@ -209,7 +209,7 @@ struct view_data_setting_switch
     bool ble_sw;
     bool rgb_sw;
     bool wake_word_sw;
-}
+};
 
 extern char sn_data[66];
 /**
