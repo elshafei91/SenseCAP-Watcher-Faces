@@ -595,7 +595,10 @@ void ui_event_Page_Vir(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
-        virtualp_cb(e);
+        virtc_cb(e);
+    }
+    if(event_code == LV_EVENT_SCREEN_LOADED) {
+        virtsl_cb(e);
     }
 }
 void ui_event_Page_main(lv_event_t * e)

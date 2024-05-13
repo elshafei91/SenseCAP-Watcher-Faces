@@ -1,5 +1,5 @@
 #include "animation.h"
-#include "ui.h"
+#include "ui/ui.h"
 #include "esp_log.h"
 #include <inttypes.h>
 

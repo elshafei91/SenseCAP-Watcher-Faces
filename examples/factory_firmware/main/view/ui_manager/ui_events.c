@@ -6,7 +6,7 @@
 #include "data_defs.h"
 #include "event_loops.h"
 
-#include "ui.h"
+#include "ui/ui.h"
 #include "pm.h"
 #include "animation.h"
 
@@ -66,9 +66,14 @@ void startload_cb(lv_event_t * e)
 	_ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_Vir_screen_init);
 }
 
-void virtualp_cb(lv_event_t * e)
+void virtc_cb(lv_event_t * e)
 {
 	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+}
+
+void virtsl_cb(lv_event_t * e)
+{
+	
 }
 
 void main1c_cb(lv_event_t * e)

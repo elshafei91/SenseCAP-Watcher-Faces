@@ -11,7 +11,8 @@ extern "C" {
 #endif
 
 void startload_cb(lv_event_t * e);
-void virtualp_cb(lv_event_t * e);
+void virtc_cb(lv_event_t * e);
+void virtsl_cb(lv_event_t * e);
 void mgesup_cb(lv_event_t * e);
 void mgesdown_cb(lv_event_t * e);
 void mclick_cb(lv_event_t * e);

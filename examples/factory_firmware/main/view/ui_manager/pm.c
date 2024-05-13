@@ -1,6 +1,6 @@
 #include "pm.h"
 #include "animation.h"
-#include "ui.h"
+#include "ui/ui.h"
 #include "esp_log.h"
 #include <stdio.h>
 
@@ -84,7 +84,6 @@ void lv_pm_init(void)
     scroll_anim_enable();
 }
 
-// lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_main_screen_init);
 
 void lv_pm_open_page(lv_group_t *group, lv_obj_t *page_obj, uint8_t len, pm_operation_t operation, 
                      lv_obj_t **target, lv_scr_load_anim_t fademode, int spd, int delay, void (*target_init)(void))

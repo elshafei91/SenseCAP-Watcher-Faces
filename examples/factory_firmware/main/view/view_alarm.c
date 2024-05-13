@@ -1,5 +1,5 @@
 #include "view_alarm.h"
-#include "ui.h"
+#include "ui/ui.h"
 
 lv_obj_t *ui_alarm_text;
 lv_obj_t *ui_alarm_indicator;

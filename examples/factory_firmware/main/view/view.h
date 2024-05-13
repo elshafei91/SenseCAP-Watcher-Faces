@@ -3,7 +3,7 @@
 
 #include "data_defs.h"
 #include "lvgl.h"
-#include "ui.h"
+#include "ui/ui.h"
 
 #ifdef __cplusplus
 extern "C" {
