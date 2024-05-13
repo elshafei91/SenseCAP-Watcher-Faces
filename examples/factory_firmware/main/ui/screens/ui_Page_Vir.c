@@ -17,5 +17,4 @@ void ui_Page_Vir_screen_init(void)
     lv_obj_align(img, LV_ALIGN_RIGHT_MID, -20, 0);
 
     lv_obj_add_event_cb(ui_Page_Vir, ui_event_Page_Vir, LV_EVENT_ALL, NULL);
-
 }
