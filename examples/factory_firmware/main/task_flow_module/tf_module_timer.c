@@ -1,4 +1,5 @@
 #include "tf_module_timer.h"
+#include "tf_module_util.h"
 #include <string.h>
 #include <time.h>
 #include "tf.h"
@@ -23,12 +24,13 @@ static void __timer_callback(void* p_arg)
 
     ESP_LOGI(TAG, "timer[%d]: %s", p_module_ins->id, buf);
 
+    tf_data_buffer_t buf_data;
+    struct tf_data_buf buf_temp;
+    buf_temp.p_buf = (uint8_t *)buf;
+    buf_temp.len = len;
+    buf_data.type = TF_DATA_TYPE_BUFFER;
     for(int i = 0; i < p_module_ins->output_evt_num; i++) {
-        tf_buffer_t buf_data;
-        buf_data.type = TF_DATA_TYPE_BUFFER;
-        buf_data.p_data = tf_malloc(len);  //next module use and then free
-        buf_data.len = len;
-        memcpy(buf_data.p_data, buf, len);
+        tf_data_buf_copy(&buf_data.data, &buf_temp);  //next module use and then free
         tf_event_post(p_module_ins->p_output_evt_id[i], &buf_data, sizeof(buf_data),portMAX_DELAY);
     }
 }

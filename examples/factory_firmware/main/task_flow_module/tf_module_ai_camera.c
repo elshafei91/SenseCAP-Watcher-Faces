@@ -7,6 +7,7 @@
 #include "esp_check.h"
 #include "sscma_client_io.h"
 #include "sscma_client_ops.h"
+#include "tf_module_util.h"
 
 static const char *TAG = "tfm.ai_camera";
 
@@ -26,58 +27,10 @@ static void __data_unlock( tf_module_ai_camera_t *p_module)
     xSemaphoreGive(p_module->sem_handle);  
 }
 
-static void __image_copy(struct tf_data_image *p_dst, struct tf_data_image *p_src)
-{
-    p_dst->len  = p_src->len;
-    p_dst->time = p_src->time;
-    if( p_src->p_buf != NULL &&  p_src->len > 0) {
-        p_dst->p_buf = tf_malloc(p_src->len);
-        memcpy(p_dst->p_buf, p_src->p_buf, p_src->len);
-    } else {
-        p_dst->p_buf = NULL;
-        p_dst->len  = 0;
-    }
-}
-static void __image_free(struct tf_data_image *p_data)
-{
-    p_data->len  = 0;
-    p_data->time  = 0;
-    if( p_data->p_buf != NULL) {
-        tf_free(p_data->p_buf);
-    }
-    p_data->p_buf = NULL;
-}
-
-static void __inference_copy(struct tf_module_ai_camera_inference_info *p_dst, struct tf_module_ai_camera_inference_info *p_src)
-{
-    p_dst->is_valid = p_src->is_valid;
-    p_dst->type     = p_src->type;
-    p_dst->cnt      = p_src->cnt;
-    if( p_src->p_data != NULL && p_src->cnt > 0) {
-        p_dst->p_data = tf_malloc(sizeof(void *) * p_src->cnt);
-        memcpy(p_dst->p_data, p_src->p_data, sizeof(void *) * p_src->cnt);
-    } else {
-        p_dst->p_data = NULL;
-        p_dst->cnt    = 0;
-    }
-    memcpy(p_dst->classes, p_src->classes, sizeof(p_dst->classes));
-}
-
-static void __inference_free(struct tf_module_ai_camera_inference_info *p_inference)
-{
-    if( p_inference->p_data != NULL) {
-        tf_free(p_inference->p_data);
-    }
-    p_inference->p_data   = NULL;
-    p_inference->cnt      = 0;
-    p_inference->is_valid = false;
-    p_inference->type     = AI_CAMERA_INFERENCE_TYPE_UNKNOWN;
-}
-
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)handler_args;
-    tf_module_data_type_err_handle(p_event_data);
+    tf_data_free(p_event_data);
     
     if (p_module_ins->params.shutter != TF_MODULE_AI_CAMERA_SHUTTER_TRIGGER_BY_INPUT) {
         return;
@@ -443,8 +396,8 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                     xEventGroupSetBits(p_module_ins->event_group, TF_MODULE_AI_CAMERA_EVENT_SIMPLE_640_480);
 
                     //save to preview_info_cache
-                    __image_copy(&p_module_ins->preview_info_cache.img, &info.img);
-                    __inference_copy(&p_module_ins->preview_info_cache.inference, &info.inference);
+                    tf_data_image_copy(&p_module_ins->preview_info_cache.img, &info.img);
+                    tf_data_inference_copy(&p_module_ins->preview_info_cache.inference, &info.inference);
 
                 } else {
                     
@@ -454,8 +407,8 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                     p_module_ins->output_data.img_large.time = 0;
                     for (int i = 0; i < p_module_ins->output_evt_num; i++)
                     {
-                        __image_copy(&p_module_ins->output_data.img_small, &info.img);
-                        __inference_copy(&p_module_ins->output_data.inference, &info.inference);
+                        tf_data_image_copy(&p_module_ins->output_data.img_small, &info.img);
+                        tf_data_inference_copy(&p_module_ins->output_data.inference, &info.inference);
                         tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), portMAX_DELAY);
                     }
 
@@ -485,15 +438,15 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
             p_module_ins->output_data.type = TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE;
             for (int i = 0; i < p_module_ins->output_evt_num; i++)
             {
-                __image_copy(&p_module_ins->output_data.img_large, &img_large);
-                __image_copy(&p_module_ins->output_data.img_small, &p_module_ins->preview_info_cache.img);
-                __inference_copy(&p_module_ins->output_data.inference, &p_module_ins->preview_info_cache.inference);
+                tf_data_image_copy(&p_module_ins->output_data.img_large, &img_large);
+                tf_data_image_copy(&p_module_ins->output_data.img_small, &p_module_ins->preview_info_cache.img);
+                tf_data_inference_copy(&p_module_ins->output_data.inference, &p_module_ins->preview_info_cache.inference);
                 tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), portMAX_DELAY);
             }
 
-            __image_free(&img_large);
-            __image_free(&p_module_ins->preview_info_cache.img);
-            __inference_free(&p_module_ins->preview_info_cache.inference);
+            tf_data_image_free(&img_large);
+            tf_data_image_free(&p_module_ins->preview_info_cache.img);
+            tf_data_inference_free(&p_module_ins->preview_info_cache.inference);
 
             xEventGroupSetBits(p_module_ins->event_group, TF_MODULE_AI_CAMERA_EVENT_PRVIEW_416_416);
             break;

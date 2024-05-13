@@ -1,4 +1,5 @@
 #include "tf_module_debug.h"
+#include "tf_module_util.h"
 #include <string.h>
 #include "tf.h"
 #include "tf_util.h"
@@ -12,20 +13,17 @@ static const char *TAG = "tfm.debug";
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_debug_t *p_module_ins = (tf_module_debug_t *)handler_args;
-    
-    tf_buffer_t * p_buf = (tf_buffer_t *)p_event_data;
-    if( p_buf->type == TF_DATA_TYPE_BUFFER ) {
-        if( p_buf->p_data != NULL ) {
-            printf("len:%d, data:%s",p_buf->len, p_buf->p_data); //use
-            free(p_buf->p_data); // todo need fresh before free?
-            p_buf->p_data = NULL;
-        } else {
-            ESP_LOGW(TAG, "string data is NULL");
-        }
-    } else {
-        ESP_LOGW(TAG, "must be %s", tf_module_data_type_to_str(p_buf->type));
-        tf_module_data_type_err_handle(p_event_data);
+    uint8_t type = ((uint8_t *)p_event_data)[0];
+    if( type !=  TF_DATA_TYPE_BUFFER ) {
+        ESP_LOGW(TAG, "unsupport type %d", type);
+        tf_data_free(p_event_data);
+        return;
     }
+    tf_data_buffer_t * p_buf = (tf_data_buffer_t *)p_event_data;
+    if( p_buf->data.p_buf != NULL ) {
+        printf("len:%d, data:%s", p_buf->data.len , p_buf->data.p_buf); //use
+    }
+    tf_data_free(p_event_data);
 }
 
 /*************************************************************************

@@ -1,7 +1,6 @@
 
 #pragma once
 #include "tf_module.h"
-#include "tf_module_util.h"
 #include "tf_module_data_type.h"
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
@@ -27,15 +26,15 @@ extern "C"
 
 #define TF_MODULE_IMG_ANALYZER_SERV_TYPE_SENSECRAFT   0
 #define TF_MODULE_IMG_ANALYZER_SERV_TYPE_PROXY        1
-
+ 
 #define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST       "http://172.22.1.107:8810"
 #define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH   "/v1/watcher/vision"
 
 struct tf_module_img_analyzer_params
 {
+    int type;
     char *p_prompt;
     char *p_audio_txt;
-    int type;
 };
 
 struct tf_module_img_analyzer_config
@@ -47,11 +46,20 @@ struct tf_module_img_analyzer_config
 
 struct tf_module_img_analyzer_result
 {
-    int status;
-    char *p_audio;
-    char *p_img;
+    int type;
+    int status;       //alarm status
+    struct tf_data_image img;
+    struct tf_data_buf   audio;
 };
 
+typedef struct tf_data_dualimage_with_audio_text
+{
+    uint8_t type; //TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT
+    struct tf_data_image img_small;
+    struct tf_data_image img_large;
+    struct tf_data_buf   audio;
+    struct tf_data_buf   text;
+} tf_data_dualimage_with_audio_text_t;
 
 typedef struct tf_module_img_analyzer
 {
@@ -68,6 +76,8 @@ typedef struct tf_module_img_analyzer
     StaticTask_t *p_task_buf;
     StackType_t *p_task_stack_buf;
     char url[256];
+    char token[128];
+    char head[128];
 } tf_module_img_analyzer_t;
 
 tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins);

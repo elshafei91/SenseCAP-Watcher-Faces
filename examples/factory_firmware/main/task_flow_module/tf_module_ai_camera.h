@@ -1,6 +1,5 @@
 #pragma once
 #include "tf_module.h"
-#include "tf_module_util.h"
 #include "tf_module_data_type.h"
 #include "esp_err.h"
 #include "sensecap-watcher.h"
@@ -131,7 +130,6 @@ struct tf_module_ai_camera_params
 #define CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM       20
 
 
-
 enum tf_module_ai_camera_inference_type {
     AI_CAMERA_INFERENCE_TYPE_UNKNOWN = 0,
     AI_CAMERA_INFERENCE_TYPE_BOX,    //sscma_client_box_t
@@ -139,11 +137,6 @@ enum tf_module_ai_camera_inference_type {
     AI_CAMERA_INFERENCE_TYPE_POINT   //sscma_client_point_t
 };
 
-// union tf_module_ai_camera_inference_data  {
-//     sscma_client_box_t   *p_box;
-//     sscma_client_class_t *p_class;
-//     sscma_client_point_t *p_point;
-// };
 
 struct tf_module_ai_camera_inference_info
 {
@@ -154,12 +147,6 @@ struct tf_module_ai_camera_inference_info
     char *classes[CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM];
 };
 
-struct tf_data_image
-{
-    uint8_t *p_buf;
-    uint32_t len;
-    time_t   time;
-};
 
 struct tf_module_ai_camera_preview_info
 {

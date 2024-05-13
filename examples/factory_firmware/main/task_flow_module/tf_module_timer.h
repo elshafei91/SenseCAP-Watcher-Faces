@@ -1,7 +1,6 @@
 
 #pragma once
 #include "tf_module.h"
-#include "tf_module_util.h"
 #include "tf_module_data_type.h"
 #include "esp_err.h"
 #include "esp_timer.h"

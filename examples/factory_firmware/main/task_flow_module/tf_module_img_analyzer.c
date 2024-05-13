@@ -1,4 +1,5 @@
 #include "tf_module_img_analyzer.h"
+#include "tf_module_util.h"
 #include <string.h>
 #include "tf.h"
 #include "tf_util.h"
@@ -29,7 +30,34 @@ static void __parmas_default(struct tf_module_img_analyzer_params *p_params)
 }
 static int __params_parse(struct tf_module_img_analyzer_params *p_params, cJSON *p_json)
 {
-    //TODO
+    cJSON *json_body = cJSON_GetObjectItem(p_json, "body");
+    if (json_body != NULL && cJSON_IsObject(json_body)) {
+
+        cJSON *json_prompt = cJSON_GetObjectItem(json_body, "prompt");
+        if (json_prompt != NULL && cJSON_IsString(json_prompt) && (json_prompt->valuestring != NULL)) {
+            p_params->p_prompt = (char *)tf_malloc(strlen(json_prompt->valuestring) + 1);
+            if (p_params->p_prompt != NULL) {
+                strcpy(p_params->p_prompt, json_prompt->valuestring);
+            }
+        } else {
+            p_params->p_prompt = NULL;
+        }
+
+        cJSON *json_audio_txt = cJSON_GetObjectItem(json_body, "audio_txt");
+        if (json_audio_txt != NULL && cJSON_IsString(json_audio_txt) && (json_audio_txt->valuestring != NULL)) {
+            p_params->p_audio_txt = (char *)tf_malloc(strlen(json_audio_txt->valuestring) + 1);
+            if (p_params->p_audio_txt != NULL) {
+                strcpy(p_params->p_audio_txt, json_audio_txt->valuestring);
+            }
+        } else {
+            p_params->p_prompt = NULL;
+        }
+
+        cJSON *json_type = cJSON_GetObjectItem(json_body, "type");
+        if (json_type != NULL && cJSON_IsNumber(json_type)) {
+            p_params->type = json_type->valueint;
+        }
+    }
     return 0;
 }
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
@@ -38,12 +66,12 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     uint8_t type = ((uint8_t *)p_event_data)[0];
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE ) {
         ESP_LOGW(TAG, "unsupport type %d", type);
-        tf_module_data_free(p_event_data);
+        tf_data_free(p_event_data);
         return;
     }
     if( xQueueSend(p_module_ins->queue_handle, p_event_data, portMAX_DELAY) != pdTRUE) {
         ESP_LOGW(TAG, "xQueueSend failed");
-        tf_module_data_free(p_event_data);
+        tf_data_free(p_event_data);
     }
 }
 static char *__request( const char *url,
@@ -66,8 +94,14 @@ static char *__request( const char *url,
 
     // set header
     esp_http_client_set_header(client, "Content-Type", content_type);
-    esp_http_client_set_header(client, "Authorization", token);
+
+    if( token !=NULL && strlen(token) > 0 ) {
+        esp_http_client_set_header(client, "Authorization", token);
+    }
+
     // TODO other headers set
+    // if( head != NULL && strlen(head) > 0 ) {   
+    // }
 
     ret = esp_http_client_open(client, len);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "Failed to open client!");
@@ -86,7 +120,9 @@ static char *__request( const char *url,
     ESP_LOGD(TAG, "content_length=%d", content_length);
     ESP_GOTO_ON_FALSE(content_length >= 0, ESP_FAIL, err, TAG, "HTTP client fetch headers failed!");
 
-    result = (char *)tf_malloc(content_length + 1); //TODO
+    result = (char *)tf_malloc(content_length + 1);
+    ESP_GOTO_ON_FALSE(NULL != result, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc:%d", content_length+1);
+
     int read = esp_http_client_read_response(client, result, content_length);
     if (read != content_length)
     {
@@ -109,19 +145,29 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
                                 tf_data_dualimage_with_inference_t   *p_data,
                                 struct tf_module_img_analyzer_result *p_result)
 {
+    int ret = 0;
     struct tf_module_img_analyzer_params *p_params = &p_module_ins->params;
     char *p_str = NULL;
     cJSON *json = NULL;
     char *json_str = NULL;
     char *p_resp = NULL;
+    char *p_img = NULL;
 
     json = cJSON_CreateObject();
 
     p_str = "";
     if(p_data->img_large.p_buf != NULL) {
-        p_str = (char *)p_data->img_large.p_buf; // TODO 
+        p_img = tf_malloc(p_data->img_large.len + 1); // To be optimized
+        if( p_img != NULL ) {
+            memcpy(p_img, p_data->img_large.p_buf, p_data->img_large.len);
+            p_img[p_data->img_large.len] = "\0";
+            p_str = p_img;
+        }
     }
     cJSON_AddItemToObject(json, "img", cJSON_CreateString(p_str));
+    if( p_img ) {
+        tf_free(p_img);
+    }
 
     p_str = "";
     if( p_params->p_prompt ) {
@@ -142,9 +188,9 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
 
     p_resp = __request(p_module_ins->url, 
                        HTTP_METHOD_POST, 
-                       NULL, //TODO 
+                       p_module_ins->token,
                        "application/json",
-                       NULL, 
+                       p_module_ins->head, 
                        (uint8_t *)json_str, strlen(json_str));
     free(json_str);
 
@@ -161,6 +207,7 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
         return -1;
     }
 
+    ret = -1;
     cJSON *code = cJSON_GetObjectItem(json, "code");
     if (code != NULL && cJSON_IsNumber(code) && code->valueint == 200) {
 
@@ -174,48 +221,110 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
                 p_result->status = 0;
             }
 
-            cJSON *json_audio = cJSON_GetObjectItem(json_data, "audio");
-            if (json_audio != NULL && cJSON_IsString(json_audio) ) {
-                p_result->p_audio = json_audio->valuestring; //TODO
+            cJSON *json_type = cJSON_GetObjectItem(json_data, "type");
+            if ( json_type != NULL && cJSON_IsNumber(json_state)) {
+                p_result->type = json_type->valueint;
             } else {
-                p_result->p_audio = NULL;
+                p_result->type = p_params->type;
             }
 
+            p_result->audio.p_buf = NULL;
+            p_result->audio.len   = 0;
+            cJSON *json_audio = cJSON_GetObjectItem(json_data, "audio");
+            if (json_audio != NULL && cJSON_IsString(json_audio) ) {
+                size_t output_len = 0;
+                uint8_t *p_audio = NULL;
+                int decode_ret = mbedtls_base64_decode(NULL, 0, &output_len, \
+                                    (uint8_t *)json_audio->valuestring, strlen(json_audio->valuestring));
+                if( decode_ret == 0 && output_len > 0 ) {
+                    uint8_t *p_audio = (uint8_t *)tf_malloc( output_len);
+                    if( p_audio != NULL ) {
+                        decode_ret = mbedtls_base64_decode(p_audio, output_len, &output_len, \
+                            (uint8_t *)json_audio->valuestring, strlen(json_audio->valuestring));
+                        if( decode_ret == 0){
+                            p_result->audio.p_buf = p_audio;
+                            p_result->audio.len   = output_len;
+                        } else {
+                            tf_free(p_audio);
+                            ESP_LOGE(TAG, "base64 decode failed");
+                        }
+                    }
+                }
+            }
+
+            p_result->img.p_buf = NULL;
+            p_result->img.len   = 0;
             cJSON *json_img = cJSON_GetObjectItem(json_data, "img");
             if ( json_img != NULL && cJSON_IsString(json_img)) {
-                p_result->p_img = json_img->valuestring; //TODO
-            } else {
-                p_result->p_img = NULL;
+                uint8_t *p_img = (uint8_t *)tf_malloc( strlen(json_img->valuestring) );
+                if( p_img ) {
+                    memcpy(p_img, json_img->valuestring, strlen(json_img->valuestring));
+                    p_result->img.p_buf = p_img;
+                    p_result->img.len   = strlen(json_img->valuestring);
+                    p_result->img.time  = p_data->img_large.time;
+                }
             }
+            ret = 0; //success
         }
     } else {
-        ESP_LOGE(TAG, "code: %d", code->valueint); //TODO
+        if( code != NULL ) {
+            ESP_LOGE(TAG, "code: %d", code->valueint);
+        }
     }
 
     tf_free(p_resp);
     cJSON_Delete(json);
-    return 0;
+    return ret;
 }
 
 static void img_analyzer_task(void *p_arg)
 {
+    int ret = 0;
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)p_arg;
     struct tf_module_img_analyzer_params *p_params = &p_module_ins->params;
     tf_data_dualimage_with_inference_t data;
     struct tf_module_img_analyzer_result result;
+    tf_data_dualimage_with_audio_text_t output_data;
     while(1) {
         
         if (EVENT_NEED_DELETE && xEventGroupGetBits(p_module_ins->event_group)) {
             while (xQueueReceive(p_module_ins->queue_handle, &data,0) == pdPASS ) {
-                tf_module_data_free((void *)&data); //clear queue
+                tf_data_free((void *)&data); //clear queue
             }
             xEventGroupSetBits(p_module_ins->event_group, EVENT_TASK_DELETED);
             vTaskDelete(p_module_ins->task_handle);
             vTaskDelete(NULL);
         }
         if(xQueueReceive(p_module_ins->queue_handle, &data, ( TickType_t ) 10 ) == pdPASS ) {
-            int ret = __https_upload_image(p_module_ins, &data, &result);
-            //TODO
+            memset( &result, 0, sizeof(result) );
+            ret = __https_upload_image(p_module_ins, &data, &result);
+            if( ret == 0) {
+                // output
+                ESP_LOGI(TAG, "img_analyzer result: %d", result.status);
+                if( result.type == TF_MODULE_IMG_ANALYZER_TYPE_RECOGNIZE || result.status == 1) {
+                    output_data.type = TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT;
+                    struct tf_data_buf   text;
+                    text.p_buf = (uint8_t *)p_params->p_audio_txt;
+                    text.p_buf = strlen(p_params->p_audio_txt) + 1; // add \0 
+                    for (int i = 0; i < p_module_ins->output_evt_num; i++) {
+                        if( result.img.p_buf) {
+                            tf_data_image_copy(&output_data.img_small, &result.img); //use cloud image
+                        } else {
+                            tf_data_image_copy(&output_data.img_small, &data.img_small);
+                        }
+                        tf_data_image_copy(&output_data.img_large, &data.img_large);
+                        tf_data_buf_copy(&output_data.audio, &result.audio);
+                        tf_data_buf_copy(&output_data.text, &text);
+                        tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), portMAX_DELAY);
+                    }
+                    tf_data_image_free(&result.img);
+                    tf_data_buf_free(&result.audio);
+                }
+            } else {
+                ESP_LOGE(TAG, "https upload image failed");
+            }
+
+            tf_data_free((void *)&data);
         }
 
     }
@@ -249,6 +358,13 @@ static void img_analyzer_task_destroy( tf_module_img_analyzer_t *p_module_ins)
 static int __start(void *p_module)
 {
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)p_module;
+    struct tf_module_img_analyzer_params *p_params = &p_module_ins->params;
+
+    // TODO set url、token、head
+    snprintf(p_module_ins->url,sizeof(p_module_ins->url),"%s%s",CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST,CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
+    p_module_ins->token[0] = '\0';
+    p_module_ins->head[0] = '\0';
+
     xEventGroupSetBits(p_module_ins->event_group, TF_MODULE_AI_CAMERA_EVENT_STATRT);
     return 0;
 }
@@ -260,12 +376,17 @@ static int __stop(void *p_module)
     if( p_module_ins->p_output_evt_id ) {
         tf_free(p_module_ins->p_output_evt_id); 
     }
+    if( p_module_ins->params.p_audio_txt){
+        tf_free(p_module_ins->params.p_audio_txt);
+    }
+    if( p_module_ins->params.p_prompt ) {
+        tf_free(p_module_ins->params.p_prompt);
+    }
     p_module_ins->p_output_evt_id = NULL;
     p_module_ins->output_evt_num = 0;
     __data_unlock(p_module_ins);
 
     esp_err_t ret = tf_event_handler_unregister(p_module_ins->input_evt_id, __event_handler);
-
     xEventGroupSetBits(p_module_ins->event_group, TF_MODULE_AI_CAMERA_EVENT_STOP);
     return ret;
 }
