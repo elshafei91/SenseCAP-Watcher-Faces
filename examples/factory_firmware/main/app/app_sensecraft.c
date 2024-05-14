@@ -21,6 +21,7 @@
 #include "app_audio.h"
 #include "app_mqtt_client.h"
 #include "app_taskengine.h"
+#include "util.h"
 
 #include "view_image_preview.h"
 #include "ui.h"
@@ -41,6 +42,9 @@
 
 
 static const char *TAG = "app-sensecraft";
+
+static TaskHandle_t g_task;
+static StaticTask_t g_task_tcb;
 
 static struct view_data_image image_640_480;
 
@@ -349,7 +353,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     {
     case VIEW_EVENT_WIFI_ST:
     {
-        static bool fist = true;
         ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_ST");
         struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
         if (p_st->is_network)
@@ -438,7 +441,12 @@ int app_sensecraft_init(void)
     image_640_480.p_buf = (uint8_t *)malloc(IMAGE_240_240_BUF_SIZE);
     assert(image_640_480.p_buf);
 
-    xTaskCreate(__app_sensecraft_task, "app_sensecraft_task", 1024 * 5, NULL,  6, NULL);
+    const uint32_t stack_size = 4 * 1024;
+    StackType_t *task_stack = (StackType_t *)psram_alloc(stack_size);
+    g_task = xTaskCreateStatic(__app_sensecraft_task, "app_sensecraft", stack_size, NULL, 6, task_stack, &g_task_tcb);
+
+
+    // xTaskCreate(__app_sensecraft_task, "app_sensecraft", 1024 * 3, NULL,  6, NULL);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_VAD_TIMEOUT,

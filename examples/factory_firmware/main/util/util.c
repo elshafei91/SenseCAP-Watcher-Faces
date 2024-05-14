@@ -1,5 +1,7 @@
 #include <time.h>
 
+#include "esp_heap_caps.h"
+
 #include "util.h"
 
 int wifi_rssi_level_get(int rssi)
@@ -25,4 +27,9 @@ time_t util_get_timestamp_ms(void)
 	time_t now;
 	time(&now);
 	return now * 1000;
+}
+
+void *psram_alloc(size_t sz)
+{
+    return heap_caps_malloc(sz, MALLOC_CAP_SPIRAM);
 }
