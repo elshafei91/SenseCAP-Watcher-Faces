@@ -227,9 +227,11 @@ enum {
 
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
-
+                            //device_info            
     VIEW_EVENT_SN_CODE,
     VIEW_EVENT_BLE_STATUS,
+    VIEW_EVENT_SOFTWARE_VERSION_CODE,
+    VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE,
     
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL

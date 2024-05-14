@@ -9,6 +9,7 @@ extern "C" {
 #include <stdbool.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "data_defs.h"
  #define  PING_TEST_IP "223.5.5.5"
 
 int app_wifi_init(void);
@@ -47,6 +48,7 @@ int set_wifi_config(wifi_config* config);
 void wifi_scan(void);
 //wifi config_sys layer init
 void app_wifi_config_layer_init();
+void current_wifi_get(struct view_data_wifi_st *p_st);
 
 #ifdef __cplusplus
 }

@@ -454,7 +454,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                                 notify_data[i] = i % 0xff;
                             }
                             // the size of notify_data[] need less than MTU size
-                            esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(notify_data), notify_data, false);
+                            //esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(notify_data), notify_data, false);
                         }
                     }
                     else if (descr_value == 0x0002)
@@ -468,7 +468,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                                 indicate_data[i] = i % 0xff;
                             }
                             // the size of indicate_data[] need less than MTU size
-                            esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(indicate_data), indicate_data, true);
+                            //esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(indicate_data), indicate_data, true);
                         }
                     }
                     else if (descr_value == 0x0000)

@@ -66,6 +66,11 @@ static void __wifi_st_get(struct view_data_wifi_st *p_st)
     xSemaphoreGive(__g_data_mutex);
 }
 
+
+void current_wifi_get(struct view_data_wifi_st *p_st){
+    struct view_data_wifi_st st;
+    __wifi_st_get(&st);
+}
 static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     switch (event_id)
