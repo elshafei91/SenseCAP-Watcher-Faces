@@ -125,6 +125,7 @@ int app_init(void)
     app_sensecap_https_init();
     app_device_status_monitor_init();
     app_ota_init();
+    //app_ota_init();
 
     // app_sr_start(false);
 
@@ -206,6 +207,7 @@ void app_main(void)
         .task_name = "ctrl_eventloop",
         .task_priority = 7,
         .task_stack_size = 1024 + 512,
+        .task_stack_size = 1024 * 3,
         .task_core_id = 1};
     ESP_ERROR_CHECK(esp_event_loop_create(&ctrl_event_task_args, &ctrl_event_handle));
 

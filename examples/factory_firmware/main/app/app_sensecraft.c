@@ -442,7 +442,7 @@ int app_sensecraft_init(void)
     assert(image_640_480.p_buf);
 
     const uint32_t stack_size = 3 * 1024;
-    StackType_t *task_stack = (StackType_t *)psram_alloc(stack_size);
+    StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
     g_task = xTaskCreateStatic(__app_sensecraft_task, "app_sensecraft", stack_size, NULL, 6, task_stack, &g_task_tcb);
 
 

@@ -285,7 +285,7 @@ int app_sensecap_https_init(void)
     // xTaskCreate(__app_sensecap_https_task, "app_sensecap_https_task", 1024 * 5, NULL, 3, NULL);
 
     const uint32_t stack_size = 3 * 1024 + 256;
-    StackType_t *task_stack = (StackType_t *)psram_alloc(stack_size);
+    StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
     g_task = xTaskCreateStatic(__app_sensecap_https_task, "app_sensecap_https", stack_size, NULL, 3, task_stack, &g_task_tcb);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,

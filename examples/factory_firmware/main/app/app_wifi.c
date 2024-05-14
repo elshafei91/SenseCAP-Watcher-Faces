@@ -394,7 +394,7 @@ int app_wifi_init(void)
 
     __wifi_cfg_init();
     
-    xTaskCreate(&__app_wifi_task, "app_wifi", 1024 * 2, NULL, 10, NULL);
+    xTaskCreate(&__app_wifi_task, "app_wifi", 1024 * 3, NULL, 10, NULL);
 
 
     ESP_ERROR_CHECK(esp_netif_init());
