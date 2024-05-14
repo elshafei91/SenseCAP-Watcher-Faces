@@ -9,6 +9,7 @@
 #include "nvs_flash.h"
 #include "esp_app_desc.h"
 #include "cJSON.h"
+#include "esp_heap_task_info.h"
 
 #include "sensecap-watcher.h"
 
@@ -29,7 +30,12 @@
 #include "app_taskengine.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
+<<<<<<< HEAD
 #include "system_layer.h"
+=======
+#include "util.h"
+
+>>>>>>> origin/feat/factory_fw/ram_analysis
 #include "view.h"
 static const char *TAG = "app_main";
 
@@ -49,6 +55,16 @@ esp_event_loop_handle_t view_event_handle;
 
 ESP_EVENT_DEFINE_BASE(CTRL_EVENT_BASE);
 esp_event_loop_handle_t ctrl_event_handle;
+
+#ifdef CONFIG_HEAP_TASK_TRACKING
+#define MAX_TASK_NUM 30                         // Max number of per tasks info that it can store
+#define MAX_BLOCK_NUM 100                        // Max number of per block info that it can store
+
+static size_t s_prepopulated_num = 0;
+static heap_task_totals_t s_totals_arr[MAX_TASK_NUM];
+static heap_task_block_t s_block_arr[MAX_BLOCK_NUM];
+#endif
+
 
 static void *__cJSON_malloc(size_t sz)
 {
@@ -134,6 +150,39 @@ void task_app_init(void *p_arg)
     vTaskDelete(NULL);
 }
 
+#ifdef CONFIG_HEAP_TASK_TRACKING
+/**
+ * IDF v5.2.1 has issue on this, should apply https://github.com/espressif/esp-idf/commit/26160a217e3a2953fd0b2eabbde1075e3bb46941
+ * manually, we don't wanna upgrade IDF version for this only issue though.
+*/
+static void esp_dump_per_task_heap_info(void)
+{
+    heap_task_info_params_t heap_info = {0};
+    heap_info.caps[0] = MALLOC_CAP_INTERNAL;        // Gets heap with CAP_INTERNAL capabilities
+    heap_info.mask[0] = MALLOC_CAP_INTERNAL;
+    heap_info.caps[1] = MALLOC_CAP_SPIRAM;       // Gets heap info with CAP_SPIRAM capabilities
+    heap_info.mask[1] = MALLOC_CAP_SPIRAM;
+    heap_info.tasks = NULL;                     // Passing NULL captures heap info for all tasks
+    heap_info.num_tasks = 0;
+    heap_info.totals = s_totals_arr;            // Gets task wise allocation details
+    heap_info.num_totals = &s_prepopulated_num;
+    heap_info.max_totals = MAX_TASK_NUM;        // Maximum length of "s_totals_arr"
+    heap_info.blocks = s_block_arr;             // Gets block wise allocation details. For each block, gets owner task, address and size
+    heap_info.max_blocks = MAX_BLOCK_NUM;       // Maximum length of "s_block_arr"
+
+    heap_caps_get_per_task_info(&heap_info);
+
+    for (int i = 0 ; i < *heap_info.num_totals; i++) {
+        printf("Task: %s -> CAP_INTERNAL: %d CAP_SPIRAM: %d\n",
+                heap_info.totals[i].task ? pcTaskGetName(heap_info.totals[i].task) : "Pre-Scheduler allocs" ,
+                heap_info.totals[i].size[0],
+                heap_info.totals[i].size[1]);
+    }
+
+    printf("\n\n");
+}
+#endif
+
 void app_main(void)
 {
 #if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
@@ -168,31 +217,48 @@ void app_main(void)
     // app_init();
     xTaskCreatePinnedToCore(task_app_init, "task_app_init", 4096, NULL, 5, NULL, 1);
 
-    // struct view_data_wifi_config cfg;
-    // memset(&cfg, 0, sizeof(cfg));
-    // strcpy( cfg.ssid, "M2-TEST");
-    // cfg.have_password = true;
-    // strcpy( cfg.password,  "seeedrxxxs!");
-    // esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
-
-    static char buffer[254]; /* Make sure buffer is enough for `sprintf` */
+    static char buffer[512];
     while (1)
     {
-        sprintf(buffer, "   Biggest /     Free /    Total\n"
-                        "\t  DRAM : [%8d / %8d / %8d]\n"
-                        "\t  PSRAM : [%8d / %8d / %8d]\n"
-                        "\t  DMA : [%8d / %8d / %8d]",
+        sprintf(buffer, "    Biggest /  Minimum /     Free /    Total\n"
+                        "\t  DRAM : [%8d / %8d / %8d / %8d]\n"
+                        "\t  PSRAM: [%8d / %8d / %8d / %8d]\n"
+                        "\t  DMA  : [%8d / %8d / %8d / %8d]",
                 heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+                heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
                 heap_caps_get_total_size(MALLOC_CAP_INTERNAL),
                 heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+                heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM),
                 heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
                 heap_caps_get_total_size(MALLOC_CAP_SPIRAM),
                 heap_caps_get_largest_free_block(MALLOC_CAP_DMA),
+                heap_caps_get_minimum_free_size(MALLOC_CAP_DMA),
                 heap_caps_get_free_size(MALLOC_CAP_DMA),
                 heap_caps_get_total_size(MALLOC_CAP_DMA));
 
-        ESP_LOGI("MEM", "%s", buffer);
+        ESP_LOGI("MEM", "%s\n", buffer);
+
+    /**
+     * requires configuration:
+     * Component config -> Heap memory debugging -> Heap corruption detection (Light Impact)
+     * Component config -> Heap memory debugging -> Enable heap task tracking (Yes)
+    */
+#ifdef CONFIG_HEAP_TASK_TRACKING
+        vTaskDelay(pdMS_TO_TICKS(1));
+        esp_dump_per_task_heap_info();
+#endif
+
+    /**
+     * requires configuration:
+     * Component config -> FreeRTOS -> Kernel -> configUSE_TRACE_FACILITY (Yes) 
+     *                                           configUSE_STATS_FORMATTING_FUNCTIONS (Yes)
+    */
+#ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
+        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskList(buffer);
+        ESP_LOGI("task stack", "\nTask Name       Status  Prio    HWM     Task#\n%s\n", buffer);
+#endif
 
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
