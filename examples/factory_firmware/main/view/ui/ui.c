@@ -26,6 +26,7 @@ lv_obj_t * ui_startlogo;
 void ui_Page_Vir_screen_init(void);
 void ui_event_Page_Vir(lv_event_t * e);
 lv_obj_t * ui_Page_Vir;
+lv_obj_t * ui_Panel1;
 
 
 // SCREEN: ui_Page_main

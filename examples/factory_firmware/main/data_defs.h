@@ -211,6 +211,14 @@ struct view_data_setting_switch
     bool wake_word_sw;
 };
 
+#define MAX_PNG_FILES 6
+
+struct view_data_emoticon_display
+{
+    char file_names[MAX_PNG_FILES][256];
+    uint8_t file_count;
+};
+
 extern char sn_data[66];
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
@@ -228,8 +236,9 @@ enum {
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
 
-    VIEW_EVENT_SN_CODE,
-    VIEW_EVENT_BLE_STATUS,
+    VIEW_EVENT_SN_CODE,     // generate ble pairing data
+    VIEW_EVENT_BLE_STATUS,  // bool 0:ble_off; 1:ble_on
+    VIEW_EVENT_EMOTICON,    // struct view_data_emoticon_display
     
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL

@@ -31,6 +31,7 @@ extern lv_obj_t * ui_startlogo;
 void ui_Page_Vir_screen_init(void);
 void ui_event_Page_Vir(lv_event_t * e);
 extern lv_obj_t * ui_Page_Vir;
+extern lv_obj_t * ui_Panel1;
 // SCREEN: ui_Page_main
 void ui_Page_main_screen_init(void);
 void ui_event_Page_main(lv_event_t * e);
@@ -372,6 +373,7 @@ LV_IMG_DECLARE(ui_img_human_d_png);
 LV_IMG_DECLARE(ui_img_gesture_d_png);
 LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_gradient_png);
+
 
 LV_FONT_DECLARE(ui_font_Font1);
 LV_FONT_DECLARE(ui_font_fontbold26);

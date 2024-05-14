@@ -17,6 +17,29 @@ static const char *TAG = "view";
 
 char sn_data[66];
 
+// void emoticon_png_play(lv_timer_t * timer)
+// {
+//     static uint8_t file_idx;
+//     lv_obj_t *img = lv_img_create(lv_scr_act());
+//     struct view_data_emoticon_display * user_data = timer->user_data;
+//     const char *file_name = user_data->file_names[file_idx];
+//     char *file_name_with_path = (char *) heap_caps_malloc(256, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+//     if (NULL != file_name_with_path) {
+//         strcpy(file_name_with_path, "S:/spiffs/");
+//         strcat(file_name_with_path, file_name);
+
+//         /* Set src of image with file name */
+//         lv_img_set_zoom(img, 0.5);
+//         lv_img_set_src(img, file_name_with_path);
+//         file_idx++;
+//         if(file_idx==user_data->file_count){
+//             file_idx = 0;
+//         }
+//         free(file_name_with_path);
+//     }
+// }
+
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
     lvgl_port_lock(0);
@@ -132,6 +155,18 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             break;
         }
 
+        case VIEW_EVENT_EMOTICON:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_EMOTICON");
+            struct view_data_emoticon_display *emo_data = (struct view_data_emoticon_display*)event_data;
+            for (uint8_t i = 0; i < emo_data->file_count; i++)
+            {
+                ESP_LOGI(TAG, "%s", emo_data->file_names[i]);
+            }
+            // lv_timer_create(emoticon_png_play, 1000, emo_data);
+
+            break;
+        }
+
         default:
             break;
     }
@@ -177,6 +212,10 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                                                             __view_event_handler, NULL, NULL));  
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_EMOTICON, 
+                                                            __view_event_handler, NULL, NULL));
 
     return 0;
 }

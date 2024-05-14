@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "data_defs.h"
 #include "event_loops.h"
+#include <dirent.h>
 
 #include "ui/ui.h"
 #include "pm.h"
@@ -16,12 +17,16 @@
 
 #define VOLBRI_CFG 		"volbri-cfg"
 
-static const char * TAG = "ui_event:";
+static const char * TAG = "ui_event";
 
-struct view_data_setting_volbri volbri;
-struct view_data_setting_switch set_sw;
+struct view_data_setting_volbri 	volbri;
+struct view_data_setting_switch 	set_sw;
+struct view_data_emoticon_display 	emo_disp;
 
 static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
+static uint8_t file_idx;
+lv_timer_t * g_timer = NULL;
+lv_obj_t *img = NULL;
 
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
@@ -71,9 +76,56 @@ void virtc_cb(lv_event_t * e)
 	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
-void virtsl_cb(lv_event_t * e)
+void emoticon_png_play(lv_timer_t * timer)
 {
-	
+    if (img == NULL) {
+        img = lv_img_create(ui_Page_Vir);
+    }
+    const char *file_name = emo_disp.file_names[file_idx];
+    char *file_name_with_path = (char *) heap_caps_malloc(256, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+    if (NULL != file_name_with_path) {
+        strcpy(file_name_with_path, "S:/spiffs/");
+        strcat(file_name_with_path, file_name);
+
+        /* Set src of image with file name */
+        lv_img_set_src(img, file_name_with_path);
+        file_idx++;
+        if(file_idx==emo_disp.file_count){
+            file_idx = 0;
+			// if (g_timer != NULL)
+			// {
+			// 	lv_timer_reset(g_timer);
+			// }
+        }
+        free(file_name_with_path);
+    }
+}
+
+void virtsl_cb(lv_event_t * e)
+{	
+    DIR *p_dir_stream = opendir("/spiffs");
+    if (p_dir_stream == NULL) {
+        ESP_LOGE(TAG, "Failed to open /spiffs directory");
+        return;
+    }
+
+    struct dirent *p_dirent;
+    while ((p_dirent = readdir(p_dir_stream)) != NULL && emo_disp.file_count < MAX_PNG_FILES) {
+        if (strstr(p_dirent->d_name, ".png") != NULL) {
+            // ESP_LOGI(TAG, "Found image file: %s", p_dirent->d_name);
+            // copy filename into _dest
+            strncpy(emo_disp.file_names[emo_disp.file_count], p_dirent->d_name, sizeof(emo_disp.file_names[0]) - 1);
+            emo_disp.file_names[emo_disp.file_count][sizeof(emo_disp.file_names[0]) - 1] = '\0';
+            emo_disp.file_count++;
+        }
+    }
+    closedir(p_dir_stream);
+
+	for (int i = 0; i < emo_disp.file_count; i++) {
+        ESP_LOGI(TAG, "Array file name: %s", emo_disp.file_names[i]);
+    }
+	g_timer = lv_timer_create(emoticon_png_play, 200, NULL);
 }
 
 void main1c_cb(lv_event_t * e)
@@ -779,14 +831,14 @@ void volvc_cb(lv_event_t * e)
 void volre_cb(lv_event_t * e)
 {
 	// write volume value into nvs and post event
-	esp_err_t ret = 0;
-	ret = storage_write(VOLBRI_CFG, (void *)&volbri, sizeof(struct view_data_setting_volbri));
-	if( ret != ESP_OK)
-	{
-		ESP_LOGI(TAG, "volbri-cfg write err:%d", ret);
-	}else {
-		ESP_LOGI(TAG, "volbri-cfg write successful");
-	}
+	// esp_err_t ret = 0;
+	// ret = storage_write(VOLBRI_CFG, (void *)&volbri, sizeof(struct view_data_setting_volbri));
+	// if( ret != ESP_OK)
+	// {
+	// 	ESP_LOGI(TAG, "volbri-cfg write err:%d", ret);
+	// }else {
+	// 	ESP_LOGI(TAG, "volbri-cfg write successful");
+	// }
 }
 
 void brivc_cb(lv_event_t * e)
@@ -801,14 +853,14 @@ void brivc_cb(lv_event_t * e)
 void brire_cb(lv_event_t * e)
 {
 	// write brightness value into nvs and post event
-	esp_err_t ret = 0;
-	ret = storage_write(VOLBRI_CFG, (void *)&volbri, sizeof(struct view_data_setting_volbri));
-	if( ret != ESP_OK)
-	{
-		ESP_LOGI(TAG, "volbri-cfg write err:%d", ret);
-	}else {
-		ESP_LOGI(TAG, "volbri-cfg write successful");
-	}
+	// esp_err_t ret = 0;
+	// ret = storage_write(VOLBRI_CFG, (void *)&volbri, sizeof(struct view_data_setting_volbri));
+	// if( ret != ESP_OK)
+	// {
+	// 	ESP_LOGI(TAG, "volbri-cfg write err:%d", ret);
+	// }else {
+	// 	ESP_LOGI(TAG, "volbri-cfg write successful");
+	// }
 }
 
 void hap_cb(lv_event_t * e)

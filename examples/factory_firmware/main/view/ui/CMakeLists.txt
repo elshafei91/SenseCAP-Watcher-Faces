@@ -55,7 +55,6 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_487263452.c
     images/ui_img_pet_png.c
     images/ui_img_gesture_png.c
-    images/ui_img_gradient_png.c
     images/ui_img_880045930.c
     images/ui_img_template_add_png.c
     images/ui_img_setback_png.c
