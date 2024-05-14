@@ -89,11 +89,20 @@ static int __msgs_sub_set(void *p_module, int evt_id)
 static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int num)
 {
     tf_module_timer_t *p_module_ins = (tf_module_timer_t *)p_module;
-    if( output_index == 0  && num > 0 ) {
-        p_module_ins->p_output_evt_id = (int *) tf_malloc(sizeof(int) * num);//todo check
-        memcpy(p_module_ins->p_output_evt_id, p_evt_id, sizeof(int) * num);
-        p_module_ins->output_evt_num = num;
-    } else {
+    if (output_index == 0 && num > 0)
+    {
+        p_module_ins->p_output_evt_id = (int *)tf_malloc(sizeof(int) * num);
+        if (p_module_ins->p_output_evt_id )
+        {
+            memcpy(p_module_ins->p_output_evt_id, p_evt_id, sizeof(int) * num);
+            p_module_ins->output_evt_num = num;
+        } else {
+            ESP_LOGE(TAG, "malloc p_output_evt_id failed!");
+            p_module_ins->output_evt_num = 0;
+        }
+    }
+    else
+    {
         ESP_LOGW(TAG, "only support output port 0, ignore %d", output_index);
     }
     return 0;

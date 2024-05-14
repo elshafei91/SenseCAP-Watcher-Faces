@@ -14,15 +14,22 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 {
     tf_module_debug_t *p_module_ins = (tf_module_debug_t *)handler_args;
     uint8_t type = ((uint8_t *)p_event_data)[0];
-    if( type !=  TF_DATA_TYPE_BUFFER ) {
-        ESP_LOGW(TAG, "unsupport type %d", type);
-        tf_data_free(p_event_data);
-        return;
+    switch (type)
+    {
+        case TF_DATA_TYPE_BUFFER: {
+            tf_data_buffer_t * p_buf = (tf_data_buffer_t *)p_event_data;
+            if( p_buf->data.p_buf != NULL ) {
+                printf("len:%d, data:%s", p_buf->data.len , p_buf->data.p_buf);
+            }
+            break;
+        }
+        // add other data type debug...
+        
+        default:
+            ESP_LOGW(TAG, "unsupport type %d", type);
+            break;
     }
-    tf_data_buffer_t * p_buf = (tf_data_buffer_t *)p_event_data;
-    if( p_buf->data.p_buf != NULL ) {
-        printf("len:%d, data:%s", p_buf->data.len , p_buf->data.p_buf); //use
-    }
+
     tf_data_free(p_event_data);
 }
 

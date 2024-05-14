@@ -538,8 +538,8 @@ err:
 
 esp_err_t tf_module_img_analyzer_register(void)
 {
-    return tf_module_register(TF_MODULE_IMG_ANALYZER_RNAME,
-                              TF_MODULE_IMG_ANALYZER_RDESC,
-                              TF_MODULE_IMG_ANALYZER_RVERSION,
+    return tf_module_register(TF_MODULE_IMG_ANALYZER_NAME,
+                              TF_MODULE_IMG_ANALYZER_DESC,
+                              TF_MODULE_IMG_ANALYZER_VERSION,
                               &__g_module_mgmt);
 }

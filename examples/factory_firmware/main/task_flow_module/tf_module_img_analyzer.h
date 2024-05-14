@@ -13,9 +13,9 @@ extern "C"
 {
 #endif
 
-#define TF_MODULE_IMG_ANALYZER_RNAME "img_analyzer"
-#define TF_MODULE_IMG_ANALYZER_RVERSION "1.0.0"
-#define TF_MODULE_IMG_ANALYZER_RDESC "img_analyzer module"
+#define TF_MODULE_IMG_ANALYZER_NAME "img_analyzer"
+#define TF_MODULE_IMG_ANALYZER_VERSION "1.0.0"
+#define TF_MODULE_IMG_ANALYZER_DESC "img_analyzer module"
 
 #define TF_MODULE_IMG_ANALYZER_TASK_STACK_SIZE 1024 * 5
 #define TF_MODULE_IMG_ANALYZER_TASK_PRIO       3
