@@ -2,22 +2,26 @@
 // SquareLine Studio version: SquareLine Studio 1.3.4
 // LVGL version: 8.3.6
 // Project name: ai
-
-#include "ui.h"
 #include "esp_log.h"
-#include "pm.h"
-#include "animation.h"
 #include "data_defs.h"
 #include "event_loops.h"
+
+#include "ui/ui.h"
+#include "pm.h"
+#include "animation.h"
+
 #include "app_device_info.h"
 #include "app_ble.h"
-#include "lv_examples.h"
+#include "storage.h"
 
-static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
-static int32_t vs_value;		//volume value
-static int32_t bs_value;		//brightness value
+#define VOLBRI_CFG 		"volbri-cfg"
 
 static const char * TAG = "ui_event:";
+
+struct view_data_setting_volbri volbri;
+struct view_data_setting_switch set_sw;
+
+static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
 
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
@@ -62,9 +66,14 @@ void startload_cb(lv_event_t * e)
 	_ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_Vir_screen_init);
 }
 
-void virtualp_cb(lv_event_t * e)
+void virtc_cb(lv_event_t * e)
 {
 	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+}
+
+void virtsl_cb(lv_event_t * e)
+{
+	
 }
 
 void main1c_cb(lv_event_t * e)
@@ -432,6 +441,16 @@ void setvolc_cb(lv_event_t * e)
 	lv_label_set_text(ui_bvbt, "Volume");
 	lv_obj_add_flag(ui_bp, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_clear_flag(ui_vp, LV_OBJ_FLAG_HIDDEN);
+
+	esp_err_t ret = 0;
+	size_t len = sizeof(volbri);
+	ret = storage_read(VOLBRI_CFG, (void *)&volbri, &len);
+	if( ret == ESP_OK && len == sizeof(volbri))
+	{
+		ESP_LOGI(TAG, "cfg read successful");
+		lv_slider_set_value(ui_vslider, volbri.vs_value, LV_ANIM_OFF);
+	}
+
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
 	lv_event_send(ui_vslider, LV_EVENT_VALUE_CHANGED, NULL);
 }
@@ -452,6 +471,16 @@ void setbric_cb(lv_event_t * e)
 	lv_label_set_text(ui_bvbt, "Brightness");
 	lv_obj_clear_flag(ui_bp, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_add_flag(ui_vp, LV_OBJ_FLAG_HIDDEN);
+
+	esp_err_t ret = 0;
+	size_t len = sizeof(volbri);
+	ret = storage_read(VOLBRI_CFG, (void *)&volbri, &len);
+	if( ret == ESP_OK && len == sizeof(volbri))
+	{
+		ESP_LOGI(TAG, "cfg read successful");
+		lv_slider_set_value(ui_bslider, volbri.bs_value, LV_ANIM_OFF);
+	}
+
 	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
 	lv_event_send(ui_bslider, LV_EVENT_VALUE_CHANGED, NULL);
 }
@@ -633,7 +662,7 @@ void setwwc_cb(lv_event_t * e)
 		break;
 	case 1:
 		lv_obj_clear_state(ui_setwwsw, LV_STATE_CHECKED);
-		
+
 		break;
 	
 	default:
@@ -740,30 +769,46 @@ void timesc_cb(lv_event_t * e)
 
 void volvc_cb(lv_event_t * e)
 {
-	vs_value =  lv_slider_get_value(ui_vslider);
+	volbri.vs_value =  lv_slider_get_value(ui_vslider);
 
 	char vs_buffer[10];
-	lv_snprintf(vs_buffer, sizeof(vs_buffer), "%" PRId32, vs_value);
+	lv_snprintf(vs_buffer, sizeof(vs_buffer), "%" PRId32, volbri.vs_value);
     lv_label_set_text(ui_bvbv, vs_buffer);
 }
 
 void volre_cb(lv_event_t * e)
 {
 	// write volume value into nvs and post event
+	esp_err_t ret = 0;
+	ret = storage_write(VOLBRI_CFG, (void *)&volbri, sizeof(struct view_data_setting_volbri));
+	if( ret != ESP_OK)
+	{
+		ESP_LOGI(TAG, "volbri-cfg write err:%d", ret);
+	}else {
+		ESP_LOGI(TAG, "volbri-cfg write successful");
+	}
 }
 
 void brivc_cb(lv_event_t * e)
 {
-	bs_value =  lv_slider_get_value(ui_bslider);
+	volbri.bs_value =  lv_slider_get_value(ui_bslider);
 
 	char bs_buffer[10];
-	lv_snprintf(bs_buffer, sizeof(bs_buffer), "%" PRId32, bs_value);
+	lv_snprintf(bs_buffer, sizeof(bs_buffer), "%" PRId32, volbri.bs_value);
     lv_label_set_text(ui_bvbv, bs_buffer); 
 }
 
 void brire_cb(lv_event_t * e)
 {
 	// write brightness value into nvs and post event
+	esp_err_t ret = 0;
+	ret = storage_write(VOLBRI_CFG, (void *)&volbri, sizeof(struct view_data_setting_volbri));
+	if( ret != ESP_OK)
+	{
+		ESP_LOGI(TAG, "volbri-cfg write err:%d", ret);
+	}else {
+		ESP_LOGI(TAG, "volbri-cfg write successful");
+	}
 }
 
 void hap_cb(lv_event_t * e)

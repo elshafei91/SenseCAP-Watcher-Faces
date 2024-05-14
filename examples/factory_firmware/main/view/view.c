@@ -1,18 +1,16 @@
 #include "view.h"
 #include "view_image_preview.h"
 #include "view_alarm.h"
-#include "view_group.h"
 #include "view_status_bar.h"
 #include "sensecap-watcher.h"
 
-#include "ui.h"
 #include "util.h"
-#include "ui_helpers.h"
+#include "ui/ui_helpers.h"
 #include <time.h>
 #include "system_layer.h"
 #include "app_device_info.h"
-#include "pm.h"
-#include "animation.h"
+#include "ui_manager/pm.h"
+#include "ui_manager/animation.h"
 
 
 static const char *TAG = "view";

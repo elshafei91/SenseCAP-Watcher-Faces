@@ -345,7 +345,6 @@ LV_IMG_DECLARE(ui_img_button_cancel_png);    // assets\button_cancel.png
 LV_IMG_DECLARE(ui_img_arrow_png);    // assets\arrow.png
 LV_IMG_DECLARE(ui_img_wifi_4_png);    // assets\wifi_4.png
 LV_IMG_DECLARE(ui_img_error_png);    // assets\error.png
-LV_IMG_DECLARE(ui_img_gradient_png);    // assets\gradient.png
 LV_IMG_DECLARE(ui_img_template1_png);    // assets\template1.png
 LV_IMG_DECLARE(ui_img_template1_f_png);    // assets\template1_f.png
 LV_IMG_DECLARE(ui_img_template2_png);    // assets\template2.png
@@ -368,10 +367,11 @@ LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets\wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets\wifi_1.png
 LV_IMG_DECLARE(ui_img_wifi_2_png);    // assets\wifi_2.png
 LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets\wifi_3.png
-LV_IMG_DECLARE(ui_img_dog_d_png);
-LV_IMG_DECLARE(ui_img_gesture_d_png);
-LV_IMG_DECLARE(ui_img_human_d_png);
 LV_IMG_DECLARE(ui_img_wifi_disconnect_png);
+LV_IMG_DECLARE(ui_img_human_d_png);
+LV_IMG_DECLARE(ui_img_gesture_d_png);
+LV_IMG_DECLARE(ui_img_dog_d_png);
+LV_IMG_DECLARE(ui_img_gradient_png);
 
 LV_FONT_DECLARE(ui_font_Font1);
 LV_FONT_DECLARE(ui_font_fontbold26);

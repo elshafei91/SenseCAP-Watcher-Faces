@@ -1,8 +1,0 @@
-images/ui_img_human_d_png.c
-    images/ui_img_gesture_d_png.c
-    images/ui_img_dog_d_png.c
-
-
-LV_IMG_DECLARE(ui_img_dog_d_png);
-LV_IMG_DECLARE(ui_img_gesture_d_png);
-LV_IMG_DECLARE(ui_img_human_d_png);

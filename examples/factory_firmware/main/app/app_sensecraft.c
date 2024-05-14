@@ -23,7 +23,7 @@
 #include "app_taskengine.h"
 
 #include "view_image_preview.h"
-#include "ui.h"
+#include "ui/ui.h"
 
 // #include "audio_player.h"
 

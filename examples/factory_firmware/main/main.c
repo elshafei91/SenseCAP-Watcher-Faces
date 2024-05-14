@@ -24,7 +24,6 @@
 #include "app_cmd.h"
 #include "app_sensecraft.h"
 #include "app_tasklist.h"
-#include "app_sscma_client.h"
 #include "app_sensecap_https.h"
 #include "app_mqtt_client.h"
 #include "app_taskengine.h"

@@ -198,6 +198,19 @@ struct view_data_device_status
     uint8_t battery_per;
 };
 
+struct view_data_setting_volbri
+{
+    int32_t vs_value;		//volume value
+    int32_t bs_value;		//brightness value
+};
+
+struct view_data_setting_switch
+{
+    bool ble_sw;
+    bool rgb_sw;
+    bool wake_word_sw;
+};
+
 extern char sn_data[66];
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".

@@ -31,6 +31,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_335953020.c
     images/ui_img_setting_png.c
     images/ui_img_setting_f_png.c
+    images/ui_img_wifi_nonnet_png.c
     images/ui_img_wifi_disconnect_png.c
     images/ui_img_battery_5_png.c
     images/ui_img_ble_png.c
@@ -38,7 +39,6 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_arrow_png.c
     images/ui_img_wifi_4_png.c
     images/ui_img_error_png.c
-    images/ui_img_gradient_png.c
     images/ui_img_template1_png.c
     images/ui_img_template1_f_png.c
     images/ui_img_template2_png.c
@@ -48,10 +48,14 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_back_png.c
     images/ui_img_1822480148.c
     images/ui_img_human_png.c
+    images/ui_img_human_d_png.c
+    images/ui_img_gesture_d_png.c
+    images/ui_img_dog_d_png.c
     images/ui_img_1870802764.c
     images/ui_img_487263452.c
     images/ui_img_pet_png.c
     images/ui_img_gesture_png.c
+    images/ui_img_gradient_png.c
     images/ui_img_880045930.c
     images/ui_img_template_add_png.c
     images/ui_img_setback_png.c
@@ -61,10 +65,6 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c
     images/ui_img_wifi_3_png.c
-    images/ui_img_dog_d_png.c
-    images/ui_img_gesture_d_png.c
-    images/ui_img_human_d_png.c
-    images/ui_img_wifi_nonnet_png.c
     fonts/ui_font_Font1.c
     fonts/ui_font_fontbold26.c
     fonts/ui_font_font_bold.c)

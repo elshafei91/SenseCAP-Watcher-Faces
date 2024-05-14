@@ -10,6 +10,7 @@ void ui_Page_Vir_screen_init(void)
     ui_Page_Vir = lv_obj_create(NULL);
     lv_obj_clear_flag(ui_Page_Vir, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
 
+    
     lv_obj_add_event_cb(ui_Page_Vir, ui_event_Page_Vir, LV_EVENT_ALL, NULL);
 
 }
