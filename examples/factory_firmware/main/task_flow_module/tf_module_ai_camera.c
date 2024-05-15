@@ -1067,7 +1067,8 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     memset(p_module_ins->condition_trigger_buf, false, sizeof(p_module_ins->condition_trigger_buf));
 
     p_module_ins->sem_handle = xSemaphoreCreateMutex();
-    
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
+
     p_module_ins->event_group = xEventGroupCreate();
     ESP_GOTO_ON_FALSE(NULL != p_module_ins->event_group, ESP_ERR_NO_MEM, err, TAG, "Failed to create event_group");
 
@@ -1108,11 +1109,11 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     if (sscma_client_get_info(p_module_ins->sscma_client_handle, &p_module_ins->himax_info, true) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get info");
     } else {
-        ESP_LOGI(TAG,"ID: %s\n", (p_module_ins->himax_info->id != NULL) ? p_module_ins->himax_info->id : "NULL");
-        ESP_LOGI(TAG,"Name: %s\n", (p_module_ins->himax_info->name != NULL) ? p_module_ins->himax_info->name : "NULL");
-        ESP_LOGI(TAG,"Hardware Version: %s\n", (p_module_ins->himax_info->hw_ver != NULL) ? p_module_ins->himax_info->hw_ver : "NULL");
-        ESP_LOGI(TAG,"Software Version: %s\n", (p_module_ins->himax_info->sw_ver != NULL) ? p_module_ins->himax_info->sw_ver : "NULL");
-        ESP_LOGI(TAG,"Firmware Version: %s\n", (p_module_ins->himax_info->fw_ver != NULL) ? p_module_ins->himax_info->fw_ver : "NULL");
+        ESP_LOGI(TAG,"ID: %s", (p_module_ins->himax_info->id != NULL) ? p_module_ins->himax_info->id : "NULL");
+        ESP_LOGI(TAG,"Name: %s", (p_module_ins->himax_info->name != NULL) ? p_module_ins->himax_info->name : "NULL");
+        ESP_LOGI(TAG,"Hardware Version: %s", (p_module_ins->himax_info->hw_ver != NULL) ? p_module_ins->himax_info->hw_ver : "NULL");
+        ESP_LOGI(TAG,"Software Version: %s", (p_module_ins->himax_info->sw_ver != NULL) ? p_module_ins->himax_info->sw_ver : "NULL");
+        ESP_LOGI(TAG,"Firmware Version: %s", (p_module_ins->himax_info->fw_ver != NULL) ? p_module_ins->himax_info->fw_ver : "NULL");
     }
 
     // TODO event register
