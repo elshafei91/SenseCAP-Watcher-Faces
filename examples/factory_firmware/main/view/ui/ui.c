@@ -103,6 +103,7 @@ lv_obj_t * ui_wifichange;
 lv_obj_t * ui_wifibtnt;
 lv_obj_t * ui_wifip2;
 lv_obj_t * ui_wifissid2;
+lv_obj_t * ui_wifiimg;
 void ui_event_wificancel(lv_event_t * e);
 lv_obj_t * ui_wificancel;
 

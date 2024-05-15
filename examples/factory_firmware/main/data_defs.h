@@ -211,6 +211,14 @@ struct view_data_setting_switch
     bool wake_word_sw;
 };
 
+#define MAX_PNG_FILES 6
+
+struct view_data_emoticon_display
+{
+    char file_names[MAX_PNG_FILES][256];
+    uint8_t file_count;
+};// struct view_data_emoticon_display
+
 extern char sn_data[66];
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".

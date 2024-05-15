@@ -1,7 +1,6 @@
 #include "view.h"
 #include "view_image_preview.h"
 #include "view_alarm.h"
-#include "view_status_bar.h"
 #include "sensecap-watcher.h"
 
 #include "util.h"
@@ -16,6 +15,7 @@
 static const char *TAG = "view";
 
 char sn_data[66];
+
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
@@ -49,9 +49,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             time(&now);
             localtime_r(&now, &timeinfo);
-            // char buf_h[3];
-            // char buf_m[3];
-            // char buf[6];
             int hour = timeinfo.tm_hour;
 
             if( ! time_format_24 ) {
@@ -184,7 +181,7 @@ int view_init(void)
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
-                                                            __view_event_handler, NULL, NULL));  
+                                                            __view_event_handler, NULL, NULL)); 
 
     return 0;
 }

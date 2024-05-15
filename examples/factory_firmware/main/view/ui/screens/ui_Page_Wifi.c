@@ -82,12 +82,23 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_width(ui_wifissid2, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_wifissid2, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_wifissid2, 0);
-    lv_obj_set_y(ui_wifissid2, -39);
+    lv_obj_set_y(ui_wifissid2, -70);
     lv_obj_set_align(ui_wifissid2, LV_ALIGN_CENTER);
     lv_label_set_text(ui_wifissid2, "Waiting for app...");
     lv_obj_set_style_text_color(ui_wifissid2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_wifissid2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_wifissid2, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_wifiimg = lv_img_create(ui_wifip2);
+    lv_img_set_src(ui_wifiimg, &ui_img_190291343);
+    lv_obj_set_width(ui_wifiimg, LV_SIZE_CONTENT);   /// 100
+    lv_obj_set_height(ui_wifiimg, LV_SIZE_CONTENT);    /// 163
+    lv_obj_set_x(ui_wifiimg, 0);
+    lv_obj_set_y(ui_wifiimg, 50);
+    lv_obj_set_align(ui_wifiimg, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_wifiimg, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
+    lv_obj_clear_flag(ui_wifiimg, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_img_set_zoom(ui_wifiimg, 250);
 
     ui_wificancel = lv_btn_create(ui_Page_Wifi);
     lv_obj_set_width(ui_wificancel, 60);
