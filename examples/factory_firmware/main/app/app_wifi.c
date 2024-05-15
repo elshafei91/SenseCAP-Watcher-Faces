@@ -68,12 +68,17 @@ static void __wifi_st_get(struct view_data_wifi_st *p_st)
 
 
 void current_wifi_get(wifi_ap_record_t *p_st){
+    
+    
+    
     if (esp_wifi_sta_get_ap_info(p_st) == ESP_OK) {
         ESP_LOGI(TAG, "SSID: %s", p_st->ssid);
         ESP_LOGI(TAG, "RSSI: %d", p_st->rssi);
     } else {
         ESP_LOGI(TAG, " wifi  disconnected");
     }
+
+
 }
 static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -753,14 +758,14 @@ int app_wifi_init(void)
     esp_wifi_get_config(WIFI_IF_STA, &wifi_cfg);
     // wifi_table_element_connected.= wifi_cfg.sta.password;
     strcpy(wifi_table_element_connected.ssid, (char *)wifi_cfg.sta.ssid);
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST_REQ, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
-
+    //esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST_REQ, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
     if (strlen((const char *)wifi_cfg.sta.ssid))
     {
         _g_wifi_cfg.is_cfg = true;
         ESP_LOGI(TAG, "last config ssid: %s", wifi_cfg.sta.ssid);
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_start());
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
     }
     else
     {
