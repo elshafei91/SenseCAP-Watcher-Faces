@@ -364,8 +364,6 @@ static int __start(void *p_module)
     snprintf(p_module_ins->url,sizeof(p_module_ins->url),"%s%s",CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST,CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
     p_module_ins->token[0] = '\0';
     p_module_ins->head[0] = '\0';
-
-    xEventGroupSetBits(p_module_ins->event_group, TF_MODULE_AI_CAMERA_EVENT_STATRT);
     return 0;
 }
 static int __stop(void *p_module)
@@ -387,7 +385,6 @@ static int __stop(void *p_module)
     __data_unlock(p_module_ins);
 
     esp_err_t ret = tf_event_handler_unregister(p_module_ins->input_evt_id, __event_handler);
-    xEventGroupSetBits(p_module_ins->event_group, TF_MODULE_AI_CAMERA_EVENT_STOP);
     return ret;
 }
 static int __cfg(void *p_module, cJSON *p_json)

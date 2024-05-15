@@ -17,6 +17,14 @@ extern "C"
 #define TF_MODULE_AI_CAMERA_VERSION "1.0.0"
 #define TF_MODULE_AI_CAMERA_DESC "ai_camera module"
 
+#ifndef CONFIG_ENABLE_TF_MODULE_AI_CAMERA_DEBUG_LOG
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    #define CONFIG_ENABLE_TF_MODULE_AI_CAMERA_DEBUG_LOG 1
+#else
+    #define CONFIG_ENABLE_TF_MODULE_AI_CAMERA_DEBUG_LOG 0
+#endif
+#endif
+
 /*************************************************************************
  * params config define
  ************************************************************************/
@@ -105,11 +113,6 @@ struct tf_module_ai_camera_params
 #define TF_MODULE_AI_CAMERA_TASK_STACK_SIZE 1024 * 5
 #define TF_MODULE_AI_CAMERA_TASK_PRIO       3
 
-#define TF_MODULE_AI_CAMERA_EVENT_STATRT          BIT0
-#define TF_MODULE_AI_CAMERA_EVENT_STOP            BIT1
-#define TF_MODULE_AI_CAMERA_EVENT_SIMPLE_640_480  BIT2     
-#define TF_MODULE_AI_CAMERA_EVENT_PRVIEW_416_416  BIT3 
-
 #define TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_240_240    0
 #define TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_416_416    1
 #define TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_480_480    2
@@ -170,7 +173,7 @@ typedef struct tf_module_ai_camera
     int output_evt_num;
     sscma_client_handle_t  sscma_client_handle;
     struct tf_module_ai_camera_params params;
-    SemaphoreHandle_t sem_handle;
+    SemaphoreHandle_t sem_handle; 
     EventGroupHandle_t event_group;
     TaskHandle_t task_handle;
     StaticTask_t *p_task_buf;
