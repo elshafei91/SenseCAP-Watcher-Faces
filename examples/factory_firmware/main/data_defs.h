@@ -10,6 +10,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "esp_wifi.h"
 #include "cJSON.h"
 
 #include "sscma_client_types.h"
@@ -40,6 +41,7 @@ struct view_data_wifi_st
     bool   is_network;  //is connect network
     char   ssid[32];
     int8_t rssi;
+    wifi_auth_mode_t authmode;
 };
 
 
@@ -196,6 +198,28 @@ struct view_data_device_status
     uint8_t battery_per;
 };
 
+struct view_data_setting_volbri
+{
+    int32_t vs_value;		//volume value
+    int32_t bs_value;		//brightness value
+};
+
+struct view_data_setting_switch
+{
+    bool ble_sw;
+    bool rgb_sw;
+    bool wake_word_sw;
+};
+
+#define MAX_PNG_FILES 6
+
+struct view_data_emoticon_display
+{
+    char file_names[MAX_PNG_FILES][256];
+    uint8_t file_count;
+};
+
+extern char sn_data[66];
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
@@ -212,6 +236,10 @@ enum {
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
 
+    VIEW_EVENT_SN_CODE,     // generate ble pairing data
+    VIEW_EVENT_BLE_STATUS,  // bool 0:ble_off; 1:ble_on
+    VIEW_EVENT_EMOTICON,    // struct view_data_emoticon_display
+    
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
     VIEW_EVENT_WIFI_CONNECT,    // struct view_data_wifi_config
@@ -256,7 +284,7 @@ enum {
     VIEW_EVENT_ALARM_OFF, //NULL
 
     VIEW_EVENT_TASKLIST_EXIST,        //uint32_t, 1 or 0, tell UI if there's already a tasklist running
-
+    
     VIEW_EVENT_ALL,
 };
 

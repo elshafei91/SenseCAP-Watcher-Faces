@@ -19,6 +19,7 @@
 #include "app_sr.h"
 #include "app_audio.h"
 #include "app_wifi.h"
+#include "app_ble.h"
 #include "app_time.h"
 #include "app_cmd.h"
 #include "app_sensecraft.h"
@@ -28,7 +29,7 @@
 #include "app_taskengine.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
-
+#include "system_layer.h"
 #include "view.h"
 
 static const char *TAG = "app_main";
@@ -101,18 +102,22 @@ int board_init(void)
 int app_init(void)
 {
     app_wifi_init();
+    system_layer_init();
+    xTaskNotifyGive(xTask_wifi_config_layer);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // app_ble_init();
     app_time_init();
     app_cmd_init();
-
-    tasklist_init();
-    app_taskengine_init();
-    app_rgb_init();
-    app_sensecraft_init();
-    app_mqtt_client_init();
-    app_sensecap_https_init();
+    
+    // tasklist_init();
+    // app_taskengine_init();
+    // app_rgb_init();
+    // app_sensecraft_init();
+    // //app_sscma_client_init();
+    // app_mqtt_client_init();
+    // app_sensecap_https_init();
     app_device_status_monitor_init();
-
-    // app_sr_start(false);
+    //app_sr_start(false);
 
     return ESP_OK;
 }

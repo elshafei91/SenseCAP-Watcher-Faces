@@ -2,7 +2,7 @@
 #define VIEW_STATUS_BAR_H
 
 #include "event_loops.h"
-#include "ui.h"
+#include "ui/ui.h"
 
 #ifdef __cplusplus
 extern "C" {

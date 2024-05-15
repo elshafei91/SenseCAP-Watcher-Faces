@@ -1,17 +1,44 @@
 #include "view.h"
 #include "view_image_preview.h"
 #include "view_alarm.h"
-#include "view_group.h"
 #include "view_status_bar.h"
 #include "sensecap-watcher.h"
 
-#include "ui.h"
 #include "util.h"
-#include "ui_helpers.h"
+#include "ui/ui_helpers.h"
 #include <time.h>
+#include "system_layer.h"
+#include "app_device_info.h"
+#include "ui_manager/pm.h"
+#include "ui_manager/animation.h"
 
 
 static const char *TAG = "view";
+
+char sn_data[66];
+
+// void emoticon_png_play(lv_timer_t * timer)
+// {
+//     static uint8_t file_idx;
+//     lv_obj_t *img = lv_img_create(lv_scr_act());
+//     struct view_data_emoticon_display * user_data = timer->user_data;
+//     const char *file_name = user_data->file_names[file_idx];
+//     char *file_name_with_path = (char *) heap_caps_malloc(256, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+//     if (NULL != file_name_with_path) {
+//         strcpy(file_name_with_path, "S:/spiffs/");
+//         strcat(file_name_with_path, file_name);
+
+//         /* Set src of image with file name */
+//         lv_img_set_zoom(img, 0.5);
+//         lv_img_set_src(img, file_name_with_path);
+//         file_idx++;
+//         if(file_idx==user_data->file_count){
+//             file_idx = 0;
+//         }
+//         free(file_name_with_path);
+//     }
+// }
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
@@ -25,6 +52,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         //     // lv_obj_clear_flag(ui_wifi_status, LV_OBJ_FLAG_HIDDEN);
         //     // lv_obj_clear_flag(ui_battery_status, LV_OBJ_FLAG_HIDDEN);
         // }
+        case VIEW_EVENT_BATTERY_ST:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_BATTERY_ST");
+            struct view_data_device_status * bat_st = (struct view_data_device_status *)event_data;
+            ESP_LOGI(TAG, "battery_voltage: %d", bat_st->battery_per);
+            break;
+        } 
+
         case VIEW_EVENT_TIME: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TIME");
             bool time_format_24 = true;
@@ -38,9 +72,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             time(&now);
             localtime_r(&now, &timeinfo);
-            char buf_h[3];
-            char buf_m[3];
-            char buf[6];
+            // char buf_h[3];
+            // char buf_m[3];
+            // char buf[6];
             int hour = timeinfo.tm_hour;
 
             if( ! time_format_24 ) {
@@ -49,7 +83,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }
             }
             char buf1[32];
-            lv_snprintf(buf1, sizeof(buf1), "%02d/%02d/%04d %02d:%02d",timeinfo.tm_mday, timeinfo.tm_mon+1, timeinfo.tm_year+1900, hour, timeinfo.tm_min);
+            lv_snprintf(buf1, sizeof(buf1), "%02d:%02d",hour, timeinfo.tm_min);
             lv_label_set_text(ui_maintime, buf1);
             break;
         }
@@ -83,24 +117,56 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             lv_img_set_src(ui_mainwifi , (void *)p_src);
             break;
         }
-        case VIEW_EVENT_ALARM_ON: {
-            ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_ON");
-            // char *p_data = ( char *)event_data;
-            view_alarm_on();
-            
+        case VIEW_EVENT_SN_CODE:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_SN_CODE");
+         
+            const char* _sn_data = (const char*)event_data;
+            strncpy(sn_data, _sn_data, 66);
+            sn_data[66] = '\0';
+            ESP_LOGI(TAG, "Received SN data: %s", _sn_data);
+            ESP_LOGI(TAG, "sn_data: %s", sn_data);
+
             break;
         }
-        case VIEW_EVENT_ALARM_OFF: {
+
+        case VIEW_EVENT_BLE_STATUS:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_BLE_STATUS");
+            bool ble_connect_status = false;
+            ble_connect_status = *(bool *)event_data;
+            if(ble_connect_status)
+            {
+                lv_obj_set_style_img_recolor(ui_mainble, lv_color_hex(0xffffff), LV_PART_MAIN | LV_STATE_DEFAULT);
+            }
+            else{
+                lv_obj_set_style_img_recolor(ui_mainble, lv_color_hex(0x171515), LV_PART_MAIN | LV_STATE_DEFAULT);
+            }
+            break;
+        }
+
+        case VIEW_EVENT_ALARM_ON:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_ON");
+            view_alarm_on();
+            break;
+        }
+
+        case VIEW_EVENT_ALARM_OFF:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
             view_alarm_off();
             break;
         }
-        case VIEW_EVENT_TASKLIST_EXIST: {
-            uint32_t p_st = *(uint32_t *)event_data;
-            ESP_LOGI(TAG, "event: VIEW_EVENT_TASKLIST_EXIST");
-            g_iftasklist = (uint8_t)p_st;
+
+        case VIEW_EVENT_EMOTICON:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_EMOTICON");
+            struct view_data_emoticon_display *emo_data = (struct view_data_emoticon_display*)event_data;
+            for (uint8_t i = 0; i < emo_data->file_count; i++)
+            {
+                ESP_LOGI(TAG, "%s", emo_data->file_names[i]);
+            }
+            // lv_timer_create(emoticon_png_play, 1000, emo_data);
+
             break;
         }
+
         default:
             break;
     }
@@ -109,13 +175,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
 int view_init(void)
 {
-    view_group_init();
-
     lvgl_port_lock(0);
     ui_init();
+    lv_pm_init();
     view_alarm_init(lv_layer_top());
-    view_alarm_off();
-    view_image_preview_init(ui_previewp2);
+    // view_alarm_off();
+    // view_image_preview_init(ui_Page_ViewLive);
     lvgl_port_unlock();
     
 
@@ -123,6 +188,14 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME, 
                                                             __view_event_handler, NULL, NULL)); 
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
+                                                            __view_event_handler, NULL, NULL));   
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, 
+                                                            __view_event_handler, NULL, NULL));                                                                                                                 
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, 
@@ -137,8 +210,12 @@ int view_init(void)
                                                             __view_event_handler, NULL, NULL));  
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
-                                                            VIEW_EVENT_BASE, VIEW_EVENT_TASKLIST_EXIST, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                                                             __view_event_handler, NULL, NULL));  
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_EMOTICON, 
+                                                            __view_event_handler, NULL, NULL));
 
     return 0;
 }
