@@ -67,9 +67,13 @@ static void __wifi_st_get(struct view_data_wifi_st *p_st)
 }
 
 
-void current_wifi_get(struct view_data_wifi_st *p_st){
-    struct view_data_wifi_st st;
-    __wifi_st_get(&st);
+void current_wifi_get(wifi_ap_record_t *p_st){
+    if (esp_wifi_sta_get_ap_info(p_st) == ESP_OK) {
+        ESP_LOGI(TAG, "SSID: %s", p_st->ssid);
+        ESP_LOGI(TAG, "RSSI: %d", p_st->rssi);
+    } else {
+        ESP_LOGI(TAG, " wifi  disconnected");
+    }
 }
 static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {

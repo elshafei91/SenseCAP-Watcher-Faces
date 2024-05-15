@@ -222,7 +222,7 @@ enum {
     VIEW_EVENT_SCREEN_START = 0,  // uint8_t, enum start_screen, which screen when start
 
     VIEW_EVENT_TIME,      // bool time_format_24
-    
+    VIEW_EVENT_TIME_ZONE,   // int8_t zone
     VIEW_EVENT_BATTERY_ST,// battery changed event
 
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event

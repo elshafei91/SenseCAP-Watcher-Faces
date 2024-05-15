@@ -42,7 +42,7 @@ uint32_t ulTotalRunTime;
 
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
-static struct view_data_wifi_st current_connected_wifi;
+static wifi_ap_record_t current_connected_wifi;
 /*-----------------------------------*/
 
 // Data Structure process function
@@ -109,10 +109,6 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
     return root;
 }
 
-
-
-
-
 // AT command system layer
 /*----------------------------------------------------------------------------------------------------*/
 SemaphoreHandle_t AT_response_semaphore;
@@ -121,8 +117,8 @@ void create_AT_response_queue();
 void init_AT_response_semaphore();
 void send_at_response(AT_Response *AT_Response);
 AT_Response create_at_response(const char *message);
-const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=([^\\n]*))?\r\n$";
-
+// const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=([^\\n]*))?\r\n$";
+const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=(\\{.*\\}))?\r\n$";
 command_entry *commands = NULL; // Global variable to store the commands
 
 void add_command(command_entry **commands, const char *name, void (*func)(char *params))
@@ -165,9 +161,63 @@ void AT_command_reg()
     add_command(&commands, "eui=", handle_eui_command);
     add_command(&commands, "token=", handle_token);
     add_command(&commands, "wifitable?", handle_wifi_table);
-    //add_command(&commands, "deviceinfo?", handle_deviceinfo_command);
+    add_command(&commands, "devicecfg=", handle_deviceinfo_cfg_command);
+    // add_command(&commands, "deviceinfo?", handle_deviceinfo_command);
 }
 
+void handle_deviceinfo_cfg_command(char *params)
+{
+    printf("handle_deviceinfo_cfg_command\n");
+
+    // 解析 JSON 字符串
+    cJSON *json = cJSON_Parse(params);
+    if (json == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return;
+    }
+
+    cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
+    if (cJSON_IsObject(data))
+    {
+        // Get the "Time_Zone" item
+        cJSON *time_zone = cJSON_GetObjectItemCaseSensitive(data, "Time_Zone");
+        if (cJSON_IsNumber(time_zone))
+        {
+            int timezone = time_zone->valueint;
+            ESP_LOGE("AT_CMD_CALLER", "Time_Zonedie02: %d", timezone);
+            struct view_data_time_cfg time_cfg;
+            time_cfg.zone=timezone;
+            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
+            ESP_LOGE("AT_CMD_CALLER", "Time_Zonedie02: %d", timezone);
+        }
+    }
+    else
+    {
+        printf("Time_Zone not found or not a valid string in JSON\n");
+    }
+
+    // 释放 JSON 对象
+    cJSON_Delete(json);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data_rep = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "name", "timezone");
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data_rep);
+    cJSON_AddStringToObject(data_rep, "timezone", "");
+    cJSON_AddStringToObject(data_rep, "wakeword", "");
+    cJSON_AddStringToObject(data_rep, "volume", "");
+    char *json_string = cJSON_Print(root);
+    printf("JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
+    send_at_response(&response);
+    cJSON_Delete(root);
+}
 void handle_type_1_command(char *params)
 {
     printf("Handling type 1 command\n");
@@ -177,10 +227,10 @@ void handle_type_1_command(char *params)
 void handle_deviceinfo_command(char *params)
 {
     printf("handle_deviceinfo_command\n");
-    char* software_version = get_software_version(AT_CMD_CALLER);
-    char* himax_version = get_himax_software_version(AT_CMD_CALLER);
-    //uint8_t *hardwareversion = get_hardware_version();
-     // 创建根对象
+    char *software_version = get_software_version(AT_CMD_CALLER);
+    char *himax_version = get_himax_software_version(AT_CMD_CALLER);
+    // uint8_t *hardwareversion = get_hardware_version();
+    //  创建根对象
     cJSON *root = cJSON_CreateObject();
 
     // 添加字符串字段 "name"
@@ -200,16 +250,16 @@ void handle_deviceinfo_command(char *params)
     cJSON_AddStringToObject(data, "Version", "1");
     cJSON_AddStringToObject(data, "Time_Zone", "01");
 
-    //add Himax_Software_Versionfield
-    cJSON_AddStringToObject(data, "Himax_Software_Version", (const char*) himax_version);
+    // add Himax_Software_Versionfield
+    cJSON_AddStringToObject(data, "Himax_Software_Version", (const char *)himax_version);
     // 添加 "software" 字段并赋值
-    cJSON_AddStringToObject(data, "Esp32_Software_Version", (const char*)software_version );
+    cJSON_AddStringToObject(data, "Esp32_Software_Version", (const char *)software_version);
 
     // 将 JSON 对象转换为字符串
     char *json_string = cJSON_Print(root);
 
     // 释放内存
-    //vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // vTaskDelay(1000 / portTICK_PERIOD_MS);
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
@@ -262,11 +312,10 @@ void handle_wifi_set(char *params)
         return;
     }
 
-    
     if (json_ssid && json_ssid->valuestring)
     {
         strncpy(config->ssid, json_ssid->valuestring, sizeof(config->ssid) - 1);
-        config->ssid[sizeof(config->ssid) - 1] = '\0'; 
+        config->ssid[sizeof(config->ssid) - 1] = '\0';
     }
     else
     {
@@ -277,7 +326,7 @@ void handle_wifi_set(char *params)
     if (json_password && json_password->valuestring)
     {
         strncpy(config->password, json_password->valuestring, sizeof(config->password) - 1);
-        config->password[sizeof(config->password) - 1] = '\0'; 
+        config->password[sizeof(config->password) - 1] = '\0';
     }
     else
     {
@@ -290,12 +339,8 @@ void handle_wifi_set(char *params)
     ESP_LOGE("AT_CMD_CALLER die01_ssid", "base:%s, memcpy:%s", json_ssid->valuestring, config->ssid);
     ESP_LOGE("AT_CMD_CALLER die01_password", "base:%s, memcpy:%s", json_password->valuestring, config->password);
 
-    int code = ! current_connected_wifi.is_connected;  // read doc
+    // int code = ! current_connected_wifi.is_connected;  // read doc
     set_wifi_config(config);
-    if (code != 0)
-    {
-        ESP_LOGE("AT_CMD_CALLER", "Failed to set wifi config, error code: %d", code);
-    }
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     cJSON_AddStringToObject(root, "name", config->ssid);
     cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
@@ -312,19 +357,22 @@ void handle_wifi_set(char *params)
 
 void handle_wifi_query(char *params)
 {
-
     current_wifi_get(&current_connected_wifi);
+
+    static char ssid_string[34];
+    strncpy(ssid_string, (const char *)current_connected_wifi.ssid, sizeof(ssid_string) - 1);
+    ssid_string[sizeof(ssid_string) - 1] = '\0';
     cJSON *root = cJSON_CreateObject();
     cJSON *data = cJSON_CreateObject();
     // add json obj
     cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
     cJSON_AddNumberToObject(root, "code", network_connect_flag); // finish
     cJSON_AddItemToObject(root, "data", data);
-    cJSON_AddStringToObject(data, "Ssid", current_connected_wifi.ssid);
+    cJSON_AddStringToObject(data, "Ssid", ssid_string);
     char rssi_str[10];
     snprintf(rssi_str, sizeof(rssi_str), "%d", current_connected_wifi.rssi);
     cJSON_AddStringToObject(data, "Rssi", rssi_str);
-    
+
     printf("current_connected_wifi.ssid: %s\n", current_connected_wifi.ssid);
     printf("current_connected_wifi.rssi: %d\n", current_connected_wifi.rssi);
     // cJSON_AddStringToObject(data, "Encryption", "WPA");
@@ -558,8 +606,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
             if (p_st->is_network)
             { // todo
-                current_connected_wifi.rssi = p_st->rssi;
-                strcpy(current_connected_wifi.ssid, p_st->ssid);
                 network_connect_flag = 1;
             }
             else

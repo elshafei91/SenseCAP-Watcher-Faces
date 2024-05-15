@@ -30,12 +30,9 @@
 #include "app_taskengine.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
-<<<<<<< HEAD
-#include "system_layer.h"
-=======
 #include "util.h"
+#include "system_layer.h"
 
->>>>>>> origin/feat/factory_fw/ram_analysis
 #include "view.h"
 static const char *TAG = "app_main";
 
@@ -55,7 +52,7 @@ esp_event_loop_handle_t view_event_handle;
 
 ESP_EVENT_DEFINE_BASE(CTRL_EVENT_BASE);
 esp_event_loop_handle_t ctrl_event_handle;
-
+//#define CONFIG_HEAP_TASK_TRACKING
 #ifdef CONFIG_HEAP_TASK_TRACKING
 #define MAX_TASK_NUM 30                         // Max number of per tasks info that it can store
 #define MAX_BLOCK_NUM 100                        // Max number of per block info that it can store
@@ -120,7 +117,7 @@ int app_init(void)
     app_wifi_init();
     app_ble_init();
     app_time_init();
-    app_cmd_init();
+    //app_cmd_init();
     
     // tasklist_init();
     // app_taskengine_init();
@@ -129,7 +126,7 @@ int app_init(void)
     // //app_sscma_client_init();
     // app_mqtt_client_init();
     // app_sensecap_https_init();
-    app_device_status_monitor_init();
+    //app_device_status_monitor_init();
     //app_sr_start(false);
 
     return ESP_OK;
@@ -245,7 +242,7 @@ void app_main(void)
      * Component config -> Heap memory debugging -> Enable heap task tracking (Yes)
     */
 #ifdef CONFIG_HEAP_TASK_TRACKING
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(10));
         esp_dump_per_task_heap_info();
 #endif
 

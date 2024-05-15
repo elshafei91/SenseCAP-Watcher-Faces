@@ -48,7 +48,7 @@ int set_wifi_config(wifi_config* config);
 void wifi_scan(void);
 //wifi config_sys layer init
 void app_wifi_config_layer_init();
-void current_wifi_get(struct view_data_wifi_st *p_st);
+void current_wifi_get(wifi_ap_record_t *p_st);
 
 #ifdef __cplusplus
 }
