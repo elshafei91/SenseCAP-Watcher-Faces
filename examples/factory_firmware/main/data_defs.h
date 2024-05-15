@@ -38,6 +38,7 @@ struct view_data_wifi_st
 {
     bool   is_connected;
     bool   is_connecting;
+    bool   past_connected;
     bool   is_network;  //is connect network
     char   ssid[32];
     int8_t rssi;

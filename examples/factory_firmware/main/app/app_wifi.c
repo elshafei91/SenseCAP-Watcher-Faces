@@ -759,12 +759,14 @@ int app_wifi_init(void)
     // wifi_table_element_connected.= wifi_cfg.sta.password;
     strcpy(wifi_table_element_connected.ssid, (char *)wifi_cfg.sta.ssid);
     //esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST_REQ, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+
     if (strlen((const char *)wifi_cfg.sta.ssid))
     {
         _g_wifi_cfg.is_cfg = true;
         ESP_LOGI(TAG, "last config ssid: %s", wifi_cfg.sta.ssid);
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_start());
+        wifi_table_element_connected.past_connected=true;
         esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
     }
     else
