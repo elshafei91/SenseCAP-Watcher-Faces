@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 static const char *TAG = "PM_EVENT";
-#define PM_PAGE_PRINTER (1)
+#define PM_PAGE_PRINTER (0)
 
 lv_pm_page_record g_page_record;
 lv_group_t *g_main;
@@ -99,6 +99,7 @@ static void lv_pm_obj_group(lv_group_t * group, GroupInfo *groupInfo)
 // Function to init groups
 void initGroup()
 {
+    // define objects array
     lv_obj_t * main_objects[]        = {ui_mainbtn1, ui_mainbtn2, ui_mainbtn3, ui_mainbtn4};
     lv_obj_t * template_objects[]    = {ui_menubtn1, ui_menubtn2, ui_menubtn3, ui_menubtn4};
     lv_obj_t * set_objects[]         = {ui_setback, ui_setapp, ui_setwifi, ui_setble, ui_setvol, ui_setbri,
