@@ -154,7 +154,15 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
                                                             __view_event_handler, NULL, NULL));   
+                                                            
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, 
+                                                            __view_event_handler, NULL, NULL));   
 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE, 
+                                                            __view_event_handler, NULL, NULL)); 
+                                                            
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, 
                                                             __view_event_handler, NULL, NULL));                                                                                                                 

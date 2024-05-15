@@ -70,12 +70,14 @@ void task_handle_AT_command(); // Function to handle the AT command select witch
 
 
 void handle_type_1_command(char *params);   //test command
-void handle_device_command(char *params);   //device info
+void handle_deviceinfo_command();   //device info
 void handle_wifi_set(char *params);     //wifi command
 void handle_wifi_query(char *params); 
 void handle_token(char *params);            //token command
 void handle_eui_command(char *params);      //eui command
 void handle_wifi_table(char *params);       //wifi table command    
+void handle_deviceinfo_cfg_command (char *params); //timezone command
+//void handle_deviceinfo_command(char *params);  //handle deviceinfo at command
 
 
 
@@ -83,6 +85,15 @@ void handle_wifi_table(char *params);       //wifi table command
 void init_event_loop_and_task(void);
 
 void AT_cmd_init();
+
+
+
+
+
+void pushWiFiStack(WiFiStack *stack, WiFiEntry entry);
+void freeWiFiStack(WiFiStack *stack);
+void initWiFiStack(WiFiStack *stack, int capacity);
+void wifi_stack_semaphore_init();
 
 extern esp_event_base_t const AT_EVENTS;
 static const char * AT_EVENTS_TAG ="AT_EVENTS";

@@ -38,6 +38,7 @@ struct view_data_wifi_st
 {
     bool   is_connected;
     bool   is_connecting;
+    bool   past_connected;
     bool   is_network;  //is connect network
     char   ssid[32];
     int8_t rssi;
@@ -230,14 +231,16 @@ enum {
     VIEW_EVENT_SCREEN_START = 0,  // uint8_t, enum start_screen, which screen when start
 
     VIEW_EVENT_TIME,      // bool time_format_24
-    
+    VIEW_EVENT_TIME_ZONE,   // int8_t zone
     VIEW_EVENT_BATTERY_ST,// battery changed event
 
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
-
-    VIEW_EVENT_SN_CODE,     // generate ble pairing data
-    VIEW_EVENT_BLE_STATUS,  // bool 0:ble_off; 1:ble_on
+                            //device_info            
+    VIEW_EVENT_SN_CODE,
+    VIEW_EVENT_BLE_STATUS,
+    VIEW_EVENT_SOFTWARE_VERSION_CODE,
+    VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE,
     
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL

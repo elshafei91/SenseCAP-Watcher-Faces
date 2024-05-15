@@ -108,12 +108,13 @@ struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = { [PROFILE_WATCHER_APP_I
 //  watcher service property
 esp_gatt_char_prop_t watcher_write_property = 0;
 esp_gatt_char_prop_t watcher_read_property = 1;
+
+SemaphoreHandle_t ble_status_mutex = NULL;
+
 void ble_config_layer(void);
 static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 //  tool function
-static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size);
-static void hex_to_string(uint8_t *hex, size_t hex_size, char *output);
 static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size) // Tool Function
 {
     for (unsigned char i = 0; i < Size; i++)
@@ -391,12 +392,6 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             {
                 gl_profile_tab[PROFILE_WATCHER_APP_ID].service_id.id.uuid.uuid.uuid128[i] = uuid[i];
             }
-
-            // esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(TEST_DEVICE_NAME);
-            // if (set_dev_name_ret)
-            //{
-            //     ESP_LOGE(GATTS_TAG, "set device name failed, error code = %x", set_dev_name_ret);
-            // }
 #ifdef CONFIG_SET_RAW_ADV_DATA
 
             esp_err_t raw_adv_ret = esp_ble_gap_config_adv_data_raw(send_buffer, sizeof(send_buffer) - 1);
@@ -404,13 +399,6 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             {
                 ESP_LOGE(GATTS_TAG, "config raw adv data failed, error code = %x ", raw_adv_ret);
             }
-            // adv_config_done |= adv_config_flag;
-            // esp_err_t raw_scan_ret = esp_ble_gap_config_scan_rsp_data_raw(raw_scan_rsp_data, sizeof(raw_scan_rsp_data));
-            // if (raw_scan_ret)
-            // {
-            //     ESP_LOGE(GATTS_TAG, "config raw scan rsp data failed, error code = %x", raw_scan_ret);
-            // }
-            // adv_config_done |= scan_rsp_config_flag;
 #else
             // config adv data
             esp_err_t ret = esp_ble_gap_config_adv_data(&adv_data);
@@ -466,7 +454,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                                 notify_data[i] = i % 0xff;
                             }
                             // the size of notify_data[] need less than MTU size
-                            esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(notify_data), notify_data, false);
+                            //esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(notify_data), notify_data, false);
                         }
                     }
                     else if (descr_value == 0x0002)
@@ -480,7 +468,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                                 indicate_data[i] = i % 0xff;
                             }
                             // the size of indicate_data[] need less than MTU size
-                            esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(indicate_data), indicate_data, true);
+                            //esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(indicate_data), indicate_data, true);
                         }
                     }
                     else if (descr_value == 0x0000)
@@ -723,13 +711,20 @@ esp_err_t app_ble_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     AT_cmd_init();
-    xTaskCreate(ble_config_layer, "ble_config_layer", 4096, NULL, 2, NULL);
+    //xTaskCreate(ble_config_layer, "ble_config_layer", 4096, NULL, 4, NULL);
 
 #ifdef DEBUG_AT_CMD
     // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
 #endif
     return ESP_OK;
 }
+
+
+
+
+
+// stop ble system
+
 
 void app_ble_deinit(void)
 {
@@ -742,61 +737,14 @@ void app_ble_deinit(void)
 
 void app_ble_start(void)
 {
-    esp_err_t ret;
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    ret = esp_bt_controller_init(&bt_cfg);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TAG, "%s initialize controller failed: %s", __func__, esp_err_to_name(ret));
-    }
-    ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
-    }
-
-    ret = esp_bluedroid_init();
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TAG, "%s init bluetooth failed: %s", __func__, esp_err_to_name(ret));
-    }
-    ret = esp_bluedroid_enable();
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TAG, "%s enable bluetooth failed: %s", __func__, esp_err_to_name(ret));
-    }
-
-    ret = esp_ble_gatts_register_callback(gatts_event_handler);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TAG, "gatts register error, error code = %x", ret);
-    }
-    ret = esp_ble_gap_register_callback(gap_event_handler);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TAG, "gap register error, error code = %x", ret);
-    }
-    ret = esp_ble_gatts_app_register(PROFILE_WATCHER_APP_ID);
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TAG, "gatts app register error, error code = %x", ret);
-    }
-    if (ret)
-    {
-        ESP_LOGE(GATTS_TAG, "gatts app register error, error code = %x", ret);
-    }
-    esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
-    if (local_mtu_ret)
-    {
-        ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
-    }
+    ESP_LOGE("app_ble_start","");
     esp_ble_gap_start_advertising(&adv_params);
 }
 
 void app_ble_stop(void)
 {
+    ESP_LOGE("app_ble_stop","");
     esp_ble_gap_stop_advertising();
-    app_ble_deinit();
 }
 
 void get_ble_status(int caller)
@@ -823,19 +771,24 @@ void get_ble_status(int caller)
     }
 }
 
-SemaphoreHandle_t ble_status_mutex = NULL;
 
 void set_ble_status(int caller, int status)
 {
-    switch (caller)
+    if (ble_status_mutex != NULL)
     {
-        case UI_CALLER: {
+        if (xSemaphoreTake(ble_status_mutex, portMAX_DELAY) == pdTRUE)
+        {
+            switch (caller)
+            {
+                case UI_CALLER:
+                    ble_status = status;
+                    vTaskDelay(1000);
+                    break;
+                case AT_CMD_CALLER:
+                    ble_status = status;
+                    break;
+            }
             xSemaphoreGive(ble_status_mutex);
-            vTaskDelay(1000);
-            break;
-        }
-        case AT_CMD_CALLER: {
-            break;
         }
     }
 }
@@ -856,8 +809,10 @@ void ble_config_layer(void)
             }
             else if (ble_status == BLE_CONNECTED)
             {
-                app_ble_deinit();
+                app_ble_stop();
             }
+            xSemaphoreGive(ble_status_mutex);
         }
+        vTaskDelay(100);  
     }
 }

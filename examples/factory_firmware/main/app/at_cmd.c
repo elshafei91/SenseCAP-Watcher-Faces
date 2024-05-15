@@ -22,6 +22,7 @@
 #include "at_cmd.h"
 #include "cJSON.h"
 #include "system_layer.h"
+#include "app_device_info.h"
 
 #ifdef DEBUG_AT_CMD
 char *test_strings[] = { "\rAT+type1?\n", "\rAT+wifi={\"Ssid\":\"Watcher_Wifi\",\"Password\":\"12345678\"}\n",
@@ -38,23 +39,10 @@ uint32_t ulTotalRunTime;
 // Data Structure
 /*-----------------------------------*/
 // wifi table
-typedef struct
-{
-    char *ssid;
-    char *rssi;
-    char *encryption;
-} WiFiEntry;
 
-typedef struct
-{
-    WiFiEntry *entries;
-    int size;
-    int capacity;
-} WiFiStack;
-
-static WiFiStack wifiStack_scanned;
-static WiFiStack wifiStack_connected;
 SemaphoreHandle_t wifi_stack_semaphore;
+static int network_connect_flag;
+static wifi_ap_record_t current_connected_wifi;
 /*-----------------------------------*/
 
 // Data Structure process function
@@ -129,8 +117,8 @@ void create_AT_response_queue();
 void init_AT_response_semaphore();
 void send_at_response(AT_Response *AT_Response);
 AT_Response create_at_response(const char *message);
-const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=([^\\n]*))?\r\n$";
-
+// const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=([^\\n]*))?\r\n$";
+const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=(\\{.*\\}))?\r\n$";
 command_entry *commands = NULL; // Global variable to store the commands
 
 void add_command(command_entry **commands, const char *name, void (*func)(char *params))
@@ -167,22 +155,115 @@ void exec_command(command_entry **commands, const char *name, char *params, char
 void AT_command_reg()
 { // Register the AT commands
     add_command(&commands, "type1=", handle_type_1_command);
-    add_command(&commands, "device=", handle_device_command);
+    add_command(&commands, "deviceinfo?", handle_deviceinfo_command);
     add_command(&commands, "wifi=", handle_wifi_set);
     add_command(&commands, "wifi?", handle_wifi_query);
     add_command(&commands, "eui=", handle_eui_command);
     add_command(&commands, "token=", handle_token);
     add_command(&commands, "wifitable?", handle_wifi_table);
+    add_command(&commands, "devicecfg=", handle_deviceinfo_cfg_command);
+    // add_command(&commands, "deviceinfo?", handle_deviceinfo_command);
 }
 
+void handle_deviceinfo_cfg_command(char *params)
+{
+    printf("handle_deviceinfo_cfg_command\n");
+
+    // 解析 JSON 字符串
+    cJSON *json = cJSON_Parse(params);
+    if (json == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return;
+    }
+
+    cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
+    if (cJSON_IsObject(data))
+    {
+        // Get the "Time_Zone" item
+        cJSON *time_zone = cJSON_GetObjectItemCaseSensitive(data, "Time_Zone");
+        if (cJSON_IsNumber(time_zone))
+        {
+            int timezone = time_zone->valueint;
+            ESP_LOGE("AT_CMD_CALLER", "Time_Zonedie02: %d", timezone);
+            struct view_data_time_cfg time_cfg;
+            time_cfg.zone=timezone;
+            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
+            ESP_LOGE("AT_CMD_CALLER", "Time_Zonedie02: %d", timezone);
+        }
+    }
+    else
+    {
+        printf("Time_Zone not found or not a valid string in JSON\n");
+    }
+
+    // 释放 JSON 对象
+    cJSON_Delete(json);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data_rep = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "name", "timezone");
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data_rep);
+    cJSON_AddStringToObject(data_rep, "timezone", "");
+    cJSON_AddStringToObject(data_rep, "wakeword", "");
+    cJSON_AddStringToObject(data_rep, "volume", "");
+    char *json_string = cJSON_Print(root);
+    printf("JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
+    send_at_response(&response);
+    cJSON_Delete(root);
+}
 void handle_type_1_command(char *params)
 {
     printf("Handling type 1 command\n");
     printf("Params: %s\n", params);
 }
 
-void handle_device_command(char *params)
+void handle_deviceinfo_command(char *params)
 {
+    printf("handle_deviceinfo_command\n");
+    char *software_version = get_software_version(AT_CMD_CALLER);
+    char *himax_version = get_himax_software_version(AT_CMD_CALLER);
+    // uint8_t *hardwareversion = get_hardware_version();
+    //  创建根对象
+    cJSON *root = cJSON_CreateObject();
+
+    // 添加字符串字段 "name"
+    cJSON_AddStringToObject(root, "name", "deviceinfo?");
+
+    // 添加整数字段 "code"
+    cJSON_AddNumberToObject(root, "code", 0);
+
+    // 创建 "data" 对象并添加到根对象中
+    cJSON *data = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "data", data);
+
+    // 添加 "data" 对象的字段
+    cJSON_AddStringToObject(data, "Eui", "1");
+    cJSON_AddStringToObject(data, "Token", "1");
+    cJSON_AddStringToObject(data, "Ble_Mac", "123");
+    cJSON_AddStringToObject(data, "Version", "1");
+    cJSON_AddStringToObject(data, "Time_Zone", "01");
+
+    // add Himax_Software_Versionfield
+    cJSON_AddStringToObject(data, "Himax_Software_Version", (const char *)himax_version);
+    // 添加 "software" 字段并赋值
+    cJSON_AddStringToObject(data, "Esp32_Software_Version", (const char *)software_version);
+
+    // 将 JSON 对象转换为字符串
+    char *json_string = cJSON_Print(root);
+
+    // 释放内存
+    // vTaskDelay(1000 / portTICK_PERIOD_MS);
+    printf("JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
+    send_at_response(&response);
+
     printf("Handling device command\n");
 }
 
@@ -224,17 +305,45 @@ void handle_wifi_set(char *params)
     cJSON *root = cJSON_CreateObject();
     cJSON *data = cJSON_CreateObject();
 
-    int code = 0;
     wifi_config *config = (wifi_config *)heap_caps_malloc(sizeof(wifi_config), MALLOC_CAP_SPIRAM);
-    strncpy(config->ssid, ssid, sizeof(config->ssid) - 1);
-    config->ssid[sizeof(config->ssid) - 1] = '\0'; // Ensure null-termination
+    if (config == NULL)
+    {
+        ESP_LOGE("AT_CMD_CALLER", "Failed to allocate memory for wifi_config");
+        return;
+    }
 
-    strncpy(config->password, password, sizeof(config->password) - 1);
-    config->password[sizeof(config->password) - 1] = '\0'; // Ensure null-termination
+    if (json_ssid && json_ssid->valuestring)
+    {
+        strncpy(config->ssid, json_ssid->valuestring, sizeof(config->ssid) - 1);
+        config->ssid[sizeof(config->ssid) - 1] = '\0';
+    }
+    else
+    {
+        ESP_LOGE("AT_CMD_CALLER", "Invalid JSON SSID");
+        config->ssid[0] = '\0';
+    }
+
+    if (json_password && json_password->valuestring)
+    {
+        strncpy(config->password, json_password->valuestring, sizeof(config->password) - 1);
+        config->password[sizeof(config->password) - 1] = '\0';
+    }
+    else
+    {
+        ESP_LOGE("AT_CMD_CALLER", "Invalid JSON Password");
+        config->password[0] = '\0';
+    }
+
     config->caller = AT_CMD_CALLER;
-    code = set_wifi_config(config);
-    cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
-    cJSON_AddNumberToObject(root, "code", code);
+
+    ESP_LOGE("AT_CMD_CALLER die01_ssid", "base:%s, memcpy:%s", json_ssid->valuestring, config->ssid);
+    ESP_LOGE("AT_CMD_CALLER die01_password", "base:%s, memcpy:%s", json_password->valuestring, config->password);
+
+    // int code = ! current_connected_wifi.is_connected;  // read doc
+    set_wifi_config(config);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    cJSON_AddStringToObject(root, "name", config->ssid);
+    cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "Ssid", ssid);
     cJSON_AddStringToObject(data, "Rssi", "2");
@@ -248,15 +357,25 @@ void handle_wifi_set(char *params)
 
 void handle_wifi_query(char *params)
 {
+    current_wifi_get(&current_connected_wifi);
+
+    static char ssid_string[34];
+    strncpy(ssid_string, (const char *)current_connected_wifi.ssid, sizeof(ssid_string) - 1);
+    ssid_string[sizeof(ssid_string) - 1] = '\0';
     cJSON *root = cJSON_CreateObject();
     cJSON *data = cJSON_CreateObject();
-    // 填充 JSON 对象
+    // add json obj
     cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
-    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddNumberToObject(root, "code", network_connect_flag); // finish
     cJSON_AddItemToObject(root, "data", data);
-    cJSON_AddStringToObject(data, "Ssid", "SEEED-2.4G");
-    cJSON_AddStringToObject(data, "Rssi", "2");
-    cJSON_AddStringToObject(data, "Encryption", "WPA");
+    cJSON_AddStringToObject(data, "Ssid", ssid_string);
+    char rssi_str[10];
+    snprintf(rssi_str, sizeof(rssi_str), "%d", current_connected_wifi.rssi);
+    cJSON_AddStringToObject(data, "Rssi", rssi_str);
+
+    printf("current_connected_wifi.ssid: %s\n", current_connected_wifi.ssid);
+    printf("current_connected_wifi.rssi: %d\n", current_connected_wifi.rssi);
+    // cJSON_AddStringToObject(data, "Encryption", "WPA");
     char *json_string = cJSON_Print(root);
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
@@ -267,15 +386,9 @@ void handle_wifi_query(char *params)
 
 void handle_wifi_table(char *params)
 {
+    initWiFiStack(&wifiStack_scanned, 6);
     xTaskNotifyGive(xTask_wifi_config_layer);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network0_connected", "-60", "WPA" });
-    // pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network1_connected", "-70", "WPA2" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network1", "-70", "WPA2" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network2", "-80", "WEP" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network3", "-90", "WPA" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network4", "-100", "WPA2" });
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network5", "-110", "WPA" });
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
     pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
     char *json_str = cJSON_Print(json);
@@ -284,6 +397,7 @@ void handle_wifi_table(char *params)
     printf("JSON String: %s\n", json_str);
     send_at_response(&response);
     printf("Handling wifi table command\n");
+    freeWiFiStack(&wifiStack_scanned);
 }
 
 void handle_token(char *params)
@@ -456,6 +570,7 @@ void AT_command_free()
 }
 
 // event_handle
+
 static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     struct view_data_wifi_st *p_cfg;
@@ -467,7 +582,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
         case VIEW_EVENT_WIFI_LIST:
             p_cfg = (struct view_data_wifi_config *)event_data;
             char *authmode_s;
-            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+            pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network6", "-120", "WPA2" });
             if (p_cfg->authmode == WIFI_AUTH_WEP)
             {
                 authmode_s = "WEP";
@@ -484,7 +599,21 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             {
                 authmode_s = "NONE";
             }
-            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { p_cfg->ssid, p_cfg->rssi, authmode_s });
+            pushWiFiStack(&wifiStack_connected, (WiFiEntry) { p_cfg->ssid, p_cfg->rssi, authmode_s });
+        case VIEW_EVENT_WIFI_ST:
+            static bool fist = true;
+            ESP_LOGI("AT_CMD_EVENT_READ:", "event: VIEW_EVENT_WIFI_ST");
+            struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
+            if (p_st->is_network)
+            { // todo
+                network_connect_flag = 1;
+            }
+            else
+            {
+                network_connect_flag = 0;
+            }
+            break;
+
         default:
             break;
     }
