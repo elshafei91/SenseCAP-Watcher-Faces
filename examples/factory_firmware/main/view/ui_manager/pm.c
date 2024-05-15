@@ -2,6 +2,7 @@
 #include "animation.h"
 #include "ui/ui.h"
 #include "esp_log.h"
+#include "esp_err.h"
 #include <stdio.h>
 
 static const char *TAG = "PM_EVENT";
@@ -10,12 +11,110 @@ static const char *TAG = "PM_EVENT";
 lv_pm_page_record g_page_record;
 lv_group_t *g_main;
 lv_indev_t *cur_drv;
-lv_obj_t *ui_Page_main_group[4];
-lv_obj_t *ui_Page_template_group[7];
-lv_obj_t *ui_Page_set_group[11];
-lv_obj_t *group_view[2];
-lv_obj_t *group_ha[1];
 
+GroupInfo group_page_main;
+GroupInfo group_page_template;
+GroupInfo group_page_set;
+GroupInfo group_page_view;
+GroupInfo group_page_ha;
+
+// Function to add objects to the group
+static void addObjToGroup(GroupInfo *groupInfo, lv_obj_t *objects[], int count) {
+    if (count > MAX_OBJECTS_IN_GROUP) {
+        printf("Error: Object count exceeds maximum limit\n");
+        return;
+    }
+
+    // Copy objects into the group
+    for (int i = 0; i < count; i++) {
+        groupInfo->group[i] = objects[i];
+    }
+    // Update object count
+    groupInfo->obj_count = count;
+}
+
+// Function to print objects in the group
+static void printGroup(GroupInfo *groupInfo) {
+    ESP_LOGI(TAG, "obj_count in group: %d", groupInfo->obj_count);
+    for (int i = 0; i < groupInfo->obj_count; i++) {
+        ESP_LOGI(TAG, "%d: %p\n", i+1, groupInfo->group[i]);
+    }
+}
+
+
+static void lv_pm_obj_group(lv_group_t * group, GroupInfo *groupInfo);
+// Function to open page and add group
+void lv_pm_open_page(lv_group_t * group, GroupInfo *groupInfo, pm_operation_t operation, lv_obj_t **target, lv_scr_load_anim_t fademode, int spd, int delay, void (*target_init)(void))
+{
+    if (g_page_record.g_curpage != NULL)
+    {
+        g_page_record.g_prepage = g_page_record.g_curpage;
+    }
+
+    g_page_record.g_curpage = *target;
+    if (*target == NULL)
+        target_init();
+
+#if PM_PAGE_PRINTER
+    if (g_page_record.g_prepage)
+    {
+        const char *prepage_name = lv_obj_get_user_data(g_page_record.g_prepage);
+        ESP_LOGI(TAG, "The Previous Page : %s", prepage_name);
+    }
+    if (g_page_record.g_curpage)
+    {
+        const char *curpage_name = lv_obj_get_user_data(g_page_record.g_curpage);
+        ESP_LOGI(TAG, "The Current  Page : %s", curpage_name);
+    }
+#endif
+
+    switch (operation)
+    {
+        case PM_ADD_OBJS_TO_GROUP:
+            if ((group != NULL) && (groupInfo != NULL))
+                lv_pm_obj_group(group, groupInfo);
+            break;
+        case PM_NO_OPERATION:
+            break;
+        case PM_CLEAR_GROUP:
+            if (groupInfo != NULL)
+                lv_group_remove_all_objs(group);
+            break;
+    }
+
+    lv_scr_load_anim(*target, fademode, spd, 50, false);
+}
+
+static void lv_pm_obj_group(lv_group_t * group, GroupInfo *groupInfo)
+{
+    lv_group_remove_all_objs(group);
+    for (uint8_t index = 0; index < groupInfo->obj_count; index++)
+    {
+        lv_group_add_obj(group, groupInfo->group[index]);
+        const char *group_obj_name = lv_obj_get_user_data(groupInfo->group[index]);
+    }
+}
+
+
+// Function to init groups
+void initGroup()
+{
+    lv_obj_t * main_objects[]        = {ui_mainbtn1, ui_mainbtn2, ui_mainbtn3, ui_mainbtn4};
+    lv_obj_t * template_objects[]    = {ui_menubtn1, ui_menubtn2, ui_menubtn3, ui_menubtn4};
+    lv_obj_t * set_objects[]         = {ui_setback, ui_setapp, ui_setwifi, ui_setble, ui_setvol, ui_setbri,
+                                            ui_setrgb, ui_setww,ui_setdev, ui_setdown, ui_setfac};
+    lv_obj_t * view_objects[]        = {ui_Page_ViewAva, ui_Page_ViewLive};
+    lv_obj_t * ha_objects[]          = {ui_Page_HA};
+
+    addObjToGroup(&group_page_main, main_objects, sizeof(main_objects) / sizeof(main_objects[0]));
+    addObjToGroup(&group_page_template, template_objects, sizeof(template_objects) / sizeof(template_objects[0]));
+    addObjToGroup(&group_page_set, set_objects, sizeof(set_objects) / sizeof(set_objects[0]));
+    addObjToGroup(&group_page_view, view_objects, sizeof(view_objects) / sizeof(view_objects[0]));
+    addObjToGroup(&group_page_ha, ha_objects, sizeof(ha_objects) / sizeof(ha_objects[0]));
+}
+
+
+// Function to init pm components
 void lv_pm_init(void)
 {
     g_main = lv_group_create();
@@ -29,43 +128,16 @@ void lv_pm_init(void)
         }
     }
 
-    ui_Page_main_group[0] = ui_mainbtn1;
-    ui_Page_main_group[1] = ui_mainbtn2;
-    ui_Page_main_group[2] = ui_mainbtn3;
-    ui_Page_main_group[3] = ui_mainbtn4;
-
-    ui_Page_template_group[0] = ui_custbtn1;
-    ui_Page_template_group[1] = ui_custbtn2;
-    ui_Page_template_group[2] = ui_custbtn3;
-    ui_Page_template_group[3] = ui_menubtn1;
-    ui_Page_template_group[4] = ui_menubtn2;
-    ui_Page_template_group[5] = ui_menubtn3;
-    ui_Page_template_group[6] = ui_menubtn4;
-
-    ui_Page_set_group[0] = ui_setback;
-    ui_Page_set_group[1] = ui_setapp;
-    ui_Page_set_group[2] = ui_setwifi;
-    ui_Page_set_group[3] = ui_setble;
-    ui_Page_set_group[4] = ui_setvol;
-    ui_Page_set_group[5] = ui_setbri;
-    ui_Page_set_group[6] = ui_setrgb;
-    ui_Page_set_group[7] = ui_setww;
-    ui_Page_set_group[8] = ui_setdev;
-    ui_Page_set_group[9] = ui_setdown;
-    ui_Page_set_group[10] = ui_setfac;
-
-    group_view[0] = ui_Page_ViewAva;
-    group_view[1] = ui_Page_ViewLive;
-
-    group_ha[0] = ui_Page_HA;
-
-
+    initGroup();
+    
+    // printGroup(&group_page_main);
 
 #if PM_PAGE_PRINTER
     lv_obj_set_user_data(ui_Page_Vir, "ui_Page_Virtual");
     lv_obj_set_user_data(ui_Page_main, "ui_Page_main");
     lv_obj_set_user_data(ui_Page_Connect, "ui_Page_Connect");
     lv_obj_set_user_data(ui_Page_nwifi, "ui_Page_nwifi");
+    lv_obj_set_user_data(ui_Page_Wifi, "ui_Page_Wifi");
     lv_obj_set_user_data(ui_Page_CurTask1, "ui_Page_CurTask1");
     lv_obj_set_user_data(ui_Page_CurTask2, "ui_Page_CurTask2");
     lv_obj_set_user_data(ui_Page_CurTask3, "ui_Page_CurTask3");
@@ -82,62 +154,4 @@ void lv_pm_init(void)
 #endif
 
     scroll_anim_enable();
-}
-
-
-void lv_pm_open_page(lv_group_t *group, lv_obj_t *page_obj, uint8_t len, pm_operation_t operation, 
-                     lv_obj_t **target, lv_scr_load_anim_t fademode, int spd, int delay, void (*target_init)(void))
-{
-    if (g_page_record.g_curpage != NULL)
-    {
-        g_page_record.g_prepage = g_page_record.g_curpage;
-    }
-
-    g_page_record.g_curpage = *target;
-    if (*target == NULL)
-        target_init();
-
-
-#if PM_PAGE_PRINTER
-    if(g_page_record.g_prepage)
-    {
-        const char *prepage_name = lv_obj_get_user_data(g_page_record.g_prepage);
-        ESP_LOGI(TAG, "The Previous Page : %s", prepage_name);
-    }
-    if(g_page_record.g_curpage)
-    {
-        const char *curpage_name = lv_obj_get_user_data(g_page_record.g_curpage);
-        ESP_LOGI(TAG, "The Current  Page : %s", curpage_name);
-    }
-#endif
-    
-
-
-    switch (operation) {
-        case PM_ADD_OBJS_TO_GROUP:
-            if ((group != NULL) && (page_obj != NULL))
-                lv_pm_obj_group(group, page_obj, len);
-            break;
-        case PM_NO_OPERATION:
-            break;
-        case PM_CLEAR_GROUP:
-            if (group != NULL)
-                lv_group_remove_all_objs(group);
-            break;
-    }
-
-    if ((group != NULL) && (page_obj != NULL))
-        lv_pm_obj_group(group, page_obj, len);
-
-    lv_scr_load_anim(*target, fademode, spd, 50, false);
-}
-
-
-void lv_pm_obj_group(lv_group_t *group, lv_obj_t *page_obj[], uint8_t len)
-{
-    lv_group_remove_all_objs(group);
-    for (uint8_t index = 0; index < len; index++)
-    {
-        lv_group_add_obj(group, page_obj[index]);
-    }
 }

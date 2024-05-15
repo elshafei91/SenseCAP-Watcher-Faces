@@ -26,7 +26,6 @@ lv_obj_t * ui_startlogo;
 void ui_Page_Vir_screen_init(void);
 void ui_event_Page_Vir(lv_event_t * e);
 lv_obj_t * ui_Page_Vir;
-lv_obj_t * ui_Panel1;
 
 
 // SCREEN: ui_Page_main
@@ -104,6 +103,7 @@ lv_obj_t * ui_wifichange;
 lv_obj_t * ui_wifibtnt;
 lv_obj_t * ui_wifip2;
 lv_obj_t * ui_wifissid2;
+lv_obj_t * ui_wifiimg;
 void ui_event_wificancel(lv_event_t * e);
 lv_obj_t * ui_wificancel;
 

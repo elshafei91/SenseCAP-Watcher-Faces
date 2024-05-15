@@ -34,6 +34,7 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_set_width(ui_custp1, 90);
     lv_obj_set_height(ui_custp1, 90);
     lv_obj_set_align(ui_custp1, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_custp1, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_custp1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_custp1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_custp1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -65,6 +66,7 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_set_width(ui_custp2, 90);
     lv_obj_set_height(ui_custp2, 90);
     lv_obj_set_align(ui_custp2, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_custp2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_custp2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_custp2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_custp2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -96,6 +98,7 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_set_width(ui_custp3, 90);
     lv_obj_set_height(ui_custp3, 90);
     lv_obj_set_align(ui_custp3, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_custp3, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_custp3, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_custp3, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_custp3, 0, LV_PART_MAIN | LV_STATE_DEFAULT);

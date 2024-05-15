@@ -217,7 +217,7 @@ struct view_data_emoticon_display
 {
     char file_names[MAX_PNG_FILES][256];
     uint8_t file_count;
-};
+};// struct view_data_emoticon_display
 
 extern char sn_data[66];
 /**
@@ -238,7 +238,6 @@ enum {
 
     VIEW_EVENT_SN_CODE,     // generate ble pairing data
     VIEW_EVENT_BLE_STATUS,  // bool 0:ble_off; 1:ble_on
-    VIEW_EVENT_EMOTICON,    // struct view_data_emoticon_display
     
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
