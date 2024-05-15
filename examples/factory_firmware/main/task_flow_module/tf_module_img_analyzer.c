@@ -8,6 +8,8 @@
 #include <mbedtls/base64.h>
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
+#include "data_defs.h"
+#include "event_loops.h"
 
 static const char *TAG = "tfm.img_analyzer";
 
@@ -21,6 +23,16 @@ static void __data_lock( tf_module_img_analyzer_t *p_module)
 static void __data_unlock( tf_module_img_analyzer_t *p_module)
 {
     xSemaphoreGive(p_module->sem_handle);  
+}
+static void __parmas_printf(struct tf_module_img_analyzer_params *p_params)
+{
+    ESP_LOGD(TAG, "type:%d", p_params->type);
+    if( p_params->p_prompt != NULL ){
+        ESP_LOGD(TAG, "Prompt:%s", p_params->p_prompt);
+    }
+    if ( p_params->p_audio_txt != NULL ){
+        ESP_LOGD(TAG, "Audio txt:%s", p_params->p_audio_txt);
+    }
 }
 static void __parmas_default(struct tf_module_img_analyzer_params *p_params)
 {
@@ -60,19 +72,54 @@ static int __params_parse(struct tf_module_img_analyzer_params *p_params, cJSON 
     }
     return 0;
 }
+static void __wifi_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
+{
+    tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)handler_args;
+
+    __data_lock(p_module_ins);
+    switch (id)
+    {
+        case VIEW_EVENT_WIFI_ST:
+        {
+            struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)p_event_data;
+            if (p_st->is_network){
+                p_module_ins->net_flag = true;
+            } else {
+                p_module_ins->net_flag = false;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    __data_unlock(p_module_ins);
+}
+
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)handler_args;
+    
+    ESP_LOGI(TAG, "Input trigger");
+
     uint8_t type = ((uint8_t *)p_event_data)[0];
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE ) {
-        ESP_LOGW(TAG, "unsupport type %d", type);
+        ESP_LOGW(TAG, "Unsupport type %d", type);
         tf_data_free(p_event_data);
         return;
     }
+
+    // TODO local area network ？
+    if(!p_module_ins->net_flag) {
+        ESP_LOGE(TAG, "No network");
+        tf_data_free(p_event_data);
+        return;
+    }
+
     if( xQueueSend(p_module_ins->queue_handle, p_event_data, portMAX_DELAY) != pdTRUE) {
         ESP_LOGW(TAG, "xQueueSend failed");
         tf_data_free(p_event_data);
     }
+
 }
 static char *__request( const char *url,
                         esp_http_client_method_t method, 
@@ -169,6 +216,7 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
         tf_free(p_img);
     }
 
+    __data_lock(p_module_ins);
     p_str = "";
     if( p_params->p_prompt ) {
         p_str = p_params->p_prompt;
@@ -182,6 +230,7 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
     cJSON_AddItemToObject(json, "audio_txt", cJSON_CreateString(p_str));
 
     cJSON_AddItemToObject(json, "type", cJSON_CreateNumber(p_params->type));
+    __data_unlock(p_module_ins);
 
     json_str = cJSON_PrintUnformatted(json);
     cJSON_Delete(json);
@@ -199,10 +248,10 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
         return -1;
     }
 
-    ESP_LOGD(TAG, "response: %s", p_resp); 
+    ESP_LOGD(TAG, "Response: %s", p_resp); 
     json = cJSON_Parse(p_resp);
     if (json == NULL) {
-        ESP_LOGE(TAG, "json parse failed");
+        ESP_LOGE(TAG, "Json parse failed");
         tf_free(p_resp);
         return -1;
     }
@@ -296,6 +345,7 @@ static void img_analyzer_task(void *p_arg)
             vTaskDelete(NULL);
         }
         if(xQueueReceive(p_module_ins->queue_handle, &data, ( TickType_t ) 10 ) == pdPASS ) {
+            ESP_LOGI(TAG, "Start analyse image");
             memset( &result, 0, sizeof(result) );
             ret = __https_upload_image(p_module_ins, &data, &result);
             if( ret == 0) {
@@ -305,7 +355,9 @@ static void img_analyzer_task(void *p_arg)
                     output_data.type = TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT;
                     struct tf_data_buf   text;
                     text.p_buf = (uint8_t *)p_params->p_audio_txt;
-                    text.p_buf = strlen(p_params->p_audio_txt) + 1; // add \0 
+                    text.p_buf = strlen(p_params->p_audio_txt) + 1; // add \0
+
+                    __data_lock(p_module_ins); 
                     for (int i = 0; i < p_module_ins->output_evt_num; i++) {
                         if( result.img.p_buf) {
                             tf_data_image_copy(&output_data.img_small, &result.img); //use cloud image
@@ -316,12 +368,15 @@ static void img_analyzer_task(void *p_arg)
                         tf_data_buf_copy(&output_data.audio, &result.audio);
                         tf_data_buf_copy(&output_data.text, &text);
                         tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), portMAX_DELAY);
+                        ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
                     }
+                    __data_unlock(p_module_ins);
+
                     tf_data_image_free(&result.img);
                     tf_data_buf_free(&result.audio);
                 }
             } else {
-                ESP_LOGE(TAG, "https upload image failed");
+                ESP_LOGE(TAG, "Failed to analyse image");
             }
 
             tf_data_free((void *)&data);
@@ -350,6 +405,7 @@ static void img_analyzer_task_destroy( tf_module_img_analyzer_t *p_module_ins)
         vEventGroupDelete(p_module_ins->event_group);
         p_module_ins->event_group = NULL;
     }
+    esp_event_handler_instance_unregister_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, p_module_ins->event_context);
 }
 
 /*************************************************************************
@@ -393,6 +449,7 @@ static int __cfg(void *p_module, cJSON *p_json)
     __data_lock(p_module_ins);
     __parmas_default(&p_module_ins->params);
     __params_parse(&p_module_ins->params, p_json);
+    __parmas_printf(&p_module_ins->params);
     __data_unlock(p_module_ins);
     return 0;
 }
@@ -408,6 +465,7 @@ static int __msgs_sub_set(void *p_module, int evt_id)
 static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int num)
 {
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)p_module;
+    __data_lock(p_module_ins);
     if (output_index == 0 && num > 0)
     {
         p_module_ins->p_output_evt_id = (int *)tf_malloc(sizeof(int) * num);
@@ -416,14 +474,15 @@ static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int n
             memcpy(p_module_ins->p_output_evt_id, p_evt_id, sizeof(int) * num);
             p_module_ins->output_evt_num = num;
         } else {
-            ESP_LOGE(TAG, "malloc p_output_evt_id failed!");
+            ESP_LOGE(TAG, "Failed to malloc p_output_evt_id");
             p_module_ins->output_evt_num = 0;
         }
     }
     else
     {
-        ESP_LOGW(TAG, "only support output port 0, ignore %d", output_index);
+        ESP_LOGW(TAG, "Only support output port 0, ignore %d", output_index);
     }
+    __data_unlock(p_module_ins);
     return 0;
 }
 
@@ -482,21 +541,21 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
     p_module_ins->output_evt_num = 0;
     p_module_ins->input_evt_id = 0;
 
-    p_module_ins->sem_handle = xSemaphoreCreateBinary();
-    ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "create semaphore failed");
+    p_module_ins->sem_handle = xSemaphoreCreateMutex();
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
 
     p_module_ins->event_group = xEventGroupCreate();
-    ESP_GOTO_ON_FALSE(NULL != p_module_ins->event_group, ESP_ERR_NO_MEM, err, TAG, "create event_group failed");
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->event_group, ESP_ERR_NO_MEM, err, TAG, "Failed to create event_group");
 
     p_module_ins->queue_handle = xQueueCreate(TF_MODULE_IMG_ANALYZER_QUEUE_SIZE, sizeof(tf_data_dualimage_with_inference_t));
-    ESP_GOTO_ON_FALSE(p_module_ins->queue_handle, ESP_FAIL, err, TAG, "create queue failed");
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->queue_handle, ESP_FAIL, err, TAG, "Failed to create queue");
 
     p_module_ins->p_task_stack_buf = (StackType_t *)tf_malloc(TF_MODULE_IMG_ANALYZER_TASK_STACK_SIZE);
-    ESP_GOTO_ON_FALSE(p_module_ins->p_task_stack_buf, ESP_ERR_NO_MEM, err, TAG, "no mem for ai camera task stack");
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->p_task_stack_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task stack");
 
     // task TCB must be allocated from internal memory 
     p_module_ins->p_task_buf =  heap_caps_malloc(sizeof(StaticTask_t),  MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ESP_GOTO_ON_FALSE(p_module_ins->p_task_buf, ESP_ERR_NO_MEM, err, TAG, "no mem for task TCB");
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->p_task_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task TCB");
 
     p_module_ins->task_handle = xTaskCreateStatic(img_analyzer_task,
                                                 "img_analyzer_task",
@@ -505,7 +564,12 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
                                                 TF_MODULE_AI_CAMERA_TASK_PRIO,
                                                 p_module_ins->p_task_stack_buf,
                                                 p_module_ins->p_task_buf);
-    ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "create task failed");
+    ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
+
+    // event_context is for multiple instantiations
+    ret = esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, \
+                                                    __wifi_event_handler, p_module_ins, &p_module_ins->event_context);
+    ESP_GOTO_ON_FALSE(ESP_OK == ret, ESP_FAIL, err, TAG, "Failed to register event handler");
 
     return &p_module_ins->module_serv;
 

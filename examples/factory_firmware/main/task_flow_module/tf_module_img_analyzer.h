@@ -7,6 +7,7 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "tf_module_ai_camera.h"
+#include "esp_event_base.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -16,6 +17,16 @@ extern "C"
 #define TF_MODULE_IMG_ANALYZER_NAME "img_analyzer"
 #define TF_MODULE_IMG_ANALYZER_VERSION "1.0.0"
 #define TF_MODULE_IMG_ANALYZER_DESC "img_analyzer module"
+
+#define CONFIG_ENABLE_TF_MODULE_IMG_ANALYZER_DEBUG_LOG 1
+
+#ifndef CONFIG_ENABLE_TF_MODULE_IMG_ANALYZER_DEBUG_LOG
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    #define CONFIG_ENABLE_TF_MODULE_IMG_ANALYZER_DEBUG_LOG 1
+#else
+    #define CONFIG_ENABLE_TF_MODULE_IMG_ANALYZER_DEBUG_LOG 0
+#endif
+#endif
 
 #define TF_MODULE_IMG_ANALYZER_TASK_STACK_SIZE 1024 * 5
 #define TF_MODULE_IMG_ANALYZER_TASK_PRIO       3
@@ -75,9 +86,11 @@ typedef struct tf_module_img_analyzer
     TaskHandle_t task_handle;
     StaticTask_t *p_task_buf;
     StackType_t *p_task_stack_buf;
+    esp_event_handler_instance_t event_context;
     char url[256];
     char token[128];
     char head[128];
+    bool net_flag;
 } tf_module_img_analyzer_t;
 
 tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins);
