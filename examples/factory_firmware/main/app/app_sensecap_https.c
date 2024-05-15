@@ -17,9 +17,12 @@
 #include "event_loops.h"
 #include "data_defs.h"
 #include "deviceinfo.h"
+#include "util.h"
 
 static const char *TAG = "sensecap-https";
 
+static TaskHandle_t g_task;
+static StaticTask_t g_task_tcb;
 
 static uint8_t network_connect_flag = 0;
 static SemaphoreHandle_t __g_data_mutex;
@@ -280,7 +283,11 @@ int app_sensecap_https_init(void)
 
     mqttinfo.mutex = xSemaphoreCreateMutex();
 
-    xTaskCreate(__app_sensecap_https_task, "app_sensecap_https_task", 1024 * 5, NULL, 3, NULL);
+    // xTaskCreate(__app_sensecap_https_task, "app_sensecap_https_task", 1024 * 5, NULL, 3, NULL);
+
+    const uint32_t stack_size = 3 * 1024 + 256;
+    StackType_t *task_stack = (StackType_t *)psram_alloc(stack_size);
+    g_task = xTaskCreateStatic(__app_sensecap_https_task, "app_sensecap_https", stack_size, NULL, 3, task_stack, &g_task_tcb);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,
