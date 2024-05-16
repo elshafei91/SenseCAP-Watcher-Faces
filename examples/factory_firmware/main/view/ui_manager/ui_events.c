@@ -532,7 +532,7 @@ void setbric_cb(lv_event_t * e)
 
 	esp_err_t ret = 0;
 	static size_t len = sizeof(volbri);
-	ret = storage_read(VOLBRI_CFG, (void *)&volbri, &len);
+	volbri.bs_value = get_brightness(0);
 	if( ret == ESP_OK && len == sizeof(volbri))
 	{
 		ESP_LOGI(TAG, "cfg read successful");
@@ -875,6 +875,7 @@ void brire_cb(lv_event_t * e)
 	// }else {
 	// 	ESP_LOGI(TAG, "volbri-cfg write successful");
 	// }
+	set_brightness(0, volbri.bs_value);
 }
 
 void hap_cb(lv_event_t * e)

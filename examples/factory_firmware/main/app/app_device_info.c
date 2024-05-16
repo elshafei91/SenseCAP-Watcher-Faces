@@ -109,13 +109,13 @@ static int __set_brightness()
     if (brightness_past != brightness)
     {
         esp_err_t ret = 0;
-        ret = storage_write(BRIGHTNESS_STORAGE, (void *)brightness, sizeof(int));
+        ret = storage_write(BRIGHTNESS_STORAGE, (void *)&brightness, sizeof(int));
         if (ret != ESP_OK)
         {
             ESP_LOGE("", "cfg write err:%d", ret);
             return ret;
         }
-        BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
+        BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(brightness));
     }
     return 0;
 }
@@ -215,5 +215,5 @@ void app_device_info_init()
     //     4,                               // 10
     //     app_device_info_layer_stack_buffer,  // wifi_config_layer_stack_buffer
     //     &app_device_info_layer_task_buffer); // wifi_config_layer_task_buffer
-    xTaskCreate(&app_device_info_task, "app_device_info_task", 2048, NULL, 5, NULL);
+    xTaskCreate(&app_device_info_task, "app_device_info_task", 4096, NULL, 5, NULL);
 }
