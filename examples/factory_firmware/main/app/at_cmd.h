@@ -77,6 +77,7 @@ void handle_token(char *params);            //token command
 void handle_eui_command(char *params);      //eui command
 void handle_wifi_table(char *params);       //wifi table command    
 void handle_deviceinfo_cfg_command (char *params); //timezone command
+void handle_taskflow_command(char *params);
 //void handle_deviceinfo_command(char *params);  //handle deviceinfo at command
 
 
@@ -99,7 +100,7 @@ extern esp_event_base_t const AT_EVENTS;
 static const char * AT_EVENTS_TAG ="AT_EVENTS";
 #define AT_EVENTS_COMMAND_ID 0x6F
 #define AT_EVENTS_RESPONSE_ID 0x70
-#define MEMORY_SIZE  (1024)
+#define MEMORY_SIZE  (1024*100)
 
 extern esp_event_loop_handle_t  at_event_loop_handle;
 #endif

@@ -668,7 +668,7 @@ void setblec_cb(lv_event_t * e)
 	case 1:
 		lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
 		ESP_LOGI(TAG, "ble_btn_status: off");
-		set_ble_status(0,2);
+		set_ble_status(0,0);
 		break;
 	case 0:
 		lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);

@@ -454,7 +454,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                                 notify_data[i] = i % 0xff;
                             }
                             // the size of notify_data[] need less than MTU size
-                            //esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(notify_data), notify_data, false);
+                            // esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(notify_data), notify_data, false);
                         }
                     }
                     else if (descr_value == 0x0002)
@@ -468,7 +468,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                                 indicate_data[i] = i % 0xff;
                             }
                             // the size of indicate_data[] need less than MTU size
-                            //esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(indicate_data), indicate_data, true);
+                            // esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(indicate_data), indicate_data, true);
                         }
                     }
                     else if (descr_value == 0x0000)
@@ -711,7 +711,7 @@ esp_err_t app_ble_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     AT_cmd_init();
-    //xTaskCreate(ble_config_layer, "ble_config_layer", 4096, NULL, 4, NULL);
+    xTaskCreate(ble_config_layer, "ble_config_layer", 4096, NULL, 4, NULL);
 
 #ifdef DEBUG_AT_CMD
     // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
@@ -719,12 +719,7 @@ esp_err_t app_ble_init(void)
     return ESP_OK;
 }
 
-
-
-
-
 // stop ble system
-
 
 void app_ble_deinit(void)
 {
@@ -737,13 +732,13 @@ void app_ble_deinit(void)
 
 void app_ble_start(void)
 {
-    ESP_LOGE("app_ble_start","");
+    ESP_LOGE("app_ble_start", "");
     esp_ble_gap_start_advertising(&adv_params);
 }
 
 void app_ble_stop(void)
 {
-    ESP_LOGE("app_ble_stop","");
+    ESP_LOGE("app_ble_stop", "");
     esp_ble_gap_stop_advertising();
 }
 
@@ -771,48 +766,59 @@ void get_ble_status(int caller)
     }
 }
 
-
 void set_ble_status(int caller, int status)
 {
-    if (ble_status_mutex != NULL)
+    switch (caller)
     {
-        if (xSemaphoreTake(ble_status_mutex, portMAX_DELAY) == pdTRUE)
-        {
-            switch (caller)
-            {
-                case UI_CALLER:
-                    ble_status = status;
-                    vTaskDelay(1000);
-                    break;
-                case AT_CMD_CALLER:
-                    ble_status = status;
-                    break;
-            }
-            xSemaphoreGive(ble_status_mutex);
-        }
+        case UI_CALLER:
+            ble_status = status;
+            vTaskDelay(1000);
+            break;
+        case AT_CMD_CALLER:
+            ble_status = status;
+            break;
     }
 }
 
 void ble_config_layer(void)
 {
+    esp_err_t ret;
     if (ble_status_mutex == NULL)
     {
         ble_status_mutex = xSemaphoreCreateMutex();
     }
+
     while (1)
     {
-        if (xSemaphoreTake(ble_status_mutex, portMAX_DELAY) == pdTRUE)
+        if (ble_status == BLE_DISCONNECTED)
         {
-            if (ble_status == BLE_DISCONNECTED)
+            ret = esp_ble_gap_start_advertising(&adv_params);
+            if (ret)
             {
-                app_ble_start();
+                ESP_LOGE("BLE_BUTTON", "start advertising failed: %s", esp_err_to_name(ret));
             }
-            else if (ble_status == BLE_CONNECTED)
+            else
             {
-                app_ble_stop();
+                ESP_LOGI("BLE_BUTTON", "start advertising succeeded");
             }
-            xSemaphoreGive(ble_status_mutex);
+            ble_status= STATUS_WAITTING;
         }
-        vTaskDelay(100);  
+        else if (ble_status == BLE_CONNECTED)
+        {
+            ret = esp_ble_gap_stop_advertising();
+            if (ret)
+            {
+                ESP_LOGE("BLE_BUTTON", "stop advertising failed: %s", esp_err_to_name(ret));
+            }
+            else
+            {
+                ESP_LOGI("BLE_BUTTON", "stop advertising succeeded");
+            }
+            ble_status= STATUS_WAITTING;
+        }
+        else{
+            vTaskDelay(1000);
+        }
     }
+    vTaskDelay(100);
 }

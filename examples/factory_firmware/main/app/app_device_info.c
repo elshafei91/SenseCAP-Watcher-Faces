@@ -17,7 +17,7 @@
 #define SN_TAG                    "SN_TAG"
 #define APP_DEVICE_INFO_MAX_STACK 4096
 
-uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x08 };
+uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x11 };
 uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0xC2, 0x44, 0x81, 0x00, 0x47, 0xB0, 0x47, 0xD1, 0xD5, 0x8B, 0xC7, 0xF8, 0xFB };
 char software_version[] = "1.0.0"; // Initialize software_version
 char himax_software_version[] = "1.0.0"; // Initialize himax_software_version
@@ -136,6 +136,8 @@ char* get_himax_software_version(int caller) {
     return result;
 }
 
+
+
 void app_device_info_task(void *pvParameter)
 {
     MUTEX_SN = xSemaphoreCreateBinary();
@@ -163,5 +165,5 @@ void app_device_info_init()
     //     4,                               // 10
     //     app_device_info_layer_stack_buffer,  // wifi_config_layer_stack_buffer
     //     &app_device_info_layer_task_buffer); // wifi_config_layer_task_buffer
-    xTaskCreate(&app_device_info_task, "app_device_info_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&app_device_info_task, "app_device_info_task", 2048, NULL, 5, NULL);
 }

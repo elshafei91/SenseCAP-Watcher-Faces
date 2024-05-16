@@ -63,7 +63,8 @@ void set_ble_status(int caller, int status);
 
 enum{
     BLE_CONNECTED,
-    BLE_DISCONNECTED
+    BLE_DISCONNECTED,
+    STATUS_WAITTING
 };
 
 #endif

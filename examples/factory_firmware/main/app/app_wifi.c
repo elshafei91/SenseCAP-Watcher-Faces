@@ -698,7 +698,7 @@ void wifi_config_layer(void *pvParameters)
 
 void app_wifi_config_layer_init()
 {
-    xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 8, NULL, 9, &xTask_wifi_config_layer);
+    xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 4, NULL, 9, &xTask_wifi_config_layer);
 }
 int app_wifi_init(void)
 {

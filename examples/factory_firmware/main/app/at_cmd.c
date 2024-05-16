@@ -109,6 +109,9 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
     return root;
 }
 
+/*--------------------------------test for tf engin set function only for debug---------------------*/
+esp_err_t tf_engine_flow_set(const char *p_str, size_t len);
+
 // AT command system layer
 /*----------------------------------------------------------------------------------------------------*/
 SemaphoreHandle_t AT_response_semaphore;
@@ -162,6 +165,7 @@ void AT_command_reg()
     add_command(&commands, "token=", handle_token);
     add_command(&commands, "wifitable?", handle_wifi_table);
     add_command(&commands, "devicecfg=", handle_deviceinfo_cfg_command);
+    add_command(&commands, "taskflow=", handle_taskflow_command);
     // add_command(&commands, "deviceinfo?", handle_deviceinfo_command);
 }
 
@@ -191,7 +195,7 @@ void handle_deviceinfo_cfg_command(char *params)
             int timezone = time_zone->valueint;
             ESP_LOGE("AT_CMD_CALLER", "Time_Zonedie02: %d", timezone);
             struct view_data_time_cfg time_cfg;
-            time_cfg.zone=timezone;
+            time_cfg.zone = timezone;
             esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
             ESP_LOGE("AT_CMD_CALLER", "Time_Zonedie02: %d", timezone);
         }
@@ -410,6 +414,68 @@ void handle_eui_command(char *params)
     printf("Handling eui command\n");
 }
 
+/*------------------critical command for task_flow-------------------------------------------*/
+
+void handle_taskflow_command(char *params)
+{
+    esp_err_t code=ESP_OK;
+    printf("Handling taskflow command\n");
+
+    // prase AT+taskflow={"name":"taskflow","data":"task string"}
+    cJSON *json = cJSON_Parse(params);
+    if (json == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+    }
+    // create json obj and save
+    cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
+    if (cJSON_IsString(data) && (data->valuestring != NULL))
+    {
+        size_t length =strlen(data->valuestring)+1;
+        //char *data_value = strdup(data->valuestring);
+        char * data_value =heap_caps_malloc(length, MALLOC_CAP_SPIRAM);
+        if(data_value==NULL){
+            ESP_LOGE("AT_CMD_CALLER", "Failed to allocate memory for data_value");
+            return;
+        }
+        strcpy(data_value,data->valuestring);
+        code = tf_engine_flow_set(data_value, strlen(data_value));
+    }
+    cJSON_Delete(json);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data_rep = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "name", "taskflow");
+    cJSON_AddNumberToObject(root, "code", code);
+    cJSON_AddItemToObject(root, "data", data_rep);
+    char *json_string = cJSON_Print(root);
+    printf("JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
+    send_at_response(&response);
+    cJSON_Delete(root);
+}
+
+/*--------------------------------test for tf engin set function only for debug---------------------*/
+
+esp_err_t tf_engine_flow_set(const char *p_str, size_t len)
+{
+    // malloc space to save and print
+    char *p_str_save = (char *)malloc(len + 1);
+    if (p_str_save == NULL)
+    {
+        ESP_LOGE("TF_ENGINE_FLOW_SET", "Failed to allocate memory for p_str_save");
+        return ESP_FAIL;
+    }
+    memcpy(p_str_save, p_str, len);
+    p_str_save[len] = '\0';
+    ESP_LOGE("TF_ENGINE_FLOW_SET", "p_str_save: %s", p_str_save);
+    return ESP_OK;
+}
+
 static void hex_to_string(uint8_t *hex, int hex_size, char *output)
 {
     esp_log_buffer_hex("HEX TAG1", hex, hex_size);
@@ -457,10 +523,15 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
         char command_type[20];
         snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
 
-        char params[100] = "";
+        // char params[100] = "";
+        size_t data_size = 100 * 1024; // 100K
+        char *params = (char *)heap_caps_malloc(data_size + 1, MALLOC_CAP_SPIRAM);
         if (matches[3].rm_so != -1)
         {
-            snprintf(params, sizeof(params), "%.*s", (int)(matches[3].rm_eo - matches[3].rm_so), test_strings + matches[3].rm_so);
+            int length = (int)(matches[3].rm_eo - matches[3].rm_so);
+            // snprintf(params, sizeof(params), "%.*s", (int)(matches[3].rm_eo - matches[3].rm_so), test_strings + matches[3].rm_so);
+            snprintf(params, length + 1, "%.*s", length, test_strings + matches[1].rm_so);
+            printf("Matched string: %.50s... (total length: %d)\n", params, length);
         }
         char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
         exec_command(&commands, command_type, params, query_type);
