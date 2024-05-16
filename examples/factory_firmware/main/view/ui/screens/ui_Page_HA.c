@@ -10,14 +10,14 @@ void ui_Page_HA_screen_init(void)
     ui_Page_HA = lv_obj_create(NULL);
     lv_obj_clear_flag(ui_Page_HA, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_Page_HA, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_HA, 160, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_HA, 250, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_src(ui_Page_HA, &ui_img_page_main_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_Label2 = lv_label_create(ui_Page_HA);
     lv_obj_set_width(ui_Label2, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_Label2, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_Label2, -37);
-    lv_obj_set_y(ui_Label2, 0);
+        lv_obj_set_y(ui_Label2, 0);
     lv_obj_set_align(ui_Label2, LV_ALIGN_CENTER);
     lv_label_set_text(ui_Label2, "Feature\nComing\nSoon");
     lv_obj_set_style_text_color(ui_Label2, lv_color_hex(0xA9DE2C), LV_PART_MAIN | LV_STATE_DEFAULT);

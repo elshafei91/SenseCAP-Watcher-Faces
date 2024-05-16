@@ -24,7 +24,7 @@ static const char * TAG = "ui_event";
 static struct view_data_setting_volbri 		volbri;
 static struct view_data_setting_switch 		set_sw;
 static struct view_data_emoticon_display 	emo_disp;
-wifi_ap_record_t 				wifi_record;
+wifi_ap_record_t 							wifi_record;
 
 static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
 static uint8_t file_idx;
@@ -104,6 +104,7 @@ static void emoticon_png_play(lv_timer_t * timer)
 
 void virtsl_cb(lv_event_t * e)
 {	
+	lv_group_add_obj(g_main, ui_Page_Vir);
     static DIR *p_dir_stream;
 	p_dir_stream = opendir("/spiffs");
     if (p_dir_stream == NULL) {
@@ -229,7 +230,8 @@ void viewac_cb(lv_event_t * e)
 
 void viewaf_cb(lv_event_t * e)
 {
-	lv_pm_open_page(NULL, NULL, PM_NO_OPERATION, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+	_ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+	// lv_pm_open_page(NULL, NULL, PM_NO_OPERATION, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
 	// ESP_LOGI(TAG, "view_ava_focused");
 }
 
@@ -250,7 +252,8 @@ void viewlc_cb(lv_event_t * e)
 
 void viewlf_cb(lv_event_t * e)
 {
-	lv_pm_open_page(NULL, NULL, PM_NO_OPERATION, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+	_ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+	// lv_pm_open_page(NULL, NULL, PM_NO_OPERATION, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
 	// ESP_LOGI(TAG, "view_live_focused");
 }
 
