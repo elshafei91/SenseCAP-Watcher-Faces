@@ -10,9 +10,9 @@ extern "C"
 {
 #endif
 
-#define TF_MODULE_LOCAL_ALARM_NAME     "alarm"
+#define TF_MODULE_LOCAL_ALARM_NAME     "local alarm"
 #define TF_MODULE_LOCAL_ALARM_RVERSION "1.0.0"
-#define TF_MODULE_LOCAL_ALARM_DESC     "alarm module"
+#define TF_MODULE_LOCAL_ALARM_DESC     "local alarm module"
 
 #define TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE  "/spiffs/alarm-di.wav"
 

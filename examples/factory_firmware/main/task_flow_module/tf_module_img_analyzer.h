@@ -14,9 +14,9 @@ extern "C"
 {
 #endif
 
-#define TF_MODULE_IMG_ANALYZER_NAME "img_analyzer"
+#define TF_MODULE_IMG_ANALYZER_NAME "image analyzer"
 #define TF_MODULE_IMG_ANALYZER_VERSION "1.0.0"
-#define TF_MODULE_IMG_ANALYZER_DESC "img_analyzer module"
+#define TF_MODULE_IMG_ANALYZER_DESC "image analyzer module"
 
 
 #ifndef CONFIG_ENABLE_TF_MODULE_IMG_ANALYZER_DEBUG_LOG

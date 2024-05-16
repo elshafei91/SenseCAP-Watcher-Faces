@@ -12,7 +12,7 @@ extern "C"
 {
 #endif
 
-#define TF_MODULE_ALARM_TRIGGER_NAME     "alarm_trigger"
+#define TF_MODULE_ALARM_TRIGGER_NAME     "alarm trigger"
 #define TF_MODULE_ALARM_TRIGGER_RVERSION "1.0.0"
 #define TF_MODULE_ALARM_TRIGGER_DESC     "alarm trigger module"
 

@@ -13,9 +13,9 @@ extern "C"
 {
 #endif
 
-#define TF_MODULE_AI_CAMERA_NAME "ai_camera"
+#define TF_MODULE_AI_CAMERA_NAME "ai camera"
 #define TF_MODULE_AI_CAMERA_VERSION "1.0.0"
-#define TF_MODULE_AI_CAMERA_DESC "ai_camera module"
+#define TF_MODULE_AI_CAMERA_DESC "ai camera module"
 
 #ifndef CONFIG_ENABLE_TF_MODULE_AI_CAMERA_DEBUG_LOG
 #if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
