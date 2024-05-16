@@ -117,7 +117,7 @@ int app_init(void)
     app_wifi_init();
     app_ble_init();
     app_time_init();
-    //app_cmd_init();
+    // app_cmd_init();
     
     // tasklist_init();
     // app_taskengine_init();
@@ -136,6 +136,7 @@ void task_app_init(void *p_arg)
 {
     // UI init
     view_init();
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
 
     app_init();
 

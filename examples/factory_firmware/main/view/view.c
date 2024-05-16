@@ -15,6 +15,7 @@
 static const char *TAG = "view";
 
 char sn_data[66];
+uint8_t wifi_page_id;
 
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
@@ -66,6 +67,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             ESP_LOGI("view", "event: VIEW_EVENT_WIFI_ST");
             struct view_data_wifi_st *p_st = ( struct view_data_wifi_st *)event_data;
             uint8_t *p_src =NULL;
+            if ( p_st->past_connected)
+            {
+                wifi_page_id = 1;
+            }else{
+                wifi_page_id = 0;
+            }
             if ( p_st->is_network ) {
                 switch (wifi_rssi_level_get( p_st->rssi )) {
                     case 1:
