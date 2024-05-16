@@ -491,7 +491,7 @@ static esp_err_t bsp_lcd_backlight_init()
     BSP_ERROR_CHECK_RETURN_ERR(ledc_timer_config(&backlight_timer));
     BSP_ERROR_CHECK_RETURN_ERR(ledc_channel_config(&backlight_channel));
 
-    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(0));
 
     return ESP_OK;
 }

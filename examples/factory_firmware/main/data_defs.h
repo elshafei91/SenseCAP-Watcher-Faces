@@ -221,6 +221,7 @@ struct view_data_emoticon_display
 };// struct view_data_emoticon_display
 
 extern char sn_data[66];
+extern uint8_t wifi_page_id;
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,

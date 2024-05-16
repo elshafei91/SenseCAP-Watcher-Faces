@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "data_defs.h"
 #include "event_loops.h"
+#include "esp_wifi.h" 
 #include <dirent.h>
 
 #include "ui/ui.h"
@@ -13,6 +14,7 @@
 
 #include "app_device_info.h"
 #include "app_ble.h"
+#include "app_wifi.h"
 #include "storage.h"
 
 #define VOLBRI_CFG 		"volbri-cfg"
@@ -22,6 +24,7 @@ static const char * TAG = "ui_event";
 static struct view_data_setting_volbri 		volbri;
 static struct view_data_setting_switch 		set_sw;
 static struct view_data_emoticon_display 	emo_disp;
+wifi_ap_record_t 				wifi_record;
 
 static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
 static uint8_t file_idx;
@@ -129,7 +132,7 @@ void virtsl_cb(lv_event_t * e)
 
 void main1c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+	lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 	// lv_group_focus_obj(ui_Page_template_group[3]);
 }
 
@@ -164,6 +167,7 @@ void main3f_cb(lv_event_t * e)
 void main4c_cb(lv_event_t * e)
 {
 	lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	get_sn(0);
 }
 
 void main4f_cb(lv_event_t * e)
@@ -651,12 +655,19 @@ void setdevc_cb(lv_event_t * e)
 
 void setwific_cb(lv_event_t * e)
 {
-	//unbinded
-	// lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
-	// Page_ConnAPP_Mate();
-
+	current_wifi_get(&wifi_record);
+	static char ssid_string[34];
+    strncpy(ssid_string, (const char *)wifi_record.ssid, sizeof(ssid_string) - 1);
+    ssid_string[sizeof(ssid_string) - 1] = '\0';
+	lv_label_set_text(ui_wifissid, ssid_string);
 	//binded
-	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+	if(wifi_page_id){
+		lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+	}else{
+		//unbinded
+		lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
+		Page_ConnAPP_Mate();
+	}
 }
 
 void setblec_cb(lv_event_t * e)
@@ -749,7 +760,6 @@ void setappc_cb(lv_event_t * e)
 {
 	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
 	Page_ConnAPP_Mate();
-	get_sn(0);
 }
 
 void slidervc_cb(lv_event_t * e)
