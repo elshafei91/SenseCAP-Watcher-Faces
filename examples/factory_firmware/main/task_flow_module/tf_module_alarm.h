@@ -14,7 +14,7 @@ extern "C"
 #define TF_MODULE_ALARM_RVERSION "1.0.0"
 #define TF_MODULE_ALARM_DESC     "alarm module"
 
-#define TF_MODULE_ALARM_DEFAULT_AUDIO_FILE  "xxx.wav"
+#define TF_MODULE_ALARM_DEFAULT_AUDIO_FILE  "/spiffs/alarm-di.wav"
 
 struct tf_module_alarm_params
 {
@@ -29,6 +29,7 @@ typedef struct tf_module_alarm
     int input_evt_id; // no output
     struct tf_module_alarm_params params;
     esp_timer_handle_t timer_handle;
+    struct tf_data_buf audio;
 } tf_module_alarm_t;
 
 tf_module_t * tf_module_alarm_init(tf_module_alarm_t *p_module_ins);

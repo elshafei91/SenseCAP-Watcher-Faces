@@ -12,11 +12,11 @@ static const char *TAG = "tfm.alarm_trigger";
 
 static void __data_lock( tf_module_alarm_trigger_t *p_module)
 {
-
+    xSemaphoreTake(p_module->sem_handle, portMAX_DELAY);
 }
 static void __data_unlock( tf_module_alarm_trigger_t *p_module)
 {
-
+    xSemaphoreGive(p_module->sem_handle);  
 }
 static void __parmas_default(struct tf_module_alarm_trigger_params *p_params)
 {
@@ -65,10 +65,11 @@ static int __params_parse(struct tf_module_alarm_trigger_params *p_params, cJSON
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_alarm_trigger_t *p_module_ins = (tf_module_alarm_trigger_t *)handler_args;
-    uint8_t type = ((uint8_t *)p_event_data)[0];
+    ESP_LOGI(TAG, "Input trigger");
 
+    uint8_t type = ((uint8_t *)p_event_data)[0];
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE) {
-        ESP_LOGW(TAG, "unsupport type %d", type);
+        ESP_LOGW(TAG, "Unsupport type %d", type);
         tf_data_free(p_event_data);
         return;
     }
@@ -76,6 +77,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     tf_data_dualimage_with_inference_t *p_data = (tf_data_dualimage_with_inference_t *)p_event_data;
     tf_data_dualimage_with_audio_text_t output_data;
     output_data.type = TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT;
+    __data_lock(p_module_ins);
     for (int i = 0; i < p_module_ins->output_evt_num; i++) {
         tf_data_image_copy(&output_data.img_small, &p_data->img_small);
         tf_data_image_copy(&output_data.img_large, &p_data->img_large);
@@ -83,6 +85,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         tf_data_buf_copy(&output_data.text, &p_params->text);
         tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), portMAX_DELAY);
     }
+    __data_unlock(p_module_ins);
 }
 /*************************************************************************
  * Interface implementation
@@ -130,6 +133,7 @@ static int __msgs_sub_set(void *p_module, int evt_id)
 static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int num)
 {
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)p_module;
+    __data_lock(p_module_ins);
     if (output_index == 0 && num > 0)
     {
         p_module_ins->p_output_evt_id = (int *)tf_malloc(sizeof(int) * num);
@@ -138,14 +142,15 @@ static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int n
             memcpy(p_module_ins->p_output_evt_id, p_evt_id, sizeof(int) * num);
             p_module_ins->output_evt_num = num;
         } else {
-            ESP_LOGE(TAG, "malloc p_output_evt_id failed!");
+            ESP_LOGE(TAG, "Failed to malloc p_output_evt_id");
             p_module_ins->output_evt_num = 0;
         }
     }
     else
     {
-        ESP_LOGW(TAG, "only support output port 0, ignore %d", output_index);
+        ESP_LOGW(TAG, "Only support output port 0, ignore %d", output_index);
     }
+    __data_unlock(p_module_ins);
     return 0;
 }
 
@@ -163,6 +168,11 @@ static tf_module_t * __module_instance(void)
 static  void __module_destroy(tf_module_t *handle)
 {
     if( handle ) {
+        tf_module_alarm_trigger_t *p_module_ins = (tf_module_alarm_trigger_t *)handle->p_module;
+        if (p_module_ins->sem_handle) {
+            vSemaphoreDelete(p_module_ins->sem_handle);
+            p_module_ins->sem_handle = NULL;
+        }
         free(handle->p_module);
     }
 }
@@ -203,7 +213,16 @@ tf_module_t * tf_module_alarm_trigger_init(tf_module_alarm_trigger_t *p_module_i
     p_module_ins->output_evt_num = 0;
     p_module_ins->input_evt_id = 0;
 
+    p_module_ins->sem_handle = xSemaphoreCreateMutex();
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
+
     return &p_module_ins->module_serv;
+err:
+    if (p_module_ins->sem_handle) {
+        vSemaphoreDelete(p_module_ins->sem_handle);
+        p_module_ins->sem_handle = NULL;
+    }
+    return NULL;
 }
 
 esp_err_t tf_module_alarm_trigger_register(void)

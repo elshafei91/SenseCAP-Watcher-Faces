@@ -386,7 +386,7 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                 info.img.p_buf = (uint8_t *)img;
                 info.img.len = img_size;
                 info.img.time = time(NULL);
-                ESP_LOGD(TAG, "Small img:%.1fk, time: %d", (float)img_size/1000, time(NULL));
+                ESP_LOGD(TAG, "Small img:%.3fk (%d), time: %d", (float)img_size/1024, img_size, time(NULL));
             }
 
             if( mode == TF_MODULE_AI_CAMERA_MODES_INFERENCE ) {
@@ -467,12 +467,12 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
             char *img = NULL;
             int img_size = 0;
             struct tf_data_image img_large;
-            
+            // printf("sscma:%s\r\n",reply->data);
             if ( sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK ) {
                 img_large.p_buf = (uint8_t *)img;
                 img_large.len = img_size;
                 img_large.time = time(NULL);
-                ESP_LOGI(TAG, "Large img:%.1fk, time: %d", (float)img_size/1000, time(NULL));
+                ESP_LOGI(TAG, "Large img:%.3fk(%d), time: %d", (float)img_size/1024, img_size, time(NULL));
             } else {
                 img_large.p_buf = NULL;
                 img_large.len = 0;

@@ -8,11 +8,13 @@
 #include <mbedtls/base64.h>
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
+#include "audio_player.h"
+#include "tf_module_img_analyzer.h"
+
 
 static const char *TAG = "tfm.alarm";
 static void __data_lock( tf_module_alarm_t *p_module)
 {
-
 }
 static void __data_unlock( tf_module_alarm_t *p_module)
 {
@@ -57,6 +59,14 @@ static void __timer_callback(void* p_arg)
     }
 }
 
+//TODO
+static void __audio_player_cb(audio_player_cb_ctx_t *p_arg)
+{
+    ESP_LOGI(TAG, "audio play end");
+    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)p_arg;
+    tf_data_image_free(&p_module_ins->audio);
+}
+
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)handler_args;
@@ -78,10 +88,37 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     if(p_params->sound) {
         // TODO SOUND ON
         ESP_LOGI(TAG, "SOUND ON");
-    }
-    esp_timer_start_once(p_module_ins->timer_handle, p_params->duration * 1000000);
+        FILE *fp = NULL;
+        esp_err_t status = ESP_FAIL;
+        tf_data_dualimage_with_audio_text_t *p_data = (tf_data_dualimage_with_audio_text_t*)p_event_data;
 
-    tf_data_free(p_event_data);
+        if( p_data->audio.p_buf != NULL && p_data->audio.len > 0 ) {
+            ESP_LOGI(TAG,"play audio buf");
+            fp = fmemopen((void *)p_data->audio.p_buf, p_data->audio.len, "rb");
+            if (fp) {
+                status = audio_player_play(fp);
+            }
+            if (status != ESP_OK) { 
+                tf_data_free(p_event_data); 
+            } else {
+                tf_data_image_free(&p_data->img_small);
+                tf_data_image_free(&p_data->img_large);
+                tf_data_image_free(&p_data->text);
+                p_module_ins->audio.p_buf = p_data->audio.p_buf;
+                p_module_ins->audio.len = p_data->audio.len;
+            }
+        } else {
+            ESP_LOGI(TAG,"play audio file:%s" ,TF_MODULE_ALARM_DEFAULT_AUDIO_FILE);
+            audio_play_task(TF_MODULE_ALARM_DEFAULT_AUDIO_FILE);
+        }
+
+    } else {
+        tf_data_free(p_event_data);
+    }
+
+    // TODO notify screen
+
+    esp_timer_start_once(p_module_ins->timer_handle, p_params->duration * 1000000);
 }
 /*************************************************************************
  * Interface implementation
@@ -122,7 +159,7 @@ static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int n
 {
     tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)p_module;
     if ( num > 0) {
-        ESP_LOGW(TAG, "only support output");
+        ESP_LOGW(TAG, "nonsupport output");
     }
     return 0;
 }
@@ -188,6 +225,9 @@ tf_module_t * tf_module_alarm_init(tf_module_alarm_t *p_module_ins)
     if(ret != ESP_OK) {
         return NULL;
     }
+
+    //TODO
+    audio_player_callback_register(__audio_player_cb, p_module_ins);
 
     return &p_module_ins->module_serv;
 }
