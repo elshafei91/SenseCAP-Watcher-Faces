@@ -215,5 +215,5 @@ void app_device_info_init()
     //     4,                               // 10
     //     app_device_info_layer_stack_buffer,  // wifi_config_layer_stack_buffer
     //     &app_device_info_layer_task_buffer); // wifi_config_layer_task_buffer
-    xTaskCreate(&app_device_info_task, "app_device_info_task", 2048, NULL, 5, NULL);
+    xTaskCreate(&app_device_info_task, "app_device_info_task", 4096, NULL, 5, NULL);
 }

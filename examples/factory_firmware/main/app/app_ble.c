@@ -111,6 +111,10 @@ esp_gatt_char_prop_t watcher_read_property = 1;
 
 SemaphoreHandle_t ble_status_mutex = NULL;
 
+static StackType_t *ble_task_stack=NULL;
+static StaticTask_t ble_task_buffer;
+
+
 void ble_config_layer(void);
 static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
@@ -711,7 +715,20 @@ esp_err_t app_ble_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     AT_cmd_init();
-    xTaskCreate(ble_config_layer, "ble_config_layer", 4096, NULL, 4, NULL);
+    //xTaskCreate(ble_config_layer, "ble_config_layer", 4096, NULL, 4, NULL);
+    ble_task_stack =(StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    TaskHandle_t task_handle = xTaskCreateStatic(
+        ble_config_layer,       
+        "ble_config_layer",     
+        4096,                   
+        NULL,                   
+        4,                      
+        ble_task_stack,         
+        &ble_task_buffer        
+    );
+    if (task_handle == NULL) {
+        printf("Failed to create task\n");
+    }
 
 #ifdef DEBUG_AT_CMD
     // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running

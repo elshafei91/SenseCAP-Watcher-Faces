@@ -44,7 +44,8 @@ static int wifi_retry_max = 3;
 static bool __g_ping_done = true;
 int wifi_connect_failed_reason;
 static EventGroupHandle_t __wifi_event_group;
-
+static StaticTask_t wifi_task_buffer;
+static StackType_t *wifi_task_stack = NULL;
 static const char *TAG = "app-wifi";
 
 static int min(int a, int b)
@@ -691,9 +692,31 @@ void wifi_config_layer(void *pvParameters)
     }
 }
 
+
 void app_wifi_config_layer_init()
 {
-    xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 4, NULL, 9, &xTask_wifi_config_layer);
+    //xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 4, NULL, 9, &xTask_wifi_config_layer);
+    wifi_task_stack = (StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    if (wifi_task_stack == NULL) {
+        printf("Failed to allocate memory for WiFi task stack\n");
+        return;
+    }
+
+    TaskHandle_t wifi_task_handle = xTaskCreateStatic(
+        wifi_config_layer,      
+        "wifi_config_layer",    
+        4096,                   
+        NULL,                   
+        9,                      
+        wifi_task_stack,        
+        &wifi_task_buffer       
+    );
+
+    if (wifi_task_handle == NULL) {
+        printf("Failed to create WiFi task\n");
+        free(wifi_task_stack);
+        wifi_task_stack = NULL;
+    }
 }
 int app_wifi_init(void)
 {
