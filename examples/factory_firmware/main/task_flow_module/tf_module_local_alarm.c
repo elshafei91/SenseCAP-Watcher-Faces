@@ -1,4 +1,4 @@
-#include "tf_module_alarm.h"
+#include "tf_module_local_alarm.h"
 #include "tf_module_util.h"
 #include <string.h>
 #include "tf.h"
@@ -9,24 +9,25 @@
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 #include "audio_player.h"
+#include "app_audio.h"
 #include "tf_module_img_analyzer.h"
 
 
-static const char *TAG = "tfm.alarm";
-static void __data_lock( tf_module_alarm_t *p_module)
+static const char *TAG = "tfm.local_alarm";
+static void __data_lock( tf_module_local_alarm_t *p_module)
 {
 }
-static void __data_unlock( tf_module_alarm_t *p_module)
+static void __data_unlock( tf_module_local_alarm_t *p_module)
 {
 
 }
-static void __parmas_default(struct tf_module_alarm_params *p_params)
+static void __parmas_default(struct tf_module_local_alarm_params *p_params)
 {
     p_params->duration = 10;
     p_params->rgb      = true;
     p_params->sound    = true;
 }
-static int __params_parse(struct tf_module_alarm_params *p_params, cJSON *p_json)
+static int __params_parse(struct tf_module_local_alarm_params *p_params, cJSON *p_json)
 {
     cJSON *json_sound = cJSON_GetObjectItem(p_json, "sound");
     if (json_sound != NULL  && cJSON_IsNumber(json_sound)) {
@@ -47,8 +48,8 @@ static int __params_parse(struct tf_module_alarm_params *p_params, cJSON *p_json
 
 static void __timer_callback(void* p_arg)
 {
-    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)p_arg;
-    struct tf_module_alarm_params *p_params = &p_module_ins->params;
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_arg;
+    struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
     if( p_params->rgb) {
         // TODO RGB OFF
         ESP_LOGI(TAG, "RGB OFF");
@@ -63,14 +64,14 @@ static void __timer_callback(void* p_arg)
 static void __audio_player_cb(audio_player_cb_ctx_t *p_arg)
 {
     ESP_LOGI(TAG, "audio play end");
-    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)p_arg;
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_arg;
     tf_data_image_free(&p_module_ins->audio);
 }
 
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
-    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)handler_args;
-    struct tf_module_alarm_params *p_params = &p_module_ins->params;
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)handler_args;
+    struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
 
     uint8_t type = ((uint8_t *)p_event_data)[0];
 
@@ -108,8 +109,8 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
                 p_module_ins->audio.len = p_data->audio.len;
             }
         } else {
-            ESP_LOGI(TAG,"play audio file:%s" ,TF_MODULE_ALARM_DEFAULT_AUDIO_FILE);
-            audio_play_task(TF_MODULE_ALARM_DEFAULT_AUDIO_FILE);
+            ESP_LOGI(TAG,"play audio file:%s" ,TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE);
+            audio_play_task(TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE); //TODO , block??
         }
 
     } else {
@@ -125,12 +126,12 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
  ************************************************************************/
 static int __start(void *p_module)
 {
-    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)p_module;
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_module;
     return 0;
 }
 static int __stop(void *p_module)
 {
-    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)p_module;
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_module;
     esp_timer_stop(p_module_ins->timer_handle);
     esp_timer_delete(p_module_ins->timer_handle);
     __timer_callback((void *)p_module_ins); // stop alarm
@@ -139,7 +140,7 @@ static int __stop(void *p_module)
 }
 static int __cfg(void *p_module, cJSON *p_json)
 {
-    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)p_module;
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_module;
     __data_lock(p_module_ins);
     __parmas_default(&p_module_ins->params);
     __params_parse(&p_module_ins->params, p_json);
@@ -148,7 +149,7 @@ static int __cfg(void *p_module, cJSON *p_json)
 }
 static int __msgs_sub_set(void *p_module, int evt_id)
 {
-    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)p_module;
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_module;
     esp_err_t ret;
     p_module_ins->input_evt_id = evt_id;
     ret = tf_event_handler_register(evt_id, __event_handler, p_module_ins);
@@ -157,7 +158,7 @@ static int __msgs_sub_set(void *p_module, int evt_id)
 
 static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int num)
 {
-    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *)p_module;
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_module;
     if ( num > 0) {
         ESP_LOGW(TAG, "nonsupport output");
     }
@@ -166,13 +167,13 @@ static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int n
 
 static tf_module_t * __module_instance(void)
 {
-    tf_module_alarm_t *p_module_ins = (tf_module_alarm_t *) tf_malloc(sizeof(tf_module_alarm_t));
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *) tf_malloc(sizeof(tf_module_local_alarm_t));
     if (p_module_ins == NULL)
     {
         return NULL;
     }
-    memset(p_module_ins, 0, sizeof(tf_module_alarm_t));
-    return tf_module_alarm_init(p_module_ins);
+    memset(p_module_ins, 0, sizeof(tf_module_local_alarm_t));
+    return tf_module_local_alarm_init(p_module_ins);
 }
 
 static  void __module_destroy(tf_module_t *handle)
@@ -198,14 +199,14 @@ const static struct tf_module_mgmt __g_module_mgmt = {
 /*************************************************************************
  * API
  ************************************************************************/
-tf_module_t * tf_module_alarm_init(tf_module_alarm_t *p_module_ins)
+tf_module_t * tf_module_local_alarm_init(tf_module_local_alarm_t *p_module_ins)
 {
     esp_err_t ret = ESP_OK;
     if ( NULL == p_module_ins)
     {
         return NULL;
     }
-#if CONFIG_ENABLE_TF_MODULE_ALARM_DEBUG_LOG
+#if CONFIG_ENABLE_TF_MODULE_LOCAL_ALARM_DEBUG_LOG
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
@@ -232,10 +233,10 @@ tf_module_t * tf_module_alarm_init(tf_module_alarm_t *p_module_ins)
     return &p_module_ins->module_serv;
 }
 
-esp_err_t tf_module_alarm_register(void)
+esp_err_t tf_module_local_alarm_register(void)
 {
-    return tf_module_register(TF_MODULE_ALARM_NAME,
-                              TF_MODULE_ALARM_DESC,
-                              TF_MODULE_ALARM_RVERSION,
+    return tf_module_register(TF_MODULE_LOCAL_ALARM_NAME,
+                              TF_MODULE_LOCAL_ALARM_DESC,
+                              TF_MODULE_LOCAL_ALARM_RVERSION,
                               &__g_module_mgmt);
 }
