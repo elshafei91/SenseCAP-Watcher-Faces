@@ -134,7 +134,7 @@ static char *__request( const char *url,
     esp_http_client_config_t config = {
         .url = url,
         .method = method,
-        .timeout_ms = 15000,
+        .timeout_ms = 30000,
         .crt_bundle_attach = esp_crt_bundle_attach,
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -164,7 +164,7 @@ static char *__request( const char *url,
     {
         esp_http_client_get_chunk_length(client, &content_length);
     }
-    ESP_LOGD(TAG, "content_length=%d", content_length);
+    ESP_LOGI(TAG, "content_length=%d", content_length);
     ESP_GOTO_ON_FALSE(content_length >= 0, ESP_FAIL, err, TAG, "HTTP client fetch headers failed!");
 
     result = (char *)tf_malloc(content_length + 1);
@@ -207,7 +207,7 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
         p_img = tf_malloc(p_data->img_large.len + 1); // To be optimized
         if( p_img != NULL ) {
             memcpy(p_img, p_data->img_large.p_buf, p_data->img_large.len);
-            p_img[p_data->img_large.len] = "\0";
+            p_img[p_data->img_large.len] = 0;
             p_str = p_img;
         }
     }
@@ -235,6 +235,8 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
     json_str = cJSON_PrintUnformatted(json);
     cJSON_Delete(json);
 
+    ESP_LOGI(TAG, "Post %s", p_module_ins->url); 
+
     p_resp = __request(p_module_ins->url, 
                        HTTP_METHOD_POST, 
                        p_module_ins->token,
@@ -249,6 +251,7 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
     }
 
     ESP_LOGD(TAG, "Response: %s", p_resp); 
+
     json = cJSON_Parse(p_resp);
     if (json == NULL) {
         ESP_LOGE(TAG, "Json parse failed");
