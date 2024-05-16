@@ -180,7 +180,7 @@ static char *__request( const char *url,
     else
     {
         result[content_length] = 0;
-        ESP_LOGD(TAG, "content: %s, size: %d", result, strlen(result));
+        // ESP_LOGD(TAG, "content: %s, size: %d", result, strlen(result));
     }
 err:
     esp_http_client_close(client);
@@ -250,7 +250,7 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
         return -1;
     }
 
-    ESP_LOGD(TAG, "Response: %s", p_resp); 
+    // ESP_LOGD(TAG, "Response: %s", p_resp); 
 
     json = cJSON_Parse(p_resp);
     if (json == NULL) {
@@ -288,7 +288,7 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
                 uint8_t *p_audio = NULL;
                 int decode_ret = mbedtls_base64_decode(NULL, 0, &output_len, \
                                     (uint8_t *)json_audio->valuestring, strlen(json_audio->valuestring));
-                if( decode_ret == 0 && output_len > 0 ) {
+                if( decode_ret != MBEDTLS_ERR_BASE64_INVALID_CHARACTER  && output_len > 0 ) {
                     uint8_t *p_audio = (uint8_t *)tf_malloc( output_len);
                     if( p_audio != NULL ) {
                         decode_ret = mbedtls_base64_decode(p_audio, output_len, &output_len, \
@@ -296,11 +296,14 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
                         if( decode_ret == 0){
                             p_result->audio.p_buf = p_audio;
                             p_result->audio.len   = output_len;
+                            ESP_LOGI(TAG, "audio:%d", output_len);
                         } else {
                             tf_free(p_audio);
                             ESP_LOGE(TAG, "base64 decode failed");
                         }
                     }
+                } else {
+                    ESP_LOGE(TAG, "Base64 decode failed, ret: %d, len:%d", decode_ret, output_len);
                 }
             }
 
@@ -314,6 +317,7 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
                     p_result->img.p_buf = p_img;
                     p_result->img.len   = strlen(json_img->valuestring);
                     p_result->img.time  = p_data->img_large.time;
+                    ESP_LOGI(TAG, "img:%d", p_result->img.len);
                 }
             }
             ret = 0; //success
