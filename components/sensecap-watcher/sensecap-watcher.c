@@ -527,7 +527,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .dc_gpio_num = -1,
         .spi_mode = 3,
         .pclk_hz = DRV_LCD_PIXEL_CLK_HZ,
-        .trans_queue_depth = 2,
+        .trans_queue_depth = CONFIG_BSP_LCD_PANEL_SPI_TRANS_Q_DEPTH,
         .lcd_cmd_bits = DRV_LCD_CMD_BITS,
         .lcd_param_bits = DRV_LCD_PARAM_BITS,
         .flags = {
