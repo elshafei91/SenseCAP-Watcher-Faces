@@ -249,7 +249,7 @@ esp_err_t app_mqtt_client_init(void)
     // xTaskCreate(__app_mqtt_client_task, "app_mqtt_client_task", 1024 * 4, NULL, 4, NULL);
 
     const uint32_t stack_size = 3 * 1024;
-    StackType_t *task_stack = (StackType_t *)psram_alloc(stack_size);
+    StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
     g_task = xTaskCreateStatic(__app_mqtt_client_task, "app_mqtt_client", stack_size, NULL, 4, task_stack, &g_task_tcb);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO,

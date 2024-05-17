@@ -29,7 +29,17 @@ time_t util_get_timestamp_ms(void)
 	return now * 1000;
 }
 
-void *psram_alloc(size_t sz)
+void *psram_malloc(size_t sz)
 {
     return heap_caps_malloc(sz, MALLOC_CAP_SPIRAM);
+}
+
+void *psram_calloc(size_t n, size_t sz)
+{
+	return heap_caps_calloc(n, sz, MALLOC_CAP_SPIRAM);
+}
+
+void *psram_realloc(void *ptr, size_t new_sz)
+{
+	return heap_caps_realloc(ptr, new_sz, MALLOC_CAP_SPIRAM);
 }
