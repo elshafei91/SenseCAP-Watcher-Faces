@@ -7,12 +7,9 @@
 extern "C" {
 #endif
 
-
 ESP_EVENT_DECLARE_BASE(VIEW_EVENT_BASE);
-extern esp_event_loop_handle_t view_event_handle;
-
 ESP_EVENT_DECLARE_BASE(CTRL_EVENT_BASE);
-extern esp_event_loop_handle_t ctrl_event_handle;
+extern esp_event_loop_handle_t app_event_loop_handle;
 
 #ifdef __cplusplus
 }

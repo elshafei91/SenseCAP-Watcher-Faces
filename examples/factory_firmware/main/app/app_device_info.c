@@ -64,7 +64,7 @@ uint8_t *get_sn(int caller)
                 char final_string[150];
                 snprintf(final_string, sizeof(final_string), "w1:%s:0:%s:%s:%s", hexString1, storage_space_2, storage_space_3, hexString4);
                 printf("SN: %s\n", final_string);
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, &final_string, sizeof(final_string), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, &final_string, sizeof(final_string), portMAX_DELAY);
                 xSemaphoreGive(MUTEX_SN);
                 break;
         }

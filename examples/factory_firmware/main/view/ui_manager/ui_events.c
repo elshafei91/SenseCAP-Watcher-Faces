@@ -153,7 +153,7 @@ void main2f_cb(lv_event_t * e)
 
 void main3c_cb(lv_event_t * e)
 {
-	esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, NULL, 0, portMAX_DELAY);
+	esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, NULL, 0, portMAX_DELAY);
 	// lv_pm_open_page(g_main, group_ha, 1, PM_ADD_OBJS_TO_GROUP, &ui_Page_HA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_HA_screen_init);
 }
 

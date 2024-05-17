@@ -239,7 +239,7 @@ void __app_sensecap_https_task(void *p_arg)
             ret = __https_token_get(p_mqttinfo, (const char *)token);
             if( ret == 0 ) {
                 // mqttinfo is big, we post pointer of it along with a mutex
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO, 
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO, 
                                     &p_mqttinfo, sizeof(p_mqttinfo), portMAX_DELAY);
             }
         }
@@ -288,7 +288,7 @@ int app_sensecap_https_init(void)
     StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
     g_task = xTaskCreateStatic(__app_sensecap_https_task, "app_sensecap_https", stack_size, NULL, 3, task_stack, &g_task_tcb);
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,
                                                              __view_event_handler, NULL, NULL));
 

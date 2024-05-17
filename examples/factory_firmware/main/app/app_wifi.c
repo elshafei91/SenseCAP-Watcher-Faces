@@ -92,12 +92,12 @@ static void __wifi_event_handler(void* arg, esp_event_base_t event_base,
             st.is_connecting = false;
             __wifi_st_set(&st);
             
-            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
             
             struct view_data_wifi_connect_result_msg msg;
             msg.result = 0;
             strcpy(msg.msg, "Connection successful");
-            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
             break;
         }
         case WIFI_EVENT_STA_DISCONNECTED: {
@@ -119,13 +119,13 @@ static void __wifi_event_handler(void* arg, esp_event_base_t event_base,
                 st.is_connecting = false;
                 __wifi_st_set(&st);
 
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
                 
                 char *p_str = "";
                 struct view_data_wifi_connect_result_msg msg;
                 msg.result = 1;
                 strcpy(msg.msg, "Connection failure");
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
             }
             break;
         }
@@ -212,7 +212,7 @@ static void __wifi_cfg_restore(void)
     st.is_network   = false;
     __wifi_st_set(&st);
 
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
 
     // restore and stop
     esp_wifi_restore();
@@ -228,7 +228,7 @@ static void __wifi_shutdown(void)
     st.is_network   = false;
     __wifi_st_set(&st);
 
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
 
     esp_wifi_stop();
 }
@@ -271,7 +271,7 @@ static void __ping_end(esp_ping_handle_t hdl, void *args)
         st.is_network = false;
         __wifi_st_set(&st);
     }
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
     __g_ping_done = true;
 }
 
@@ -423,15 +423,15 @@ int app_wifi_init(void)
 
 
     
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, 
                                                             __view_event_handler, NULL, NULL));
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CFG_DELETE, 
                                                             __view_event_handler, NULL, NULL));
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, 
                                                             __view_event_handler, NULL, NULL));
 
