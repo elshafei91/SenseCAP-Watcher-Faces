@@ -695,7 +695,9 @@ lv_disp_t *bsp_lvgl_init(void)
             .buff_dma = false,
             .buff_spiram = true,
         } };
-    cfg.lvgl_port_cfg.task_stack = CONFIG_LVGL_TASK_STACK_SIZE;
+    cfg.lvgl_port_cfg.task_priority = CONFIG_LVGL_PORT_TASK_PRIORITY;
+    cfg.lvgl_port_cfg.task_affinity = CONFIG_LVGL_PORT_TASK_AFFINITY;
+    cfg.lvgl_port_cfg.task_stack = CONFIG_LVGL_PORT_TASK_STACK_SIZE;
     return bsp_lvgl_init_with_cfg(&cfg);
 }
 

@@ -18,7 +18,6 @@
 
 #include "lvgl.h"
 
-
 #ifdef ESP_LVGL_PORT_TOUCH_COMPONENT
 #include "esp_lcd_touch.h"
 #endif
@@ -40,29 +39,33 @@ LV_IMG_DECLARE(img_cursor)
 static const char *TAG = "LVGL";
 
 /*******************************************************************************
-* Types definitions
-*******************************************************************************/
+ * Types definitions
+ *******************************************************************************/
 
 #ifdef ESP_LVGL_PORT_USB_HOST_HID_COMPONENT
-typedef struct {
-    QueueHandle_t   queue;      /* USB HID queue */
-    TaskHandle_t    task;       /* USB HID task */
-    bool            running;    /* USB HID task running */
-    struct {
-        lv_indev_drv_t  drv;    /* LVGL mouse input device driver */
-        uint8_t sensitivity;    /* Mouse sensitivity (cannot be zero) */
-        int16_t x;              /* Mouse X coordinate */
-        int16_t y;              /* Mouse Y coordinate */
-        bool left_button;       /* Mouse left button state */
+typedef struct
+{
+    QueueHandle_t queue; /* USB HID queue */
+    TaskHandle_t task;   /* USB HID task */
+    bool running;        /* USB HID task running */
+    struct
+    {
+        lv_indev_drv_t drv;  /* LVGL mouse input device driver */
+        uint8_t sensitivity; /* Mouse sensitivity (cannot be zero) */
+        int16_t x;           /* Mouse X coordinate */
+        int16_t y;           /* Mouse Y coordinate */
+        bool left_button;    /* Mouse left button state */
     } mouse;
-    struct {
-        lv_indev_drv_t  drv;    /* LVGL keyboard input device driver */
+    struct
+    {
+        lv_indev_drv_t drv; /* LVGL keyboard input device driver */
         uint32_t last_key;
-        bool     pressed;
+        bool pressed;
     } kb;
 } lvgl_port_usb_hid_ctx_t;
 
-typedef struct {
+typedef struct
+{
     hid_host_device_handle_t hid_device_handle;
     hid_host_driver_event_t event;
     void *arg;
@@ -70,36 +73,48 @@ typedef struct {
 
 #endif
 
-typedef struct lvgl_port_ctx_s {
-    SemaphoreHandle_t   lvgl_mux;
-    esp_timer_handle_t  tick_timer;
-    bool                running;
-    int                 task_max_sleep_ms;
+typedef struct lvgl_port_ctx_s
+{
+    SemaphoreHandle_t lvgl_mux;
+    esp_timer_handle_t tick_timer;
+    bool running;
+    int task_max_sleep_ms;
 #ifdef ESP_LVGL_PORT_USB_HOST_HID_COMPONENT
     lvgl_port_usb_hid_ctx_t hid_ctx;
 #endif
+    struct
+    {
+        TaskHandle_t handle;
+#ifdef CONFIG_LVGL_PORT_TASK_STACK_ALLOC_EXTERNAL
+        StaticTask_t *task;
+        StackType_t *stack;
+#endif
+    } lvgl_task;
 } lvgl_port_ctx_t;
 
-typedef struct {
-    esp_lcd_panel_io_handle_t io_handle;    /* LCD panel IO handle */
-    esp_lcd_panel_handle_t    panel_handle; /* LCD panel handle */
-    lvgl_port_rotation_cfg_t  rotation;     /* Default values of the screen rotation */
-    lv_disp_drv_t             disp_drv;     /* LVGL display driver */
+typedef struct
+{
+    esp_lcd_panel_io_handle_t io_handle; /* LCD panel IO handle */
+    esp_lcd_panel_handle_t panel_handle; /* LCD panel handle */
+    lvgl_port_rotation_cfg_t rotation;   /* Default values of the screen rotation */
+    lv_disp_drv_t disp_drv;              /* LVGL display driver */
 } lvgl_port_display_ctx_t;
 
 #ifdef ESP_LVGL_PORT_TOUCH_COMPONENT
-typedef struct {
-    esp_lcd_touch_handle_t   handle;     /* LCD touch IO handle */
-    lv_indev_drv_t           indev_drv;  /* LVGL input device driver */
+typedef struct
+{
+    esp_lcd_touch_handle_t handle; /* LCD touch IO handle */
+    lv_indev_drv_t indev_drv;      /* LVGL input device driver */
 } lvgl_port_touch_ctx_t;
 #endif
 
 #ifdef ESP_LVGL_PORT_KNOB_COMPONENT
-typedef struct {
-    knob_handle_t   knob_handle; /* Encoder knob handlers */
+typedef struct
+{
+    knob_handle_t knob_handle;  /* Encoder knob handlers */
     button_handle_t btn_handle; /* Encoder button handlers */
-    lv_indev_drv_t  indev_drv;  /* LVGL input device driver */
-    bool btn_enter; /* Encoder button enter state */
+    lv_indev_drv_t indev_drv;   /* LVGL input device driver */
+    bool btn_enter;             /* Encoder button enter state */
 } lvgl_port_encoder_ctx_t;
 #endif
 
@@ -112,24 +127,25 @@ typedef enum {
     LVGL_PORT_NAV_BTN_CNT,
 } lvgl_port_nav_btns_t;
 
-typedef struct {
-    button_handle_t btn[LVGL_PORT_NAV_BTN_CNT];     /* Button handlers */
-    lv_indev_drv_t  indev_drv;  /* LVGL input device driver */
-    bool btn_prev; /* Button prev state */
-    bool btn_next; /* Button next state */
-    bool btn_enter; /* Button enter state */
+typedef struct
+{
+    button_handle_t btn[LVGL_PORT_NAV_BTN_CNT]; /* Button handlers */
+    lv_indev_drv_t indev_drv;                   /* LVGL input device driver */
+    bool btn_prev;                              /* Button prev state */
+    bool btn_next;                              /* Button next state */
+    bool btn_enter;                             /* Button enter state */
 } lvgl_port_nav_btns_ctx_t;
 #endif
 
 /*******************************************************************************
-* Local variables
-*******************************************************************************/
+ * Local variables
+ *******************************************************************************/
 static lvgl_port_ctx_t lvgl_port_ctx;
 static int lvgl_port_timer_period_ms = 5;
 
 /*******************************************************************************
-* Function definitions
-*******************************************************************************/
+ * Function definitions
+ *******************************************************************************/
 static void lvgl_port_task(void *arg);
 static esp_err_t lvgl_port_tick_init(void);
 static void lvgl_port_task_deinit(void);
@@ -163,8 +179,8 @@ static void lvgl_port_usb_hid_callback(hid_host_device_handle_t hid_device_handl
 #endif
 static void lvgl_port_pix_monochrome_callback(lv_disp_drv_t *drv, uint8_t *buf, lv_coord_t buf_w, lv_coord_t x, lv_coord_t y, lv_color_t color, lv_opa_t opa);
 /*******************************************************************************
-* Public API functions
-*******************************************************************************/
+ * Public API functions
+ *******************************************************************************/
 
 esp_err_t lvgl_port_init(const lvgl_port_cfg_t *cfg)
 {
@@ -174,7 +190,6 @@ esp_err_t lvgl_port_init(const lvgl_port_cfg_t *cfg)
 
     memset(&lvgl_port_ctx, 0, sizeof(lvgl_port_ctx));
 
-
     /* LVGL init */
     lv_init();
     /* Tick init */
@@ -182,22 +197,43 @@ esp_err_t lvgl_port_init(const lvgl_port_cfg_t *cfg)
     ESP_RETURN_ON_ERROR(lvgl_port_tick_init(), TAG, "");
     /* Create task */
     lvgl_port_ctx.task_max_sleep_ms = cfg->task_max_sleep_ms;
-    if (lvgl_port_ctx.task_max_sleep_ms == 0) {
+    if (lvgl_port_ctx.task_max_sleep_ms == 0)
+    {
         lvgl_port_ctx.task_max_sleep_ms = 500;
     }
     lvgl_port_ctx.lvgl_mux = xSemaphoreCreateRecursiveMutex();
     ESP_GOTO_ON_FALSE(lvgl_port_ctx.lvgl_mux, ESP_ERR_NO_MEM, err, TAG, "Create LVGL mutex fail!");
 
     BaseType_t res;
-    if (cfg->task_affinity < 0) {
-        res = xTaskCreate(lvgl_port_task, "LVGL task", cfg->task_stack, NULL, cfg->task_priority, NULL);
-    } else {
-        res = xTaskCreatePinnedToCore(lvgl_port_task, "LVGL task", cfg->task_stack, NULL, cfg->task_priority, NULL, cfg->task_affinity);
+#if CONFIG_LVGL_PORT_TASK_STACK_ALLOC_EXTERNAL
+    lvgl_port_ctx.lvgl_task.task = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(lvgl_port_ctx.lvgl_task.task, ESP_ERR_NO_MEM, err, TAG, "Create LVGL task fail!");
+    lvgl_port_ctx.lvgl_task.stack = heap_caps_calloc(1, cfg->task_stack * sizeof(StackType_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(lvgl_port_ctx.lvgl_task.stack, ESP_ERR_NO_MEM, err, TAG, "Create LVGL task fail!");
+    if (cfg->task_affinity < 0)
+    {
+        lvgl_port_ctx.lvgl_task.handle = xTaskCreateStatic(lvgl_port_task, "LVGL task", cfg->task_stack, NULL, cfg->task_priority, lvgl_port_ctx.lvgl_task.stack, lvgl_port_ctx.lvgl_task.task);
+    }
+    else
+    {
+        lvgl_port_ctx.lvgl_task.handle
+            = xTaskCreateStaticPinnedToCore(lvgl_port_task, "LVGL task", cfg->task_stack, NULL, cfg->task_priority, lvgl_port_ctx.lvgl_task.stack, lvgl_port_ctx.lvgl_task.task, cfg->task_affinity);
+    }
+#else
+    if (cfg->task_affinity < 0)
+    {
+        res = xTaskCreate(lvgl_port_task, "LVGL task", cfg->task_stack, NULL, cfg->task_priority, &lvgl_port_ctx.lvgl_task.handle);
+    }
+    else
+    {
+        res = xTaskCreatePinnedToCore(lvgl_port_task, "LVGL task", cfg->task_stack, NULL, cfg->task_priority, &lvgl_port_ctx.lvgl_task.handle, cfg->task_affinity);
     }
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "Create LVGL task fail!");
+#endif
 
 err:
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
         lvgl_port_deinit();
     }
 
@@ -208,7 +244,8 @@ esp_err_t lvgl_port_resume(void)
 {
     esp_err_t ret = ESP_ERR_INVALID_STATE;
 
-    if (lvgl_port_ctx.tick_timer != NULL) {
+    if (lvgl_port_ctx.tick_timer != NULL)
+    {
         lv_timer_enable(true);
         ret = esp_timer_start_periodic(lvgl_port_ctx.tick_timer, lvgl_port_timer_period_ms * 1000);
     }
@@ -220,7 +257,8 @@ esp_err_t lvgl_port_stop(void)
 {
     esp_err_t ret = ESP_ERR_INVALID_STATE;
 
-    if (lvgl_port_ctx.tick_timer != NULL) {
+    if (lvgl_port_ctx.tick_timer != NULL)
+    {
         lv_timer_enable(false);
         ret = esp_timer_stop(lvgl_port_ctx.tick_timer);
     }
@@ -231,16 +269,20 @@ esp_err_t lvgl_port_stop(void)
 esp_err_t lvgl_port_deinit(void)
 {
     /* Stop and delete timer */
-    if (lvgl_port_ctx.tick_timer != NULL) {
+    if (lvgl_port_ctx.tick_timer != NULL)
+    {
         esp_timer_stop(lvgl_port_ctx.tick_timer);
         esp_timer_delete(lvgl_port_ctx.tick_timer);
         lvgl_port_ctx.tick_timer = NULL;
     }
 
     /* Stop running task */
-    if (!lvgl_port_ctx.running) {
+    if (!lvgl_port_ctx.running)
+    {
         lvgl_port_ctx.running = false;
-    } else {
+    }
+    else
+    {
         lvgl_port_task_deinit();
     }
 
@@ -270,11 +312,16 @@ lv_disp_t *lvgl_port_add_disp(const lvgl_port_display_cfg_t *disp_cfg)
     disp_ctx->rotation.mirror_y = disp_cfg->rotation.mirror_y;
 
     uint32_t buff_caps = MALLOC_CAP_DEFAULT;
-    if (disp_cfg->flags.buff_dma && disp_cfg->flags.buff_spiram) {
+    if (disp_cfg->flags.buff_dma && disp_cfg->flags.buff_spiram)
+    {
         ESP_GOTO_ON_FALSE(false, ESP_ERR_NOT_SUPPORTED, err, TAG, "Alloc DMA capable buffer in SPIRAM is not supported!");
-    } else if (disp_cfg->flags.buff_dma) {
+    }
+    else if (disp_cfg->flags.buff_dma)
+    {
         buff_caps = MALLOC_CAP_DMA;
-    } else if (disp_cfg->flags.buff_spiram) {
+    }
+    else if (disp_cfg->flags.buff_spiram)
+    {
         buff_caps = MALLOC_CAP_SPIRAM;
     }
 
@@ -282,7 +329,8 @@ lv_disp_t *lvgl_port_add_disp(const lvgl_port_display_cfg_t *disp_cfg)
     /* it's recommended to choose the size of the draw buffer(s) to be at least 1/10 screen sized */
     buf1 = heap_caps_malloc(disp_cfg->buffer_size * sizeof(lv_color_t), buff_caps);
     ESP_GOTO_ON_FALSE(buf1, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL buffer (buf1) allocation!");
-    if (disp_cfg->double_buffer) {
+    if (disp_cfg->double_buffer)
+    {
         buf2 = heap_caps_malloc(disp_cfg->buffer_size * sizeof(lv_color_t), buff_caps);
         ESP_GOTO_ON_FALSE(buf2, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL buffer (buf2) allocation!");
     }
@@ -310,7 +358,8 @@ lv_disp_t *lvgl_port_add_disp(const lvgl_port_display_cfg_t *disp_cfg)
 #endif
 
     /* Monochrome display settings */
-    if (disp_cfg->monochrome) {
+    if (disp_cfg->monochrome)
+    {
         /* When using monochromatic display, there must be used full bufer! */
         ESP_GOTO_ON_FALSE((disp_cfg->hres * disp_cfg->vres == disp_cfg->buffer_size), ESP_ERR_INVALID_ARG, err, TAG, "Monochromatic display must using full buffer!");
 
@@ -321,14 +370,18 @@ lv_disp_t *lvgl_port_add_disp(const lvgl_port_display_cfg_t *disp_cfg)
     disp = lv_disp_drv_register(&disp_ctx->disp_drv);
 
 err:
-    if (ret != ESP_OK) {
-        if (buf1) {
+    if (ret != ESP_OK)
+    {
+        if (buf1)
+        {
             free(buf1);
         }
-        if (buf2) {
+        if (buf2)
+        {
             free(buf2);
         }
-        if (disp_ctx) {
+        if (disp_ctx)
+        {
             free(disp_ctx);
         }
     }
@@ -345,16 +398,20 @@ esp_err_t lvgl_port_remove_disp(lv_disp_t *disp)
 
     lv_disp_remove(disp);
 
-    if (disp_drv) {
-        if (disp_drv->draw_buf && disp_drv->draw_buf->buf1) {
+    if (disp_drv)
+    {
+        if (disp_drv->draw_buf && disp_drv->draw_buf->buf1)
+        {
             free(disp_drv->draw_buf->buf1);
             disp_drv->draw_buf->buf1 = NULL;
         }
-        if (disp_drv->draw_buf && disp_drv->draw_buf->buf2) {
+        if (disp_drv->draw_buf && disp_drv->draw_buf->buf2)
+        {
             free(disp_drv->draw_buf->buf2);
             disp_drv->draw_buf->buf2 = NULL;
         }
-        if (disp_drv->draw_buf) {
+        if (disp_drv->draw_buf)
+        {
             free(disp_drv->draw_buf);
             disp_drv->draw_buf = NULL;
         }
@@ -374,7 +431,8 @@ lv_indev_t *lvgl_port_add_touch(const lvgl_port_touch_cfg_t *touch_cfg)
 
     /* Touch context */
     lvgl_port_touch_ctx_t *touch_ctx = malloc(sizeof(lvgl_port_touch_ctx_t));
-    if (touch_ctx == NULL) {
+    if (touch_ctx == NULL)
+    {
         ESP_LOGE(TAG, "Not enough memory for touch context allocation!");
         return NULL;
     }
@@ -399,7 +457,8 @@ esp_err_t lvgl_port_remove_touch(lv_indev_t *touch)
     /* Remove input device driver */
     lv_indev_delete(touch);
 
-    if (touch_ctx) {
+    if (touch_ctx)
+    {
         free(touch_ctx);
     }
 
@@ -417,19 +476,22 @@ lv_indev_t *lvgl_port_add_encoder(const lvgl_port_encoder_cfg_t *encoder_cfg)
 
     /* Encoder context */
     lvgl_port_encoder_ctx_t *encoder_ctx = malloc(sizeof(lvgl_port_encoder_ctx_t));
-    if (encoder_ctx == NULL) {
+    if (encoder_ctx == NULL)
+    {
         ESP_LOGE(TAG, "Not enough memory for encoder context allocation!");
         return NULL;
     }
 
     /* Encoder_a/b */
-    if (encoder_cfg->encoder_a_b != NULL) {
+    if (encoder_cfg->encoder_a_b != NULL)
+    {
         encoder_ctx->knob_handle = iot_knob_create(encoder_cfg->encoder_a_b);
         ESP_GOTO_ON_FALSE(encoder_ctx->knob_handle, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for knob create!");
     }
 
     /* Encoder Enter */
-    if (encoder_cfg->encoder_enter != NULL) {
+    if (encoder_cfg->encoder_enter != NULL)
+    {
         encoder_ctx->btn_handle = iot_button_create(encoder_cfg->encoder_enter);
         ESP_GOTO_ON_FALSE(encoder_ctx->btn_handle, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for button create!");
     }
@@ -437,8 +499,8 @@ lv_indev_t *lvgl_port_add_encoder(const lvgl_port_encoder_cfg_t *encoder_cfg)
     ESP_ERROR_CHECK(iot_button_register_cb(encoder_ctx->btn_handle, BUTTON_PRESS_DOWN, lvgl_port_encoder_btn_down_handler, encoder_ctx));
     ESP_ERROR_CHECK(iot_button_register_cb(encoder_ctx->btn_handle, BUTTON_PRESS_UP, lvgl_port_encoder_btn_up_handler, encoder_ctx));
 
-     if (encoder_cfg->encoder_enter->type == BUTTON_TYPE_CUSTOM && encoder_cfg->encoder_enter->custom_button_config.priv != NULL)
-    ESP_ERROR_CHECK(iot_button_register_cb(encoder_ctx->btn_handle, BUTTON_LONG_PRESS_START, lvgl_port_encoder_btn_long_handler, encoder_cfg->encoder_enter->custom_button_config.priv));
+    if (encoder_cfg->encoder_enter->type == BUTTON_TYPE_CUSTOM && encoder_cfg->encoder_enter->custom_button_config.priv != NULL)
+        ESP_ERROR_CHECK(iot_button_register_cb(encoder_ctx->btn_handle, BUTTON_LONG_PRESS_START, lvgl_port_encoder_btn_long_handler, encoder_cfg->encoder_enter->custom_button_config.priv));
 
     encoder_ctx->btn_enter = false;
 
@@ -451,16 +513,20 @@ lv_indev_t *lvgl_port_add_encoder(const lvgl_port_encoder_cfg_t *encoder_cfg)
     indev = lv_indev_drv_register(&encoder_ctx->indev_drv);
 
 err:
-    if (ret != ESP_OK) {
-        if (encoder_ctx->knob_handle != NULL) {
+    if (ret != ESP_OK)
+    {
+        if (encoder_ctx->knob_handle != NULL)
+        {
             iot_knob_delete(encoder_ctx->knob_handle);
         }
 
-        if (encoder_ctx->btn_handle != NULL) {
+        if (encoder_ctx->btn_handle != NULL)
+        {
             iot_button_delete(encoder_ctx->btn_handle);
         }
 
-        if (encoder_ctx != NULL) {
+        if (encoder_ctx != NULL)
+        {
             free(encoder_ctx);
         }
     }
@@ -474,15 +540,18 @@ esp_err_t lvgl_port_remove_encoder(lv_indev_t *encoder)
     assert(indev_drv);
     lvgl_port_encoder_ctx_t *encoder_ctx = (lvgl_port_encoder_ctx_t *)indev_drv->user_data;
 
-    if (encoder_ctx->knob_handle != NULL) {
+    if (encoder_ctx->knob_handle != NULL)
+    {
         iot_knob_delete(encoder_ctx->knob_handle);
     }
 
-    if (encoder_ctx->btn_handle != NULL) {
+    if (encoder_ctx->btn_handle != NULL)
+    {
         iot_button_delete(encoder_ctx->btn_handle);
     }
 
-    if (encoder_ctx != NULL) {
+    if (encoder_ctx != NULL)
+    {
         free(encoder_ctx);
     }
 
@@ -500,31 +569,36 @@ lv_indev_t *lvgl_port_add_navigation_buttons(const lvgl_port_nav_btns_cfg_t *but
 
     /* Touch context */
     lvgl_port_nav_btns_ctx_t *buttons_ctx = malloc(sizeof(lvgl_port_nav_btns_ctx_t));
-    if (buttons_ctx == NULL) {
+    if (buttons_ctx == NULL)
+    {
         ESP_LOGE(TAG, "Not enough memory for buttons context allocation!");
         return NULL;
     }
 
     /* Previous button */
-    if (buttons_cfg->button_prev != NULL) {
+    if (buttons_cfg->button_prev != NULL)
+    {
         buttons_ctx->btn[LVGL_PORT_NAV_BTN_PREV] = iot_button_create(buttons_cfg->button_prev);
         ESP_GOTO_ON_FALSE(buttons_ctx->btn[LVGL_PORT_NAV_BTN_PREV], ESP_ERR_NO_MEM, err, TAG, "Not enough memory for button create!");
     }
 
     /* Next button */
-    if (buttons_cfg->button_next != NULL) {
+    if (buttons_cfg->button_next != NULL)
+    {
         buttons_ctx->btn[LVGL_PORT_NAV_BTN_NEXT] = iot_button_create(buttons_cfg->button_next);
         ESP_GOTO_ON_FALSE(buttons_ctx->btn[LVGL_PORT_NAV_BTN_NEXT], ESP_ERR_NO_MEM, err, TAG, "Not enough memory for button create!");
     }
 
     /* Enter button */
-    if (buttons_cfg->button_enter != NULL) {
+    if (buttons_cfg->button_enter != NULL)
+    {
         buttons_ctx->btn[LVGL_PORT_NAV_BTN_ENTER] = iot_button_create(buttons_cfg->button_enter);
         ESP_GOTO_ON_FALSE(buttons_ctx->btn[LVGL_PORT_NAV_BTN_ENTER], ESP_ERR_NO_MEM, err, TAG, "Not enough memory for button create!");
     }
 
     /* Button handlers */
-    for (int i = 0; i < LVGL_PORT_NAV_BTN_CNT; i++) {
+    for (int i = 0; i < LVGL_PORT_NAV_BTN_CNT; i++)
+    {
         ESP_ERROR_CHECK(iot_button_register_cb(buttons_ctx->btn[i], BUTTON_PRESS_DOWN, lvgl_port_btn_down_handler, buttons_ctx));
         ESP_ERROR_CHECK(iot_button_register_cb(buttons_ctx->btn[i], BUTTON_PRESS_UP, lvgl_port_btn_up_handler, buttons_ctx));
     }
@@ -543,14 +617,18 @@ lv_indev_t *lvgl_port_add_navigation_buttons(const lvgl_port_nav_btns_cfg_t *but
     indev = lv_indev_drv_register(&buttons_ctx->indev_drv);
 
 err:
-    if (ret != ESP_OK) {
-        for (int i = 0; i < LVGL_PORT_NAV_BTN_CNT; i++) {
-            if (buttons_ctx->btn[i] != NULL) {
+    if (ret != ESP_OK)
+    {
+        for (int i = 0; i < LVGL_PORT_NAV_BTN_CNT; i++)
+        {
+            if (buttons_ctx->btn[i] != NULL)
+            {
                 iot_button_delete(buttons_ctx->btn[i]);
             }
         }
 
-        if (buttons_ctx != NULL) {
+        if (buttons_ctx != NULL)
+        {
             free(buttons_ctx);
         }
     }
@@ -568,7 +646,8 @@ esp_err_t lvgl_port_remove_navigation_buttons(lv_indev_t *buttons)
     /* Remove input device driver */
     lv_indev_delete(buttons);
 
-    if (buttons_ctx) {
+    if (buttons_ctx)
+    {
         free(buttons_ctx);
     }
 
@@ -586,7 +665,8 @@ lv_indev_t *lvgl_port_add_usb_hid_mouse_input(const lvgl_port_hid_mouse_cfg_t *m
 
     /* Initialize USB HID */
     lvgl_port_usb_hid_ctx_t *hid_ctx = lvgl_port_hid_init();
-    if (hid_ctx == NULL) {
+    if (hid_ctx == NULL)
+    {
         return NULL;
     }
 
@@ -606,7 +686,8 @@ lv_indev_t *lvgl_port_add_usb_hid_mouse_input(const lvgl_port_hid_mouse_cfg_t *m
 
     /* Set image of cursor */
     lv_obj_t *cursor = mouse_cfg->cursor_img;
-    if (cursor == NULL) {
+    if (cursor == NULL)
+    {
         cursor = lv_img_create(lv_scr_act());
         lv_img_set_src(cursor, &img_cursor);
     }
@@ -623,7 +704,8 @@ lv_indev_t *lvgl_port_add_usb_hid_keyboard_input(const lvgl_port_hid_keyboard_cf
 
     /* Initialize USB HID */
     lvgl_port_usb_hid_ctx_t *hid_ctx = lvgl_port_hid_init();
-    if (hid_ctx == NULL) {
+    if (hid_ctx == NULL)
+    {
         return NULL;
     }
 
@@ -649,7 +731,8 @@ esp_err_t lvgl_port_remove_usb_hid_input(lv_indev_t *hid)
     lv_indev_delete(hid);
 
     /* If all hid input devices are removed, stop task and clean all */
-    if (lvgl_port_ctx.hid_ctx.mouse.drv.disp == NULL && lvgl_port_ctx.hid_ctx.kb.drv.disp) {
+    if (lvgl_port_ctx.hid_ctx.mouse.drv.disp == NULL && lvgl_port_ctx.hid_ctx.kb.drv.disp)
+    {
         hid_ctx->running = false;
     }
 
@@ -678,11 +761,9 @@ void lvgl_port_flush_ready(lv_disp_t *disp)
     lv_disp_flush_ready(disp->driver);
 }
 
-
-
 /*******************************************************************************
-* Private functions
-*******************************************************************************/
+ * Private functions
+ *******************************************************************************/
 
 static void lvgl_port_task(void *arg)
 {
@@ -690,34 +771,51 @@ static void lvgl_port_task(void *arg)
 
     ESP_LOGI(TAG, "Starting LVGL task");
     lvgl_port_ctx.running = true;
-    while (lvgl_port_ctx.running) {
-        if (lvgl_port_lock(0)) {
+    while (lvgl_port_ctx.running)
+    {
+        if (lvgl_port_lock(0))
+        {
             task_delay_ms = lv_timer_handler();
             lvgl_port_unlock();
         }
-        if ((task_delay_ms > lvgl_port_ctx.task_max_sleep_ms) || (1 == task_delay_ms)) {
+        if ((task_delay_ms > lvgl_port_ctx.task_max_sleep_ms) || (1 == task_delay_ms))
+        {
             task_delay_ms = lvgl_port_ctx.task_max_sleep_ms;
-        } else if (task_delay_ms < 1) {
+        }
+        else if (task_delay_ms < 1)
+        {
             task_delay_ms = 1;
         }
         vTaskDelay(pdMS_TO_TICKS(task_delay_ms));
     }
 
-    lvgl_port_task_deinit();
-
     /* Close task */
-    vTaskDelete( NULL );
+    vTaskDelete(NULL);
+
+    lvgl_port_task_deinit();
 }
 
 static void lvgl_port_task_deinit(void)
 {
-    if (lvgl_port_ctx.lvgl_mux) {
+    if (lvgl_port_ctx.lvgl_mux)
+    {
         vSemaphoreDelete(lvgl_port_ctx.lvgl_mux);
     }
     memset(&lvgl_port_ctx, 0, sizeof(lvgl_port_ctx));
 #if LV_ENABLE_GC || !LV_MEM_CUSTOM
     /* Deinitialize LVGL */
     lv_deinit();
+#endif
+
+#ifdef LVGL_PORT_TASK_STACK_ALLOC_EXTERNAL
+    if (lvgl_port_ctx.lvgl_task.task)
+    {
+        free(lvgl_port_ctx.lvgl_task.task);
+    }
+    if (lvgl_port_ctx.lvgl_task.stack)
+    {
+        free(lvgl_port_ctx.lvgl_task.stack);
+    }
 #endif
 }
 
@@ -753,52 +851,63 @@ static void lvgl_port_update_callback(lv_disp_drv_t *drv)
     esp_lcd_panel_handle_t panel_handle = disp_ctx->panel_handle;
 
     /* Solve rotation screen and touch */
-    switch (drv->rotated) {
-    case LV_DISP_ROT_NONE:
-        /* Rotate LCD display */
-        esp_lcd_panel_swap_xy(panel_handle, disp_ctx->rotation.swap_xy);
-        esp_lcd_panel_mirror(panel_handle, disp_ctx->rotation.mirror_x, disp_ctx->rotation.mirror_y);
-        break;
-    case LV_DISP_ROT_90:
-        /* Rotate LCD display */
-        esp_lcd_panel_swap_xy(panel_handle, !disp_ctx->rotation.swap_xy);
-        if (disp_ctx->rotation.swap_xy) {
-            esp_lcd_panel_mirror(panel_handle, !disp_ctx->rotation.mirror_x, disp_ctx->rotation.mirror_y);
-        } else {
-            esp_lcd_panel_mirror(panel_handle, disp_ctx->rotation.mirror_x, !disp_ctx->rotation.mirror_y);
-        }
-        break;
-    case LV_DISP_ROT_180:
-        /* Rotate LCD display */
-        esp_lcd_panel_swap_xy(panel_handle, disp_ctx->rotation.swap_xy);
-        esp_lcd_panel_mirror(panel_handle, !disp_ctx->rotation.mirror_x, !disp_ctx->rotation.mirror_y);
-        break;
-    case LV_DISP_ROT_270:
-        /* Rotate LCD display */
-        esp_lcd_panel_swap_xy(panel_handle, !disp_ctx->rotation.swap_xy);
-        if (disp_ctx->rotation.swap_xy) {
-            esp_lcd_panel_mirror(panel_handle, disp_ctx->rotation.mirror_x, !disp_ctx->rotation.mirror_y);
-        } else {
-            esp_lcd_panel_mirror(panel_handle, !disp_ctx->rotation.mirror_x, disp_ctx->rotation.mirror_y);
-        }
-        break;
+    switch (drv->rotated)
+    {
+        case LV_DISP_ROT_NONE:
+            /* Rotate LCD display */
+            esp_lcd_panel_swap_xy(panel_handle, disp_ctx->rotation.swap_xy);
+            esp_lcd_panel_mirror(panel_handle, disp_ctx->rotation.mirror_x, disp_ctx->rotation.mirror_y);
+            break;
+        case LV_DISP_ROT_90:
+            /* Rotate LCD display */
+            esp_lcd_panel_swap_xy(panel_handle, !disp_ctx->rotation.swap_xy);
+            if (disp_ctx->rotation.swap_xy)
+            {
+                esp_lcd_panel_mirror(panel_handle, !disp_ctx->rotation.mirror_x, disp_ctx->rotation.mirror_y);
+            }
+            else
+            {
+                esp_lcd_panel_mirror(panel_handle, disp_ctx->rotation.mirror_x, !disp_ctx->rotation.mirror_y);
+            }
+            break;
+        case LV_DISP_ROT_180:
+            /* Rotate LCD display */
+            esp_lcd_panel_swap_xy(panel_handle, disp_ctx->rotation.swap_xy);
+            esp_lcd_panel_mirror(panel_handle, !disp_ctx->rotation.mirror_x, !disp_ctx->rotation.mirror_y);
+            break;
+        case LV_DISP_ROT_270:
+            /* Rotate LCD display */
+            esp_lcd_panel_swap_xy(panel_handle, !disp_ctx->rotation.swap_xy);
+            if (disp_ctx->rotation.swap_xy)
+            {
+                esp_lcd_panel_mirror(panel_handle, disp_ctx->rotation.mirror_x, !disp_ctx->rotation.mirror_y);
+            }
+            else
+            {
+                esp_lcd_panel_mirror(panel_handle, !disp_ctx->rotation.mirror_x, disp_ctx->rotation.mirror_y);
+            }
+            break;
     }
 }
 
 static void lvgl_port_pix_monochrome_callback(lv_disp_drv_t *drv, uint8_t *buf, lv_coord_t buf_w, lv_coord_t x, lv_coord_t y, lv_color_t color, lv_opa_t opa)
 {
-    if (drv->rotated == LV_DISP_ROT_90 || drv->rotated == LV_DISP_ROT_270) {
+    if (drv->rotated == LV_DISP_ROT_90 || drv->rotated == LV_DISP_ROT_270)
+    {
         lv_coord_t tmp_x = x;
         x = y;
         y = tmp_x;
     }
 
     /* Write to the buffer as required for the display.
-    * It writes only 1-bit for monochrome displays mapped vertically.*/
+     * It writes only 1-bit for monochrome displays mapped vertically.*/
     buf += drv->hor_res * (y >> 3) + x;
-    if (lv_color_to1(color)) {
+    if (lv_color_to1(color))
+    {
         (*buf) &= ~(1 << (y % 8));
-    } else {
+    }
+    else
+    {
         (*buf) |= (1 << (y % 8));
     }
 }
@@ -810,8 +919,8 @@ static void lvgl_port_touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *
     lvgl_port_touch_ctx_t *touch_ctx = (lvgl_port_touch_ctx_t *)indev_drv->user_data;
     assert(touch_ctx->handle);
 
-    uint16_t touchpad_x[1] = {0};
-    uint16_t touchpad_y[1] = {0};
+    uint16_t touchpad_x[1] = { 0 };
+    uint16_t touchpad_y[1] = { 0 };
     uint8_t touchpad_cnt = 0;
 
     /* Read data from touch controller into memory */
@@ -820,11 +929,14 @@ static void lvgl_port_touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *
     /* Read data from touch controller */
     bool touchpad_pressed = esp_lcd_touch_get_coordinates(touch_ctx->handle, touchpad_x, touchpad_y, NULL, &touchpad_cnt, 1);
 
-    if (touchpad_pressed && touchpad_cnt > 0) {
+    if (touchpad_pressed && touchpad_cnt > 0)
+    {
         data->point.x = touchpad_x[0];
         data->point.y = touchpad_y[0];
         data->state = LV_INDEV_STATE_PRESSED;
-    } else {
+    }
+    else
+    {
         data->state = LV_INDEV_STATE_RELEASED;
     }
 }
@@ -842,10 +954,13 @@ static void lvgl_port_encoder_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *d
     int32_t invd = iot_knob_get_count_value(ctx->knob_handle);
     knob_event_t event = iot_knob_get_event(ctx->knob_handle);
 
-    if (last_v ^ invd) {
+    if (last_v ^ invd)
+    {
         last_v = invd;
         data->enc_diff = (KNOB_LEFT == event) ? (-1) : ((KNOB_RIGHT == event) ? (1) : (0));
-    } else {
+    }
+    else
+    {
         data->enc_diff = 0;
     }
     data->state = (true == ctx->btn_enter) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
@@ -853,11 +968,13 @@ static void lvgl_port_encoder_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *d
 
 static void lvgl_port_encoder_btn_down_handler(void *arg, void *arg2)
 {
-    lvgl_port_encoder_ctx_t *ctx = (lvgl_port_encoder_ctx_t *) arg2;
+    lvgl_port_encoder_ctx_t *ctx = (lvgl_port_encoder_ctx_t *)arg2;
     button_handle_t button = (button_handle_t)arg;
-    if (ctx && button) {
+    if (ctx && button)
+    {
         /* ENTER */
-        if (button == ctx->btn_handle) {
+        if (button == ctx->btn_handle)
+        {
             ctx->btn_enter = true;
         }
     }
@@ -865,11 +982,13 @@ static void lvgl_port_encoder_btn_down_handler(void *arg, void *arg2)
 
 static void lvgl_port_encoder_btn_up_handler(void *arg, void *arg2)
 {
-    lvgl_port_encoder_ctx_t *ctx = (lvgl_port_encoder_ctx_t *) arg2;
+    lvgl_port_encoder_ctx_t *ctx = (lvgl_port_encoder_ctx_t *)arg2;
     button_handle_t button = (button_handle_t)arg;
-    if (ctx && button) {
+    if (ctx && button)
+    {
         /* ENTER */
-        if (button == ctx->btn_handle) {
+        if (button == ctx->btn_handle)
+        {
             ctx->btn_enter = false;
         }
     }
@@ -879,7 +998,8 @@ static void lvgl_port_encoder_btn_long_handler(void *arg, void *arg2)
 {
     void (*cb)(void) = arg2;
     button_handle_t button = (button_handle_t)arg;
-    if (cb && button) {
+    if (cb && button)
+    {
         cb();
     }
 }
@@ -894,19 +1014,26 @@ static void lvgl_port_navigation_buttons_read(lv_indev_drv_t *indev_drv, lv_inde
     assert(ctx);
 
     /* Buttons */
-    if (ctx->btn_prev) {
+    if (ctx->btn_prev)
+    {
         data->key = LV_KEY_LEFT;
         last_key = LV_KEY_LEFT;
         data->state = LV_INDEV_STATE_PRESSED;
-    } else if (ctx->btn_next) {
+    }
+    else if (ctx->btn_next)
+    {
         data->key = LV_KEY_RIGHT;
         last_key = LV_KEY_RIGHT;
         data->state = LV_INDEV_STATE_PRESSED;
-    } else if (ctx->btn_enter) {
+    }
+    else if (ctx->btn_enter)
+    {
         data->key = LV_KEY_ENTER;
         last_key = LV_KEY_ENTER;
         data->state = LV_INDEV_STATE_PRESSED;
-    } else {
+    }
+    else
+    {
         data->key = last_key;
         data->state = LV_INDEV_STATE_RELEASED;
     }
@@ -914,19 +1041,23 @@ static void lvgl_port_navigation_buttons_read(lv_indev_drv_t *indev_drv, lv_inde
 
 static void lvgl_port_btn_down_handler(void *arg, void *arg2)
 {
-    lvgl_port_nav_btns_ctx_t *ctx = (lvgl_port_nav_btns_ctx_t *) arg2;
+    lvgl_port_nav_btns_ctx_t *ctx = (lvgl_port_nav_btns_ctx_t *)arg2;
     button_handle_t button = (button_handle_t)arg;
-    if (ctx && button) {
+    if (ctx && button)
+    {
         /* PREV */
-        if (button == ctx->btn[LVGL_PORT_NAV_BTN_PREV]) {
+        if (button == ctx->btn[LVGL_PORT_NAV_BTN_PREV])
+        {
             ctx->btn_prev = true;
         }
         /* NEXT */
-        if (button == ctx->btn[LVGL_PORT_NAV_BTN_NEXT]) {
+        if (button == ctx->btn[LVGL_PORT_NAV_BTN_NEXT])
+        {
             ctx->btn_next = true;
         }
         /* ENTER */
-        if (button == ctx->btn[LVGL_PORT_NAV_BTN_ENTER]) {
+        if (button == ctx->btn[LVGL_PORT_NAV_BTN_ENTER])
+        {
             ctx->btn_enter = true;
         }
     }
@@ -934,19 +1065,23 @@ static void lvgl_port_btn_down_handler(void *arg, void *arg2)
 
 static void lvgl_port_btn_up_handler(void *arg, void *arg2)
 {
-    lvgl_port_nav_btns_ctx_t *ctx = (lvgl_port_nav_btns_ctx_t *) arg2;
+    lvgl_port_nav_btns_ctx_t *ctx = (lvgl_port_nav_btns_ctx_t *)arg2;
     button_handle_t button = (button_handle_t)arg;
-    if (ctx && button) {
+    if (ctx && button)
+    {
         /* PREV */
-        if (button == ctx->btn[LVGL_PORT_NAV_BTN_PREV]) {
+        if (button == ctx->btn[LVGL_PORT_NAV_BTN_PREV])
+        {
             ctx->btn_prev = false;
         }
         /* NEXT */
-        if (button == ctx->btn[LVGL_PORT_NAV_BTN_NEXT]) {
+        if (button == ctx->btn[LVGL_PORT_NAV_BTN_NEXT])
+        {
             ctx->btn_next = false;
         }
         /* ENTER */
-        if (button == ctx->btn[LVGL_PORT_NAV_BTN_ENTER]) {
+        if (button == ctx->btn[LVGL_PORT_NAV_BTN_ENTER])
+        {
             ctx->btn_enter = false;
         }
     }
@@ -959,7 +1094,8 @@ static lvgl_port_usb_hid_ctx_t *lvgl_port_hid_init(void)
     esp_err_t ret;
 
     /* USB HID is already initialized */
-    if (lvgl_port_ctx.hid_ctx.task) {
+    if (lvgl_port_ctx.hid_ctx.task)
+    {
         return &lvgl_port_ctx.hid_ctx;
     }
 
@@ -974,7 +1110,8 @@ static lvgl_port_usb_hid_ctx_t *lvgl_port_hid_init(void)
     };
 
     ret = hid_host_install(&hid_host_driver_config);
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
         ESP_LOGE(TAG, "USB HID install failed!");
         return NULL;
     }
@@ -989,71 +1126,73 @@ static char usb_hid_get_keyboard_char(uint8_t key, uint8_t shift)
 {
     char ret_key = 0;
 
-    const uint8_t keycode2ascii [57][2] = {
-        {0, 0}, /* HID_KEY_NO_PRESS        */
-        {0, 0}, /* HID_KEY_ROLLOVER        */
-        {0, 0}, /* HID_KEY_POST_FAIL       */
-        {0, 0}, /* HID_KEY_ERROR_UNDEFINED */
-        {'a', 'A'}, /* HID_KEY_A               */
-        {'b', 'B'}, /* HID_KEY_B               */
-        {'c', 'C'}, /* HID_KEY_C               */
-        {'d', 'D'}, /* HID_KEY_D               */
-        {'e', 'E'}, /* HID_KEY_E               */
-        {'f', 'F'}, /* HID_KEY_F               */
-        {'g', 'G'}, /* HID_KEY_G               */
-        {'h', 'H'}, /* HID_KEY_H               */
-        {'i', 'I'}, /* HID_KEY_I               */
-        {'j', 'J'}, /* HID_KEY_J               */
-        {'k', 'K'}, /* HID_KEY_K               */
-        {'l', 'L'}, /* HID_KEY_L               */
-        {'m', 'M'}, /* HID_KEY_M               */
-        {'n', 'N'}, /* HID_KEY_N               */
-        {'o', 'O'}, /* HID_KEY_O               */
-        {'p', 'P'}, /* HID_KEY_P               */
-        {'q', 'Q'}, /* HID_KEY_Q               */
-        {'r', 'R'}, /* HID_KEY_R               */
-        {'s', 'S'}, /* HID_KEY_S               */
-        {'t', 'T'}, /* HID_KEY_T               */
-        {'u', 'U'}, /* HID_KEY_U               */
-        {'v', 'V'}, /* HID_KEY_V               */
-        {'w', 'W'}, /* HID_KEY_W               */
-        {'x', 'X'}, /* HID_KEY_X               */
-        {'y', 'Y'}, /* HID_KEY_Y               */
-        {'z', 'Z'}, /* HID_KEY_Z               */
-        {'1', '!'}, /* HID_KEY_1               */
-        {'2', '@'}, /* HID_KEY_2               */
-        {'3', '#'}, /* HID_KEY_3               */
-        {'4', '$'}, /* HID_KEY_4               */
-        {'5', '%'}, /* HID_KEY_5               */
-        {'6', '^'}, /* HID_KEY_6               */
-        {'7', '&'}, /* HID_KEY_7               */
-        {'8', '*'}, /* HID_KEY_8               */
-        {'9', '('}, /* HID_KEY_9               */
-        {'0', ')'}, /* HID_KEY_0               */
-        {'\r', '\r'}, /* HID_KEY_ENTER           */
-        {0, 0}, /* HID_KEY_ESC             */
-        {'\b', 0}, /* HID_KEY_DEL             */
-        {0, 0}, /* HID_KEY_TAB             */
-        {' ', ' '}, /* HID_KEY_SPACE           */
-        {'-', '_'}, /* HID_KEY_MINUS           */
-        {'=', '+'}, /* HID_KEY_EQUAL           */
-        {'[', '{'}, /* HID_KEY_OPEN_BRACKET    */
-        {']', '}'}, /* HID_KEY_CLOSE_BRACKET   */
-        {'\\', '|'}, /* HID_KEY_BACK_SLASH      */
-        {'\\', '|'}, /* HID_KEY_SHARP           */  // HOTFIX: for NonUS Keyboards repeat HID_KEY_BACK_SLASH
-        {';', ':'}, /* HID_KEY_COLON           */
-        {'\'', '"'}, /* HID_KEY_QUOTE           */
-        {'`', '~'}, /* HID_KEY_TILDE           */
-        {',', '<'}, /* HID_KEY_LESS            */
-        {'.', '>'}, /* HID_KEY_GREATER         */
-        {'/', '?'} /* HID_KEY_SLASH           */
+    const uint8_t keycode2ascii[57][2] = {
+        { 0, 0 },                                    /* HID_KEY_NO_PRESS        */
+        { 0, 0 },                                    /* HID_KEY_ROLLOVER        */
+        { 0, 0 },                                    /* HID_KEY_POST_FAIL       */
+        { 0, 0 },                                    /* HID_KEY_ERROR_UNDEFINED */
+        { 'a', 'A' },                                /* HID_KEY_A               */
+        { 'b', 'B' },                                /* HID_KEY_B               */
+        { 'c', 'C' },                                /* HID_KEY_C               */
+        { 'd', 'D' },                                /* HID_KEY_D               */
+        { 'e', 'E' },                                /* HID_KEY_E               */
+        { 'f', 'F' },                                /* HID_KEY_F               */
+        { 'g', 'G' },                                /* HID_KEY_G               */
+        { 'h', 'H' },                                /* HID_KEY_H               */
+        { 'i', 'I' },                                /* HID_KEY_I               */
+        { 'j', 'J' },                                /* HID_KEY_J               */
+        { 'k', 'K' },                                /* HID_KEY_K               */
+        { 'l', 'L' },                                /* HID_KEY_L               */
+        { 'm', 'M' },                                /* HID_KEY_M               */
+        { 'n', 'N' },                                /* HID_KEY_N               */
+        { 'o', 'O' },                                /* HID_KEY_O               */
+        { 'p', 'P' },                                /* HID_KEY_P               */
+        { 'q', 'Q' },                                /* HID_KEY_Q               */
+        { 'r', 'R' },                                /* HID_KEY_R               */
+        { 's', 'S' },                                /* HID_KEY_S               */
+        { 't', 'T' },                                /* HID_KEY_T               */
+        { 'u', 'U' },                                /* HID_KEY_U               */
+        { 'v', 'V' },                                /* HID_KEY_V               */
+        { 'w', 'W' },                                /* HID_KEY_W               */
+        { 'x', 'X' },                                /* HID_KEY_X               */
+        { 'y', 'Y' },                                /* HID_KEY_Y               */
+        { 'z', 'Z' },                                /* HID_KEY_Z               */
+        { '1', '!' },                                /* HID_KEY_1               */
+        { '2', '@' },                                /* HID_KEY_2               */
+        { '3', '#' },                                /* HID_KEY_3               */
+        { '4', '$' },                                /* HID_KEY_4               */
+        { '5', '%' },                                /* HID_KEY_5               */
+        { '6', '^' },                                /* HID_KEY_6               */
+        { '7', '&' },                                /* HID_KEY_7               */
+        { '8', '*' },                                /* HID_KEY_8               */
+        { '9', '(' },                                /* HID_KEY_9               */
+        { '0', ')' },                                /* HID_KEY_0               */
+        { '\r', '\r' },                              /* HID_KEY_ENTER           */
+        { 0, 0 },                                    /* HID_KEY_ESC             */
+        { '\b', 0 },                                 /* HID_KEY_DEL             */
+        { 0, 0 },                                    /* HID_KEY_TAB             */
+        { ' ', ' ' },                                /* HID_KEY_SPACE           */
+        { '-', '_' },                                /* HID_KEY_MINUS           */
+        { '=', '+' },                                /* HID_KEY_EQUAL           */
+        { '[', '{' },                                /* HID_KEY_OPEN_BRACKET    */
+        { ']', '}' },                                /* HID_KEY_CLOSE_BRACKET   */
+        { '\\', '|' },                               /* HID_KEY_BACK_SLASH      */
+        { '\\', '|' }, /* HID_KEY_SHARP           */ // HOTFIX: for NonUS Keyboards repeat HID_KEY_BACK_SLASH
+        { ';', ':' },                                /* HID_KEY_COLON           */
+        { '\'', '"' },                               /* HID_KEY_QUOTE           */
+        { '`', '~' },                                /* HID_KEY_TILDE           */
+        { ',', '<' },                                /* HID_KEY_LESS            */
+        { '.', '>' },                                /* HID_KEY_GREATER         */
+        { '/', '?' }                                 /* HID_KEY_SLASH           */
     };
 
-    if (shift > 1) {
+    if (shift > 1)
+    {
         shift = 1;
     }
 
-    if ((key >= HID_KEY_A) && (key <= HID_KEY_SLASH)) {
+    if ((key >= HID_KEY_A) && (key <= HID_KEY_SLASH))
+    {
         ret_key = keycode2ascii[key][shift];
     }
 
@@ -1070,71 +1209,101 @@ static void lvgl_port_usb_hid_host_interface_callback(hid_host_device_handle_t h
 
     assert(hid_ctx != NULL);
 
-    switch (event) {
-    case HID_HOST_INTERFACE_EVENT_INPUT_REPORT:
-        hid_host_device_get_raw_input_report_data(hid_device_handle, data, sizeof(data), &data_length);
-        if (dev.proto == HID_PROTOCOL_KEYBOARD) {
-            hid_keyboard_input_report_boot_t *keyboard = (hid_keyboard_input_report_boot_t *)data;
-            if (data_length < sizeof(hid_keyboard_input_report_boot_t)) {
-                return;
-            }
-            for (int i = 0; i < HID_KEYBOARD_KEY_MAX; i++) {
-                if (keyboard->key[i] > HID_KEY_ERROR_UNDEFINED) {
-                    char key = 0;
+    switch (event)
+    {
+        case HID_HOST_INTERFACE_EVENT_INPUT_REPORT:
+            hid_host_device_get_raw_input_report_data(hid_device_handle, data, sizeof(data), &data_length);
+            if (dev.proto == HID_PROTOCOL_KEYBOARD)
+            {
+                hid_keyboard_input_report_boot_t *keyboard = (hid_keyboard_input_report_boot_t *)data;
+                if (data_length < sizeof(hid_keyboard_input_report_boot_t))
+                {
+                    return;
+                }
+                for (int i = 0; i < HID_KEYBOARD_KEY_MAX; i++)
+                {
+                    if (keyboard->key[i] > HID_KEY_ERROR_UNDEFINED)
+                    {
+                        char key = 0;
 
-                    /* LVGL special keys */
-                    if (keyboard->key[i] == HID_KEY_TAB) {
-                        if ((keyboard->modifier.left_shift || keyboard->modifier.right_shift)) {
-                            key = LV_KEY_PREV;
-                        } else {
-                            key = LV_KEY_NEXT;
+                        /* LVGL special keys */
+                        if (keyboard->key[i] == HID_KEY_TAB)
+                        {
+                            if ((keyboard->modifier.left_shift || keyboard->modifier.right_shift))
+                            {
+                                key = LV_KEY_PREV;
+                            }
+                            else
+                            {
+                                key = LV_KEY_NEXT;
+                            }
                         }
-                    } else if (keyboard->key[i] == HID_KEY_RIGHT) {
-                        key = LV_KEY_RIGHT;
-                    } else if (keyboard->key[i] == HID_KEY_LEFT) {
-                        key = LV_KEY_LEFT;
-                    } else if (keyboard->key[i] == HID_KEY_DOWN) {
-                        key = LV_KEY_DOWN;
-                    } else if (keyboard->key[i] == HID_KEY_UP) {
-                        key = LV_KEY_UP;
-                    } else if (keyboard->key[i] == HID_KEY_ENTER || keyboard->key[i] == HID_KEY_KEYPAD_ENTER) {
-                        key = LV_KEY_ENTER;
-                    } else if (keyboard->key[i] == HID_KEY_DELETE) {
-                        key = LV_KEY_DEL;
-                    } else if (keyboard->key[i] == HID_KEY_HOME) {
-                        key = LV_KEY_HOME;
-                    } else if (keyboard->key[i] == HID_KEY_END) {
-                        key = LV_KEY_END;
-                    } else {
-                        /* Get ASCII char */
-                        key = usb_hid_get_keyboard_char(keyboard->key[i], (keyboard->modifier.left_shift || keyboard->modifier.right_shift));
-                    }
+                        else if (keyboard->key[i] == HID_KEY_RIGHT)
+                        {
+                            key = LV_KEY_RIGHT;
+                        }
+                        else if (keyboard->key[i] == HID_KEY_LEFT)
+                        {
+                            key = LV_KEY_LEFT;
+                        }
+                        else if (keyboard->key[i] == HID_KEY_DOWN)
+                        {
+                            key = LV_KEY_DOWN;
+                        }
+                        else if (keyboard->key[i] == HID_KEY_UP)
+                        {
+                            key = LV_KEY_UP;
+                        }
+                        else if (keyboard->key[i] == HID_KEY_ENTER || keyboard->key[i] == HID_KEY_KEYPAD_ENTER)
+                        {
+                            key = LV_KEY_ENTER;
+                        }
+                        else if (keyboard->key[i] == HID_KEY_DELETE)
+                        {
+                            key = LV_KEY_DEL;
+                        }
+                        else if (keyboard->key[i] == HID_KEY_HOME)
+                        {
+                            key = LV_KEY_HOME;
+                        }
+                        else if (keyboard->key[i] == HID_KEY_END)
+                        {
+                            key = LV_KEY_END;
+                        }
+                        else
+                        {
+                            /* Get ASCII char */
+                            key = usb_hid_get_keyboard_char(keyboard->key[i], (keyboard->modifier.left_shift || keyboard->modifier.right_shift));
+                        }
 
-                    if (key == 0) {
-                        ESP_LOGI(TAG, "Not recognized key: %c (%d)", keyboard->key[i], keyboard->key[i]);
+                        if (key == 0)
+                        {
+                            ESP_LOGI(TAG, "Not recognized key: %c (%d)", keyboard->key[i], keyboard->key[i]);
+                        }
+                        hid_ctx->kb.last_key = key;
+                        hid_ctx->kb.pressed = true;
                     }
-                    hid_ctx->kb.last_key = key;
-                    hid_ctx->kb.pressed = true;
                 }
             }
-
-        } else if (dev.proto == HID_PROTOCOL_MOUSE) {
-            hid_mouse_input_report_boot_t *mouse = (hid_mouse_input_report_boot_t *)data;
-            if (data_length < sizeof(hid_mouse_input_report_boot_t)) {
-                break;
+            else if (dev.proto == HID_PROTOCOL_MOUSE)
+            {
+                hid_mouse_input_report_boot_t *mouse = (hid_mouse_input_report_boot_t *)data;
+                if (data_length < sizeof(hid_mouse_input_report_boot_t))
+                {
+                    break;
+                }
+                hid_ctx->mouse.left_button = mouse->buttons.button1;
+                hid_ctx->mouse.x += mouse->x_displacement;
+                hid_ctx->mouse.y += mouse->y_displacement;
             }
-            hid_ctx->mouse.left_button = mouse->buttons.button1;
-            hid_ctx->mouse.x += mouse->x_displacement;
-            hid_ctx->mouse.y += mouse->y_displacement;
-        }
-        break;
-    case HID_HOST_INTERFACE_EVENT_TRANSFER_ERROR:
-        break;
-    case HID_HOST_INTERFACE_EVENT_DISCONNECTED:
-        hid_host_device_close(hid_device_handle);
-        break;
-    default:
-        break;
+            break;
+        case HID_HOST_INTERFACE_EVENT_TRANSFER_ERROR:
+            break;
+        case HID_HOST_INTERFACE_EVENT_DISCONNECTED:
+            hid_host_device_close(hid_device_handle);
+            break;
+        default:
+            break;
     }
 }
 
@@ -1149,28 +1318,29 @@ static void lvgl_port_usb_hid_task(void *arg)
 
     ctx->running = true;
 
-    while (ctx->running) {
-        if (xQueueReceive(ctx->queue, &msg, pdMS_TO_TICKS(50))) {
+    while (ctx->running)
+    {
+        if (xQueueReceive(ctx->queue, &msg, pdMS_TO_TICKS(50)))
+        {
             hid_device_handle = msg.hid_device_handle;
             hid_host_device_get_params(hid_device_handle, &dev);
 
-            switch (msg.event) {
-            case HID_HOST_DRIVER_EVENT_CONNECTED:
-                /* Handle mouse or keyboard */
-                if (dev.proto == HID_PROTOCOL_KEYBOARD || dev.proto == HID_PROTOCOL_MOUSE) {
-                    const hid_host_device_config_t dev_config = {
-                        .callback = lvgl_port_usb_hid_host_interface_callback,
-                        .callback_arg = ctx
-                    };
+            switch (msg.event)
+            {
+                case HID_HOST_DRIVER_EVENT_CONNECTED:
+                    /* Handle mouse or keyboard */
+                    if (dev.proto == HID_PROTOCOL_KEYBOARD || dev.proto == HID_PROTOCOL_MOUSE)
+                    {
+                        const hid_host_device_config_t dev_config = { .callback = lvgl_port_usb_hid_host_interface_callback, .callback_arg = ctx };
 
-                    ESP_ERROR_CHECK( hid_host_device_open(hid_device_handle, &dev_config) );
-                    ESP_ERROR_CHECK( hid_class_request_set_idle(hid_device_handle, 0, 0) );
-                    ESP_ERROR_CHECK( hid_class_request_set_protocol(hid_device_handle, HID_REPORT_PROTOCOL_BOOT) );
-                    ESP_ERROR_CHECK( hid_host_device_start(hid_device_handle) );
-                }
-                break;
-            default:
-                break;
+                        ESP_ERROR_CHECK(hid_host_device_open(hid_device_handle, &dev_config));
+                        ESP_ERROR_CHECK(hid_class_request_set_idle(hid_device_handle, 0, 0));
+                        ESP_ERROR_CHECK(hid_class_request_set_protocol(hid_device_handle, HID_REPORT_PROTOCOL_BOOT));
+                        ESP_ERROR_CHECK(hid_host_device_start(hid_device_handle));
+                    }
+                    break;
+                default:
+                    break;
             }
         }
     }
@@ -1193,49 +1363,62 @@ static void lvgl_port_usb_hid_read_mouse(lv_indev_drv_t *indev_drv, lv_indev_dat
     lvgl_port_usb_hid_ctx_t *ctx = (lvgl_port_usb_hid_ctx_t *)indev_drv->user_data;
     assert(ctx);
 
-    if (indev_drv->disp->driver->rotated == LV_DISP_ROT_NONE || indev_drv->disp->driver->rotated == LV_DISP_ROT_180) {
+    if (indev_drv->disp->driver->rotated == LV_DISP_ROT_NONE || indev_drv->disp->driver->rotated == LV_DISP_ROT_180)
+    {
         width = indev_drv->disp->driver->hor_res;
         height = indev_drv->disp->driver->ver_res;
-    } else {
+    }
+    else
+    {
         width = indev_drv->disp->driver->ver_res;
         height = indev_drv->disp->driver->hor_res;
     }
 
     /* Screen borders */
-    if (ctx->mouse.x < 0) {
+    if (ctx->mouse.x < 0)
+    {
         ctx->mouse.x = 0;
-    } else if (ctx->mouse.x > width * ctx->mouse.sensitivity) {
+    }
+    else if (ctx->mouse.x > width * ctx->mouse.sensitivity)
+    {
         ctx->mouse.x = width * ctx->mouse.sensitivity;
     }
-    if (ctx->mouse.y < 0) {
+    if (ctx->mouse.y < 0)
+    {
         ctx->mouse.y = 0;
-    } else if (ctx->mouse.y > height * ctx->mouse.sensitivity) {
+    }
+    else if (ctx->mouse.y > height * ctx->mouse.sensitivity)
+    {
         ctx->mouse.y = height * ctx->mouse.sensitivity;
     }
 
     /* Get coordinates by rotation with sensitivity */
-    switch (indev_drv->disp->driver->rotated) {
-    case LV_DISP_ROT_NONE:
-        data->point.x = ctx->mouse.x / ctx->mouse.sensitivity;
-        data->point.y = ctx->mouse.y / ctx->mouse.sensitivity;
-        break;
-    case LV_DISP_ROT_90:
-        data->point.y = width - ctx->mouse.x / ctx->mouse.sensitivity;
-        data->point.x = ctx->mouse.y / ctx->mouse.sensitivity;
-        break;
-    case LV_DISP_ROT_180:
-        data->point.x = width - ctx->mouse.x / ctx->mouse.sensitivity;
-        data->point.y = height - ctx->mouse.y / ctx->mouse.sensitivity;
-        break;
-    case LV_DISP_ROT_270:
-        data->point.y = ctx->mouse.x / ctx->mouse.sensitivity;
-        data->point.x = height - ctx->mouse.y / ctx->mouse.sensitivity;
-        break;
+    switch (indev_drv->disp->driver->rotated)
+    {
+        case LV_DISP_ROT_NONE:
+            data->point.x = ctx->mouse.x / ctx->mouse.sensitivity;
+            data->point.y = ctx->mouse.y / ctx->mouse.sensitivity;
+            break;
+        case LV_DISP_ROT_90:
+            data->point.y = width - ctx->mouse.x / ctx->mouse.sensitivity;
+            data->point.x = ctx->mouse.y / ctx->mouse.sensitivity;
+            break;
+        case LV_DISP_ROT_180:
+            data->point.x = width - ctx->mouse.x / ctx->mouse.sensitivity;
+            data->point.y = height - ctx->mouse.y / ctx->mouse.sensitivity;
+            break;
+        case LV_DISP_ROT_270:
+            data->point.y = ctx->mouse.x / ctx->mouse.sensitivity;
+            data->point.x = height - ctx->mouse.y / ctx->mouse.sensitivity;
+            break;
     }
 
-    if (ctx->mouse.left_button) {
+    if (ctx->mouse.left_button)
+    {
         data->state = LV_INDEV_STATE_PRESSED;
-    } else {
+    }
+    else
+    {
         data->state = LV_INDEV_STATE_RELEASED;
     }
 }
@@ -1247,10 +1430,13 @@ static void lvgl_port_usb_hid_read_kb(lv_indev_drv_t *indev_drv, lv_indev_data_t
     assert(ctx);
 
     data->key = ctx->kb.last_key;
-    if (ctx->kb.pressed) {
+    if (ctx->kb.pressed)
+    {
         data->state = LV_INDEV_STATE_PRESSED;
         ctx->kb.pressed = false;
-    } else {
+    }
+    else
+    {
         data->state = LV_INDEV_STATE_RELEASED;
         ctx->kb.last_key = 0;
     }
@@ -1260,11 +1446,7 @@ static void lvgl_port_usb_hid_callback(hid_host_device_handle_t hid_device_handl
 {
     lvgl_port_usb_hid_ctx_t *hid_ctx = (lvgl_port_usb_hid_ctx_t *)arg;
 
-    const lvgl_port_usb_hid_event_t msg = {
-        .hid_device_handle = hid_device_handle,
-        .event = event,
-        .arg = arg
-    };
+    const lvgl_port_usb_hid_event_t msg = { .hid_device_handle = hid_device_handle, .event = event, .arg = arg };
 
     xQueueSend(hid_ctx->queue, &msg, 0);
 }
