@@ -1021,6 +1021,14 @@ esp_err_t bsp_codec_volume_set(int volume, int *volume_set)
 {
     esp_err_t ret = ESP_OK;
     float v = volume;
+    if(volume < 0)
+    {
+        v = 0;
+    }
+    if(volume > 95) // Note: restrict max volume to 95 to avoid audio distortion
+    {
+        v = 95;
+    }
     ret = esp_codec_dev_set_out_vol(play_dev_handle, (int)v);
     return ret;
 }
