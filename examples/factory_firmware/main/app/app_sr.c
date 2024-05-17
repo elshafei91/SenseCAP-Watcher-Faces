@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_task_wdt.h"
@@ -25,8 +26,12 @@
 #include "esp_afe_sr_iface.h"
 #include "esp_mn_iface.h"
 #include "model_path.h"
+
 #include "app_audio.h"
+#include "data_defs.h"
+#include "event_loops.h"
 #include "sensecap-watcher.h"
+
 
 static const char *TAG = "app_sr";
 
@@ -47,11 +52,12 @@ static void audio_feed_task(void *arg)
     size_t bytes_read = 0;
     esp_afe_sr_data_t *afe_data = (esp_afe_sr_data_t *) arg;
     int audio_chunksize = afe_handle->get_feed_chunksize(afe_data);
-    int feed_channel = 3;
+
+    int feed_channel = bsp_get_feed_channel();
     ESP_LOGI(TAG, "audio_chunksize=%d, feed_channel=%d", audio_chunksize, feed_channel);
 
     /* Allocate audio buffer and check for result */
-    int16_t *audio_buffer = heap_caps_malloc(audio_chunksize * sizeof(int16_t) * feed_channel, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    int16_t *audio_buffer = heap_caps_malloc(audio_chunksize * sizeof(int16_t) * feed_channel, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); //TODO 
     assert(audio_buffer);
     g_sr_data->afe_in_buffer = audio_buffer;
 
@@ -62,21 +68,23 @@ static void audio_feed_task(void *arg)
         }
 
         /* Read audio data from I2S bus */
-        bsp_i2s_read((char *)audio_buffer, audio_chunksize * I2S_CHANNEL_NUM * sizeof(int16_t), &bytes_read, portMAX_DELAY);
+        bsp_get_feed_data(false, audio_buffer, audio_chunksize * sizeof(int16_t) * feed_channel);
 
+        //TODO
         /* Channel Adjust */
-        for (int  i = audio_chunksize - 1; i >= 0; i--) {
-            audio_buffer[i * 3 + 2] = 0;
-            audio_buffer[i * 3 + 1] = audio_buffer[i * 2 + 1];
-            audio_buffer[i * 3 + 0] = audio_buffer[i * 2 + 0];
-        }
+        // for (int  i = audio_chunksize - 1; i >= 0; i--) {
+        //     audio_buffer[i * 3 + 2] = 0;
+        //     audio_buffer[i * 3 + 1] = audio_buffer[i * 2 + 1];
+        //     audio_buffer[i * 3 + 0] = audio_buffer[i * 2 + 0];
+        // }
+
+        afe_handle->feed(afe_data, audio_buffer);
 
         /* Checking if WIFI is connected */
-        if (g_sr_data->wifi_connected) {
-
-            /* Feed samples of an audio stream to the AFE_SR */
-            afe_handle->feed(afe_data, audio_buffer);
-        }
+        // if (g_sr_data->wifi_connected) {
+        //     /* Feed samples of an audio stream to the AFE_SR */
+        //     afe_handle->feed(afe_data, audio_buffer);
+        // }
         audio_record_save(audio_buffer, audio_chunksize);
     }
 }
@@ -91,9 +99,9 @@ static void audio_detect_task(void *arg)
     esp_afe_sr_data_t *afe_data = arg;
 
     while (true) {
-        if (NEED_DELETE && xEventGroupGetBits(g_sr_data->event_group)) {
+        if (NEED_DELETE & xEventGroupGetBits(g_sr_data->event_group)) {
             xEventGroupSetBits(g_sr_data->event_group, DETECT_DELETED);
-            vTaskDelete(g_sr_data->handle_task);
+            vTaskDelete(g_sr_data->sr_task);
             vTaskDelete(NULL);
         }
         afe_fetch_result_t *res = afe_handle->fetch(afe_data);
@@ -118,7 +126,7 @@ static void audio_detect_task(void *arg)
                     .state = ESP_MN_STATE_DETECTING,
                     .command_id = 0,
                 };
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_WAKE, NULL, 0, portMAX_DELAY); //must before xQueueSend
+                // esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_WAKE, NULL, 0, portMAX_DELAY); //must before xQueueSend
                 xQueueSend(g_sr_data->result_que, &result, 0);
             }
             frame_keep = 0;
@@ -195,7 +203,7 @@ esp_err_t app_sr_start(bool record_en)
     esp_err_t ret = ESP_OK;
     ESP_RETURN_ON_FALSE(NULL == g_sr_data, ESP_ERR_INVALID_STATE, TAG, "SR already running");
 
-    g_sr_data = heap_caps_calloc(1, sizeof(sr_data_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    g_sr_data = heap_caps_calloc(1, sizeof(sr_data_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     ESP_RETURN_ON_FALSE(NULL != g_sr_data, ESP_ERR_NO_MEM, TAG, "Failed create sr data");
 
     g_sr_data->result_que = xQueueCreate(3, sizeof(sr_result_t));
@@ -209,8 +217,14 @@ esp_err_t app_sr_start(bool record_en)
     afe_handle = (esp_afe_sr_iface_t *)&ESP_AFE_SR_HANDLE;
     afe_config_t afe_config = AFE_CONFIG_DEFAULT();
 
-    afe_config.wakenet_model_name = esp_srmodel_filter(models, ESP_WN_PREFIX, NULL);
+    afe_config.wakenet_model_name = esp_srmodel_filter(models, ESP_WN_PREFIX, NULL);    
     afe_config.aec_init = false;
+    afe_config.pcm_config.total_ch_num = 1;
+    afe_config.pcm_config.mic_num = 1;
+    afe_config.pcm_config.ref_num = 0;
+    afe_config.memory_alloc_mode = AFE_MEMORY_ALLOC_MORE_PSRAM;
+    afe_config.wakenet_init = true;
+    afe_config.voice_communication_init = false;
 
     esp_afe_sr_data_t *afe_data = afe_handle->create_from_config(&afe_config);
     g_sr_data->afe_handle = afe_handle;
@@ -220,19 +234,63 @@ esp_err_t app_sr_start(bool record_en)
     ret = app_sr_set_language(SR_LANG_EN);
     ESP_GOTO_ON_FALSE(ESP_OK == ret, ESP_FAIL, err, TAG,  "Failed to set language");
 
-    ret = esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL, NULL);
+    ret = esp_event_handler_instance_register_with(app_event_loop_handle,VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL, NULL);
     ESP_GOTO_ON_FALSE(ESP_OK == ret, ESP_FAIL, err, TAG,  "Failed to register event");
+    
+    //feed task
+    g_sr_data->feed_task_stack_buf = (StackType_t *)heap_caps_malloc( FEED_TASK_STACK_SIZE,  MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(g_sr_data->feed_task_stack_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task stack");
 
-    ret_val = xTaskCreatePinnedToCore(&audio_feed_task, "Feed Task", 8 * 1024, (void *)afe_data, 5, &g_sr_data->feed_task, 0);
-    ESP_GOTO_ON_FALSE(pdPASS == ret_val, ESP_FAIL, err, TAG,  "Failed create audio feed task");
+    g_sr_data->feed_task_buf =  heap_caps_malloc(sizeof(StaticTask_t),  MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(g_sr_data->feed_task_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task TCB");
 
-    ret_val = xTaskCreatePinnedToCore(&audio_detect_task, "Detect Task", 10 * 1024, (void *)afe_data, 4, &g_sr_data->detect_task, 1);
-    ESP_GOTO_ON_FALSE(pdPASS == ret_val, ESP_FAIL, err, TAG,  "Failed create audio detect task");
+    g_sr_data->feed_task = xTaskCreateStaticPinnedToCore(audio_feed_task,
+                                                        "audio_feed_task",
+                                                        FEED_TASK_STACK_SIZE,
+                                                        (void *)afe_data,
+                                                        FEED_TASK_PRIO,
+                                                        g_sr_data->feed_task_stack_buf,
+                                                        g_sr_data->feed_task_buf, 0); //TODO core 0 ？
+    ESP_GOTO_ON_FALSE(g_sr_data->feed_task, ESP_FAIL, err, TAG, "Failed to create task");
 
-    ret_val = xTaskCreatePinnedToCore(&sr_handler_task, "SR Handler Task", 8 * 1024, NULL, 5, &g_sr_data->handle_task, 0);
+    // detect task
+    g_sr_data->detect_task_stack_buf = (StackType_t *)heap_caps_malloc(DETECT_TASK_STACK_SIZE,  MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(g_sr_data->detect_task_stack_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task stack");
+
+    g_sr_data->detect_task_buf =  heap_caps_malloc(sizeof(StaticTask_t),  MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(g_sr_data->detect_task_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task TCB");
+
+    g_sr_data->detect_task = xTaskCreateStaticPinnedToCore(audio_detect_task,
+                                                            "audio_detect_task",
+                                                            DETECT_TASK_STACK_SIZE,
+                                                            (void *)afe_data,
+                                                            DETECT_TASK_PRIO,
+                                                            g_sr_data->detect_task_stack_buf,
+                                                            g_sr_data->detect_task_buf, 1);
+    ESP_GOTO_ON_FALSE(g_sr_data->detect_task, ESP_FAIL, err, TAG, "Failed to create task");
+
+
+    // sr task
+#if SR_TASK_STACK_ON_PSRAM
+    g_sr_data->sr_task_stack_buf = (StackType_t *)heap_caps_malloc( SR_TASK_STACK_SIZE,  MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(g_sr_data->sr_task_stack_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task stack");
+
+    g_sr_data->sr_task_buf =  heap_caps_malloc(sizeof(StaticTask_t),  MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(g_sr_data->sr_task_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task TCB");
+
+    g_sr_data->sr_task = xTaskCreateStaticPinnedToCore(sr_handler_task,
+                                                    "sr_handler_task",
+                                                    SR_TASK_STACK_SIZE,
+                                                    NULL,
+                                                    SR_TASK_PRIO,
+                                                    g_sr_data->sr_task_stack_buf,
+                                                    g_sr_data->sr_task_buf, 1); //TODO core 0 ？
+    ESP_GOTO_ON_FALSE(g_sr_data->sr_task, ESP_FAIL, err, TAG, "Failed to create task");
+#else
+    ret_val = xTaskCreatePinnedToCore(&sr_handler_task, "SR Handler Task", SR_TASK_STACK_SIZE, NULL, SR_TASK_PRIO, &g_sr_data->sr_task, 1);
     ESP_GOTO_ON_FALSE(pdPASS == ret_val, ESP_FAIL, err, TAG,  "Failed create audio handler task");
-
-    audio_record_init();
+#endif
+    audio_record_init(); 
 
     return ESP_OK;
 err:
@@ -277,6 +335,28 @@ esp_err_t app_sr_stop(void)
         heap_caps_free(g_sr_data->afe_out_buffer);
     }
 
+    if( g_sr_data->feed_task_stack_buf) {
+        heap_caps_free(g_sr_data->feed_task_stack_buf);
+    }
+    if( g_sr_data->feed_task_buf) {
+        heap_caps_free(g_sr_data->feed_task_buf);
+    }
+    
+    if( g_sr_data->detect_task_stack_buf) {
+        heap_caps_free(g_sr_data->detect_task_stack_buf);
+    }
+    if( g_sr_data->detect_task_buf) {
+        heap_caps_free(g_sr_data->detect_task_buf);
+    }
+
+#if SR_TASK_STACK_ON_PSRAM
+    if( g_sr_data->sr_task_stack_buf) {
+        heap_caps_free(g_sr_data->sr_task_stack_buf);
+    }
+    if( g_sr_data->sr_task_buf) {
+        heap_caps_free(g_sr_data->sr_task_buf);
+    }
+#endif
     heap_caps_free(g_sr_data);
     g_sr_data = NULL;
     return ESP_OK;

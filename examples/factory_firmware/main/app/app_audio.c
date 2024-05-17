@@ -317,9 +317,8 @@ void sr_handler_task(void *pvParam)
                 audio_player_play(fp);
             }
 
-            //todo
             if( g_sr_data->wifi_connected ) {
-                //app_https_upload_audio( (uint8_t *)record_audio_buffer, record_total_len);
+                //TODO upload audio
                 struct view_data_record data;
                 data.p_buf = record_audio_buffer;
                 data.len = record_total_len;
@@ -335,7 +334,7 @@ void sr_handler_task(void *pvParam)
             // UI show listen
             // ui_ctrl_guide_jump();
             // ui_ctrl_show_panel(UI_CTRL_PANEL_LISTEN, 0);
-
+            
             audio_play_task("/spiffs/echo_en_wake.wav");
             continue;
         }
