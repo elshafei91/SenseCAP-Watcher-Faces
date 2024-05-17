@@ -13,6 +13,13 @@ menu "SenseCAP Watcher BSP Configuration"
     help
         "Audio mic value gain"
 
+    config BSP_LCD_PANEL_SPI_TRANS_Q_DEPTH
+        int "LCD panel SPI trans_queue_depth"
+        range 1 2
+        default 2
+        help
+            "LCD panel SPI config trans_queue_depth"
+
     menu "BSP LVGL Configuration"
 
         config LVGL_DRAW_BUFF_HEIGHT
@@ -82,124 +89,124 @@ menu "SenseCAP Watcher BSP Configuration"
 
     menu "SSCMA Client Configuration"
 
-    config SSCMA_ENABLE_DEBUG_LOG
-        bool "Enable debug log"
-            default n
+        config SSCMA_ENABLE_DEBUG_LOG
+            bool "Enable debug log"
+                default n
+                help
+                    Wether to enable the debug log message for SSCMA Client driver.
+                    Note that, this option only controls the SSCMA Client driver log, won't affect other drivers.
+
+
+        config SSCMA_EVENT_QUEUE_SIZE
+            int "SSCMA Client event queue size"
+            range 1 10
+            default 2
             help
-                Wether to enable the debug log message for SSCMA Client driver.
-                Note that, this option only controls the SSCMA Client driver log, won't affect other drivers.
+                Config SSCMA Client event queue size
 
-
-    config SSCMA_EVENT_QUEUE_SIZE
-        int "SSCMA Client event queue size"
-        range 1 10
-        default 2
-        help
-            Config SSCMA Client event queue size
-
-    config SSCMA_TX_BUFFER_SIZE
-        int "SSCMA Client TX Buffer Size"
-        range 4096 10240
-        default 4096
-        help
-            Config SSCMA TX buffer size
-    
-     config SSCMA_RX_BUFFER_SIZE
-        int "SSCMA Client RX Buffer Size"
-        range 32768 131072
-        default 65536
-        help
-            Config SSCMA RX buffer size
-    
-    menu "SSCMA Client Process Task"
-        config SSCMA_PROCESS_TASK_STACK_SIZE
-            int "Stack Size"
+        config SSCMA_TX_BUFFER_SIZE
+            int "SSCMA Client TX Buffer Size"
             range 4096 10240
             default 4096
             help
-                Config process task stack size in different applications
-
-        config SSCMA_PROCESS_TASK_PRIORITY
-            int "Task Priority"
-            range 1 25
-            default 5
+                Config SSCMA TX buffer size
+        
+        config SSCMA_RX_BUFFER_SIZE
+            int "SSCMA Client RX Buffer Size"
+            range 32768 131072
+            default 65536
             help
-                Sets the process task priority
+                Config SSCMA RX buffer size
+        
+        menu "SSCMA Client Process Task"
+            config SSCMA_PROCESS_TASK_STACK_SIZE
+                int "Stack Size"
+                range 4096 10240
+                default 4096
+                help
+                    Config process task stack size in different applications
 
-        choice SSCMA_PROCESS_TASK_AFFINITY
-            prompt "Core Affinity"
-            default SSCMA_PROCESS_TASK_AFFINITY_NO_AFFINTY
-            help 
-                Configure the "process task" core affinity. 
+            config SSCMA_PROCESS_TASK_PRIORITY
+                int "Task Priority"
+                range 1 25
+                default 5
+                help
+                    Sets the process task priority
 
-            config SSCMA_PROCESS_TASK_AFFINITY_CPU0
-                bool "CPU0"
-            config SSCMA_PROCESS_TASK_AFFINITY_CPU1
-                bool "CPU1"
-                depends on !FREERTOS_UNICORE
-            config SSCMA_PROCESS_TASK_AFFINITY_NO_AFFINTY
-                bool "No affinity"
-        endchoice
+            choice SSCMA_PROCESS_TASK_AFFINITY
+                prompt "Core Affinity"
+                default SSCMA_PROCESS_TASK_AFFINITY_NO_AFFINTY
+                help 
+                    Configure the "process task" core affinity. 
 
-        config SSCMA_PROCESS_TASK_AFFINITY
-            int
-            default 0 if SSCMA_PROCESS_TASK_AFFINITY_CPU0
-            default 1 if SSCMA_PROCESS_TASK_AFFINITY_CPU1
-            default -1 if SSCMA_PROCESS_TASK_AFFINITY_NO_AFFINTY
+                config SSCMA_PROCESS_TASK_AFFINITY_CPU0
+                    bool "CPU0"
+                config SSCMA_PROCESS_TASK_AFFINITY_CPU1
+                    bool "CPU1"
+                    depends on !FREERTOS_UNICORE
+                config SSCMA_PROCESS_TASK_AFFINITY_NO_AFFINTY
+                    bool "No affinity"
+            endchoice
 
-        config SSCMA_PROCESS_TASK_STACK_ALLOC_EXTERNAL
-            bool "External SPIRAM"
-            default n
-            select SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
-            help
-               Enable this option to allocate the task stack from external memory by default
+            config SSCMA_PROCESS_TASK_AFFINITY
+                int
+                default 0 if SSCMA_PROCESS_TASK_AFFINITY_CPU0
+                default 1 if SSCMA_PROCESS_TASK_AFFINITY_CPU1
+                default -1 if SSCMA_PROCESS_TASK_AFFINITY_NO_AFFINTY
+
+            config SSCMA_PROCESS_TASK_STACK_ALLOC_EXTERNAL
+                bool "External SPIRAM"
+                default n
+                select SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
+                help
+                    Enable this option to allocate the task stack from external memory by default
+        endmenu
+
+        menu "SSCMA Client Monitor Task"
+            config SSCMA_MONITOR_TASK_STACK_SIZE
+                int "Stack Size"
+                range 4096 10240
+                default 4096
+                help
+                    Config monitor task stack size in different applications
+
+            config SSCMA_MONITOR_TASK_PRIORITY
+                int "Task Priority"
+                range 1 25
+                default 4
+                help
+                    Sets the monitor task priority
+
+            choice SSCMA_MONITOR_TASK_AFFINITY
+                prompt "Core Affinity"
+                default SSCMA_MONITOR_TASK_AFFINITY_NO_AFFINTY
+                help 
+                    Configure the "process task" core affinity. 
+
+                config SSCMA_MONITOR_TASK_AFFINITY_CPU0
+                    bool "CPU0"
+                config SSCMA_MONITOR_TASK_AFFINITY_CPU1
+                    bool "CPU1"
+                    depends on !FREERTOS_UNICORE
+                config SSCMA_MONITOR_TASK_AFFINITY_NO_AFFINTY
+                    bool "No affinity"
+            endchoice
+
+            config SSCMA_MONITOR_TASK_AFFINITY
+                int
+                default 0 if SSCMA_MONITOR_TASK_AFFINITY_CPU0
+                default 1 if SSCMA_MONITOR_TASK_AFFINITY_CPU1
+                default -1 if SSCMA_MONITOR_TASK_AFFINITY_NO_AFFINTY
+
+
+            config SSCMA_MONITOR_TASK_STACK_ALLOC_EXTERNAL
+                bool "External SPIRAM"
+                default n
+                select SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
+                help
+                    Enable this option to allocate the task stack from external memory by default
+        endmenu
+
     endmenu
-
-    menu "SSCMA Client Monitor Task"
-        config SSCMA_MONITOR_TASK_STACK_SIZE
-            int "Stack Size"
-            range 4096 10240
-            default 4096
-            help
-                Config monitor task stack size in different applications
-
-        config SSCMA_MONITOR_TASK_PRIORITY
-            int "Task Priority"
-            range 1 25
-            default 4
-            help
-                Sets the monitor task priority
-
-        choice SSCMA_MONITOR_TASK_AFFINITY
-            prompt "Core Affinity"
-            default SSCMA_MONITOR_TASK_AFFINITY_NO_AFFINTY
-            help 
-                Configure the "process task" core affinity. 
-
-            config SSCMA_MONITOR_TASK_AFFINITY_CPU0
-                bool "CPU0"
-            config SSCMA_MONITOR_TASK_AFFINITY_CPU1
-                bool "CPU1"
-                depends on !FREERTOS_UNICORE
-            config SSCMA_MONITOR_TASK_AFFINITY_NO_AFFINTY
-                bool "No affinity"
-        endchoice
-
-        config SSCMA_MONITOR_TASK_AFFINITY
-            int
-            default 0 if SSCMA_MONITOR_TASK_AFFINITY_CPU0
-            default 1 if SSCMA_MONITOR_TASK_AFFINITY_CPU1
-            default -1 if SSCMA_MONITOR_TASK_AFFINITY_NO_AFFINTY
-
-
-        config SSCMA_MONITOR_TASK_STACK_ALLOC_EXTERNAL
-            bool "External SPIRAM"
-            default n
-            select SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY
-            help
-                Enable this option to allocate the task stack from external memory by default
-    endmenu
-
-endmenu
 
 endmenu
