@@ -72,7 +72,7 @@ static void __deviceinfo_task(void *p_arg)
             g_device_status.battery_per = batnow;
             //mqtt pub
             app_mqtt_client_report_device_status(&g_device_status);
-            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
         }
     }
 }
@@ -110,7 +110,7 @@ esp_err_t app_device_status_monitor_init(void)
     StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
     g_task = xTaskCreateStatic(__deviceinfo_task, "deviceinfo", stack_size, NULL, 1, task_stack, &g_task_tcb);
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED,
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED,
                                                             __event_loop_handler, NULL, NULL));
 
     return ESP_OK;

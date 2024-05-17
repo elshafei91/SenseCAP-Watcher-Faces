@@ -412,7 +412,7 @@ static void img_analyzer_task_destroy( tf_module_img_analyzer_t *p_module_ins)
         vEventGroupDelete(p_module_ins->event_group);
         p_module_ins->event_group = NULL;
     }
-    esp_event_handler_instance_unregister_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, p_module_ins->event_context);
+    esp_event_handler_instance_unregister_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, p_module_ins->event_context);
 }
 
 /*************************************************************************
@@ -574,7 +574,7 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
     ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
 
     // event_context is for multiple instantiations
-    ret = esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, \
+    ret = esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, \
                                                     __wifi_event_handler, p_module_ins, &p_module_ins->event_context);
     ESP_GOTO_ON_FALSE(ESP_OK == ret, ESP_FAIL, err, TAG, "Failed to register event handler");
 

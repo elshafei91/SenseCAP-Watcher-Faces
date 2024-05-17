@@ -130,7 +130,7 @@ static void esp32_ota_process()
         ESP_LOGE(TAG, "esp32 ota begin failed eventually");
         ota_status.status = OTA_STATUS_FAIL;
         ota_status.err_code = ESP_ERR_OTA_CONNECTION_FAIL;
-        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
                                     &ota_status, sizeof(struct view_data_ota_status),
                                     portMAX_DELAY);
         free(config);
@@ -141,7 +141,7 @@ static void esp32_ota_process()
     ESP_LOGI(TAG, "esp32 ota connection established, start downloading ...");
     ota_status.status = OTA_STATUS_DOWNLOADING;
     ota_status.percentage = 0;
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
                         &ota_status, sizeof(struct view_data_ota_status),
                         portMAX_DELAY);
 
@@ -182,7 +182,7 @@ static void esp32_ota_process()
             ota_status.status = OTA_STATUS_DOWNLOADING;
             ota_status.percentage = (int)(100 * read_bytes / total_bytes);
             ota_status.err_code = ESP_OK;
-            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
                                 &ota_status, sizeof(struct view_data_ota_status),
                                 portMAX_DELAY);
             last_report_bytes += step_bytes;
@@ -210,7 +210,7 @@ static void esp32_ota_process()
                 ESP_LOGE(TAG, "esp32 ota, image validation failed, image is corrupted");
             }
             ESP_LOGE(TAG, "esp32 ota, upgrade failed when trying to finish: 0x%x", ota_finish_err);
-            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
                         &ota_status, sizeof(struct view_data_ota_status),
                         portMAX_DELAY);
             free(config);
@@ -221,7 +221,7 @@ static void esp32_ota_process()
 
 ota_end:
     esp_https_ota_abort(https_ota_handle);
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_ESP32_FW, 
                         &ota_status, sizeof(struct view_data_ota_status),
                         portMAX_DELAY);
     free(config);
@@ -348,7 +348,7 @@ esp_err_t app_ota_init(void)
     g_task = xTaskCreateStatic(__app_ota_task, "app_ota", stack_size, NULL, 1, task_stack, &g_task_tcb);
 
     ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, __sys_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,
                                                              __app_event_handler, NULL, NULL));
 
     esp_err_t res = app_ota_esp32_fw_download("https://new.pxspeed.site/factory_firmware.bin");

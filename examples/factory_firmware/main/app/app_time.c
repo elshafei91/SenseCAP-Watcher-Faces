@@ -68,8 +68,8 @@ static void __time_sync_notification_cb(struct timeval *tv)
     struct view_data_time_cfg cfg;
     __time_cfg_get(&cfg);
     bool time_format_24 = cfg.time_format_24;
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
-    esp_event_post_to(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED, NULL, 0, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED, NULL, 0, portMAX_DELAY);
 }
 
 static void __time_set(time_t time)
@@ -146,7 +146,7 @@ static void __time_view_update_callback(void* arg)
         struct view_data_time_cfg cfg;
         __time_cfg_get(&cfg);
         bool time_format_24 = cfg.time_format_24;
-        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
         ESP_LOGI(TAG, "need update time view");
         char strftime_buf[64];
         strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
@@ -180,7 +180,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             __time_cfg(p_cfg, p_cfg->set_time);  //config;
 
             bool time_format_24 = p_cfg->time_format_24;
-            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
             break;
         }
         case VIEW_EVENT_WIFI_ST: {
@@ -253,14 +253,14 @@ int app_time_init(void)
     struct view_data_time_cfg cfg;
     __time_cfg_get(&cfg);
     __time_cfg(&cfg, true);
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_UPDATE, &cfg, sizeof(cfg), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_UPDATE, &cfg, sizeof(cfg), portMAX_DELAY);
 
     __time_view_update_init();
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, 
                                                             __view_event_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, 
                                                             __view_event_handler, NULL, NULL));
     return 0;
@@ -279,6 +279,6 @@ int app_time_net_zone_set( char *p)
         __time_zone_set(&cfg); 
     }
     bool time_format_24 = cfg.time_format_24;
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
     return 0;
 }

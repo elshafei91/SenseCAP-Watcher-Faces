@@ -185,35 +185,35 @@ int view_init(void)
     
 
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME, 
                                                             __view_event_handler, NULL, NULL)); 
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
                                                             __view_event_handler, NULL, NULL));   
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, 
                                                             __view_event_handler, NULL, NULL));                                                                                                                 
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, 
                                                             __view_event_handler, NULL, NULL)); 
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, 
                                                             __view_event_handler, NULL, NULL));   
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, 
                                                             __view_event_handler, NULL, NULL));  
     
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                                                             __view_event_handler, NULL, NULL));  
     
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_EMOTICON, 
                                                             __view_event_handler, NULL, NULL));
 

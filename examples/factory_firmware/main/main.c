@@ -46,10 +46,8 @@ static const char *TAG = "app_main";
 "
 
 ESP_EVENT_DEFINE_BASE(VIEW_EVENT_BASE);
-esp_event_loop_handle_t view_event_handle;
-
 ESP_EVENT_DEFINE_BASE(CTRL_EVENT_BASE);
-esp_event_loop_handle_t ctrl_event_handle;
+esp_event_loop_handle_t app_event_loop_handle;
 
 #ifdef CONFIG_HEAP_TASK_TRACKING
 #define MAX_TASK_NUM 30                         // Max number of per tasks info that it can store
@@ -133,11 +131,11 @@ void task_app_init(void *p_arg)
 
     app_init();
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
                                                              __view_event_handler, NULL, NULL));
 
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
     vTaskDelete(NULL);
 }
 
@@ -188,22 +186,13 @@ void app_main(void)
 
     ESP_ERROR_CHECK(board_init());
 
-    esp_event_loop_args_t view_event_task_args = {
-        .queue_size = 10,
-        .task_name = "view_eventloop",
+    esp_event_loop_args_t app_event_loop_args = {
+        .queue_size = 64,
+        .task_name = "app_eventloop",
         .task_priority = 6, // uxTaskPriorityGet(NULL),
         .task_stack_size = 1024 * 3,
         .task_core_id = 0};
-    ESP_ERROR_CHECK(esp_event_loop_create(&view_event_task_args, &view_event_handle));
-
-    esp_event_loop_args_t ctrl_event_task_args = {
-        .queue_size = 10,
-        .task_name = "ctrl_eventloop",
-        .task_priority = 7,
-        .task_stack_size = 1024 + 512,
-        .task_stack_size = 1024 * 3,
-        .task_core_id = 1};
-    ESP_ERROR_CHECK(esp_event_loop_create(&ctrl_event_task_args, &ctrl_event_handle));
+    ESP_ERROR_CHECK(esp_event_loop_create(&app_event_loop_args, &app_event_loop_handle));
 
     // app init
     // app_init();
