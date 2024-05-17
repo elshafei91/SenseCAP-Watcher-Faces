@@ -22,15 +22,13 @@
 #include "app_wifi.h"
 #include "app_time.h"
 #include "app_cmd.h"
-#include "app_sensecraft.h"
-#include "app_tasklist.h"
 #include "app_sensecap_https.h"
 #include "app_mqtt_client.h"
-#include "app_taskengine.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
 #include "util.h"
 #include "app_ota.h"
+#include "app_taskflow.h"
 
 #include "view.h"
 
@@ -113,18 +111,14 @@ int board_init(void)
 
 int app_init(void)
 {
+    app_taskflow_init();
     app_wifi_init();
     app_time_init();
     app_cmd_init();
-
-    tasklist_init();
-    app_taskengine_init();
     app_rgb_init();
-    app_sensecraft_init();
     app_mqtt_client_init();
     app_sensecap_https_init();
     app_device_status_monitor_init();
-    app_ota_init();
     //app_ota_init();
 
     // app_sr_start(false);
