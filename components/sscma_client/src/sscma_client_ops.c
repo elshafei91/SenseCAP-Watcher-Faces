@@ -360,6 +360,7 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
     esp_err_t ret = ESP_OK;
+    BaseType_t res;
     sscma_client_handle_t client = NULL;
     ESP_GOTO_ON_FALSE(io && config && ret_client, ESP_ERR_INVALID_ARG, err, TAG, "invalid argument");
     client = (sscma_client_handle_t)malloc(sizeof(struct sscma_client_t));
@@ -409,29 +410,63 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
 
     vListInitialise(client->request_list);
 
-    BaseType_t res;
-
+#ifdef CONFIG_SSCMA_PROCESS_TASK_STACK_ALLOC_EXTERNAL
+    client->process_task.task = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(client->process_task.task, ESP_ERR_NO_MEM, err, TAG, "no mem for sscma client process task");
+    client->process_task.stack = heap_caps_calloc(1, config->process_task_stack * sizeof(StackType_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(client->process_task.stack, ESP_ERR_NO_MEM, err, TAG, "no mem for sscma client process task stack");
     if (config->process_task_affinity < 0)
     {
-        res = xTaskCreate(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task);
+        client->process_task.handle
+            = xTaskCreateStatic(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, client->process_task.stack, client->process_task.task);
     }
     else
     {
-        res = xTaskCreatePinnedToCore(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task,
+        client->process_task.handle = xTaskCreateStaticPinnedToCore(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority,
+            client->process_task.stack, client->process_task.task, config->process_task_affinity);
+    }
+    ESP_GOTO_ON_FALSE(client->process_task.handle, ESP_FAIL, err, TAG, "create process task failed");
+#else
+    if (config->process_task_affinity < 0)
+    {
+        res = xTaskCreate(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task.handle);
+    }
+    else
+    {
+        res = xTaskCreatePinnedToCore(sscma_client_process, "sscma_client_process", config->process_task_stack, client, config->process_task_priority, &client->process_task.handle,
             config->process_task_affinity);
     }
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create process task failed");
+#endif
 
+#ifdef CONFIG_SSCMA_PROCESS_TASK_STACK_ALLOC_EXTERNAL
+    client->monitor_task.task = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(client->monitor_task.task, ESP_ERR_NO_MEM, err, TAG, "no mem for sscma client monitor task");
+    client->monitor_task.stack = heap_caps_calloc(1, config->monitor_task_stack * sizeof(StackType_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(client->monitor_task.stack, ESP_ERR_NO_MEM, err, TAG, "no mem for sscma client monitor task stack");
     if (config->monitor_task_affinity < 0)
     {
-        res = xTaskCreate(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task);
+        client->monitor_task.handle
+            = xTaskCreateStatic(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, client->monitor_task.stack, client->monitor_task.task);
     }
     else
     {
-        res = xTaskCreatePinnedToCore(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task,
+        client->monitor_task.handle = xTaskCreateStaticPinnedToCore(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority,
+            client->monitor_task.stack, client->monitor_task.task, config->monitor_task_affinity);
+    }
+    ESP_GOTO_ON_FALSE(client->monitor_task.handle, ESP_FAIL, err, TAG, "create monitor task failed");
+#else
+    if (config->monitor_task_affinity < 0)
+    {
+        res = xTaskCreate(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task.handle);
+    }
+    else
+    {
+        res = xTaskCreatePinnedToCore(sscma_client_monitor, "sscma_client_monitor", config->monitor_task_stack, client, config->monitor_task_priority, &client->monitor_task.handle,
             config->monitor_task_affinity);
     }
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create monitor task failed");
+#endif
 
     client->on_response = NULL;
     client->on_event = NULL;
@@ -468,13 +503,33 @@ err:
         {
             free(client->request_list);
         }
-        if (client->process_task)
+        if (client->process_task.handle)
         {
-            vTaskDelete(client->process_task);
+            vTaskDelete(client->process_task.handle);
+#ifdef CONFIG_SSCMA_PROCESS_TASK_STACK_ALLOC_EXTERNAL
+            if (client->process_task.stack)
+            {
+                free(client->process_task.stack);
+            }
+            if (client->process_task.task)
+            {
+                free(client->process_task.task);
+            }
+#endif
         }
-        if (client->monitor_task)
+        if (client->monitor_task.handle)
         {
-            vTaskDelete(client->monitor_task);
+            vTaskDelete(client->monitor_task.handle);
+#ifdef CONFIG_SSCMA_MONITOR_TASK_STACK_ALLOC_EXTERNAL
+            if (client->monitor_task.stack)
+            {
+                free(client->monitor_task.stack);
+            }
+            if (client->monitor_task.task)
+            {
+                free(client->monitor_task.task);
+            }
+#endif
         }
         free(client);
     }
@@ -523,8 +578,17 @@ esp_err_t sscma_client_del(sscma_client_handle_t client)
         free(client->request_list);
         free(client->rx_buffer.data);
         free(client->tx_buffer.data);
-        vTaskDelete(client->process_task);
-        vTaskDelete(client->monitor_task);
+        vTaskDelete(client->process_task.handle);
+        vTaskDelete(client->monitor_task.handle);
+
+#ifdef CONFIG_SSCMA_PROCESS_TASK_STACK_ALLOC_EXTERNAL
+        free(client->process_task.stack);
+        free(client->process_task.task);
+#endif
+#ifdef CONFIG_SSCMA_MONITOR_TASK_STACK_ALLOC_EXTERNAL
+        free(client->monitor_task.stack);
+        free(client->monitor_task.task);
+#endif
 
         if (client->info.id != NULL)
         {
@@ -602,7 +666,7 @@ esp_err_t sscma_client_init(sscma_client_handle_t client)
 esp_err_t sscma_client_reset(sscma_client_handle_t client)
 {
     esp_err_t ret = ESP_OK;
-    vTaskSuspend(client->process_task);
+    vTaskSuspend(client->process_task.handle);
 
     client->rx_buffer.pos = 0;
     client->tx_buffer.pos = 0;
@@ -637,7 +701,7 @@ esp_err_t sscma_client_reset(sscma_client_handle_t client)
         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for sscma to be ready
     }
 
-    vTaskResume(client->process_task);
+    vTaskResume(client->process_task.handle);
     return ret;
 }
 
@@ -658,7 +722,7 @@ esp_err_t sscma_client_available(sscma_client_handle_t client, size_t *ret_avail
 
 esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const sscma_client_callback_t *callback, void *user_ctx)
 {
-    vTaskSuspend(client->process_task);
+    vTaskSuspend(client->process_task.handle);
 
     if (client->on_event != NULL)
     {
@@ -674,7 +738,7 @@ esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const ssc
     client->on_log = callback->on_log;
     client->user_ctx = user_ctx;
 
-    vTaskResume(client->process_task);
+    vTaskResume(client->process_task.handle);
 
     return ESP_OK;
 }
@@ -1560,12 +1624,12 @@ esp_err_t sscma_client_ota_start(sscma_client_handle_t client, const sscma_clien
     }
     client->flasher = flasher;
 
-    vTaskSuspend(client->process_task);
+    vTaskSuspend(client->process_task.handle);
 
     ESP_GOTO_ON_ERROR(sscma_client_flasher_start(client->flasher, offset), err, TAG, "start flasher failed");
 
 err:
-    vTaskResume(client->process_task);
+    vTaskResume(client->process_task.handle);
     return ret;
 }
 
@@ -1579,7 +1643,7 @@ esp_err_t sscma_client_ota_write(sscma_client_handle_t client, const void *data,
 
 err:
     sscma_client_flasher_abort(client->flasher);
-    vTaskResume(client->process_task);
+    vTaskResume(client->process_task.handle);
     return ret;
 }
 
@@ -1589,13 +1653,13 @@ esp_err_t sscma_client_ota_finish(sscma_client_handle_t client)
     ESP_RETURN_ON_FALSE(client, ESP_ERR_INVALID_ARG, TAG, "Invalid argument(s) detected");
     ESP_GOTO_ON_ERROR(sscma_client_flasher_finish(client->flasher), err, TAG, "finish flasher failed");
 
-    vTaskResume(client->process_task);
+    vTaskResume(client->process_task.handle);
 
     return ret;
 
 err:
     sscma_client_flasher_abort(client->flasher);
-    vTaskResume(client->process_task);
+    vTaskResume(client->process_task.handle);
     return ret;
 }
 
@@ -1606,6 +1670,6 @@ esp_err_t sscma_client_ota_abort(sscma_client_handle_t client)
     ESP_GOTO_ON_ERROR(sscma_client_flasher_abort(client->flasher), err, TAG, "abort flasher failed");
 
 err:
-    vTaskResume(client->process_task);
+    vTaskResume(client->process_task.handle);
     return ret;
 }
