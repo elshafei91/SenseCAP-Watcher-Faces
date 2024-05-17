@@ -117,9 +117,8 @@ int app_init(void)
     app_mqtt_client_init();
     app_sensecap_https_init();
     app_device_status_monitor_init();
-    //app_ota_init();
-
-    // app_sr_start(false);
+    // app_ota_init();
+    app_sr_start(false);
 
     return ESP_OK;
 }
