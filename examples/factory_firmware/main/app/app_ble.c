@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -11,37 +12,35 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_bt.h"
-
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
 #include "esp_bt_defs.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
 #include "esp_gatt_common_api.h"
-
 #include "sdkconfig.h"
-
 #include "esp_heap_caps.h"
 
 #include "at_cmd.h"
 #include "app_ble.h"
-#include "system_layer.h"
 #include "app_device_info.h"
 #include "app_wifi.h"
 #include "event_loops.h"
 #include "data_defs.h"
 
-/*-----------------------------------------------------------------------------------*/
-// variable defination place
 
+// Static and global variables
 static int ble_status = BLE_DISCONNECTED;
-
-uint8_t watcher_sn_buffer[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
-uint8_t watcher_name[] = { '-', 'W', 'A', 'C', 'H' };
-
 static uint8_t char1_str[] = { 0x11, 0x22, 0x33 };
 static uint8_t char2_str[] = { 0x44, 0x55, 0x66 };
 
+uint8_t watcher_sn_buffer[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
+uint8_t watcher_name[] = { '-', 'W', 'A', 'C', 'H' };
+uint8_t adv_config_done = 0;
+uint8_t watcher_adv_data_RAW[] = { 0x05, 0x03, 0x86, 0x28, 0x86, 0xA8, 0x18, 0x09 };
+uint8_t raw_scan_rsp_data[] = { 0x06, 0x09, '-', 'W', 'A', 'C', 'H' };
+
+// Attribute values
 esp_attr_value_t gatts_char_write_val = {
     .attr_max_len = GATTS_DEMO_CHAR_VAL_LEN_MAX,
     .attr_len = sizeof(char1_str),
@@ -54,16 +53,31 @@ esp_attr_value_t gatts_char_read_val = {
     .attr_value = char2_str,
 };
 
-uint8_t adv_config_done = 0;
+// Semaphore
+SemaphoreHandle_t ble_status_mutex = NULL;
 
-uint8_t watcher_adv_data_RAW[] = { 0x05, 0x03, 0x86, 0x28, 0x86, 0xA8, 0x18, 0x09 };
+// Stack and Task
+static StackType_t *ble_task_stack = NULL;
+static StaticTask_t ble_task_buffer;
 
-uint8_t raw_scan_rsp_data[] = { // Length 15, Data Type 9 (Complete Local Name), Data 1 (ESP_GATTS_DEMO)
-    0x06, 0x09, '-', 'W', 'A', 'C', 'H'
+// Advertising parameters
+esp_ble_adv_params_t adv_params = {
+    .adv_int_min = 0x20,
+    .adv_int_max = 0x40,
+    .adv_type = ADV_TYPE_IND,
+    .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
+    .channel_map = ADV_CHNL_ALL,
+    .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
-struct gatts_profile_inst
-{
+
+
+// Properties
+esp_gatt_char_prop_t watcher_write_property = 0;
+esp_gatt_char_prop_t watcher_read_property = 1;
+
+// GATT profile instance struct definition
+struct gatts_profile_inst {
     esp_gatts_cb_t gatts_cb;
     uint16_t gatts_if;
     uint16_t app_id;
@@ -80,45 +94,44 @@ struct gatts_profile_inst
     uint16_t descr_handle;
     esp_bt_uuid_t descr_uuid;
 };
-
-typedef struct
-{
+// GATT profile instance
+struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = { 
+    [PROFILE_WATCHER_APP_ID] = {
+        .gatts_cb = gatts_profile_event_handler,
+        .gatts_if = ESP_GATT_IF_NONE,
+    } 
+};
+// Prepare type environment struct
+typedef struct {
     uint8_t *prepare_buf;
     int prepare_len;
 } prepare_type_env_t;
 
 prepare_type_env_t prepare_write_env;
-
 prepare_type_env_t tiny_write_env;
 
-esp_ble_adv_params_t adv_params = {
-    .adv_int_min = 0x20,
-    .adv_int_max = 0x40,
-    .adv_type = ADV_TYPE_IND,
-    .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
-    .channel_map = ADV_CHNL_ALL,
-    .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
-};
-
-struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = { [PROFILE_WATCHER_APP_ID] = {
-                                                              .gatts_cb = gatts_profile_event_handler,
-                                                              .gatts_if = ESP_GATT_IF_NONE,
-                                                          } };
-
-//  watcher service property
-esp_gatt_char_prop_t watcher_write_property = 0;
-esp_gatt_char_prop_t watcher_read_property = 1;
-
-SemaphoreHandle_t ble_status_mutex = NULL;
-
-static StackType_t *ble_task_stack=NULL;
-static StaticTask_t ble_task_buffer;
 
 
-void ble_config_layer(void);
+static void ble_config_entry(void);
+
+
+
 static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
-//  tool function
+
+
+/**
+ * @brief Converts binary data to its hexadecimal string representation.
+ *
+ * This tool function converts each byte of the input binary data into its
+ * corresponding two-character hexadecimal string representation. The output
+ * data will contain the ASCII characters for the hexadecimal values.
+ *
+ * @param out_data Pointer to the output buffer where the hexadecimal string will be stored.
+ *                 This buffer should be at least twice the size of the input data.
+ * @param in_data Pointer to the input buffer containing the binary data to be converted.
+ * @param Size The number of bytes in the input buffer.
+ */
 static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned short Size) // Tool Function
 {
     for (unsigned char i = 0; i < Size; i++)
@@ -143,6 +156,18 @@ static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned s
     }
 }
 
+
+
+/**
+ * @brief Handles GAP (Generic Access Profile) events for BLE (Bluetooth Low Energy).
+ *
+ * This function processes various GAP events such as advertising data setup, advertising start,
+ * advertising stop, and connection parameter updates. It ensures appropriate actions are taken
+ * based on the event type and the status of the operations.
+ *
+ * @param event The GAP event type.
+ * @param param Pointer to the structure containing the GAP callback parameters.
+ */
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event)
@@ -186,6 +211,23 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
     }
 }
 
+
+
+
+
+/**
+ * @brief Handles the preparation and writing of events for the specified GATT interface.
+ *
+ * This function processes the preparation of write events and handles the writing of data to the specified
+ * GATT interface. It ensures that the data is properly prepared and written based on the given parameters.
+ * If the write requires a response and is a prepare write, it checks for valid offsets and attribute lengths,
+ * allocates memory for the prepare buffer if needed, and sends a response to the client. If the write does
+ * not require preparation, it simply sends a response.
+ *
+ * @param gatts_if The GATT interface handle.
+ * @param prepare_write_env Pointer to the environment structure used for preparing write events.
+ * @param param Pointer to the structure containing the GATT callback parameters.
+ */
 static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
 {
     esp_gatt_status_t status = ESP_GATT_OK;
@@ -193,7 +235,7 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
     {
         if (param->write.is_prep)
         {
-            ESP_LOGE(GATTS_TAG, "CHECK_POINT");
+            
             if (param->write.offset > PREPARE_BUF_MAX_SIZE)
             {
                 status = ESP_GATT_INVALID_OFFSET;
@@ -205,7 +247,7 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
             if (status == ESP_GATT_OK && prepare_write_env->prepare_buf == NULL)
             {
                 prepare_write_env->prepare_buf = heap_caps_malloc(PREPARE_BUF_MAX_SIZE * sizeof(uint8_t), MALLOC_CAP_SPIRAM);
-                ESP_LOGE(GATTS_TAG, "CHECK_POINT01");
+               
                 prepare_write_env->prepare_len = 0;
                 if (prepare_write_env->prepare_buf == NULL)
                 {
@@ -247,15 +289,28 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
         }
     }
 }
+
+
+
+
+/**
+ * @brief Executes the prepared write events for the GATT server with tiny sittuation for data less than mtu handling.
+ *
+ * This function logs the prepared write event data, posts the event to a specified event loop,
+ * and waits for a response. It processes the response data by sending it in multiple segments
+ * if necessary, using BLE indications. The prepared buffer and response data are freed after
+ * processing.
+ *
+ * @param gatts_if The GATT interface handle.
+ * @param prepare_write_env Pointer to the environment structure used for preparing write events.
+ * @param param Pointer to the structure containing the GATT callback parameters.
+ */
 static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
 {
-    ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT_TAG_TINY, value len %d, value :", param->write.len);
-    esp_log_buffer_hex("HEX_TAG_tiny", prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
-
     if (prepare_write_env->prepare_buf)
     {
         message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
-        esp_log_buffer_hex("HEX TAG2", msg_at.msg, msg_at.size);
+        
         esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, msg_at.size, portMAX_DELAY);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         AT_Response msg_at_response;
@@ -273,8 +328,6 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
                 {
                     memcpy(response_data, msg_at_response.response, msg_at_response.length);
                 }
-
-                // Calculate the number of full segments and remaining bytes
                 int segments = msg_at_response.length / 20;
                 int remaining_bytes = msg_at_response.length % 20;
 
@@ -299,6 +352,22 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
     }
 }
 
+
+
+
+
+/**
+ * @brief Executes the prepared write events for the GATT server.
+ *
+ * This function processes the execution of prepared write events based on the execution flag.
+ * If the write is to be executed, it logs the prepared data. If the write is canceled, it logs the cancellation.
+ * The function posts the event to a specified event loop and waits for a response. It then processes
+ * the response data by sending it in multiple segments using BLE indications. The prepared buffer
+ * and response data are freed after processing.
+ *
+ * @param prepare_write_env Pointer to the environment structure used for preparing write events.
+ * @param param Pointer to the structure containing the GATT callback parameters.
+ */
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
 {
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC)
@@ -312,12 +381,10 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     if (prepare_write_env->prepare_buf)
     {
         message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
-        esp_log_buffer_hex("HEX TAG2", msg_at.msg, msg_at.size);
         esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, sizeof(msg_at), portMAX_DELAY);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         free(prepare_write_env->prepare_buf);
         prepare_write_env->prepare_buf = NULL;
-
         AT_Response msg_at_response;
         if (xQueueReceive(AT_response_queue, &msg_at_response, portMAX_DELAY) == pdTRUE)
         {
@@ -333,8 +400,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
                 {
                     memcpy(response_data, msg_at_response.response, msg_at_response.length);
                 }
-
-                // Calculate the number of full segments and remaining bytes
                 int segments = msg_at_response.length / 20;
                 int remaining_bytes = msg_at_response.length % 20;
 
@@ -358,6 +423,20 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     }
 }
 
+
+
+
+/**
+ * @brief Handles GATT (Generic Attribute Profile) events for BLE (Bluetooth Low Energy).
+ *
+ * This function processes various GATT events such as registration, reading, writing, and
+ * executing write operations. It ensures appropriate actions are taken based on the event type
+ * and the status of the operations.
+ *
+ * @param event The GATT event type.
+ * @param gatts_if The GATT interface handle.
+ * @param param Pointer to the structure containing the GATT callback parameters.
+ */
 void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     switch (event)
@@ -383,7 +462,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
 
             if (set_dev_name_ret)
             {
-                ESP_LOGE(GATTS_TABLE_TAG, "set device name failed, error code = %x", set_dev_name_ret);
+                ESP_LOGE("ADV", "set device name failed, error code = %x", set_dev_name_ret);
             }
 
             ESP_LOGI(GATTS_TAG, "REGISTER_APP_EVT, status %d, app_id %d", param->reg.status, param->reg.app_id);
@@ -396,31 +475,12 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             {
                 gl_profile_tab[PROFILE_WATCHER_APP_ID].service_id.id.uuid.uuid.uuid128[i] = uuid[i];
             }
-#ifdef CONFIG_SET_RAW_ADV_DATA
-
             esp_err_t raw_adv_ret = esp_ble_gap_config_adv_data_raw(send_buffer, sizeof(send_buffer) - 1);
             if (raw_adv_ret)
             {
                 ESP_LOGE(GATTS_TAG, "config raw adv data failed, error code = %x ", raw_adv_ret);
             }
-#else
-            // config adv data
-            esp_err_t ret = esp_ble_gap_config_adv_data(&adv_data);
-            if (ret)
-            {
-                ESP_LOGE(GATTS_TAG, "config adv data failed, error code = %x", ret);
-            }
-            adv_config_done |= adv_config_flag;
-            // config scan response data
-            ret = esp_ble_gap_config_adv_data(&scan_rsp_data);
-            if (ret)
-            {
-                ESP_LOGE(GATTS_TAG, "config scan response data failed, error code = %x", ret);
-            }
-            adv_config_done |= scan_rsp_config_flag;
-
-#endif
-            esp_ble_gatts_create_service(gatts_if, &gl_profile_tab[PROFILE_WATCHER_APP_ID].service_id, GATTS_NUM_HANDLE_TEST_A);
+            esp_ble_gatts_create_service(gatts_if, &gl_profile_tab[PROFILE_WATCHER_APP_ID].service_id, GATTS_NUM_HANDLE_WATCHER);
             break;
         case ESP_GATTS_READ_EVT: {
             ESP_LOGI(GATTS_TAG, "GATT_READ_EVT, conn_id %d, trans_id %" PRIu32 ", handle %d", param->read.conn_id, param->read.trans_id, param->read.handle);
@@ -428,10 +488,10 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
             rsp.attr_value.handle = param->read.handle;
             rsp.attr_value.len = 4;
-            rsp.attr_value.value[0] = 0xde;
-            rsp.attr_value.value[1] = 0xed;
-            rsp.attr_value.value[2] = 0xbe;
-            rsp.attr_value.value[3] = 0xef;
+            rsp.attr_value.value[0] = 0x00;
+            rsp.attr_value.value[1] = 0x00;
+            rsp.attr_value.value[2] = 0x00;
+            rsp.attr_value.value[3] = 0x00;
             esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id, ESP_GATT_OK, &rsp);
             break;
         }
@@ -448,7 +508,6 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                     uint16_t descr_value = param->write.value[1] << 8 | param->write.value[0];
                     if (descr_value == 0x0001)
                     {
-                        ESP_LOGE(GATTS_TAG, "die 01");
                         if (watcher_write_property & ESP_GATT_CHAR_PROP_BIT_NOTIFY)
                         {
                             ESP_LOGI(GATTS_TAG, "notify enable");
@@ -457,8 +516,6 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                             {
                                 notify_data[i] = i % 0xff;
                             }
-                            // the size of notify_data[] need less than MTU size
-                            // esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(notify_data), notify_data, false);
                         }
                     }
                     else if (descr_value == 0x0002)
@@ -471,8 +528,6 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                             {
                                 indicate_data[i] = i % 0xff;
                             }
-                            // the size of indicate_data[] need less than MTU size
-                            // esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handle, sizeof(indicate_data), indicate_data, true);
                         }
                     }
                     else if (descr_value == 0x0000)
@@ -487,12 +542,10 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                 }
                 else
                 {
-                    ESP_LOGE(GATTS_TAG, "handle is %x", param->write.handle);
-                    ESP_LOGE(GATTS_TAG, "handle is %x", gl_profile_tab[PROFILE_WATCHER_APP_ID].descr_handle);
-                    tiny_write_env.prepare_buf = malloc(TINY_BUF_MAX_SIZE * sizeof(uint8_t));
+ 
+                    tiny_write_env.prepare_buf = heap_caps_malloc(TINY_BUF_MAX_SIZE * sizeof(uint8_t),MALLOC_CAP_SPIRAM);
                     memcpy(tiny_write_env.prepare_buf, param->write.value, param->write.len);
                     tiny_write_env.prepare_len = param->write.len;
-                    ESP_LOGE(GATTS_TAG, "die 02");
                     watcher_exec_write_tiny_event_env(gatts_if, &tiny_write_env, param);
                     free(tiny_write_env.prepare_buf);
                 }
@@ -586,7 +639,6 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             ESP_LOGI(GATTS_TAG, "ESP_GATTS_CONNECT_EVT, conn_id %d, remote %02x:%02x:%02x:%02x:%02x:%02x:", param->connect.conn_id, param->connect.remote_bda[0], param->connect.remote_bda[1],
                 param->connect.remote_bda[2], param->connect.remote_bda[3], param->connect.remote_bda[4], param->connect.remote_bda[5]);
             gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id = param->connect.conn_id;
-            // start sent the update connection parameters to the peer device.
             esp_ble_gap_update_conn_params(&conn_params);
             break;
         }
@@ -615,9 +667,23 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
     }
 }
 
+
+
+
+
+/**
+ * @brief GATT server event handler.
+ *
+ * This function handles GATT server events. When the ESP_GATTS_REG_EVT event occurs, it registers
+ * the application with the GATT interface. For all other events, it iterates through the profile table
+ * and calls the corresponding profile's event handler callback if the GATT interface matches.
+ *
+ * @param event The GATT server event type.
+ * @param gatts_if The GATT interface handle. It can be ESP_GATT_IF_NONE to indicate all interfaces.
+ * @param param Pointer to the structure containing the GATT callback parameters.
+ */
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
-    /* If event is register event, store the gatts_if for each profile */
     if (event == ESP_GATTS_REG_EVT)
     {
         if (param->reg.status == ESP_GATT_OK)
@@ -630,15 +696,12 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
             return;
         }
     }
-
-    /* If the gatts_if equal to profile A, call profile A cb handler,
-     * so here call each profile's callback */
     do
     {
         int idx;
         for (idx = 0; idx < PROFILE_NUM; idx++)
         {
-            if (gatts_if == ESP_GATT_IF_NONE || /* ESP_GATT_IF_NONE, not specify a certain gatt_if, need to call every profile cb function */
+            if (gatts_if == ESP_GATT_IF_NONE || 
                 gatts_if == gl_profile_tab[idx].gatts_if)
             {
                 if (gl_profile_tab[idx].gatts_cb)
@@ -651,6 +714,26 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     while (0);
 }
 
+
+
+
+
+
+
+
+
+
+
+/**
+ * @brief Initializes the BLE (Bluetooth Low Energy) application.
+ *
+ * This function performs the initialization of the BLE application. It includes setting up NVS (Non-Volatile Storage)
+ * if BLE_DEBUG is defined, releasing memory for the classic Bluetooth, initializing and enabling the Bluetooth
+ * controller and bluedroid stack, registering GATT and GAP callbacks, setting the local MTU, and starting the
+ * BLE configuration task.
+ *
+ * @return esp_err_t The error code indicating the success or failure of the initialization.
+ */
 esp_err_t app_ble_init(void)
 {
     esp_err_t ret;
@@ -715,74 +798,39 @@ esp_err_t app_ble_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     AT_cmd_init();
-    //xTaskCreate(ble_config_layer, "ble_config_layer", 4096, NULL, 4, NULL);
-    ble_task_stack =(StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    TaskHandle_t task_handle = xTaskCreateStatic(
-        ble_config_layer,       
-        "ble_config_layer",     
-        4096,                   
-        NULL,                   
-        4,                      
-        ble_task_stack,         
-        &ble_task_buffer        
-    );
-    if (task_handle == NULL) {
+    ble_task_stack = (StackType_t *)heap_caps_malloc(4096 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    TaskHandle_t task_handle = xTaskCreateStatic(ble_config_entry, "ble_config_entry", 4096, NULL, 4, ble_task_stack, &ble_task_buffer);
+    if (task_handle == NULL)
+    {
         printf("Failed to create task\n");
     }
-
 #ifdef DEBUG_AT_CMD
     // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
 #endif
     return ESP_OK;
 }
 
-// stop ble system
 
-void app_ble_deinit(void)
-{
-    esp_bluedroid_disable();
-    esp_bluedroid_deinit();
-    esp_bt_controller_disable();
-    esp_bt_controller_deinit();
-    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
-}
 
-void app_ble_start(void)
-{
-    ESP_LOGE("app_ble_start", "");
-    esp_ble_gap_start_advertising(&adv_params);
-}
 
-void app_ble_stop(void)
-{
-    ESP_LOGE("app_ble_stop", "");
-    esp_ble_gap_stop_advertising();
-}
 
-void get_ble_status(int caller)
-{
-    switch (caller)
-    {
-        case UI_CALLER: {
-            if (ble_status == BLE_CONNECTED)
-            {
-                // send BLE_CONNECTED to UI
-                bool status = true;
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, &status, 1, portMAX_DELAY);
-            }
-            else
-            {
-                bool status = false;
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, &status, 1, portMAX_DELAY);
-            }
-            break;
-        }
-        case AT_CMD_CALLER: {
-            break;
-        }
-    }
-}
 
+
+
+
+
+
+/**
+ * @brief Gets the current BLE status and sends it to the appropriate caller.
+ *
+ * This function checks the BLE status and sends the status to the specified caller.
+ * If the caller is the UI, it sends the BLE status (connected or not connected) to the UI.
+ * If the caller is AT command, it currently does nothing.
+ *
+ * @param caller The identifier of the caller requesting the BLE status.
+ *               - UI_CALLER: Sends BLE status to the UI.
+ *               - AT_CMD_CALLER: Currently not implemented.
+ */
 void set_ble_status(int caller, int status)
 {
     switch (caller)
@@ -797,7 +845,25 @@ void set_ble_status(int caller, int status)
     }
 }
 
-void ble_config_layer(void)
+
+
+
+
+
+
+
+
+
+
+/**
+ * @brief BLE configuration task entry.
+ *
+ * This function runs as a task and handles the BLE configuration and status management.
+ * It checks the BLE status and starts or stops advertising accordingly. A mutex is created
+ * to ensure thread-safe access to the BLE status. The task runs in an infinite loop, periodically
+ * checking and updating the BLE status.
+ */
+void ble_config_entry(void)
 {
     esp_err_t ret;
     if (ble_status_mutex == NULL)
@@ -818,7 +884,7 @@ void ble_config_layer(void)
             {
                 ESP_LOGI("BLE_BUTTON", "start advertising succeeded");
             }
-            ble_status= STATUS_WAITTING;
+            ble_status = STATUS_WAITTING;
         }
         else if (ble_status == BLE_CONNECTED)
         {
@@ -831,9 +897,10 @@ void ble_config_layer(void)
             {
                 ESP_LOGI("BLE_BUTTON", "stop advertising succeeded");
             }
-            ble_status= STATUS_WAITTING;
+            ble_status = STATUS_WAITTING;
         }
-        else{
+        else
+        {
             vTaskDelay(1000);
         }
     }

@@ -30,10 +30,11 @@
 #include "app_taskengine.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
+#include "app_device_info.h"
 #include "util.h"
-#include "system_layer.h"
 
 #include "view.h"
+
 static const char *TAG = "app_main";
 
 #define SENSECAP "\n\
@@ -113,7 +114,7 @@ int board_init(void)
 
 int app_init(void)
 {
-    system_layer_init();
+    app_device_info_init();
     app_wifi_init();
     app_ble_init();
     app_time_init();
@@ -137,7 +138,6 @@ void task_app_init(void *p_arg)
     // UI init
     view_init();
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
-
     app_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,

@@ -6,7 +6,6 @@
 #include "util.h"
 #include "ui/ui_helpers.h"
 #include <time.h>
-#include "system_layer.h"
 #include "app_device_info.h"
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"

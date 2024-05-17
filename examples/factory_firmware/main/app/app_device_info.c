@@ -13,7 +13,6 @@
 
 #include "data_defs.h"
 #include "app_device_info.h"
-#include "system_layer.h"
 #include "storage.h"
 
 #include "sensecap-watcher.h"
@@ -34,6 +33,10 @@ SemaphoreHandle_t MUTEX_SN = NULL;
 SemaphoreHandle_t MUTEX_software_version;
 SemaphoreHandle_t MUTEX_himax_software_version;
 SemaphoreHandle_t MUTEX_brightness;
+
+static StackType_t *app_device_info_task_stack =NULL;
+static StaticTask_t app_device_info_task_buffer;
+
 
 void byteArrayToHexString(const uint8_t *byteArray, size_t byteArraySize, char *hexString)
 {
@@ -196,7 +199,7 @@ void app_device_info_task(void *pvParameter)
     while (1)
     {
         // efuse or nvs read function
-        __set_brightness();
+        //__set_brightness();
         // read and init brightness
 
         vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -205,15 +208,6 @@ void app_device_info_task(void *pvParameter)
 
 void app_device_info_init()
 {
-    storage_write(BRIGHTNESS_STORAGE, (void *)brightness, sizeof(int));
-    // StaticTask_t app_device_info_layer_task_buffer;
-    // StackType_t *app_device_info_layer_stack_buffer = heap_caps_malloc(APP_DEVICE_INFO_MAX_STACK * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    // xTaskCreateStatic(&app_device_info_task,
-    //     "app_device_info_task",             // wifi_config_layer
-    //     APP_DEVICE_INFO_MAX_STACK,    // 1024*5
-    //     NULL,                            // NULL
-    //     4,                               // 10
-    //     app_device_info_layer_stack_buffer,  // wifi_config_layer_stack_buffer
-    //     &app_device_info_layer_task_buffer); // wifi_config_layer_task_buffer
-    xTaskCreate(&app_device_info_task, "app_device_info_task", 4096, NULL, 5, NULL);
+    app_device_info_task_stack =(StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t),MALLOC_CAP_SPIRAM);
+    TaskHandle_t task_handle =xTaskCreateStatic(&app_device_info_task, "app_device_info_task", 4096, NULL, 5, app_device_info_task_stack, &app_device_info_task_buffer);
 }

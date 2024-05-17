@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,15 +12,15 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_event.h"
-#include "app_wifi.h"
 #include "esp_wifi.h"
+
+#include "app_wifi.h"
 #include "event_loops.h"
 #include "data_defs.h"
 #include "portmacro.h"
 #include "uhash.h"
 #include "at_cmd.h"
 #include "cJSON.h"
-#include "system_layer.h"
 #include "app_device_info.h"
 
 #ifdef DEBUG_AT_CMD
@@ -36,20 +35,52 @@ UBaseType_t uxArraySize, x;
 uint32_t ulTotalRunTime;
 #endif
 
-// Data Structure
-/*-----------------------------------*/
-// wifi table
+
+
 
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
 static wifi_ap_record_t current_connected_wifi;
-/*-----------------------------------*/
 
-// Data Structure process function
+
+
+
+
+
+
+/**
+ * @brief Initialize the Wi-Fi stack semaphore.
+ *
+ * This function creates a mutex semaphore for the Wi-Fi stack. 
+ * A semaphore is a synchronization primitive used to control access 
+ * to a shared resource in a concurrent system such as a multitasking 
+ * operating system. In this case, the semaphore is used to manage 
+ * access to the Wi-Fi stack to ensure thread safety.
+ */
 void wifi_stack_semaphore_init()
 {
     wifi_stack_semaphore = xSemaphoreCreateMutex();
 }
+
+
+
+
+
+
+
+
+
+
+/**
+ * @brief Initialize the Wi-Fi stack with a specified capacity.
+ *
+ * This function initializes a Wi-Fi stack by allocating memory for the stack entries
+ * and setting its initial size and capacity. The memory is allocated from a specific
+ * heap region suitable for large allocations.
+ *
+ * @param stack A pointer to the Wi-Fi stack structure to be initialized.
+ * @param capacity The maximum number of entries the Wi-Fi stack can hold.
+ */
 void initWiFiStack(WiFiStack *stack, int capacity)
 {
     stack->entries = (WiFiEntry *)heap_caps_malloc(capacity * sizeof(WiFiEntry), MALLOC_CAP_SPIRAM);
@@ -57,6 +88,27 @@ void initWiFiStack(WiFiStack *stack, int capacity)
     stack->capacity = capacity;
 }
 
+
+
+
+
+
+
+
+
+
+
+/**
+ * @brief Push a new Wi-Fi entry onto the Wi-Fi stack.
+ *
+ * This function adds a new Wi-Fi entry to the stack. It ensures thread safety
+ * by using a semaphore to protect the critical section where the stack is modified.
+ * If the stack's capacity is exceeded, the stack's capacity is doubled and the memory
+ * for the entries is reallocated.
+ *
+ * @param stack A pointer to the Wi-Fi stack where the entry will be added.
+ * @param entry The Wi-Fi entry to be added to the stack.
+ */
 void pushWiFiStack(WiFiStack *stack, WiFiEntry entry)
 {
     // Acquire the semaphore to protect the critical section
@@ -73,6 +125,24 @@ void pushWiFiStack(WiFiStack *stack, WiFiEntry entry)
     xSemaphoreGive(wifi_stack_semaphore);
 }
 
+
+
+
+
+
+
+
+
+
+
+/**
+ * @brief Free the memory allocated for the Wi-Fi stack.
+ *
+ * This function releases the memory allocated for the Wi-Fi stack entries and
+ * resets the stack's attributes to indicate that it is empty and uninitialized.
+ *
+ * @param stack A pointer to the Wi-Fi stack to be freed.
+ */
 void freeWiFiStack(WiFiStack *stack)
 {
     free(stack->entries);
@@ -81,6 +151,16 @@ void freeWiFiStack(WiFiStack *stack)
     stack->capacity = 0;
 }
 
+
+/**
+ * @brief Create a JSON object representing a Wi-Fi entry.
+ *
+ * This function creates a JSON object from a given Wi-Fi entry. The JSON object
+ * contains the SSID, RSSI, and encryption type of the Wi-Fi entry.
+ *
+ * @param entry A pointer to the Wi-Fi entry to be converted to JSON.
+ * @return A cJSON object representing the Wi-Fi entry.
+ */
 cJSON *create_wifi_entry_json(WiFiEntry *entry)
 {
     cJSON *wifi_json = cJSON_CreateObject();
@@ -90,6 +170,17 @@ cJSON *create_wifi_entry_json(WiFiEntry *entry)
     return wifi_json;
 }
 
+
+/**
+ * @brief Create a JSON object representing the scanned and connected Wi-Fi stacks.
+ *
+ * This function creates a JSON object that contains two arrays: one for the
+ * scanned Wi-Fi entries and another for the connected Wi-Fi entries.
+ *
+ * @param stack_scnned_wifi A pointer to the Wi-Fi stack containing scanned Wi-Fi entries.
+ * @param stack_connected_wifi A pointer to the Wi-Fi stack containing connected Wi-Fi entries.
+ * @return A cJSON object representing both the scanned and connected Wi-Fi stacks.
+ */
 cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_connected_wifi)
 {
     cJSON *root = cJSON_CreateObject();
@@ -112,6 +203,16 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
 /*--------------------------------test for tf engin set function only for debug---------------------*/
 esp_err_t tf_engine_flow_set(const char *p_str, size_t len);
 
+
+
+
+
+
+
+
+
+
+
 // AT command system layer
 /*----------------------------------------------------------------------------------------------------*/
 SemaphoreHandle_t AT_response_semaphore;
@@ -124,6 +225,21 @@ AT_Response create_at_response(const char *message);
 const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=(\\{.*\\}))?\r\n$";
 command_entry *commands = NULL; // Global variable to store the commands
 
+
+
+
+
+
+
+/**
+ * @brief Add a command to the hash table of commands.
+ *
+ * This function creates a new command entry and adds it to the hash table of commands.
+ *
+ * @param commands A pointer to the hash table of commands.
+ * @param name The name of the command.
+ * @param func A pointer to the function that implements the command.
+ */
 void add_command(command_entry **commands, const char *name, void (*func)(char *params))
 {
     command_entry *entry = (command_entry *)malloc(sizeof(command_entry)); // Allocate memory for the new entry
@@ -132,6 +248,28 @@ void add_command(command_entry **commands, const char *name, void (*func)(char *
     HASH_ADD_STR(*commands, command_name, entry);                          // Add the new entry to the hash table
 }
 
+
+
+
+
+
+
+
+
+
+
+/**
+ * @brief Execute a command from the hash table.
+ *
+ * This function searches for a command by name in the hash table and executes it
+ * with the provided parameters. If the query character is '?', the command is treated
+ * as a query command.
+ *
+ * @param commands A pointer to the hash table of commands.
+ * @param name The name of the command to execute.
+ * @param params The parameters to pass to the command function.
+ * @param query The query character that modifies the command behavior.
+ */
 void exec_command(command_entry **commands, const char *name, char *params, char query)
 {
     command_entry *entry;
@@ -155,8 +293,23 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     }
 }
 
+
+
+
+
+
+
+
+
+
+/**
+ * @brief Register the AT commands.
+ *
+ * This function adds various AT commands to the hash table of commands.
+ */
 void AT_command_reg()
-{ // Register the AT commands
+{ 
+    // Register the AT commands
     add_command(&commands, "type1=", handle_type_1_command);
     add_command(&commands, "deviceinfo?", handle_deviceinfo_command);
     add_command(&commands, "wifi=", handle_wifi_set);
@@ -169,11 +322,22 @@ void AT_command_reg()
     // add_command(&commands, "deviceinfo?", handle_deviceinfo_command);
 }
 
+
+/**
+ * @brief Handle the device configuration command.
+ *
+ * This function processes the device configuration command by parsing the JSON string
+ * provided in the parameters, extracting the time zone information, and posting an event
+ * with the time zone configuration. It also creates a JSON response with default values
+ * for other settings and sends it back.
+ *
+ * @param params A JSON string containing the device configuration data.
+ */
 void handle_deviceinfo_cfg_command(char *params)
 {
     printf("handle_deviceinfo_cfg_command\n");
 
-    // 解析 JSON 字符串
+
     cJSON *json = cJSON_Parse(params);
     if (json == NULL)
     {
@@ -193,11 +357,9 @@ void handle_deviceinfo_cfg_command(char *params)
         if (cJSON_IsNumber(time_zone))
         {
             int timezone = time_zone->valueint;
-            ESP_LOGE("AT_CMD_CALLER", "Time_Zonedie02: %d", timezone);
             struct view_data_time_cfg time_cfg;
             time_cfg.zone = timezone;
             esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
-            ESP_LOGE("AT_CMD_CALLER", "Time_Zonedie02: %d", timezone);
         }
     }
     else
@@ -205,7 +367,7 @@ void handle_deviceinfo_cfg_command(char *params)
         printf("Time_Zone not found or not a valid string in JSON\n");
     }
 
-    // 释放 JSON 对象
+
     cJSON_Delete(json);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
@@ -222,6 +384,10 @@ void handle_deviceinfo_cfg_command(char *params)
     send_at_response(&response);
     cJSON_Delete(root);
 }
+
+
+
+
 void handle_type_1_command(char *params)
 {
     printf("Handling type 1 command\n");
@@ -234,20 +400,20 @@ void handle_deviceinfo_command(char *params)
     char *software_version = get_software_version(AT_CMD_CALLER);
     char *himax_version = get_himax_software_version(AT_CMD_CALLER);
     // uint8_t *hardwareversion = get_hardware_version();
-    //  创建根对象
+   
     cJSON *root = cJSON_CreateObject();
 
-    // 添加字符串字段 "name"
+    
     cJSON_AddStringToObject(root, "name", "deviceinfo?");
 
-    // 添加整数字段 "code"
+
     cJSON_AddNumberToObject(root, "code", 0);
 
-    // 创建 "data" 对象并添加到根对象中
+  
     cJSON *data = cJSON_CreateObject();
     cJSON_AddItemToObject(root, "data", data);
 
-    // 添加 "data" 对象的字段
+
     cJSON_AddStringToObject(data, "Eui", "1");
     cJSON_AddStringToObject(data, "Token", "1");
     cJSON_AddStringToObject(data, "Ble_Mac", "123");
@@ -256,13 +422,13 @@ void handle_deviceinfo_command(char *params)
 
     // add Himax_Software_Versionfield
     cJSON_AddStringToObject(data, "Himax_Software_Version", (const char *)himax_version);
-    // 添加 "software" 字段并赋值
+
     cJSON_AddStringToObject(data, "Esp32_Software_Version", (const char *)software_version);
 
-    // 将 JSON 对象转换为字符串
+
     char *json_string = cJSON_Print(root);
 
-    // 释放内存
+
     // vTaskDelay(1000 / portTICK_PERIOD_MS);
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
@@ -391,7 +557,7 @@ void handle_wifi_query(char *params)
 void handle_wifi_table(char *params)
 {
     initWiFiStack(&wifiStack_scanned, 6);
-    xTaskNotifyGive(xTask_wifi_config_layer);
+    xTaskNotifyGive(xTask_wifi_config_entry);
     vTaskDelay(5000 / portTICK_PERIOD_MS);
     pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
@@ -503,7 +669,7 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
     if (base == AT_EVENTS && id == AT_EVENTS_COMMAND_ID)
     {
         printf("AT command received\n");
-        esp_log_buffer_hex("HEX TAG3", msg_at->msg, msg_at->size);
+        //esp_log_buffer_hex("HEX TAG3", msg_at->msg, msg_at->size);
         hex_to_string(msg_at->msg, msg_at->size, test_strings);
         printf("recv: %.*s\n", 1024, test_strings);
     }
@@ -623,21 +789,15 @@ void AT_cmd_init()
     init_event_loop_and_task();
     initWiFiStack(&wifiStack_scanned, 10);
     initWiFiStack(&wifiStack_connected, 10);
-    // command data struct initialization
-    // initWiFiStack(&wifiStack, 10);
 }
 void AT_command_free()
 {
     command_entry *current_command, *tmp;
     HASH_ITER(hh, commands, current_command, tmp)
     {
-        HASH_DEL(commands, current_command); // Delete the entry from the hash table
-        free(current_command);               // Free the memory allocated for the entry
+        HASH_DEL(commands, current_command);// Delete the entry from the hash table
+        free(current_command);               
     }
-
-    // data struct free
-    // free(json_str);
-    // freeWiFiStack(&wifiStack);
 }
 
 // event_handle

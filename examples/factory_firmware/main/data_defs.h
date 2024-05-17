@@ -290,8 +290,12 @@ enum {
     
     VIEW_EVENT_ALL,
 };
-
-
+//config caller
+enum {
+    UI_CALLER,
+    AT_CMD_CALLER,
+    BLE_CALLER
+};
 /************************************************
  * Control Data Defines
 *************************************************/

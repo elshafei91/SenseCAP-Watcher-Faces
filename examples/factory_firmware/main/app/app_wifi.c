@@ -20,10 +20,9 @@
 #include "app_wifi.h"
 #include "data_defs.h"
 #include "event_loops.h"
-#include "system_layer.h"
 #include "at_cmd.h"
 
-#define WIFI_CONFIG_LAYER_STACK_SIZE 10240
+#define WIFI_CONFIG_ENTRY_STACK_SIZE 10240
 #define WIFI_CONNECTED_BIT           BIT0
 #define WIFI_FAIL_BIT                BIT1
 
@@ -162,7 +161,7 @@ static void __ip_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     }
 }
 
-TaskHandle_t xTask_wifi_config_layer;
+TaskHandle_t xTask_wifi_config_entry;
 WiFiStack wifiStack_scanned;
 WiFiStack wifiStack_connected;
 
@@ -682,18 +681,18 @@ int set_wifi_config(wifi_config *config)
     }
     return result;
 }
-void wifi_config_layer(void *pvParameters)
+void wifi_config_entry(void *pvParameters)
 {
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        ESP_LOGE(TAG, "wifi_config_layer");
+        //ESP_LOGE(TAG, "wifi_config_layer");
         wifi_scan();
     }
 }
 
 
-void app_wifi_config_layer_init()
+void app_wifi_config_entry_init()
 {
     //xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 4, NULL, 9, &xTask_wifi_config_layer);
     wifi_task_stack = (StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t), MALLOC_CAP_SPIRAM);
@@ -703,8 +702,8 @@ void app_wifi_config_layer_init()
     }
 
     TaskHandle_t wifi_task_handle = xTaskCreateStatic(
-        wifi_config_layer,      
-        "wifi_config_layer",    
+        wifi_config_entry,      
+        "wifi_config_entry",    
         4096,                   
         NULL,                   
         9,                      
@@ -725,25 +724,8 @@ int app_wifi_init(void)
     __g_net_check_sem = xSemaphoreCreateBinary();
 
     __wifi_cfg_init();
-
+    app_wifi_config_entry_init();
     xTaskCreate(&__app_wifi_task, "__app_wifi_task", 1024 * 5, NULL, 10, NULL);
-
-    // StaticTask_t wifi_config_layer_task_buffer;
-    // StackType_t *wifi_config_layer_stack_buffer = heap_caps_malloc(WIFI_CONFIG_LAYER_STACK_SIZE * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    // if (wifi_config_layer_stack_buffer)
-    // {
-    //     xTaskCreateStatic(&wifi_config_layer,
-    //         "wifi_config_layer",            // wifi_config_layer
-    //         WIFI_CONFIG_LAYER_STACK_SIZE,   // 1024*5
-    //         NULL,                           // NULL
-    //         5,                             // 10
-    //         wifi_config_layer_stack_buffer, // wifi_config_layer_stack_buffer
-    //         &wifi_config_layer_task_buffer); // wifi_config_layer_task_buffer
-    // }
-    // else
-    // {
-    //     ESP_LOGE(TAG, "wifi_config_layer_task_buffer or wifi_config_layer_stack_buffer malloc failed");
-    // }
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
