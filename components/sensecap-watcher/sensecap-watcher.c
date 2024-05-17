@@ -668,6 +668,11 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &tp_handle));
 
+    // Note: read once to initialize the touch panel
+    esp_lcd_touch_read_data(tp_handle);
+
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = tp_handle,
@@ -1021,11 +1026,11 @@ esp_err_t bsp_codec_volume_set(int volume, int *volume_set)
 {
     esp_err_t ret = ESP_OK;
     float v = volume;
-    if(volume < 0)
+    if (volume < 0)
     {
         v = 0;
     }
-    if(volume > 95) // Note: restrict max volume to 95 to avoid audio distortion
+    if (volume > 95) // Note: restrict max volume to 95 to avoid audio distortion
     {
         v = 95;
     }
