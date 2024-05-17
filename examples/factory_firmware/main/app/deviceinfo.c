@@ -15,9 +15,13 @@
 #include "data_defs.h"
 #include "event_loops.h"
 #include "app_mqtt_client.h"
+#include "util.h"
 
 
 static const char *TAG = "deviceinfo";
+
+static TaskHandle_t g_task;
+static StaticTask_t g_task_tcb;
 
 #define DEVICEINFO_STORAGE  "deviceinfo"
 
@@ -68,6 +72,7 @@ static void __deviceinfo_task(void *p_arg)
             g_device_status.battery_per = batnow;
             //mqtt pub
             app_mqtt_client_report_device_status(&g_device_status);
+            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
         }
     }
 }
@@ -99,7 +104,11 @@ esp_err_t app_device_status_monitor_init(void)
 
     g_sem_mqttconn = xSemaphoreCreateBinary();
 
-    xTaskCreate(__deviceinfo_task, "deviceinfo_task", 1024 * 3, NULL, 1, NULL);
+    // xTaskCreate(__deviceinfo_task, "deviceinfo_task", 1024 * 3, NULL, 1, NULL);
+
+    const uint32_t stack_size = 2 * 1024 + 256;
+    StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
+    g_task = xTaskCreateStatic(__deviceinfo_task, "deviceinfo", stack_size, NULL, 1, task_stack, &g_task_tcb);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED,
                                                             __event_loop_handler, NULL, NULL));

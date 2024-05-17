@@ -18,6 +18,10 @@
 
 
 static const char *TAG = "mqtt-client";
+
+static TaskHandle_t g_task;
+static StaticTask_t g_task_tcb;
+
 const int MQTT_PUB_QOS = 0;
 
 static struct view_data_deviceinfo g_deviceinfo;
@@ -242,8 +246,11 @@ esp_err_t app_mqtt_client_init(void)
 
     //ESP_ERROR_CHECK(esp_event_loop_create_default());  //already done in app_wifi.c
 
+    // xTaskCreate(__app_mqtt_client_task, "app_mqtt_client_task", 1024 * 4, NULL, 4, NULL);
 
-    xTaskCreate(__app_mqtt_client_task, "app_mqtt_client_task", 1024 * 4, NULL, 4, NULL);
+    const uint32_t stack_size = 3 * 1024;
+    StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
+    g_task = xTaskCreateStatic(__app_mqtt_client_task, "app_mqtt_client", stack_size, NULL, 4, task_stack, &g_task_tcb);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO,
                                                             __event_loop_handler, NULL, NULL));

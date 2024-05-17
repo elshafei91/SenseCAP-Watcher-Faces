@@ -10,6 +10,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "esp_wifi.h"
 #include "cJSON.h"
 
 #include "sscma_client_types.h"
@@ -37,9 +38,10 @@ struct view_data_wifi_st
 {
     bool   is_connected;
     bool   is_connecting;
-    bool   is_network;  //is connect network
+    bool   is_network;  //is network ping-able to internet?
     char   ssid[32];
     int8_t rssi;
+    wifi_auth_mode_t authmode;
 };
 
 
@@ -65,9 +67,9 @@ struct view_data_wifi_list
     struct view_data_wifi_item aps[WIFI_SCAN_LIST_SIZE];
 };
 
-struct view_data_wifi_connet_ret_msg 
+struct view_data_wifi_connect_result_msg 
 {
-    uint8_t ret; //0:successfull , 1: failure
+    uint8_t result; //0:successfull , 1: failure
     char    msg[64];
 };
 
@@ -196,6 +198,37 @@ struct view_data_device_status
     uint8_t battery_per;
 };
 
+struct view_data_setting_volbri
+{
+    int32_t vs_value;		//volume value
+    int32_t bs_value;		//brightness value
+};
+
+struct view_data_setting_switch
+{
+    bool ble_sw;
+    bool rgb_sw;
+    bool wake_word_sw;
+};
+
+#define MAX_PNG_FILES 6
+
+struct view_data_emoticon_display
+{
+    char file_names[MAX_PNG_FILES][256];
+    uint8_t file_count;
+};
+
+extern char sn_data[66];
+
+//OTA
+struct view_data_ota_status
+{
+    int     status;       //0:succeed, 1:downloading, 2:fail
+    int     percentage;   //percentage progress, this is for download, not flash
+    int     err_code;     //enum esp_err_t, refer to app_ota.h for detailed error code define
+};
+
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
@@ -212,6 +245,10 @@ enum {
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
 
+    VIEW_EVENT_SN_CODE,     // generate ble pairing data
+    VIEW_EVENT_BLE_STATUS,  // bool 0:ble_off; 1:ble_on
+    VIEW_EVENT_EMOTICON,    // struct view_data_emoticon_display
+    
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
     VIEW_EVENT_WIFI_CONNECT,    // struct view_data_wifi_config
@@ -256,6 +293,10 @@ enum {
     VIEW_EVENT_ALARM_OFF, //NULL
 
     VIEW_EVENT_TASKLIST_EXIST,        //uint32_t, 1 or 0, tell UI if there's already a tasklist running
+    
+    VIEW_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
+    VIEW_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
+    VIEW_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
 
     VIEW_EVENT_ALL,
 };
@@ -277,7 +318,6 @@ struct ctrl_data_taskinfo7
     SemaphoreHandle_t mutex;
     cJSON *task7;
     bool no_task7;  //if no task 7, imply local warn
-    intmax_t
 };
 
 /**
