@@ -13,8 +13,6 @@
 #include "esp_wifi.h"
 #include "cJSON.h"
 
-#include "sscma_client_types.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,7 +30,7 @@ enum start_screen{
 
 
 #define WIFI_SCAN_LIST_SIZE  15
-#define IMAGE_INVOKED_BOXES  10
+
 
 struct view_data_wifi_st
 {
@@ -113,53 +111,6 @@ struct view_data_audio_play_data
     char file_name[64];
     uint8_t *p_buf;
     uint32_t len;
-};
-
-struct view_data_boxes
-{
-    uint16_t x;
-    uint16_t y;
-    uint16_t w;
-    uint16_t h;
-    uint8_t score;
-    uint8_t target;
-} ;
-
-struct view_data_image
-{
-    uint8_t *p_buf; //image data
-    uint32_t len;
-    time_t   time;
-    bool     need_free;
-};
-
-struct view_data_image_invoke
-{
-    int boxes_cnt;
-    struct view_data_boxes boxes[IMAGE_INVOKED_BOXES]; // todo 使用联合体考虑其他推理类型
-    struct view_data_image image;
-};
-
-union sscma_client_inference  {
-    sscma_client_box_t   *p_box;
-    sscma_client_class_t *p_class;
-    sscma_client_point_t *p_point;
-};
-
-
-struct view_data_inference
-{
-    int      type;      //0 box, 1 class; 2 point
-    union sscma_client_inference  data;  // 数组首地址, sscma_client_box_t、sscma_client_class_t、sscma_client_point_t
-    uint32_t  cnt;  // 个数
-    char     *classes;
-    bool      need_free;
-};
-
-struct view_data_image_inference
-{   
-    struct view_data_inference  inference;
-    struct view_data_image      image;
 };
 
 struct view_data_mqtt_connect_info
@@ -277,33 +228,21 @@ enum {
     VIEW_EVENT_AUDIO_VAD_TIMEOUT,   //struct view_data_record
     VIEW_EVENT_AUDIO_PALY, //struct view_data_audio_play_data
 
-
-    VIEW_EVENT_IMAGE_240_240,  // struct view_data_image_invoke
-    VIEW_EVENT_IMAGE_640_480,  // struct view_data_image
-    VIEW_EVENT_IMAGE_240_240_REQ,  //NULL
-    VIEW_EVENT_IMAGE_640_480_REQ,  //NULL
-    VIEW_EVENT_IMAGE_640_480_SEND,  //NULL
-    VIEW_EVENT_IMAGE_STOP,  //NULL
-    VIEW_EVENT_IMAGE_MODEL, //int
-
-
-    VIEW_EVENT_TASK_START, //struct view_data_task
-    VIEW_EVENT_TASK_STOP,   //struct view_data_task
-    VIEW_EVENT_TRIGGER_CFG, //struct view_data_trigger_cfg
-
-    VIEW_EVENT_IMAGE_240_240_1, //struct view_data_image_inference //todo
-
     VIEW_EVENT_MQTT_CONNECT_INFO,  // struct view_data_mqtt_connect_info
 
-    VIEW_EVENT_ALARM_ON,  //struct view_data_task //todo
+    VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL
-
-    VIEW_EVENT_TASKLIST_EXIST,        //uint32_t, 1 or 0, tell UI if there's already a tasklist running
-    
+        
     VIEW_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
     VIEW_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
     VIEW_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
 
+    VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h)
+    VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
+   
+    VIEW_EVENT_TASK_FLOW_EXIST, //uint32_t, 1 or 0, tell UI if there's already a tasklist running
+    VIEW_EVENT_TASK_FLOW_STOP, //NULL
+    VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
     VIEW_EVENT_ALL,
 };
 //config caller
@@ -322,14 +261,6 @@ struct ctrl_data_mqtt_tasklist_cjson
     cJSON *tasklist_cjson;
 };
 
-// this is temp
-struct ctrl_data_taskinfo7
-{
-    SemaphoreHandle_t mutex;
-    cJSON *task7;
-    bool no_task7;  //if no task 7, imply local warn
-};
-
 /**
  * Control Events are used for control logic within the app backend scope.
  * Typically there are two types of control events:
@@ -340,7 +271,9 @@ enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
     CTRL_EVENT_MQTT_CONNECTED,
     CTRL_EVENT_MQTT_TASKLIST_JSON,          //received tasklist json from MQTT
-    CTRL_EVENT_BROADCAST_TASK7,             //broadcast info of task7 to all listeners, this is temp
+
+    CTRL_EVENT_TASK_FLOW_START_BY_BLE, // char * , taskflow json
+    CTRL_EVENT_TASK_FLOW_START_BY_SR,  // char * , taskflow json
     CTRL_EVENT_ALL,
 };
 

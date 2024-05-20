@@ -7,6 +7,8 @@
 #define IMG_HEIGHT 240
 #define IMG_240_240_BUF_SIZE 48*1024
 
+#define IMAGE_INVOKED_BOXES  10
+
 #define RECTANGLE_COLOR lv_palette_main(LV_PALETTE_RED)
 
 #define  IMAGE_INVOKED_BOXES_DISPLAY_ENABLE
@@ -66,8 +68,9 @@ int view_image_preview_init(lv_obj_t *ui_screen)
     return 0;
 }
 
-int view_image_preview_flush(struct view_data_image_invoke *p_invoke)
+int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
 {
+#if 0  //TODO
     int ret = 0;
     size_t output_len = 0;
 
@@ -165,6 +168,7 @@ int view_image_preview_flush(struct view_data_image_invoke *p_invoke)
 
         }
     }
+#endif
 #endif
     return 0;
 }
