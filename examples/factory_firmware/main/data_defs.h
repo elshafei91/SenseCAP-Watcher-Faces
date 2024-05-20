@@ -222,6 +222,18 @@ struct view_data_emoticon_display
 
 extern char sn_data[66];
 extern uint8_t wifi_page_id;
+
+
+
+//OTA
+struct view_data_ota_status
+{
+    int     status;       //0:succeed, 1:downloading, 2:fail
+    int     percentage;   //percentage progress, this is for download, not flash
+    int     err_code;     //enum esp_err_t, refer to app_ota.h for detailed error code define
+};
+
+
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
@@ -288,10 +300,18 @@ enum {
 
     VIEW_EVENT_TASKLIST_EXIST,        //uint32_t, 1 or 0, tell UI if there's already a tasklist running
     
+    VIEW_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
+    VIEW_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
+    VIEW_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
+
     VIEW_EVENT_ALL,
 };
-
-
+//config caller
+enum {
+    UI_CALLER,
+    AT_CMD_CALLER,
+    BLE_CALLER
+};
 /************************************************
  * Control Data Defines
 *************************************************/
@@ -308,7 +328,6 @@ struct ctrl_data_taskinfo7
     SemaphoreHandle_t mutex;
     cJSON *task7;
     bool no_task7;  //if no task 7, imply local warn
-    intmax_t
 };
 
 /**

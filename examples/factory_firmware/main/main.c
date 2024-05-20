@@ -23,17 +23,17 @@
 #include "app_ble.h"
 #include "app_time.h"
 #include "app_cmd.h"
-#include "app_sensecraft.h"
-#include "app_tasklist.h"
 #include "app_sensecap_https.h"
 #include "app_mqtt_client.h"
-#include "app_taskengine.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
+#include "app_device_info.h"
 #include "util.h"
-#include "system_layer.h"
+#include "app_ota.h"
+#include "app_taskflow.h"
 
 #include "view.h"
+
 static const char *TAG = "app_main";
 
 #define SENSECAP "\n\
@@ -48,11 +48,9 @@ static const char *TAG = "app_main";
 "
 
 ESP_EVENT_DEFINE_BASE(VIEW_EVENT_BASE);
-esp_event_loop_handle_t view_event_handle;
-
 ESP_EVENT_DEFINE_BASE(CTRL_EVENT_BASE);
-esp_event_loop_handle_t ctrl_event_handle;
-//#define CONFIG_HEAP_TASK_TRACKING
+esp_event_loop_handle_t app_event_loop_handle;
+
 #ifdef CONFIG_HEAP_TASK_TRACKING
 #define MAX_TASK_NUM 30                         // Max number of per tasks info that it can store
 #define MAX_BLOCK_NUM 100                        // Max number of per block info that it can store
@@ -113,21 +111,18 @@ int board_init(void)
 
 int app_init(void)
 {
-    system_layer_init();
+    app_device_info_init();
+    app_taskflow_init();
     app_wifi_init();
     app_ble_init();
     app_time_init();
     app_cmd_init();
-    
-    // tasklist_init();
-    // app_taskengine_init();
-    // app_rgb_init();
-    // app_sensecraft_init();
-    // //app_sscma_client_init();
-    // app_mqtt_client_init();
-    // app_sensecap_https_init();
-    //app_device_status_monitor_init();
-    //app_sr_start(false);
+    // //app_rgb_init();
+    app_mqtt_client_init();
+    app_sensecap_https_init();
+    app_device_status_monitor_init();
+    // app_ota_init();
+    app_sr_start(false);
 
     return ESP_OK;
 }
@@ -137,14 +132,13 @@ void task_app_init(void *p_arg)
     // UI init
     view_init();
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
-
     app_init();
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
                                                              __view_event_handler, NULL, NULL));
 
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
     vTaskDelete(NULL);
 }
 
@@ -195,21 +189,13 @@ void app_main(void)
 
     ESP_ERROR_CHECK(board_init());
 
-    esp_event_loop_args_t view_event_task_args = {
-        .queue_size = 10,
-        .task_name = "view_event_task",
+    esp_event_loop_args_t app_event_loop_args = {
+        .queue_size = 64,
+        .task_name = "app_eventloop",
         .task_priority = 6, // uxTaskPriorityGet(NULL),
         .task_stack_size = 1024 * 3,
         .task_core_id = 0};
-    ESP_ERROR_CHECK(esp_event_loop_create(&view_event_task_args, &view_event_handle));
-
-    esp_event_loop_args_t ctrl_event_task_args = {
-        .queue_size = 10,
-        .task_name = "ctrl_event_task",
-        .task_priority = 7,
-        .task_stack_size = 1024 * 3,
-        .task_core_id = 1};
-    ESP_ERROR_CHECK(esp_event_loop_create(&ctrl_event_task_args, &ctrl_event_handle));
+    ESP_ERROR_CHECK(esp_event_loop_create(&app_event_loop_args, &app_event_loop_handle));
 
     // app init
     // app_init();

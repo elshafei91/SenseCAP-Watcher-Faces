@@ -13,7 +13,6 @@
 
 #include "data_defs.h"
 #include "app_device_info.h"
-#include "system_layer.h"
 #include "storage.h"
 
 #include "sensecap-watcher.h"
@@ -34,6 +33,10 @@ SemaphoreHandle_t MUTEX_SN = NULL;
 SemaphoreHandle_t MUTEX_software_version;
 SemaphoreHandle_t MUTEX_himax_software_version;
 SemaphoreHandle_t MUTEX_brightness;
+
+static StackType_t *app_device_info_task_stack =NULL;
+static StaticTask_t app_device_info_task_buffer;
+
 
 void byteArrayToHexString(const uint8_t *byteArray, size_t byteArraySize, char *hexString)
 {
@@ -76,7 +79,7 @@ uint8_t *get_sn(int caller)
                 char final_string[150];
                 snprintf(final_string, sizeof(final_string), "w1:%s:%s:%s:%s", hexString1, storage_space_2, storage_space_3, hexString4);
                 printf("SN: %s\n", final_string);
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, &final_string, sizeof(final_string), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, &final_string, sizeof(final_string), portMAX_DELAY);
                 xSemaphoreGive(MUTEX_SN);
                 break;
         }
@@ -143,7 +146,7 @@ char *get_software_version(int caller)
                 char final_string[150];
                 snprintf(final_string, sizeof(final_string), "v%s", software_version);
                 printf("Software Version: %s\n", final_string);
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
                 result = strdup(software_version);
                 xSemaphoreGive(MUTEX_software_version);
                 break;
@@ -174,7 +177,7 @@ char *get_himax_software_version(int caller)
                 char final_string[150];
                 snprintf(final_string, sizeof(final_string), "v%s", himax_software_version);
                 printf("Himax Software Version: %s\n", final_string);
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
                 result = strdup(himax_software_version);
                 xSemaphoreGive(MUTEX_himax_software_version);
                 break;
@@ -196,7 +199,7 @@ void app_device_info_task(void *pvParameter)
     while (1)
     {
         // efuse or nvs read function
-        __set_brightness();
+        //__set_brightness();
         // read and init brightness
 
         vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -205,15 +208,6 @@ void app_device_info_task(void *pvParameter)
 
 void app_device_info_init()
 {
-    storage_write(BRIGHTNESS_STORAGE, (void *)brightness, sizeof(int));
-    // StaticTask_t app_device_info_layer_task_buffer;
-    // StackType_t *app_device_info_layer_stack_buffer = heap_caps_malloc(APP_DEVICE_INFO_MAX_STACK * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    // xTaskCreateStatic(&app_device_info_task,
-    //     "app_device_info_task",             // wifi_config_layer
-    //     APP_DEVICE_INFO_MAX_STACK,    // 1024*5
-    //     NULL,                            // NULL
-    //     4,                               // 10
-    //     app_device_info_layer_stack_buffer,  // wifi_config_layer_stack_buffer
-    //     &app_device_info_layer_task_buffer); // wifi_config_layer_task_buffer
-    xTaskCreate(&app_device_info_task, "app_device_info_task", 4096, NULL, 5, NULL);
+    app_device_info_task_stack =(StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t),MALLOC_CAP_SPIRAM);
+    TaskHandle_t task_handle =xTaskCreateStatic(&app_device_info_task, "app_device_info_task", 4096, NULL, 5, app_device_info_task_stack, &app_device_info_task_buffer);
 }

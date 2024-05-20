@@ -8,6 +8,7 @@
 
 #include <stdbool.h>
 #include <sys/queue.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -15,7 +16,6 @@
 #include "esp_err.h"
 #include "esp_afe_sr_models.h"
 #include "esp_mn_models.h"
-#include "data_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,14 +26,15 @@ extern "C" {
 #define DETECT_DELETED       BIT2
 #define HANDLE_DELETED       BIT3
 
-#define SR_CONTINUE_DET 1
-#define SR_RUN_TEST 0 /**< Just for sr experiment in laboratory >*/
-#if SR_RUN_TEST
-#ifdef SR_CONTINUE_DET
-#undef SR_CONTINUE_DET
-#define SR_CONTINUE_DET 0
-#endif
-#endif
+#define FEED_TASK_STACK_SIZE   8 * 1024
+#define FEED_TASK_PRIO         5
+
+#define DETECT_TASK_STACK_SIZE   10 * 1024
+#define DETECT_TASK_PRIO         5
+
+#define SR_TASK_STACK_ON_PSRAM   0
+#define SR_TASK_STACK_SIZE   5*1024
+#define SR_TASK_PRIO         5
 
 typedef struct {
     wakenet_state_t wakenet_mode;
@@ -58,8 +59,14 @@ typedef struct {
     int16_t *afe_out_buffer;
     uint8_t cmd_num;
     TaskHandle_t feed_task;
+    StaticTask_t *feed_task_buf;
+    StackType_t *feed_task_stack_buf;
     TaskHandle_t detect_task;
-    TaskHandle_t handle_task;
+    StaticTask_t *detect_task_buf;
+    StackType_t *detect_task_stack_buf;
+    TaskHandle_t sr_task;
+    StaticTask_t *sr_task_buf;
+    StackType_t *sr_task_stack_buf;
     QueueHandle_t result_que;
     EventGroupHandle_t event_group;
     FILE *fp;

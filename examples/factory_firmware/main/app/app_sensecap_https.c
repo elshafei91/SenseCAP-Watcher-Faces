@@ -17,9 +17,12 @@
 #include "event_loops.h"
 #include "data_defs.h"
 #include "deviceinfo.h"
+#include "util.h"
 
 static const char *TAG = "sensecap-https";
 
+static TaskHandle_t g_task;
+static StaticTask_t g_task_tcb;
 
 static uint8_t network_connect_flag = 0;
 static SemaphoreHandle_t __g_data_mutex;
@@ -236,7 +239,7 @@ void __app_sensecap_https_task(void *p_arg)
             ret = __https_token_get(p_mqttinfo, (const char *)token);
             if( ret == 0 ) {
                 // mqttinfo is big, we post pointer of it along with a mutex
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO, 
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO, 
                                     &p_mqttinfo, sizeof(p_mqttinfo), portMAX_DELAY);
             }
         }
@@ -250,7 +253,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     //wifi connection state changed
     case VIEW_EVENT_WIFI_ST:
     {
-        static bool fist = true;
         ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_ST");
         struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
         if (p_st->is_network)
@@ -280,9 +282,13 @@ int app_sensecap_https_init(void)
 
     mqttinfo.mutex = xSemaphoreCreateMutex();
 
-    xTaskCreate(__app_sensecap_https_task, "app_sensecap_https_task", 1024 * 5, NULL, 3, NULL);
+    // xTaskCreate(__app_sensecap_https_task, "app_sensecap_https_task", 1024 * 5, NULL, 3, NULL);
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle,
+    const uint32_t stack_size = 3 * 1024 + 256;
+    StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
+    g_task = xTaskCreateStatic(__app_sensecap_https_task, "app_sensecap_https", stack_size, NULL, 3, task_stack, &g_task_tcb);
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,
                                                              __view_event_handler, NULL, NULL));
 

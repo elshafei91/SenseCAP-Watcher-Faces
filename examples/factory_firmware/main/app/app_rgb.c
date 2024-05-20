@@ -68,15 +68,15 @@ int app_rgb_init(void)
     };
     ESP_ERROR_CHECK(esp_timer_create(&timer_args, &rgb_timer_handle));
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, 
                                                             __view_event_handler, NULL, NULL));   
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, 
                                                             __view_event_handler, NULL, NULL));
     
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_IMAGE_640_480_SEND, 
                                                             __view_event_handler, NULL, NULL));
     return 0;
