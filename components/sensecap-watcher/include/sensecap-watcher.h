@@ -143,8 +143,8 @@
 #define DRV_LCD_LEDC_DUTY_RES (LEDC_TIMER_10_BIT)
 #define DRV_LCD_LEDC_CH       (1)
 
-#define DRV_IO_EXP_INPUT_MASK  (0x007f) // P0.0 ~ P0.6
-#define DRV_IO_EXP_OUTPUT_MASK (0xff80) // P0.7, P1.0 ~ P1.7
+#define DRV_IO_EXP_INPUT_MASK  (0x00ff) // P0.0 ~ P0.7
+#define DRV_IO_EXP_OUTPUT_MASK (0xff00) // P1.0 ~ P1.7
 
 #define DRV_PCF8563_I2C_ADDR   (0x51)
 #define DRV_PCF8563_TIMEOUT_MS (1000)

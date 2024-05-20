@@ -527,7 +527,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
         .dc_gpio_num = -1,
         .spi_mode = 3,
         .pclk_hz = DRV_LCD_PIXEL_CLK_HZ,
-        .trans_queue_depth = 2,
+        .trans_queue_depth = CONFIG_BSP_LCD_PANEL_SPI_TRANS_Q_DEPTH,
         .lcd_cmd_bits = DRV_LCD_CMD_BITS,
         .lcd_param_bits = DRV_LCD_PARAM_BITS,
         .flags = {
@@ -554,6 +554,8 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
     BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_init(*ret_panel));
     BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_mirror(*ret_panel, DRV_LCD_MIRROR_X, DRV_LCD_MIRROR_Y));
     BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_disp_on_off(*ret_panel, true));
+
+    bsp_lcd_brightness_set(100);
 
     return ret;
 err:
@@ -666,6 +668,11 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_new_panel_io_i2c(BSP_TOUCH_I2C_NUM, &tp_io_config, &tp_io_handle));
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &tp_handle));
 
+    // Note: read once to initialize the touch panel
+    esp_lcd_touch_read_data(tp_handle);
+
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = tp_handle,
@@ -695,7 +702,9 @@ lv_disp_t *bsp_lvgl_init(void)
             .buff_dma = false,
             .buff_spiram = true,
         } };
-    cfg.lvgl_port_cfg.task_stack = CONFIG_LVGL_TASK_STACK_SIZE;
+    cfg.lvgl_port_cfg.task_priority = CONFIG_LVGL_PORT_TASK_PRIORITY;
+    cfg.lvgl_port_cfg.task_affinity = CONFIG_LVGL_PORT_TASK_AFFINITY;
+    cfg.lvgl_port_cfg.task_stack = CONFIG_LVGL_PORT_TASK_STACK_SIZE;
     return bsp_lvgl_init_with_cfg(&cfg);
 }
 
@@ -1017,6 +1026,14 @@ esp_err_t bsp_codec_volume_set(int volume, int *volume_set)
 {
     esp_err_t ret = ESP_OK;
     float v = volume;
+    if (volume < 0)
+    {
+        v = 0;
+    }
+    if (volume > 95) // Note: restrict max volume to 95 to avoid audio distortion
+    {
+        v = 95;
+    }
     ret = esp_codec_dev_set_out_vol(play_dev_handle, (int)v);
     return ret;
 }
@@ -1127,8 +1144,15 @@ sscma_client_handle_t bsp_sscma_client_init()
 
     sscma_client_config_t sscma_client_config = SSCMA_CLIENT_CONFIG_DEFAULT();
 
+    sscma_client_config.event_queue_size = CONFIG_SSCMA_EVENT_QUEUE_SIZE;
+    sscma_client_config.tx_buffer_size = CONFIG_SSCMA_TX_BUFFER_SIZE;
+    sscma_client_config.rx_buffer_size = CONFIG_SSCMA_RX_BUFFER_SIZE;
     sscma_client_config.process_task_stack = CONFIG_SSCMA_PROCESS_TASK_STACK_SIZE;
+    sscma_client_config.process_task_affinity = CONFIG_SSCMA_PROCESS_TASK_AFFINITY;
+    sscma_client_config.process_task_priority = CONFIG_SSCMA_PROCESS_TASK_PRIORITY;
     sscma_client_config.monitor_task_stack = CONFIG_SSCMA_MONITOR_TASK_STACK_SIZE;
+    sscma_client_config.monitor_task_affinity = CONFIG_SSCMA_MONITOR_TASK_AFFINITY;
+    sscma_client_config.monitor_task_priority = CONFIG_SSCMA_MONITOR_TASK_PRIORITY;
     sscma_client_config.reset_gpio_num = BSP_SSCMA_CLIENT_RST;
     sscma_client_config.io_expander = io_exp_handle;
     sscma_client_config.flags.reset_use_expander = BSP_SSCMA_CLIENT_RST_USE_EXPANDER;

@@ -15,4 +15,10 @@ menu "Factory Firmware Example Configuration"
         default "n"
         help
             Enable debug log level for this factory firmware example project
+
+    config SKIP_COMMON_NAME_CHECK
+        bool "Skip server certificate Common Name field check"
+        default n
+        help
+            This allows you to skip the validation of OTA server certificate CommonName field. But please don't enable this if the cert of your OTA server needs SNI support.
 endmenu

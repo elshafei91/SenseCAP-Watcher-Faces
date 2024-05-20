@@ -63,7 +63,7 @@ static int wifi_cfg_set(int argc, char **argv)
         cfg.have_password = true;
         strncpy( cfg.password, wifi_cfg_args.password->sval[0], len );
     }
-    esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
     return 0;
 }
 //wifi_cfg -s ssid -p password

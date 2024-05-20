@@ -18,6 +18,10 @@
 
 
 static const char *TAG = "mqtt-client";
+
+static TaskHandle_t g_task;
+static StaticTask_t g_task_tcb;
+
 const int MQTT_PUB_QOS = 0;
 
 static struct view_data_deviceinfo g_deviceinfo;
@@ -74,7 +78,7 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
     g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson = tmp_cjson;
     xSemaphoreGive(g_ctrl_data_mqtt_tasklist_cjson.mutex);
     
-    esp_event_post_to(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_TASKLIST_JSON, 
+    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_TASKLIST_JSON, 
                                     &p_tasklist_cjson,
                                     sizeof(void *), /* ptr size */
                                     portMAX_DELAY);
@@ -92,7 +96,7 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
 
-        esp_event_post_to(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, 
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, 
                             NULL, 0, portMAX_DELAY);
 
         msg_id = esp_mqtt_client_subscribe(client, g_topic_down_task_publish, 0);
@@ -242,12 +246,15 @@ esp_err_t app_mqtt_client_init(void)
 
     //ESP_ERROR_CHECK(esp_event_loop_create_default());  //already done in app_wifi.c
 
+    // xTaskCreate(__app_mqtt_client_task, "app_mqtt_client_task", 1024 * 4, NULL, 4, NULL);
 
-    xTaskCreate(__app_mqtt_client_task, "app_mqtt_client_task", 1024 * 4, NULL, 4, NULL);
+    const uint32_t stack_size = 3 * 1024;
+    StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
+    g_task = xTaskCreateStatic(__app_mqtt_client_task, "app_mqtt_client", stack_size, NULL, 4, task_stack, &g_task_tcb);
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO,
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO,
                                                             __event_loop_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED,
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED,
                                                             __event_loop_handler, NULL, NULL));
     
     return ESP_OK;

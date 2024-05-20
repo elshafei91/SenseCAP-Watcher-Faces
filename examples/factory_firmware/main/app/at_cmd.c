@@ -359,7 +359,7 @@ void handle_deviceinfo_cfg_command(char *params)
             int timezone = time_zone->valueint;
             struct view_data_time_cfg time_cfg;
             time_cfg.zone = timezone;
-            esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
         }
     }
     else
@@ -625,22 +625,22 @@ void handle_taskflow_command(char *params)
     cJSON_Delete(root);
 }
 
-/*--------------------------------test for tf engin set function only for debug---------------------*/
+// /*--------------------------------test for tf engin set function only for debug---------------------*/
 
-esp_err_t tf_engine_flow_set(const char *p_str, size_t len)
-{
-    // malloc space to save and print
-    char *p_str_save = (char *)malloc(len + 1);
-    if (p_str_save == NULL)
-    {
-        ESP_LOGE("TF_ENGINE_FLOW_SET", "Failed to allocate memory for p_str_save");
-        return ESP_FAIL;
-    }
-    memcpy(p_str_save, p_str, len);
-    p_str_save[len] = '\0';
-    ESP_LOGE("TF_ENGINE_FLOW_SET", "p_str_save: %s", p_str_save);
-    return ESP_OK;
-}
+// esp_err_t tf_engine_flow_set(const char *p_str, size_t len)
+// {
+//     // malloc space to save and print
+//     char *p_str_save = (char *)malloc(len + 1);
+//     if (p_str_save == NULL)
+//     {
+//         ESP_LOGE("TF_ENGINE_FLOW_SET", "Failed to allocate memory for p_str_save");
+//         return ESP_FAIL;
+//     }
+//     memcpy(p_str_save, p_str, len);
+//     p_str_save[len] = '\0';
+//     ESP_LOGE("TF_ENGINE_FLOW_SET", "p_str_save: %s", p_str_save);
+//     return ESP_OK;
+// }
 
 static void hex_to_string(uint8_t *hex, int hex_size, char *output)
 {

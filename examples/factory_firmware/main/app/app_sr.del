@@ -118,7 +118,7 @@ static void audio_detect_task(void *arg)
                     .state = ESP_MN_STATE_DETECTING,
                     .command_id = 0,
                 };
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_WAKE, NULL, 0, portMAX_DELAY); //must before xQueueSend
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_WAKE, NULL, 0, portMAX_DELAY); //must before xQueueSend
                 xQueueSend(g_sr_data->result_que, &result, 0);
             }
             frame_keep = 0;
@@ -220,7 +220,7 @@ esp_err_t app_sr_start(bool record_en)
     ret = app_sr_set_language(SR_LANG_EN);
     ESP_GOTO_ON_FALSE(ESP_OK == ret, ESP_FAIL, err, TAG,  "Failed to set language");
 
-    ret = esp_event_handler_instance_register_with(view_event_handle,VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL, NULL);
+    ret = esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL, NULL);
     ESP_GOTO_ON_FALSE(ESP_OK == ret, ESP_FAIL, err, TAG,  "Failed to register event");
 
     ret_val = xTaskCreatePinnedToCore(&audio_feed_task, "Feed Task", 8 * 1024, (void *)afe_data, 5, &g_sr_data->feed_task, 0);

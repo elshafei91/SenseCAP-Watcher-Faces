@@ -1,5 +1,7 @@
 #pragma once
 
+#include "sdkconfig.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
@@ -141,8 +143,22 @@ struct sscma_client_t
     sscma_client_reply_cb_t on_log;        /* !< Callback function */
     void *user_ctx;                        /* !< User context */
     esp_io_expander_handle_t io_expander;  /* !< IO expander handle */
-    TaskHandle_t monitor_task;             /* !< Monitor task handle */
-    TaskHandle_t process_task;             /* !< Process task handle */
+    struct
+    {
+        TaskHandle_t handle;
+#ifdef CONFIG_SSCMA_PROCESS_TASK_STACK_ALLOC_EXTERNAL
+        StaticTask_t *task;
+        StackType_t *stack;
+#endif
+    } monitor_task;
+    struct
+    {
+        TaskHandle_t handle;
+#ifdef CONFIG_SSCMA_MONITOR_TASK_STACK_ALLOC_EXTERNAL
+        StaticTask_t *task;
+        StackType_t *stack;
+#endif
+    } process_task;
     struct
     {
         char *data;            /* !< Data buffer */
