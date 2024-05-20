@@ -92,8 +92,8 @@ void startload_cb(lv_event_t * e)
 
 void virtc_cb(lv_event_t * e)
 {
-	// ESP_ERROR_CHECK(esp_timer_stop(periodic_timer));
-    // ESP_ERROR_CHECK(esp_timer_delete(periodic_timer));
+	ESP_ERROR_CHECK(esp_timer_stop(periodic_timer));
+    ESP_ERROR_CHECK(esp_timer_delete(periodic_timer));
 	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
@@ -142,9 +142,9 @@ void virtsl_cb(lv_event_t * e)
     }
     closedir(p_dir_stream);
 
-	for (int i = 0; i < emo_disp.file_count; i++) {
-        ESP_LOGI(TAG, "Array file name: %s", emo_disp.file_names[i]);
-    }
+	// for (int i = 0; i < emo_disp.file_count; i++) {
+    //     ESP_LOGI(TAG, "Array file name: %s", emo_disp.file_names[i]);
+    // }
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
 	ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 200000));
 }
