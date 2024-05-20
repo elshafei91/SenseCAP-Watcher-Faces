@@ -7,6 +7,7 @@
 #include "event_loops.h"
 #include "esp_wifi.h" 
 #include <dirent.h>
+#include "esp_timer.h"
 
 #include "ui/ui.h"
 #include "pm.h"
@@ -29,7 +30,22 @@ wifi_ap_record_t 							wifi_record;
 static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
 static uint8_t file_idx;
 static lv_timer_t * g_timer = NULL;
-static lv_obj_t *img = NULL;
+static lv_obj_t * img;
+
+extern GroupInfo group_page_main;
+extern GroupInfo group_page_template;
+extern GroupInfo group_page_set;
+extern GroupInfo group_page_view;
+extern GroupInfo group_page_ha;
+
+static void periodic_timer_callback(void* arg);
+
+static const esp_timer_create_args_t periodic_timer_args = {
+            .callback = &periodic_timer_callback,
+            /* name is optional, but may help identify the timer when debugging */
+            .name = "periodic"
+    };
+static esp_timer_handle_t periodic_timer;
 
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
@@ -76,17 +92,18 @@ void startload_cb(lv_event_t * e)
 
 void virtc_cb(lv_event_t * e)
 {
-	lv_timer_pause(g_timer);
+	// ESP_ERROR_CHECK(esp_timer_stop(periodic_timer));
+    // ESP_ERROR_CHECK(esp_timer_delete(periodic_timer));
 	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
-static void emoticon_png_play(lv_timer_t * timer)
+static void periodic_timer_callback(void* arg)
 {
     if (img == NULL) {
         img = lv_img_create(ui_Page_Vir);
     }
     const char *file_name = emo_disp.file_names[file_idx];
-	char *file_name_with_path = (char *) heap_caps_malloc(256, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+	char *file_name_with_path = (char *) heap_caps_malloc(100, MALLOC_CAP_SPIRAM);
 
     if (NULL != file_name_with_path) {
         strcpy(file_name_with_path, "S:/spiffs/");
@@ -128,13 +145,13 @@ void virtsl_cb(lv_event_t * e)
 	for (int i = 0; i < emo_disp.file_count; i++) {
         ESP_LOGI(TAG, "Array file name: %s", emo_disp.file_names[i]);
     }
-	g_timer = lv_timer_create(emoticon_png_play, 20, NULL);
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+	ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 200000));
 }
 
 void main1c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
-	// lv_group_focus_obj(ui_Page_template_group[3]);
+	lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
 }
 
 void main1f_cb(lv_event_t * e)
