@@ -94,9 +94,9 @@ struct gatts_profile_inst
 };
 // GATT profile instance
 struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = { [PROFILE_WATCHER_APP_ID] = {
-                                                            .gatts_cb = gatts_profile_event_handler,
-                                                            .gatts_if = ESP_GATT_IF_NONE,
-                                                        } };
+                                                              .gatts_cb = gatts_profile_event_handler,
+                                                              .gatts_if = ESP_GATT_IF_NONE,
+                                                          } };
 // Prepare type environment struct
 typedef struct
 {
@@ -299,6 +299,9 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
         {
             printf("Failed to send the complete message.\n");
         }
+        uint32_t ulNotificationValue;
+        xTaskToNotify_AT = xTaskGetCurrentTaskHandle();
+        ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));
         AT_Response msg_at_response;
         if (xQueueReceive(AT_response_queue, &msg_at_response, portMAX_DELAY) == pdTRUE)
         {
@@ -377,7 +380,7 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
 
         uint32_t ulNotificationValue;
         xTaskToNotify_AT = xTaskGetCurrentTaskHandle();
-        ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));       //Do not change the timeout
+        ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000)); // Do not change the timeout
         free(prepare_write_env->prepare_buf);
         prepare_write_env->prepare_buf = NULL;
         AT_Response msg_at_response;

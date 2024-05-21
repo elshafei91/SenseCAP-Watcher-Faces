@@ -24,32 +24,24 @@
 #include "cJSON.h"
 #include "app_device_info.h"
 
-
-
-
 /*------------------system basic DS-----------------------------------------------------*/
 StreamBufferHandle_t xStreamBuffer;
 
-
-
 SemaphoreHandle_t AT_response_semaphore;
 QueueHandle_t AT_response_queue;
-TaskHandle_t xTaskToNotify_AT =NULL;
-
+TaskHandle_t xTaskToNotify_AT = NULL;
 
 const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=(\\{.*\\}))?\r\n$";
 command_entry *commands = NULL; // Global variable to store the commands
-
+static StaticTask_t at_task_buffer;
+static StackType_t *at_task_stack = NULL;
 
 /*------------------network DS----------------------------------------------------------*/
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
 static wifi_ap_record_t current_connected_wifi;
 
-
 /*------------------critical DS for task_flow-------------------------------------------*/
-
-
 
 typedef struct
 {
@@ -62,8 +54,6 @@ typedef struct
 Task *tasks = NULL;
 int num_jsons = 0;
 /*----------------------------------------------------------------------------------------*/
-
-
 
 /**
  * @brief Initialize the Wi-Fi stack semaphore.
@@ -186,19 +176,13 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
     return root;
 }
 
-
-
-// AT command system 
+// AT command system
 /*----------------------------------------------------------------------------------------------------*/
 
 void create_AT_response_queue();
 void init_AT_response_semaphore();
 void send_at_response(AT_Response *AT_Response);
 AT_Response create_at_response(const char *message);
-
-
-
-
 
 /**
  * @brief Add a command to the hash table of commands.
@@ -216,14 +200,6 @@ void add_command(command_entry **commands, const char *name, void (*func)(char *
     entry->func = func;                                                    // Assign the function pointer to the new entry
     HASH_ADD_STR(*commands, command_name, entry);                          // Add the new entry to the hash table
 }
-
-
-
-
-
-
-
-
 
 /**
  * @brief Execute a command from the hash table.
@@ -260,14 +236,6 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     }
 }
 
-
-
-
-
-
-
-
-
 /**
  * @brief Register the AT commands.
  *
@@ -285,14 +253,6 @@ void AT_command_reg()
     add_command(&commands, "devicecfg=", handle_deviceinfo_cfg_command);
     add_command(&commands, "taskflow=", handle_taskflow_command);
 }
-
-
-
-
-
-
-
-
 
 /**
  * @brief Handle the device configuration command.
@@ -316,7 +276,6 @@ void handle_deviceinfo_cfg_command(char *params)
         {
             fprintf(stderr, "Error before: %s\n", error_ptr);
         }
-
     }
 
     cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
@@ -353,14 +312,6 @@ void handle_deviceinfo_cfg_command(char *params)
     send_at_response(&response);
     cJSON_Delete(root);
 }
-
-
-
-
-
-
-
-
 
 /**
  * @brief Handles the "deviceinfo" command by generating a JSON response with device information.
@@ -412,21 +363,12 @@ void handle_deviceinfo_command(char *params)
 
     char *json_string = cJSON_Print(root);
 
-
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
 
     printf("Handling device command\n");
 }
-
-
-
-
-
-
-
-
 
 /**
  * @brief Handles the WiFi configuration command by parsing JSON input, setting the WiFi configuration, and generating a JSON response.
@@ -520,7 +462,6 @@ void handle_wifi_set(char *params)
     ESP_LOGE("AT_CMD_CALLER die01_ssid", "base:%s, memcpy:%s", json_ssid->valuestring, config->ssid);
     ESP_LOGE("AT_CMD_CALLER die01_password", "base:%s, memcpy:%s", json_password->valuestring, config->password);
 
-
     set_wifi_config(config);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     cJSON_AddStringToObject(root, "name", config->ssid);
@@ -535,16 +476,6 @@ void handle_wifi_set(char *params)
     send_at_response(&response);
     cJSON_Delete(root);
 }
-
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief Handles the WiFi query command by retrieving the current WiFi configuration and generating a JSON response.
@@ -590,15 +521,6 @@ void handle_wifi_query(char *params)
     printf("Handling wifi query command\n");
 }
 
-
-
-
-
-
-
-
-
-
 /**
  * @brief Handles the WiFi table command by initializing the WiFi stack, simulating a WiFi scan, and generating a JSON response.
  *
@@ -626,26 +548,17 @@ void handle_wifi_table(char *params)
     freeWiFiStack(&wifiStack_scanned);
 }
 
-
-
-//WIP
+// WIP
 void handle_token(char *params)
 {
     printf("Handling token command\n");
 }
 
-//WIP
+// WIP
 void handle_eui_command(char *params)
 {
     printf("Handling eui command\n");
 }
-
-
-
-
-
-
-
 
 /**
  * @brief Parses a JSON string and concatenates task information into an array of Task structures.
@@ -730,14 +643,6 @@ void parse_json_and_concatenate(char *json_string)
     cJSON_Delete(json);
 }
 
-
-
-
-
-
-
-
-
 /**
  * @brief Concatenates task data into a single result string after sorting tasks by their package index.
  *
@@ -776,15 +681,6 @@ void concatenate_data(char *result)
     free(tasks);
     tasks = NULL;
 }
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief Handles the taskflow command by parsing JSON input, managing task data, and generating a JSON response.
@@ -858,15 +754,6 @@ void handle_taskflow_command(char *params)
     cJSON_Delete(root);
 }
 
-
-
-
-
-
-
-
-
-
 /**
  * @brief Converts a hex array to a string and logs the hex data.
  *
@@ -889,15 +776,6 @@ static void hex_to_string(uint8_t *hex, int hex_size, char *output)
     output[hex_size] = '\0';
 }
 
-
-
-
-
-
-
-
-
-
 /**
  * @brief A static task that handles incoming AT commands, parses them, and executes the corresponding actions.
  *
@@ -916,7 +794,7 @@ void task_handle_AT_command()
         size_t xReceivedBytes;
         message_event_t msg_at;
         xReceivedBytes = xStreamBufferReceive(xStreamBuffer, &msg_at, sizeof(msg_at), portMAX_DELAY);
-        
+
         if (xReceivedBytes > 0)
         {
             if (xReceivedBytes != sizeof(msg_at))
@@ -926,7 +804,7 @@ void task_handle_AT_command()
             }
             char *test_strings = (char *)heap_caps_malloc(memory_size + 1, MALLOC_CAP_SPIRAM);
             memcpy(test_strings, msg_at.msg, msg_at.size);
-            test_strings[msg_at.size] = '\0'; 
+            test_strings[msg_at.size] = '\0';
 
             if (test_strings == NULL)
             {
@@ -949,7 +827,6 @@ void task_handle_AT_command()
                 printf("recv_in match: %.*s\n", 1024, test_strings);
                 char command_type[20];
                 snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
-
 
                 size_t data_size = 100 * 1024; // 100K
                 char *params = (char *)heap_caps_malloc(data_size + 1, MALLOC_CAP_SPIRAM);
@@ -974,19 +851,11 @@ void task_handle_AT_command()
             }
             free(test_strings);
             regfree(&regex);
-            vTaskDelay(500 / portTICK_PERIOD_MS); 
+            vTaskDelay(500 / portTICK_PERIOD_MS);
             xTaskNotifyGive(xTaskToNotify_AT);
         }
     }
 }
-
-
-
-
-
-
-
-
 
 /**
  * @brief Initializes the AT command handling task by creating a stream buffer and the associated task.
@@ -994,27 +863,38 @@ void task_handle_AT_command()
  * This function sets up the necessary resources for handling AT commands. It creates a stream buffer for
  * receiving messages and starts the `task_handle_AT_command` task to process these messages.
  */
+
+
 void init_at_cmd_task(void)
 {
-
-    xStreamBuffer = xStreamBufferCreate(10240, sizeof(message_event_t));
-
+    //xStreamBuffer = xStreamBufferCreate(10240, sizeof(message_event_t));
+    xStreamBuffer= xStreamBufferCreateWithCaps(10240,sizeof(message_event_t),MALLOC_CAP_SPIRAM);
     if (xStreamBuffer == NULL)
     {
         printf("Failed to create the stream buffer.\n");
     }
+    at_task_stack = (StackType_t *)heap_caps_malloc(10240 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    if (at_task_stack == NULL)
+    {
+        printf("Failed to allocate memory for WiFi task stack\n");
+        return;
+    }
+        TaskHandle_t at_task_handle = xTaskCreateStatic(
+        task_handle_AT_command,      
+        "wifi_config_entry",    
+        10240,                   
+        NULL,                   
+        9,                      
+        at_task_stack,        
+        &at_task_buffer       
+    );
 
-    xTaskCreate(task_handle_AT_command, "ReceiverTask", 2048 * 4, NULL, 6, NULL);
+    if (at_task_handle == NULL) {
+        printf("Failed to create WiFi task\n");
+        free(at_task_handle);
+        at_task_handle = NULL;
+    }    
 }
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief Creates a queue for AT command responses.
@@ -1027,14 +907,6 @@ void create_AT_response_queue()
     AT_response_queue = xQueueCreate(10, sizeof(AT_Response));
 }
 
-
-
-
-
-
-
-
-
 /**
  * @brief Initializes a binary semaphore for managing AT command responses.
  *
@@ -1046,15 +918,6 @@ void init_AT_response_semaphore()
     AT_response_semaphore = xSemaphoreCreateBinary();
     xSemaphoreGive(AT_response_semaphore);
 }
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief Sends an AT command response to the response queue.
@@ -1076,20 +939,11 @@ void send_at_response(AT_Response *AT_Response)
     }
 }
 
-
-
-
-
-
-
-
-
-
 /**
  * @brief Creates an AT command response by appending a standard suffix to the given message.
  *
- * This function takes a message string, appends the standard suffix "\r\nok\r\n" to it, 
- * and allocates memory for the complete response. It returns an AT_Response structure 
+ * This function takes a message string, appends the standard suffix "\r\nok\r\n" to it,
+ * and allocates memory for the complete response. It returns an AT_Response structure
  * containing the formatted response and its length.
  *
  * @param message A constant character pointer to the message to be included in the response.
@@ -1126,15 +980,6 @@ AT_Response create_at_response(const char *message)
     return response;
 }
 
-
-
-
-
-
-
-
-
-
 /**
  * @brief Initializes the AT command handling system.
  *
@@ -1150,15 +995,6 @@ void AT_cmd_init()
     initWiFiStack(&wifiStack_scanned, 10);
     initWiFiStack(&wifiStack_connected, 10);
 }
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief Frees all allocated memory for AT command entries in the hash table.
@@ -1176,20 +1012,10 @@ void AT_command_free()
     }
 }
 
-
-
-
-
-
-
-
-
-
-
 /**
  * @brief Handles view events related to WiFi configuration and status updates.
  *
- * This static function processes various WiFi-related events such as WiFi list requests, 
+ * This static function processes various WiFi-related events such as WiFi list requests,
  * WiFi list updates, and WiFi status updates. It updates the WiFi stacks and network connection flags accordingly.
  *
  * @param handler_args A pointer to the handler arguments (unused in this function).
