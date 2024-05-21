@@ -94,9 +94,9 @@ struct gatts_profile_inst
 };
 // GATT profile instance
 struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = { [PROFILE_WATCHER_APP_ID] = {
-                                                              .gatts_cb = gatts_profile_event_handler,
-                                                              .gatts_if = ESP_GATT_IF_NONE,
-                                                          } };
+                                                            .gatts_cb = gatts_profile_event_handler,
+                                                            .gatts_if = ESP_GATT_IF_NONE,
+                                                        } };
 // Prepare type environment struct
 typedef struct
 {
@@ -351,7 +351,6 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
  * @param param Pointer to the structure containing the GATT callback parameters.
  */
 
-
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
 {
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC)
@@ -365,19 +364,20 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     if (prepare_write_env->prepare_buf)
     {
         message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
-        // esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, sizeof(msg_at), portMAX_DELAY);
         size_t xBytesSent;
         xBytesSent = xStreamBufferSend(xStreamBuffer, (void *)&msg_at, sizeof(msg_at), portMAX_DELAY);
-        if (xBytesSent != sizeof(msg_at)) {
+        if (xBytesSent != sizeof(msg_at))
+        {
             printf("Failed to send the complete message.\n");
-        } else {
+        }
+        else
+        {
             printf("Message sent successfully. Length: %d\n", msg_at.size);
         }
 
         uint32_t ulNotificationValue;
         xTaskToNotify_AT = xTaskGetCurrentTaskHandle();
-        ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));
-        //vTaskDelay(100 / portTICK_PERIOD_MS);
+        ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));       //Do not change the timeout
         free(prepare_write_env->prepare_buf);
         prepare_write_env->prepare_buf = NULL;
         AT_Response msg_at_response;
@@ -397,7 +397,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
                 }
                 int segments = msg_at_response.length / 20;
                 int remaining_bytes = msg_at_response.length % 20;
-
                 for (int i = 0; i < segments; i++)
                 {
                     esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx,
@@ -409,7 +408,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
                     esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx,
                         remaining_bytes, response_data + (segments * 20), false);
                 }
-
                 free(response_data);
             }
         }
@@ -780,9 +778,6 @@ esp_err_t app_ble_init(void)
     {
         printf("Failed to create task\n");
     }
-#ifdef DEBUG_AT_CMD
-    // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
-#endif
     return ESP_OK;
 }
 
