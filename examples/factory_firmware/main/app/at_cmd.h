@@ -76,8 +76,12 @@ extern esp_event_base_t const AT_EVENTS;
 static const char *AT_EVENTS_TAG = "AT_EVENTS";
 #define AT_EVENTS_COMMAND_ID 0x6F
 #define AT_EVENTS_RESPONSE_ID 0x70
-#define MEMORY_SIZE (1024 * 100)
+#define MEMORY_SIZE (1024 * 200)
 
 extern esp_event_loop_handle_t at_event_loop_handle;
+
+extern StreamBufferHandle_t xStreamBuffer;
+
+extern TaskHandle_t xTaskToNotify_AT;
 
 #endif
