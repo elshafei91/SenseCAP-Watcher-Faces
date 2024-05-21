@@ -498,7 +498,7 @@ void handle_eui_command(char *params)
 
 /*------------------critical command for task_flow-------------------------------------------*/
 
-#define DATA_LENGTH 4096
+#define DATA_LENGTH 20480
 
 typedef struct
 {
