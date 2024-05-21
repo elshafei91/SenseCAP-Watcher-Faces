@@ -3,9 +3,9 @@
 
 #include "view_image_preview.h"
 
-#define IMG_WIDTH 240
-#define IMG_HEIGHT 240
-#define IMG_240_240_BUF_SIZE 48*1024
+#define IMG_WIDTH 412
+#define IMG_HEIGHT 412
+#define IMG_412_412_BUF_SIZE 48*1024
 
 #define IMAGE_INVOKED_BOXES  10
 
@@ -33,7 +33,7 @@ static uint8_t *image_buf;
 int g_model_id;
 int view_image_preview_init(lv_obj_t *ui_screen)
 {
-    image_buf = malloc(IMG_240_240_BUF_SIZE);
+    image_buf = malloc(IMG_412_412_BUF_SIZE);
     assert(image_buf);
 
     ui_image = lv_img_create(ui_screen);
@@ -70,14 +70,14 @@ int view_image_preview_init(lv_obj_t *ui_screen)
 
 int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
 {
-#if 0  //TODO
+#if 1  //TODO
     int ret = 0;
     size_t output_len = 0;
 
     if( ui_image == NULL ) {
         return -1;
     }
-    ret = mbedtls_base64_decode(image_buf, IMG_240_240_BUF_SIZE, &output_len, p_invoke->image.p_buf, p_invoke->image.len);    
+    ret = mbedtls_base64_decode(image_buf, IMG_412_412_BUF_SIZE, &output_len, p_info->img.p_buf, p_info->img.len);    
     if( ret != 0 ) {
         ESP_LOGI("", "mbedtls_base64_decode failed: %d", ret);
         return ret;
@@ -90,16 +90,16 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
 #ifdef IMAGE_INVOKED_BOXES_DISPLAY_ENABLE
     for (size_t i = 0; i < IMAGE_INVOKED_BOXES; i++)
     {
-        if( i <  p_invoke->boxes_cnt) {
+        if( i < p_info->inference.cnt) {
             int x = 0;
             int y = 0;
             int w = 0; 
             int h = 0;
-
-            x = p_invoke->boxes[i].x;
-            y = p_invoke->boxes[i].y;
-            w = p_invoke->boxes[i].w;
-            h = p_invoke->boxes[i].h;
+            sscma_client_box_t   *p_box = ( sscma_client_box_t *)p_info->inference.p_data;
+            x = p_box[i].x;
+            y = p_box[i].y;
+            w = p_box[i].w;
+            h = p_box[i].h;
             
             x = x - w / 2;
             y = y - h / 2;
@@ -122,22 +122,22 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
                     break;
                 }
                 case 2:{
-                    p_class_name = "apple";
-                    color = lv_palette_main(LV_PALETTE_RED);
-                    break;
-                }
-                case 3:{
-                    if( p_invoke->boxes[i].target == 0) {
+                    if( p_box[i].target == 0) {
                         p_class_name = "paper";
                         color = lv_palette_main(LV_PALETTE_RED);
                     }
-                    else if(p_invoke->boxes[i].target == 1 ) {
+                    else if(p_box[i].target == 1 ) {
                         p_class_name = "rock";
                         color = lv_palette_main(LV_PALETTE_YELLOW);
                     } else {
                         p_class_name = "scissors";
                         color = lv_palette_main(LV_PALETTE_GREEN);
                     }
+                    break;
+                }
+                case 3:{
+                    p_class_name = "pet";
+                    color = lv_palette_main(LV_PALETTE_RED);
                     break;
                 }
 
@@ -154,7 +154,7 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
 
             // name
             char buf1[32];
-            lv_snprintf(buf1, sizeof(buf1),"%s:%d", p_class_name, p_invoke->boxes[i].score);
+            lv_snprintf(buf1, sizeof(buf1),"%s:%d", p_class_name, p_box[i].score);
 
             lv_obj_set_pos(ui_class_name[i], x, (y-10)<0?0:(y-10));
             lv_label_set_text(ui_class_name[i], buf1);
