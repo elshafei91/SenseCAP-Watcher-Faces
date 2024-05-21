@@ -1,11 +1,14 @@
 #include "string.h"
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/FreeRTOSConfig.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -17,62 +20,72 @@
 #include "app_wifi.h"
 #include "data_defs.h"
 #include "event_loops.h"
+#include "at_cmd.h"
 
-
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
+#define WIFI_CONFIG_ENTRY_STACK_SIZE 10240
+#define WIFI_CONNECTED_BIT           BIT0
+#define WIFI_FAIL_BIT                BIT1
 
 struct app_wifi
 {
-    struct view_data_wifi_st  st;
+    struct view_data_wifi_st st;
     bool is_cfg;
-    int wifi_reconnect_cnt;  
+    int wifi_reconnect_cnt;
 };
 
 static struct app_wifi _g_wifi_cfg;
-static SemaphoreHandle_t   __g_wifi_mutex;
-static SemaphoreHandle_t   __g_data_mutex;
-static SemaphoreHandle_t   __g_net_check_sem;
-
+static SemaphoreHandle_t __g_wifi_mutex;
+static SemaphoreHandle_t __g_data_mutex;
+static SemaphoreHandle_t __g_net_check_sem;
 
 static int s_retry_num = 0;
-static int wifi_retry_max  = 3;
+static int wifi_retry_max = 3;
 static bool __g_ping_done = true;
-
-
+int wifi_connect_failed_reason;
 static EventGroupHandle_t __wifi_event_group;
-
+static StaticTask_t wifi_task_buffer;
+static StackType_t *wifi_task_stack = NULL;
 static const char *TAG = "app-wifi";
 
-static int min(int a, int b) { return (a < b) ? a : b; }
+static int min(int a, int b)
+{
+    return (a < b) ? a : b;
+}
 
-static void __wifi_st_set( struct view_data_wifi_st *p_st )
+static void __wifi_st_set(struct view_data_wifi_st *p_st)
 {
     xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
-    memcpy( &_g_wifi_cfg.st, p_st, sizeof(struct view_data_wifi_st));
+    memcpy(&_g_wifi_cfg.st, p_st, sizeof(struct view_data_wifi_st));
     xSemaphoreGive(__g_data_mutex);
 }
 
-static void __wifi_st_get(struct view_data_wifi_st *p_st )
+static void __wifi_st_get(struct view_data_wifi_st *p_st)
 {
     xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
     memcpy(p_st, &_g_wifi_cfg.st, sizeof(struct view_data_wifi_st));
     xSemaphoreGive(__g_data_mutex);
 }
 
-static void __wifi_event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data)
-{
 
+void current_wifi_get(wifi_ap_record_t *p_st){
+    if (esp_wifi_sta_get_ap_info(p_st) == ESP_OK) {
+        ESP_LOGI(TAG, "SSID: %s", p_st->ssid);
+        ESP_LOGI(TAG, "RSSI: %d", p_st->rssi);
+    } else {
+        ESP_LOGI(TAG, " wifi  disconnected");
+    }
+}
+static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
     switch (event_id)
     {
         case WIFI_EVENT_STA_START: {
             ESP_LOGI(TAG, "wifi event: WIFI_EVENT_STA_START");
             struct view_data_wifi_st st;
             st.is_connected = false;
-            st.is_network   = false;
+            st.is_network = false;
             st.is_connecting = true;
-            memset(st.ssid, 0,  sizeof(st.ssid));
+            memset(st.ssid, 0, sizeof(st.ssid));
             st.rssi = 0;
             __wifi_st_set(&st);
 
@@ -81,21 +94,21 @@ static void __wifi_event_handler(void* arg, esp_event_base_t event_base,
         }
         case WIFI_EVENT_STA_CONNECTED: {
             ESP_LOGI(TAG, "wifi event: WIFI_EVENT_STA_CONNECTED");
-            wifi_event_sta_connected_t *event = (wifi_event_sta_connected_t*) event_data;
+            wifi_event_sta_connected_t *event = (wifi_event_sta_connected_t *)event_data;
             struct view_data_wifi_st st;
 
             __wifi_st_get(&st);
-            memset(st.ssid, 0,  sizeof(st.ssid));
+            memset(st.ssid, 0, sizeof(st.ssid));
             memcpy(st.ssid, event->ssid, event->ssid_len);
-            st.rssi = -50; //todo
+            st.rssi = -50; // todo
             st.is_connected = true;
             st.is_connecting = false;
             __wifi_st_set(&st);
             
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
             
-            struct view_data_wifi_connect_result_msg msg;
-            msg.result = 0;
+            struct view_data_wifi_connet_ret_msg msg;
+            msg.ret = 0;
             strcpy(msg.msg, "Connection successful");
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
             break;
@@ -122,15 +135,15 @@ static void __wifi_event_handler(void* arg, esp_event_base_t event_base,
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
                 
                 char *p_str = "";
-                struct view_data_wifi_connect_result_msg msg;
-                msg.result = 1;
+                struct view_data_wifi_connet_ret_msg msg;
+                msg.ret = 0;
                 strcpy(msg.msg, "Connection failure");
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
             }
             break;
         }
-    default:
-        break;
+        default:
+            break;
     }
 }
 
@@ -147,69 +160,283 @@ static void __ip_event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
+TaskHandle_t xTask_wifi_config_entry;
+WiFiStack wifiStack_scanned;
+WiFiStack wifiStack_connected;
 
-static int __wifi_scan(wifi_ap_record_t *p_ap_info, uint16_t number)
+/***Already abandoned**/
+/*
+static int __wifi_scan()
 {
-    uint16_t ap_count;
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+    wifi_ap_record_t *p_ap_info = (wifi_ap_record_t *)heap_caps_malloc(5 * sizeof(wifi_ap_record_t), MALLOC_CAP_SPIRAM);
+    uint16_t number = 5;
+    uint16_t ap_count = 0;
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
-    esp_wifi_scan_start(NULL, true);
+    esp_err_t ret = esp_wifi_scan_start(NULL, true);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "wifi scan start failed");
+        return -1;
+    }
+    else
+    {
+        ESP_LOGI(TAG, "wifi scan start success");
+    }
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, p_ap_info));
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
     ESP_LOGI(TAG, " scan ap cont: %d", ap_count);
-    
-    for (int i = 0; (i < number) && (i < ap_count); i++) {
+
+    struct view_data_wifi_st wifi_table_element;
+    for (int i = 0; (i < number) && (i < ap_count); i++)
+    {
         ESP_LOGI(TAG, "SSID: %s, RSSI:%d, Channel: %d", p_ap_info[i].ssid, p_ap_info[i].rssi, p_ap_info[i].primary);
+        wifi_table_element.rssi = p_ap_info[i].rssi;
+        wifi_table_element.is_connected = false;
+        wifi_table_element.is_network = false;
+        wifi_table_element.is_connecting = false;
+        wifi_table_element.authmode = p_ap_info[i].authmode;
+        strcpy(wifi_table_element.ssid, (char *)p_ap_info[i].ssid); 
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST, &wifi_table_element, sizeof(struct view_data_wifi_st), portMAX_DELAY);
     }
     return ap_count;
 }
+*/
+/***************/
+
+/*----------------------------------------------------------------------------------------------------------*/
+/*add scanned wifi entry  into wifi stack*/
+static const char *print_auth_mode(int authmode)
+{
+    switch (authmode)
+    {
+        case WIFI_AUTH_OPEN:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_OPEN");
+            return "OPEN";
+            break;
+        case WIFI_AUTH_OWE:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_OWE");
+            return "UNKNOWN";
+            break;
+        case WIFI_AUTH_WEP:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_WEP");
+            return "WEP";
+            break;
+        case WIFI_AUTH_WPA_PSK:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_WPA_PSK");
+            return "WPA";
+            break;
+        case WIFI_AUTH_WPA2_PSK:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_WPA2_PSK");
+            return "WPA2";
+            break;
+        case WIFI_AUTH_WPA_WPA2_PSK:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_WPA_WPA2_PSK");
+            return "WPA/WPA2";
+            break;
+        case WIFI_AUTH_ENTERPRISE:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_ENTERPRISE");
+            return "UNKNOWN";
+            break;
+        case WIFI_AUTH_WPA3_PSK:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_WPA3_PSK");
+            return "WPA3";
+            break;
+        case WIFI_AUTH_WPA2_WPA3_PSK:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_WPA2_WPA3_PSK");
+            return "WPA2/WPA3";
+            break;
+        case WIFI_AUTH_WPA3_ENT_192:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_WPA3_ENT_192");
+            return "WPA2/WPA3";
+            break;
+        case WIFI_AUTH_WPA3_EXT_PSK:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_WPA3_EXT_PSK");
+            return "WPA2/WPA3";
+            break;
+        case WIFI_AUTH_WPA3_EXT_PSK_MIXED_MODE:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_WPA3_EXT_PSK_MIXED_MODE");
+            return "WPA2/WPA3";
+            break;
+        default:
+            ESP_LOGI(TAG, "Authmode \tWIFI_AUTH_UNKNOWN");
+            return "UNKNOWN";
+            break;
+    }
+}
+static void print_cipher_type(int pairwise_cipher, int group_cipher)
+{
+    switch (pairwise_cipher)
+    {
+        case WIFI_CIPHER_TYPE_NONE:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE");
+            break;
+        case WIFI_CIPHER_TYPE_WEP40:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_WEP40");
+            break;
+        case WIFI_CIPHER_TYPE_WEP104:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_WEP104");
+            break;
+        case WIFI_CIPHER_TYPE_TKIP:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_TKIP");
+            break;
+        case WIFI_CIPHER_TYPE_CCMP:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_CCMP");
+            break;
+        case WIFI_CIPHER_TYPE_TKIP_CCMP:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_TKIP_CCMP");
+            break;
+        case WIFI_CIPHER_TYPE_AES_CMAC128:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_AES_CMAC128");
+            break;
+        case WIFI_CIPHER_TYPE_SMS4:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_SMS4");
+            break;
+        case WIFI_CIPHER_TYPE_GCMP:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_GCMP");
+            break;
+        case WIFI_CIPHER_TYPE_GCMP256:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_GCMP256");
+            break;
+        default:
+            ESP_LOGI(TAG, "Pairwise Cipher \tWIFI_CIPHER_TYPE_UNKNOWN");
+            break;
+    }
+
+    switch (group_cipher)
+    {
+        case WIFI_CIPHER_TYPE_NONE:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_NONE");
+            break;
+        case WIFI_CIPHER_TYPE_WEP40:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_WEP40");
+            break;
+        case WIFI_CIPHER_TYPE_WEP104:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_WEP104");
+            break;
+        case WIFI_CIPHER_TYPE_TKIP:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_TKIP");
+            break;
+        case WIFI_CIPHER_TYPE_CCMP:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_CCMP");
+            break;
+        case WIFI_CIPHER_TYPE_TKIP_CCMP:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_TKIP_CCMP");
+            break;
+        case WIFI_CIPHER_TYPE_SMS4:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_SMS4");
+            break;
+        case WIFI_CIPHER_TYPE_GCMP:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_GCMP");
+            break;
+        case WIFI_CIPHER_TYPE_GCMP256:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_GCMP256");
+            break;
+        default:
+            ESP_LOGI(TAG, "Group Cipher \tWIFI_CIPHER_TYPE_UNKNOWN");
+            break;
+    }
+}
+
+void addWiFiEntryToStack(WiFiStack *stack, uint8_t ssid[33], int8_t rssi, const char *encryption)
+{
+    char ssid_str[33];
+    char rssi_str[5]; // Enough to hold -128 to 127 and null-terminator
+
+    // Convert ssid to string
+    snprintf(ssid_str, sizeof(ssid_str), "%s", ssid);
+
+    // Convert rssi to string
+    snprintf(rssi_str, sizeof(rssi_str), "%d", rssi);
+
+    // Create a WiFiEntry
+    WiFiEntry entry = { .ssid = strdup(ssid_str), .rssi = strdup(rssi_str), .encryption = strdup(encryption) };
+
+    // Push the entry to the stack
+    pushWiFiStack(stack, entry);
+}
+
+void wifi_scan(void)
+{
+    uint16_t number = 5;
+    wifi_ap_record_t ap_info[5];
+    uint16_t ap_count = 0;
+    memset(ap_info, 0, sizeof(ap_info));
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    esp_wifi_scan_start(NULL, true);
+    ESP_LOGI(TAG, "Max AP number ap_info can hold = %u", number);
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
+    ESP_LOGI(TAG, "Total APs scanned = %u, actual AP number ap_info holds = %u", ap_count, number);
+    for (int i = 0; i < number; i++)
+    {
+        ESP_LOGI(TAG, "SSID \t\t%s", ap_info[i].ssid);
+        ESP_LOGI(TAG, "RSSI \t\t%d", ap_info[i].rssi);
+        const char *encryption = print_auth_mode(ap_info[i].authmode);
+        if (ap_info[i].authmode != WIFI_AUTH_WEP)
+        {
+            print_cipher_type(ap_info[i].pairwise_cipher, ap_info[i].group_cipher);
+        }
+        addWiFiEntryToStack(&wifiStack_scanned, ap_info[i].ssid, ap_info[i].rssi, encryption);
+        ESP_LOGI(TAG, "Channel \t\t%d", ap_info[i].primary);
+    }
+}
 
 
+/*---------------------------------------------------------------------------------------------------------*/
+/*basic wifi connect function*/
 static int __wifi_connect(const char *p_ssid, const char *p_password, int retry_num)
 {
     wifi_retry_max = retry_num; //todo
     s_retry_num =0;
 
-    wifi_config_t wifi_config = {0};
+    wifi_config_t wifi_config = { 0 };
     strlcpy((char *)wifi_config.sta.ssid, p_ssid, sizeof(wifi_config.sta.ssid));
     ESP_LOGI(TAG, "ssid: %s", p_ssid);
     if( p_password ) {
         ESP_LOGI(TAG, "password: %s", p_password);
         strlcpy((char *)wifi_config.sta.password, p_password, sizeof(wifi_config.sta.password));
-        wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK; //todo
-    } else {
+        wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK; // todo
+    }
+    else
+    {
         wifi_config.sta.threshold.authmode = WIFI_AUTH_OPEN;
     }
     wifi_config.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;
 
     esp_wifi_stop();
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_LOGE("CONNECT_TAG_die01","wifi_connect_failed_reason is %d",wifi_connect_failed_reason);
+    wifi_connect_failed_reason = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    ESP_LOGE("CONNECT_TAG_die02","wifi_connect_failed_reason is %d",wifi_connect_failed_reason);
+ 
+    
     _g_wifi_cfg.is_cfg = true;
 
-    struct view_data_wifi_st st = {0};
+    struct view_data_wifi_st st = { 0 };
     st.is_connected = false;
     st.is_connecting = false;
-    st.is_network   = false;
+    st.is_network = false;
     __wifi_st_set(&st);
 
     ESP_ERROR_CHECK(esp_wifi_start());
-    //esp_wifi_connect();
-    
+    // esp_wifi_connect();
+
     ESP_LOGI(TAG, "connect...");
 
-    return  ESP_OK;
+    return ESP_OK;
 }
 
-static void __wifi_cfg_restore(void) 
+static void __wifi_cfg_restore(void)
 {
     _g_wifi_cfg.is_cfg = false;
-    
-    struct view_data_wifi_st st = {0};
+
+    struct view_data_wifi_st st = { 0 };
     st.is_connected = false;
     st.is_connecting = false;
-    st.is_network   = false;
+    st.is_network = false;
     __wifi_st_set(&st);
 
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
@@ -262,11 +489,14 @@ static void __ping_end(esp_ping_handle_t hdl, void *args)
     esp_ping_delete_session(hdl);
 
     struct view_data_wifi_st st;
-    if( received > 0) {
+    if (received > 0)
+    {
         __wifi_st_get(&st);
         st.is_network = true;
         __wifi_st_set(&st);
-    } else {
+    }
+    else
+    {
         __wifi_st_get(&st);
         st.is_network = false;
         __wifi_st_set(&st);
@@ -309,10 +539,12 @@ static void __app_wifi_task(void *p_arg)
         __wifi_st_get(&st);
 
         // Periodically check the network connection status
-        if( st.is_connected) {
-
-            if(__g_ping_done ) {
-                if( st.is_network ) {
+        if (st.is_connected)
+        {
+            if (__g_ping_done)
+            {
+                if (st.is_network)
+                {
                     cnt++;
                     //5min check network
                     if( cnt > 60) {
@@ -350,22 +582,28 @@ static void __app_wifi_task(void *p_arg)
 }
 
 
-
-static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
+/*------------------------------------------------------------------------------------------------------------*/
+/*wifi event_loop process handler*/
+static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     switch (id)
     {
         case VIEW_EVENT_WIFI_CONNECT: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONNECT");
-            struct view_data_wifi_config * p_cfg = (struct view_data_wifi_config *)event_data;
+            struct view_data_wifi_config *p_cfg = (struct view_data_wifi_config *)event_data;
 
-            if( p_cfg->have_password) {
+            if (p_cfg->have_password)
+            {
+                ESP_LOGE(TAG, "ssid: %s, password: %s", p_cfg->ssid, p_cfg->password);
                 __wifi_connect(p_cfg->ssid, (const char *)p_cfg->password, 3);
-            } else {
+            }
+            else
+            {
+                ESP_LOGE(TAG, "ssid: %s, password: %s", p_cfg->ssid, p_cfg->password);
                 __wifi_connect(p_cfg->ssid, NULL, 3);
             }
             break;
-        }  
+        }
         case VIEW_EVENT_WIFI_CFG_DELETE: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CFG_DELETE");
             __wifi_cfg_restore();
@@ -381,30 +619,116 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
     }
 }
 
+/*------------------------------------------------------------------------------------------------------------*/
+
+
 static void __wifi_cfg_init(void)
 {
     memset(&_g_wifi_cfg, 0, sizeof(_g_wifi_cfg));
 }
 
+int set_wifi_config(wifi_config *config)
+{
+    int result = 0;
+    switch (config->caller)
+    {
+        case UI_CALLER: {
+            
+            break;
+        }
+        case AT_CMD_CALLER: {
+            struct view_data_wifi_config outer_config;
+
+            
+            memset(outer_config.ssid, 0, sizeof(outer_config.ssid));
+            strncpy(outer_config.ssid, config->ssid, sizeof(outer_config.ssid) - 1);
+            outer_config.ssid[sizeof(outer_config.ssid) - 1] = '\0'; 
+
+            ESP_LOGE("AT_CMD_CALLER die 02", "base:%s, memcpy:%s", config->ssid, outer_config.ssid);
+
+           
+            if (config->password[0] != '\0') 
+            {
+                outer_config.have_password = 1;
+
+                memset(outer_config.password, 0, sizeof(outer_config.password));
+                strncpy(outer_config.password, config->password, sizeof(outer_config.password) - 1);
+                outer_config.password[sizeof(outer_config.password) - 1] = '\0'; 
+            }
+            else
+            {
+                outer_config.have_password = 0;
+
+                memset(outer_config.password, 0, sizeof(outer_config.password));
+            }
+
+            ESP_LOGE("AT_CMD_CALLER", "SSID: %s, Password: %s", outer_config.ssid, outer_config.have_password ? outer_config.password : "No Password");
+
+            
+            result = esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &outer_config, sizeof(struct view_data_wifi_config), portMAX_DELAY);
+
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    return result;
+}
+void wifi_config_entry(void *pvParameters)
+{
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        //ESP_LOGE(TAG, "wifi_config_layer");
+        wifi_scan();
+    }
+}
+
+
+void app_wifi_config_entry_init()
+{
+    //xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 4, NULL, 9, &xTask_wifi_config_layer);
+    wifi_task_stack = (StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    if (wifi_task_stack == NULL) {
+        printf("Failed to allocate memory for WiFi task stack\n");
+        return;
+    }
+
+    TaskHandle_t wifi_task_handle = xTaskCreateStatic(
+        wifi_config_entry,      
+        "wifi_config_entry",    
+        4096,                   
+        NULL,                   
+        9,                      
+        wifi_task_stack,        
+        &wifi_task_buffer       
+    );
+
+    if (wifi_task_handle == NULL) {
+        printf("Failed to create WiFi task\n");
+        free(wifi_task_stack);
+        wifi_task_stack = NULL;
+    }
+}
 int app_wifi_init(void)
 {
-    __g_wifi_mutex  = xSemaphoreCreateMutex( );
-    __g_data_mutex  =  xSemaphoreCreateMutex();
+    __g_wifi_mutex = xSemaphoreCreateMutex();
+    __g_data_mutex = xSemaphoreCreateMutex();
     __g_net_check_sem = xSemaphoreCreateBinary();
 
     __wifi_cfg_init();
-    
-    xTaskCreate(&__app_wifi_task, "app_wifi", 1024 * 3, NULL, 10, NULL);
-
+    app_wifi_config_entry_init();
+    xTaskCreate(&__app_wifi_task, "__app_wifi_task", 1024 * 5, NULL, 10, NULL);
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     esp_netif_create_default_wifi_sta();
-    
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_err_t ret =esp_wifi_init(&cfg);
-    ESP_LOGI(TAG, "esp_wifi_init:%d, %s",ret, esp_err_to_name(ret));
+    esp_err_t ret = esp_wifi_init(&cfg);
+    ESP_LOGI(TAG, "esp_wifi_init:%d, %s", ret, esp_err_to_name(ret));
     ESP_ERROR_CHECK(ret);
 
     esp_event_handler_instance_t instance_any_id;
@@ -436,14 +760,24 @@ int app_wifi_init(void)
                                                             __view_event_handler, NULL, NULL));
 
     wifi_config_t wifi_cfg;
+    struct view_data_wifi_st wifi_table_element_connected;
+
     esp_wifi_get_config(WIFI_IF_STA, &wifi_cfg);
-   
-    if (strlen((const char *) wifi_cfg.sta.ssid)) {
+    // wifi_table_element_connected.= wifi_cfg.sta.password;
+    strcpy(wifi_table_element_connected.ssid, (char *)wifi_cfg.sta.ssid);
+    //esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST_REQ, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+
+    if (strlen((const char *)wifi_cfg.sta.ssid))
+    {
         _g_wifi_cfg.is_cfg = true;
-        ESP_LOGI(TAG, "last config ssid: %s",  wifi_cfg.sta.ssid);
+        ESP_LOGI(TAG, "last config ssid: %s", wifi_cfg.sta.ssid);
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_start());
-    } else {
+        wifi_table_element_connected.past_connected=true;
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+    }
+    else
+    {
         ESP_LOGI(TAG, "Not config wifi, Entry wifi config screen");
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_start());

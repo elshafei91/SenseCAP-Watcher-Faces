@@ -1,7 +1,6 @@
 SET(SOURCES 
     view_alarm.c
     view_image_preview.c
-    view_status_bar.c
     )
 
 add_subdirectory(ui)

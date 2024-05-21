@@ -5,7 +5,9 @@
 #include "esp_log.h"
 #include "data_defs.h"
 #include "event_loops.h"
+#include "esp_wifi.h" 
 #include <dirent.h>
+#include "esp_timer.h"
 
 #include "ui/ui.h"
 #include "pm.h"
@@ -13,20 +15,40 @@
 
 #include "app_device_info.h"
 #include "app_ble.h"
+#include "app_wifi.h"
 #include "storage.h"
 
 #define VOLBRI_CFG 		"volbri-cfg"
 
 static const char * TAG = "ui_event";
 
-struct view_data_setting_volbri 	volbri;
-struct view_data_setting_switch 	set_sw;
-struct view_data_emoticon_display 	emo_disp;
+static struct view_data_setting_volbri 		volbri;
+static struct view_data_setting_switch 		set_sw;
+static struct view_data_emoticon_display 	emo_disp;
+wifi_ap_record_t 							wifi_record;
 
 static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
 static uint8_t file_idx;
-lv_timer_t * g_timer = NULL;
-lv_obj_t *img = NULL;
+static lv_obj_t * img;
+static uint32_t local_task_id;
+
+extern char sn_data[66];
+extern uint8_t wifi_page_id;
+
+extern GroupInfo group_page_main;
+extern GroupInfo group_page_template;
+extern GroupInfo group_page_set;
+extern GroupInfo group_page_view;
+extern GroupInfo group_page_ha;
+
+static void periodic_timer_callback(void* arg);
+
+static const esp_timer_create_args_t periodic_timer_args = {
+            .callback = &periodic_timer_callback,
+            /* name is optional, but may help identify the timer when debugging */
+            .name = "periodic"
+    };
+static esp_timer_handle_t periodic_timer;
 
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
@@ -73,16 +95,18 @@ void startload_cb(lv_event_t * e)
 
 void virtc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+	ESP_ERROR_CHECK(esp_timer_stop(periodic_timer));
+    ESP_ERROR_CHECK(esp_timer_delete(periodic_timer));
+	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
-void emoticon_png_play(lv_timer_t * timer)
+static void periodic_timer_callback(void* arg)
 {
     if (img == NULL) {
         img = lv_img_create(ui_Page_Vir);
     }
     const char *file_name = emo_disp.file_names[file_idx];
-    char *file_name_with_path = (char *) heap_caps_malloc(256, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+	char *file_name_with_path = (char *) heap_caps_malloc(100, MALLOC_CAP_SPIRAM);
 
     if (NULL != file_name_with_path) {
         strcpy(file_name_with_path, "S:/spiffs/");
@@ -93,10 +117,6 @@ void emoticon_png_play(lv_timer_t * timer)
         file_idx++;
         if(file_idx==emo_disp.file_count){
             file_idx = 0;
-			// if (g_timer != NULL)
-			// {
-			// 	lv_timer_reset(g_timer);
-			// }
         }
         free(file_name_with_path);
     }
@@ -104,13 +124,16 @@ void emoticon_png_play(lv_timer_t * timer)
 
 void virtsl_cb(lv_event_t * e)
 {	
-    DIR *p_dir_stream = opendir("/spiffs");
+	lv_group_add_obj(g_main, ui_Page_Vir);
+    static DIR *p_dir_stream;
+	p_dir_stream = opendir("/spiffs");
     if (p_dir_stream == NULL) {
         ESP_LOGE(TAG, "Failed to open /spiffs directory");
         return;
     }
+	emo_disp.file_count = 0;
 
-    struct dirent *p_dirent;
+    static struct dirent *p_dirent;
     while ((p_dirent = readdir(p_dir_stream)) != NULL && emo_disp.file_count < MAX_PNG_FILES) {
         if (strstr(p_dirent->d_name, ".png") != NULL) {
             // ESP_LOGI(TAG, "Found image file: %s", p_dirent->d_name);
@@ -122,16 +145,16 @@ void virtsl_cb(lv_event_t * e)
     }
     closedir(p_dir_stream);
 
-	for (int i = 0; i < emo_disp.file_count; i++) {
-        ESP_LOGI(TAG, "Array file name: %s", emo_disp.file_names[i]);
-    }
-	g_timer = lv_timer_create(emoticon_png_play, 200, NULL);
+	// for (int i = 0; i < emo_disp.file_count; i++) {
+    //     ESP_LOGI(TAG, "Array file name: %s", emo_disp.file_names[i]);
+    // }
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+	ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 200000));
 }
 
 void main1c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_template_group, 7, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
-	lv_group_focus_obj(ui_Page_template_group[3]);
+	lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
 }
 
 void main1f_cb(lv_event_t * e)
@@ -142,7 +165,7 @@ void main1f_cb(lv_event_t * e)
 
 void main2c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask1, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask1_screen_init);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask1, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask1_screen_init);
 }
 
 void main2f_cb(lv_event_t * e)
@@ -153,8 +176,7 @@ void main2f_cb(lv_event_t * e)
 
 void main3c_cb(lv_event_t * e)
 {
-	esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, NULL, 0, portMAX_DELAY);
-	// lv_pm_open_page(g_main, group_ha, 1, PM_ADD_OBJS_TO_GROUP, &ui_Page_HA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_HA_screen_init);
+	lv_pm_open_page(g_main, &group_page_ha, PM_ADD_OBJS_TO_GROUP, &ui_Page_HA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_HA_screen_init);
 }
 
 void main3f_cb(lv_event_t * e)
@@ -165,7 +187,8 @@ void main3f_cb(lv_event_t * e)
 
 void main4c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	get_sn(0);
 }
 
 void main4f_cb(lv_event_t * e)
@@ -176,7 +199,8 @@ void main4f_cb(lv_event_t * e)
 
 void connc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
 }
 
 void arr1c_cb(lv_event_t * e)
@@ -191,7 +215,7 @@ void arr2c_cb(lv_event_t * e)
 
 void wifichange_cb(lv_event_t * e)
 {
-	
+	lv_obj_clear_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
 }
 
 void nwific_cb(lv_event_t * e)
@@ -201,22 +225,22 @@ void nwific_cb(lv_event_t * e)
 
 void ntaskb1c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask2_screen_init);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask2_screen_init);
 }
 
 void ntaskb2c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void waitbc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void revbc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void viewac_cb(lv_event_t * e)
@@ -226,8 +250,7 @@ void viewac_cb(lv_event_t * e)
 
 void viewaf_cb(lv_event_t * e)
 {
-	lv_pm_open_page(NULL, NULL, 0, PM_NO_OPERATION, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-	// ESP_LOGI(TAG, "view_ava_focused");
+	_ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
 }
 
 void ava1c_cb(lv_event_t * e)
@@ -247,8 +270,7 @@ void viewlc_cb(lv_event_t * e)
 
 void viewlf_cb(lv_event_t * e)
 {
-	lv_pm_open_page(NULL, NULL, 0, PM_NO_OPERATION, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
-	// ESP_LOGI(TAG, "view_live_focused");
+	_ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
 }
 
 void liv1c_cb(lv_event_t * e)
@@ -268,11 +290,12 @@ void waitT_cb(lv_event_t * e)
 
 void loctask1c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void loctask1f_cb(lv_event_t * e)
 {
+	lv_label_set_text(ui_Label1, "");
 	lv_obj_add_flag(ui_mimgp, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_clear_flag(ui_mtext, LV_OBJ_FLAG_HIDDEN);
 }
@@ -285,7 +308,9 @@ void loctask1df_cb(lv_event_t * e)
 
 void loctask2c_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, group_view, 2, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+	local_task_id = 2;
+	esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), portMAX_DELAY);
+	lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
 }
 
 void loctask2f_cb(lv_event_t * e)
@@ -296,7 +321,9 @@ void loctask2f_cb(lv_event_t * e)
 
 void loctask3c_cb(lv_event_t * e)
 {
-
+	local_task_id = 1;
+	esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), portMAX_DELAY);
+	lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
 }
 
 void loctask3f_cb(lv_event_t * e)
@@ -307,7 +334,9 @@ void loctask3f_cb(lv_event_t * e)
 
 void loctask4c_cb(lv_event_t * e)
 {
-
+	local_task_id = 0;
+	esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), portMAX_DELAY);
+	lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
 }
 
 void loctask4f_cb(lv_event_t * e)
@@ -503,7 +532,7 @@ void setvolc_cb(lv_event_t * e)
 		lv_slider_set_value(ui_vslider, volbri.vs_value, LV_ANIM_OFF);
 	}
 
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
 	lv_event_send(ui_vslider, LV_EVENT_VALUE_CHANGED, NULL);
 }
 
@@ -525,15 +554,15 @@ void setbric_cb(lv_event_t * e)
 	lv_obj_add_flag(ui_vp, LV_OBJ_FLAG_HIDDEN);
 
 	esp_err_t ret = 0;
-	size_t len = sizeof(volbri);
-	ret = storage_read(VOLBRI_CFG, (void *)&volbri, &len);
+	static size_t len = sizeof(volbri);
+	volbri.bs_value = get_brightness(0);
 	if( ret == ESP_OK && len == sizeof(volbri))
 	{
 		ESP_LOGI(TAG, "cfg read successful");
 		lv_slider_set_value(ui_bslider, volbri.bs_value, LV_ANIM_OFF);
 	}
 
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
 	lv_event_send(ui_bslider, LV_EVENT_VALUE_CHANGED, NULL);
 }
 
@@ -562,7 +591,7 @@ void setwwdf_cb(lv_event_t * e)
 void settimec_cb(lv_event_t * e)
 {
 	lv_obj_clear_flag(ui_settimep, LV_OBJ_FLAG_HIDDEN);
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_STime, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_STime);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_STime, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_STime);
 }
 
 void settimef_cb(lv_event_t * e)
@@ -637,27 +666,34 @@ void abbledf_cb(lv_event_t * e)
 
 void paboutc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void setbackc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void setdevc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_SAbout, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_SAbout_screen_init);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_SAbout, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_SAbout_screen_init);
 }
 
 void setwific_cb(lv_event_t * e)
 {
-	//unbinded
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
-	Page_ConnAPP_Mate();
-
+	current_wifi_get(&wifi_record);
+	static char ssid_string[34];
+    strncpy(ssid_string, (const char *)wifi_record.ssid, sizeof(ssid_string) - 1);
+    ssid_string[sizeof(ssid_string) - 1] = '\0';
+	lv_label_set_text(ui_wifissid, ssid_string);
 	//binded
-
+	if(wifi_page_id){
+		lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+	}else{
+		//unbinded
+		lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
+		Page_ConnAPP_Mate();
+	}
 }
 
 void setblec_cb(lv_event_t * e)
@@ -669,7 +705,7 @@ void setblec_cb(lv_event_t * e)
 	case 1:
 		lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
 		ESP_LOGI(TAG, "ble_btn_status: off");
-		set_ble_status(0,2);
+		set_ble_status(0,0);
 		break;
 	case 0:
 		lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
@@ -725,14 +761,14 @@ void setwwc_cb(lv_event_t * e)
 void setdownc_cb(lv_event_t * e)
 {
 	swipe_id = 0;
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
 	Page_shutdown();
 }
 
 void setfac_cb(lv_event_t * e)
 {
 	swipe_id = 1;
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
 	Page_facreset();
 }
 
@@ -748,14 +784,14 @@ void setappdf_cb(lv_event_t * e)
 
 void setappc_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
 	Page_ConnAPP_Mate();
-	get_sn(0);
 }
 
 void slidervc_cb(lv_event_t * e)
 {
-	int32_t slider_value =  lv_slider_get_value(ui_spsilder);
+	static int32_t slider_value;
+	slider_value =  lv_slider_get_value(ui_spsilder);
 	// ESP_LOGI(TAG, "This is slider_value: %" PRId32, slider_value);
 	if(slider_value>80)
 	{
@@ -772,7 +808,8 @@ void slidervc_cb(lv_event_t * e)
 
 void sliderr_cb(lv_event_t * e)
 {
-	int32_t slider_value =  lv_slider_get_value(ui_spsilder);
+	static int32_t slider_value;
+	slider_value =  lv_slider_get_value(ui_spsilder);
 	if(slider_value>80)
 	{
 		switch (swipe_id)
@@ -782,7 +819,7 @@ void sliderr_cb(lv_event_t * e)
 			break;
 
 		case 1:
-			lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_main_screen_init);
+			lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_main_screen_init);
 			break;
 		
 		default:
@@ -798,13 +835,13 @@ void sliderr_cb(lv_event_t * e)
 void stbtn_cb(lv_event_t * e)
 {
 	lv_obj_clear_flag(ui_settimep, LV_OBJ_FLAG_HIDDEN);
-	lv_pm_open_page(g_main, NULL, NULL, PM_CLEAR_GROUP, &ui_Page_STime, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_STime, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void preset_cb(lv_event_t * e)
 {
 
-	lv_pm_open_page(g_main, ui_Page_set_group, 11, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+	lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void timebtn_cb(lv_event_t * e)
@@ -823,7 +860,7 @@ void volvc_cb(lv_event_t * e)
 {
 	volbri.vs_value =  lv_slider_get_value(ui_vslider);
 
-	char vs_buffer[10];
+	static char vs_buffer[10];
 	lv_snprintf(vs_buffer, sizeof(vs_buffer), "%" PRId32, volbri.vs_value);
     lv_label_set_text(ui_bvbv, vs_buffer);
 }
@@ -845,7 +882,7 @@ void brivc_cb(lv_event_t * e)
 {
 	volbri.bs_value =  lv_slider_get_value(ui_bslider);
 
-	char bs_buffer[10];
+	static char bs_buffer[10];
 	lv_snprintf(bs_buffer, sizeof(bs_buffer), "%" PRId32, volbri.bs_value);
     lv_label_set_text(ui_bvbv, bs_buffer); 
 }
@@ -861,11 +898,12 @@ void brire_cb(lv_event_t * e)
 	// }else {
 	// 	ESP_LOGI(TAG, "volbri-cfg write successful");
 	// }
+	set_brightness(0, volbri.bs_value);
 }
 
 void hap_cb(lv_event_t * e)
 {
-	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 // Page status bundle
@@ -877,16 +915,16 @@ static void Page_ConnAPP_Mate()
 	lv_obj_clear_flag(ui_arrow1, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_add_flag(ui_arrow2, LV_OBJ_FLAG_HIDDEN);
 
-	lv_color_t bg_color = lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 5);
-    lv_color_t fg_color = lv_palette_darken(LV_PALETTE_BLUE, 4);
+	static lv_color_t bg_color;
+	bg_color = lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 5);
+    static lv_color_t fg_color;
+	fg_color = lv_palette_darken(LV_PALETTE_BLUE, 4);
 
-	lv_obj_t * qr = lv_qrcode_create(ui_conn_QR, 150, fg_color, bg_color);
-	const char * data = "https://sensecap-mate-download.seeed.cc/";
+	static lv_obj_t * qr;
+	qr = lv_qrcode_create(ui_conn_QR, 150, fg_color, bg_color);
+	static const char * data = "https://sensecap-mate-download.seeed.cc/";
     lv_qrcode_update(qr, data, strlen(data));
     lv_obj_center(qr);
-
-
-
 }
 
 static void Page_ConnAPP_BLE()
@@ -897,10 +935,13 @@ static void Page_ConnAPP_BLE()
 	lv_obj_add_flag(ui_arrow1, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_clear_flag(ui_arrow2, LV_OBJ_FLAG_HIDDEN);
 
-	lv_color_t bg_color = lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 5);
-    lv_color_t fg_color = lv_palette_darken(LV_PALETTE_BLUE, 4);
+	static lv_color_t bg_color;
+	bg_color = lv_palette_lighten(LV_PALETTE_LIGHT_BLUE, 5);
+	static lv_color_t fg_color;
+    fg_color = lv_palette_darken(LV_PALETTE_BLUE, 4);
 
-	lv_obj_t * qr = lv_qrcode_create(ui_conn_QR, 160, fg_color, bg_color);
+	static lv_obj_t * qr;
+	qr = lv_qrcode_create(ui_conn_QR, 160, fg_color, bg_color);
 
     lv_qrcode_update(qr, sn_data, strlen(sn_data));
     lv_obj_center(qr);
@@ -911,8 +952,8 @@ static void Task_end()
 	lv_obj_add_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN);     /// Flags
 	lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);     /// Flags
 	// event_post_to 
-
-	lv_pm_open_page(g_main, ui_Page_main_group, 4, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+	esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
+	lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
 }
 
 static void Page_shutdown()

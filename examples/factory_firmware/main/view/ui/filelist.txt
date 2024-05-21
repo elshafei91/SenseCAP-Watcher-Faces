@@ -37,6 +37,7 @@ images/ui_img_ble_png.c
 images/ui_img_button_cancel_png.c
 images/ui_img_arrow_png.c
 images/ui_img_wifi_4_png.c
+images/ui_img_190291343.c
 images/ui_img_error_png.c
 images/ui_img_template1_png.c
 images/ui_img_template1_f_png.c
