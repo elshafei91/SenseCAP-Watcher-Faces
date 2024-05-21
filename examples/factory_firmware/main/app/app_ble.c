@@ -373,11 +373,11 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
         } else {
             printf("Message sent successfully. Length: %d\n", msg_at.size);
         }
-        if (xTaskToNotify_AT != NULL)
-        {
-            xTaskNotifyGive(xTaskToNotify_AT);
-        }
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+
+        uint32_t ulNotificationValue;
+        xTaskToNotify_AT = xTaskGetCurrentTaskHandle();
+        ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));
+        //vTaskDelay(100 / portTICK_PERIOD_MS);
         free(prepare_write_env->prepare_buf);
         prepare_write_env->prepare_buf = NULL;
         AT_Response msg_at_response;

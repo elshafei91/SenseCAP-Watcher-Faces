@@ -677,6 +677,7 @@ void task_handle_AT_command()
         // message_event_t *msg_at = (message_event_t *)event_data;
         message_event_t msg_at;
         xReceivedBytes = xStreamBufferReceive(xStreamBuffer, &msg_at, sizeof(msg_at), portMAX_DELAY);
+        
         if (xReceivedBytes > 0)
         {
             if (xReceivedBytes != sizeof(msg_at))
@@ -738,6 +739,7 @@ void task_handle_AT_command()
             free(test_strings);
             regfree(&regex);
             vTaskDelay(500 / portTICK_PERIOD_MS); // delay 5s
+            xTaskNotifyGive(xTaskToNotify_AT);
         }
     }
 }
