@@ -582,37 +582,139 @@ void handle_eui_command(char *params)
 
 /*------------------critical command for task_flow-------------------------------------------*/
 
+#define DATA_LENGTH 4096
+
+typedef struct {
+    char *name;
+    int package;
+    int sum;
+    char *data;
+} Task;
+
+Task *tasks = NULL;
+int num_jsons = 0;
+
+void parse_json_and_concatenate(char *json_string) {
+    
+    printf("Params: %s\n", json_string);
+    cJSON *json = cJSON_Parse(json_string);
+    if (json == NULL) {
+        printf("Error parsing JSON\n");
+        return;
+    }
+
+    cJSON *name = cJSON_GetObjectItem(json, "name");
+    cJSON *package = cJSON_GetObjectItem(json, "package");
+    cJSON *sum = cJSON_GetObjectItem(json, "sum");
+    cJSON *data = cJSON_GetObjectItem(json, "data");
+
+    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data)) {
+        printf("Invalid JSON format\n");
+        cJSON_Delete(json);
+        return;
+    }
+
+    if (num_jsons == 0) {
+        num_jsons = sum->valueint;
+        tasks = (Task *)heap_caps_malloc(num_jsons * sizeof(Task), MALLOC_CAP_SPIRAM);
+        if (tasks == NULL) {
+            printf("Failed to allocate memory for tasks\n");
+            cJSON_Delete(json);
+            return;
+        }
+
+        // init
+        for (int i = 0; i < num_jsons; i++) {
+            tasks[i].name = NULL;
+            tasks[i].data = NULL;
+        }
+    }
+
+    int index = package->valueint;
+    tasks[index].name = (char *)heap_caps_malloc(strlen(name->valuestring) + 1, MALLOC_CAP_SPIRAM);
+    if (tasks[index].name == NULL) {
+        printf("Failed to allocate memory for name\n");
+        cJSON_Delete(json);
+        return;
+    }
+    strcpy(tasks[index].name, name->valuestring);
+
+    tasks[index].package = package->valueint;
+    tasks[index].sum = sum->valueint;
+    tasks[index].data = (char *)heap_caps_malloc(DATA_LENGTH + 1, MALLOC_CAP_SPIRAM);
+    if (tasks[index].data == NULL) {
+        printf("Failed to allocate memory for data\n");
+        free(tasks[index].name);
+        cJSON_Delete(json);
+        return;
+    }
+    strncpy(tasks[index].data, data->valuestring, DATA_LENGTH);
+    tasks[index].data[DATA_LENGTH] = '\0'; // end
+
+    cJSON_Delete(json);
+}
+
+void concatenate_data(char *result) {
+    // sort
+    for (int i = 0; i < num_jsons - 1; i++) {
+        for (int j = 0; j < num_jsons - 1 - i; j++) {
+            if (tasks[j].package > tasks[j + 1].package) {
+                Task temp = tasks[j];
+                tasks[j] = tasks[j + 1];
+                tasks[j + 1] = temp;
+            }
+        }
+    }
+
+    // concatenate_data
+    result[0] = '\0';
+    for (int i = 0; i < num_jsons; i++) {
+        strcat(result, tasks[i].data);
+        free(tasks[i].data); 
+        free(tasks[i].name); 
+    }
+
+    free(tasks); 
+    tasks = NULL;
+}
+
+
+
+
 void handle_taskflow_command(char *params)
 {
     esp_err_t code=ESP_OK;
     printf("Handling taskflow command\n");
+    printf("Params: %s\n", params);
+    parse_json_and_concatenate(params);
 
-    // prase AT+taskflow={"name":"taskflow","data":"task string"}
-    cJSON *json = cJSON_Parse(params);
-    if (json == NULL)
-    {
-        const char *error_ptr = cJSON_GetErrorPtr();
-        if (error_ptr != NULL)
-        {
-            fprintf(stderr, "Error before: %s\n", error_ptr);
+    int all_received = 1;
+    for (int j = 0; j < num_jsons; j++) {
+        if (tasks[j].data == NULL) {
+            all_received = 0;
+            break;
         }
     }
-    // create json obj and save
-    cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
-    if (cJSON_IsString(data) && (data->valuestring != NULL))
-    {
-        size_t length =strlen(data->valuestring)+1;
-        //char *data_value = strdup(data->valuestring);
-        char * data_value =heap_caps_malloc(length, MALLOC_CAP_SPIRAM);
-        if(data_value==NULL){
-            ESP_LOGE("AT_CMD_CALLER", "Failed to allocate memory for data_value");
+    if (all_received) {
+        char *result = (char *)heap_caps_malloc(DATA_LENGTH * num_jsons + 1, MALLOC_CAP_SPIRAM); // 根据sum动态分配内存
+        if (result == NULL) {
+            printf("Failed to allocate memory for result\n");
+            for (int k = 0; k < num_jsons; k++) {
+                free(tasks[k].name);
+                free(tasks[k].data);
+            }
+            free(tasks);
             return;
         }
-        strcpy(data_value,data->valuestring);
-        code = tf_engine_flow_set(data_value, strlen(data_value));
+
+        concatenate_data(result);
+
+        printf("Final data: %s\n", result);
+
+        free(result); 
     }
-    cJSON_Delete(json);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "taskflow");
@@ -625,22 +727,14 @@ void handle_taskflow_command(char *params)
     cJSON_Delete(root);
 }
 
-// /*--------------------------------test for tf engin set function only for debug---------------------*/
 
-// esp_err_t tf_engine_flow_set(const char *p_str, size_t len)
-// {
-//     // malloc space to save and print
-//     char *p_str_save = (char *)malloc(len + 1);
-//     if (p_str_save == NULL)
-//     {
-//         ESP_LOGE("TF_ENGINE_FLOW_SET", "Failed to allocate memory for p_str_save");
-//         return ESP_FAIL;
-//     }
-//     memcpy(p_str_save, p_str, len);
-//     p_str_save[len] = '\0';
-//     ESP_LOGE("TF_ENGINE_FLOW_SET", "p_str_save: %s", p_str_save);
-//     return ESP_OK;
-// }
+
+
+
+
+
+
+
 
 static void hex_to_string(uint8_t *hex, int hex_size, char *output)
 {
@@ -651,6 +745,11 @@ static void hex_to_string(uint8_t *hex, int hex_size, char *output)
     }
     output[hex_size] = '\0';
 }
+
+
+
+
+
 
 esp_event_loop_handle_t at_event_loop_handle;
 
@@ -695,8 +794,8 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
         if (matches[3].rm_so != -1)
         {
             int length = (int)(matches[3].rm_eo - matches[3].rm_so);
-            // snprintf(params, sizeof(params), "%.*s", (int)(matches[3].rm_eo - matches[3].rm_so), test_strings + matches[3].rm_so);
-            snprintf(params, length + 1, "%.*s", length, test_strings + matches[1].rm_so);
+            snprintf(params, length+1, "%.*s", (int)(matches[3].rm_eo - matches[3].rm_so), test_strings + matches[3].rm_so);
+            //snprintf(params, length + 1, "%.*s", length, test_strings + matches[1].rm_so);
             printf("Matched string: %.50s... (total length: %d)\n", params, length);
         }
         char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
@@ -714,7 +813,7 @@ void task_handle_AT_command(void *handler_args, esp_event_base_t base, int32_t i
     }
     free(test_strings);
     regfree(&regex);
-    vTaskDelay(5000 / portTICK_PERIOD_MS); // delay 5s
+    vTaskDelay(500 / portTICK_PERIOD_MS); // delay 5s
 }
 
 void init_event_loop_and_task(void)

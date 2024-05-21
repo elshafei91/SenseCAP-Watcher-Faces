@@ -382,7 +382,7 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     {
         message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
         esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, sizeof(msg_at), portMAX_DELAY);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
         free(prepare_write_env->prepare_buf);
         prepare_write_env->prepare_buf = NULL;
         AT_Response msg_at_response;
