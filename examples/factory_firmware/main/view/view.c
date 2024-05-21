@@ -98,7 +98,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         }
         case VIEW_EVENT_SN_CODE:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_SN_CODE");
-         
             const char* _sn_data = (const char*)event_data;
             strncpy(sn_data, _sn_data, 66);
             sn_data[66] = '\0';
@@ -138,6 +137,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_PREVIEW");
             struct tf_module_ai_camera_preview_info *p_info = ( struct tf_module_ai_camera_preview_info *)event_data;
             view_image_preview_flush(&p_info);
+            free(p_info);
         }
 
         default:

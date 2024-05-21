@@ -171,10 +171,6 @@ struct view_data_emoticon_display
     uint8_t file_count;
 };// struct view_data_emoticon_display
 
-extern char sn_data[66];
-extern uint8_t wifi_page_id;
-
-
 
 //OTA
 struct view_data_ota_status
