@@ -1,27 +1,35 @@
 #include "view_alarm.h"
 #include "ui/ui.h"
+#include "esp_timer.h"
 
 lv_obj_t *ui_alarm_text;
 lv_obj_t *ui_alarm_indicator;
 
-static lv_timer_t *alarm_timer;
-uint8_t g_alarm_;
-uint8_t g_taskend = 0;
-
 static char alarm_str[128];
 
-static void view_alarm_callback(lv_timer_t *timer)
+static void periodic_timer_callback(void* arg);
+
+static const esp_timer_create_args_t periodic_timer_args = {
+            .callback = &periodic_timer_callback,
+            /* name is optional, but may help identify the timer when debugging */
+            .name = "periodic"
+    };
+static esp_timer_handle_t periodic_timer;
+
+static void periodic_timer_callback(void* arg);
 {
-    // g_alarm_ = 0;
+    //
 }
 
 static void create_alarm_timer()
 {
-    // if (alarm_timer != NULL)
-    // {
-    //     lv_timer_del(alarm_timer);
-    // }
-    // alarm_timer = lv_timer_create(view_alarm_callback, 5000, NULL);
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+	ESP_ERROR_CHECK(esp_timer_start_once(periodic_timer, 100000));
+}
+
+static void delete_alarm_timer()
+{
+    ESP_ERROR_CHECK(esp_timer_delete(periodic_timer));
 }
 
 int view_alarm_init(lv_obj_t *ui_screen)
