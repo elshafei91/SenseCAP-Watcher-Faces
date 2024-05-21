@@ -10,6 +10,8 @@ typedef struct
 {
   lv_obj_t *g_prepage;
   lv_obj_t *g_curpage;
+  lv_obj_t *g_prefocused_obj;
+  lv_obj_t *g_curfocused_obj;
 } lv_pm_page_record;
 
 #define MAX_OBJECTS_IN_GROUP 12

@@ -45,7 +45,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             
             time_t now = 0;
             struct tm timeinfo = { 0 };
-            char *p_wday_str;
 
             time(&now);
             localtime_r(&now, &timeinfo);
@@ -99,7 +98,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         }
         case VIEW_EVENT_SN_CODE:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_SN_CODE");
-         
             const char* _sn_data = (const char*)event_data;
             strncpy(sn_data, _sn_data, 66);
             sn_data[66] = '\0';
@@ -135,6 +133,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             break;
         }
 
+        case VIEW_EVENT_AI_CAMERA_PREVIEW:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_PREVIEW");
+            struct tf_module_ai_camera_preview_info *p_info = ( struct tf_module_ai_camera_preview_info *)event_data;
+            view_image_preview_flush(&p_info);
+            free(p_info);
+        }
+
         default:
             break;
     }
@@ -147,8 +152,7 @@ int view_init(void)
     ui_init();
     lv_pm_init();
     view_alarm_init(lv_layer_top());
-    // view_alarm_off();
-    // view_image_preview_init(ui_Page_ViewLive);
+    view_image_preview_init(ui_Page_ViewLive);
     lvgl_port_unlock();
     
 
@@ -187,6 +191,10 @@ int view_init(void)
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_AI_CAMERA_PREVIEW, 
                                                             __view_event_handler, NULL, NULL)); 
 
     return 0;

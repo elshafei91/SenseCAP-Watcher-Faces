@@ -46,11 +46,17 @@ static void lv_pm_obj_group(lv_group_t * group, GroupInfo *groupInfo);
 // Function to open page and add group
 void lv_pm_open_page(lv_group_t * group, GroupInfo *groupInfo, pm_operation_t operation, lv_obj_t **target, lv_scr_load_anim_t fademode, int spd, int delay, void (*target_init)(void))
 {
+    static lv_obj_t * focused_obj;
+    if (g_page_record.g_curfocused_obj != NULL)
+    {
+        g_page_record.g_prefocused_obj = g_page_record.g_curfocused_obj;
+    }
+    g_page_record.g_curfocused_obj = lv_group_get_focused(g_main);
+
     if (g_page_record.g_curpage != NULL)
     {
         g_page_record.g_prepage = g_page_record.g_curpage;
     }
-
     g_page_record.g_curpage = *target;
     if (*target == NULL)
         target_init();
@@ -66,13 +72,23 @@ void lv_pm_open_page(lv_group_t * group, GroupInfo *groupInfo, pm_operation_t op
         const char *curpage_name = lv_obj_get_user_data(g_page_record.g_curpage);
         ESP_LOGI(TAG, "The Current  Page : %s", curpage_name);
     }
+    if (g_page_record.g_prefocused_obj)
+    {
+        const char *preobj_name = lv_obj_get_user_data(g_page_record.g_prefocused_obj);
+        ESP_LOGI(TAG, "The Previous_focused obj : %s", preobj_name);
+    }
+    if (g_page_record.g_curfocused_obj)
+    {
+        const char *curobj_name = lv_obj_get_user_data(g_page_record.g_curfocused_obj);
+        ESP_LOGI(TAG, "The Current_focused obj : %s", curobj_name);
+    }
 #endif
-
     switch (operation)
     {
         case PM_ADD_OBJS_TO_GROUP:
-            if ((group != NULL) && (groupInfo != NULL))
+            if ((group != NULL) && (groupInfo != NULL)){
                 lv_pm_obj_group(group, groupInfo);
+            }
             break;
         case PM_NO_OPERATION:
             break;
@@ -81,7 +97,7 @@ void lv_pm_open_page(lv_group_t * group, GroupInfo *groupInfo, pm_operation_t op
                 lv_group_remove_all_objs(group);
             break;
     }
-
+    lv_group_focus_obj(g_page_record.g_prefocused_obj);
     lv_scr_load_anim(*target, fademode, spd, 50, false);
 }
 
@@ -152,6 +168,15 @@ void lv_pm_init(void)
     lv_obj_set_user_data(ui_Page_Swipe, "ui_Page_Swipe");
     lv_obj_set_user_data(ui_Page_STime, "ui_Page_STime");
     lv_obj_set_user_data(ui_Page_brivol, "ui_Page_brivol");
+
+    lv_obj_set_user_data(ui_Page_Start, "ui_Page_Start");
+    lv_obj_set_user_data(ui_mainbtn1, "ui_mainbtn1");
+    lv_obj_set_user_data(ui_mainbtn2, "ui_mainbtn2");
+    lv_obj_set_user_data(ui_mainbtn3, "ui_mainbtn3");
+    lv_obj_set_user_data(ui_mainbtn4, "ui_mainbtn4");
+
+    lv_obj_set_user_data(ui_setapp, "ui_setapp");
+    lv_obj_set_user_data(ui_setback, "ui_setback");
 #endif
 
     scroll_anim_enable();

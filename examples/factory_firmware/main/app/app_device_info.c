@@ -21,7 +21,7 @@
 
 #define BRIGHTNESS_STORAGE "brightnressvalue"
 
-uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x11 };
+uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
 uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0xC2, 0x44, 0x81, 0x00, 0x47, 0xB0, 0x47, 0xD1, 0xD5, 0x8B, 0xC7, 0xF8, 0xFB };
 char software_version[] = "1.0.0";       // Initialize software_version
 char himax_software_version[] = "1.0.0"; // Initialize himax_software_version
@@ -112,13 +112,13 @@ static int __set_brightness()
     if (brightness_past != brightness)
     {
         esp_err_t ret = 0;
-        ret = storage_write(BRIGHTNESS_STORAGE, (void *)brightness, sizeof(int));
+        ret = storage_write(BRIGHTNESS_STORAGE, (void *)&brightness, sizeof(int));
         if (ret != ESP_OK)
         {
             ESP_LOGE("", "cfg write err:%d", ret);
             return ret;
         }
-        BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
+        BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(brightness));
     }
     return 0;
 }
