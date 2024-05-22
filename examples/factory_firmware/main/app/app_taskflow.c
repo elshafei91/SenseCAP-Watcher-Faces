@@ -24,12 +24,172 @@ static const char *TAG = "taskflow";
 
 static bool g_mqtt_connect_flag = false;
 
-//TODO
-const char local_taskflow_gesture[] = "";
-const char local_taskflow_pet[] = "";
-const char local_taskflow_human[] = "{\"tlid\":1,\"ctd\":1,\"tn\":\"local human\",\"task_flow\":[{\"id\":1,\"type\":\"ai camera\",\"index\":0,\"version\":\"1.0.0\",\"params\":{\"model_type\":3,\"conditions\":[{\"class\":\"person\",\"mode\":1,\"type\":2,\"num\":0}],\"conditions_combo\":0,\"silent_period\":{\"repeat\":[1,1,1,1,1,1,1],\"time_start\":\"00:00:00\",\"time_end\":\"23:59:59\",\"silence_duration\":5},\"resolution\":0,\"shutter\":0},\"wires\":[[2]]},{\"id\":2,\"type\":\"alarm trigger\",\"index\":1,\"version\":\"1.0.0\",\"params\":{\"text\":\"person detected\",\"audio\":\"\"},\"wires\":[[3]]},{\"id\":3,\"type\":\"local alarm\",\"index\":2,\"version\":\"1.0.0\",\"params\":{\"sound\":1,\"rgb\":1,\"duration\":1},\"wires\":[[]]}]}";
+const char local_taskflow_gesture[] = \
+"{  \ 
+	\"tlid\": 1,    \  
+	\"ctd\": 1,    \  
+	\"tn\": \"Local Gesture Detection\",    \  
+	\"type\": 0,    \  
+	\"task_flow\": [{    \  
+		\"id\": 1,    \  
+		\"type\": \"ai camera\",    \  
+		\"index\": 0,    \  
+		\"version\": \"1.0.0\",    \  
+		\"params\": {    \  
+			\"model_type\": 3,    \  
+			\"modes\": 0,    \  
+			\"conditions\": [{    \  
+				\"class\": \"scissors\",    \  
+				\"mode\": 1,    \  
+				\"type\": 2,    \  
+				\"num\": 0    \  
+			}],    \  
+			\"conditions_combo\": 0,    \  
+			\"silent_period\": {    \  
+				\"silence_duration\": 5    \  
+			},    \  
+			\"output_type\": 0,    \  
+			\"shutter\": 0    \  
+		},    \  
+		\"wires\": [    \  
+			[2]    \  
+		]    \  
+	}, {    \  
+		\"id\": 2,    \  
+		\"type\": \"alarm trigger\",    \  
+		\"index\": 1,    \  
+		\"version\": \"1.0.0\",    \  
+		\"params\": {    \  
+			\"text\": \"scissors detected\",    \  
+			\"audio\": \"\"    \  
+		},    \  
+		\"wires\": [    \  
+			[3]    \  
+		]    \  
+	}, {    \  
+		\"id\": 3,    \  
+		\"type\": \"local alarm\",    \  
+		\"index\": 2,    \  
+		\"version\": \"1.0.0\",    \  
+		\"params\": {    \  
+			\"sound\": 1,    \  
+			\"rgb\": 1,    \  
+			\"duration\": 5    \  
+		},    \  
+		\"wires\": []    \  
+	}]    \  
+}";
 
-
+const char local_taskflow_pet[] = \
+"{  \ 
+	\"tlid\": 1,    \  
+	\"ctd\": 1,    \  
+	\"tn\": \"Local Pet Detection\",    \  
+	\"type\": 0,    \  
+	\"task_flow\": [{    \  
+		\"id\": 1,    \  
+		\"type\": \"ai camera\",    \  
+		\"index\": 0,    \  
+		\"version\": \"1.0.0\",    \  
+		\"params\": {    \  
+			\"model_type\": 2,    \  
+			\"modes\": 0,    \  
+			\"conditions\": [{    \  
+				\"class\": \"dog\",    \  
+				\"mode\": 1,    \  
+				\"type\": 2,    \  
+				\"num\": 0    \  
+			}],    \  
+			\"conditions_combo\": 0,    \  
+			\"silent_period\": {    \  
+				\"silence_duration\": 5    \  
+			},    \  
+			\"output_type\": 0,    \  
+			\"shutter\": 0    \  
+		},    \  
+		\"wires\": [    \  
+			[2]    \  
+		]    \  
+	}, {    \  
+		\"id\": 2,    \  
+		\"type\": \"alarm trigger\",    \  
+		\"index\": 1,    \  
+		\"version\": \"1.0.0\",    \  
+		\"params\": {    \  
+			\"text\": \"dog detected\",    \  
+			\"audio\": \"\"    \  
+		},    \  
+		\"wires\": [    \  
+			[3]    \  
+		]    \  
+	}, {    \  
+		\"id\": 3,    \  
+		\"type\": \"local alarm\",    \  
+		\"index\": 2,    \  
+		\"version\": \"1.0.0\",    \  
+		\"params\": {    \  
+			\"sound\": 1,    \  
+			\"rgb\": 1,    \  
+			\"duration\": 5    \  
+		},    \  
+		\"wires\": []    \  
+	}]    \  
+}";
+const char local_taskflow_human[] = \
+"{  \ 
+	\"tlid\": 1,    \  
+	\"ctd\": 1,    \  
+	\"tn\": \"Local Human Detection\",    \  
+	\"type\": 0,    \  
+	\"task_flow\": [{    \  
+		\"id\": 1,    \  
+		\"type\": \"ai camera\",    \  
+		\"index\": 0,    \  
+		\"version\": \"1.0.0\",    \  
+		\"params\": {    \  
+			\"model_type\": 1,    \  
+			\"modes\": 0,    \  
+			\"conditions\": [{    \  
+				\"class\": \"person\",    \  
+				\"mode\": 1,    \  
+				\"type\": 2,    \  
+				\"num\": 0    \  
+			}],    \  
+			\"conditions_combo\": 0,    \  
+			\"silent_period\": {    \  
+				\"silence_duration\": 5    \  
+			},    \  
+			\"output_type\": 0,    \  
+			\"shutter\": 0    \  
+		},    \  
+		\"wires\": [    \  
+			[2]    \  
+		]    \  
+	}, {    \  
+		\"id\": 2,    \  
+		\"type\": \"alarm trigger\",    \  
+		\"index\": 1,    \  
+		\"version\": \"1.0.0\",    \  
+		\"params\": {    \  
+			\"text\": \"human detected\",    \  
+			\"audio\": \"\"    \  
+		},    \  
+		\"wires\": [    \  
+			[3]    \  
+		]    \  
+	}, {    \  
+		\"id\": 3,    \  
+		\"type\": \"local alarm\",    \  
+		\"index\": 2,    \  
+		\"version\": \"1.0.0\",    \  
+		\"params\": {    \  
+			\"sound\": 1,    \  
+			\"rgb\": 1,    \  
+			\"duration\": 5    \  
+		},    \  
+		\"wires\": []    \  
+	}]    \  
+}";
 static void __task_flow_clean( void )
 {
     esp_err_t ret = ESP_OK;

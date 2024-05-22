@@ -165,6 +165,7 @@ int tf_parse_json_with_length(const char *p_str, size_t len,
         {
             p_list_head[i].p_wires = (struct tf_module_wires *)tf_malloc(sizeof(struct tf_module_wires) * output_port_num);
             ESP_GOTO_ON_FALSE(p_list_head[i].p_wires, ESP_ERR_NO_MEM, err, TAG, "malloc failed");
+            memset((void *)p_list_head[i].p_wires, 0, sizeof(struct tf_module_wires) * output_port_num);
             p_list_head[i].output_port_num = output_port_num;
 
             for (int m = 0; m < output_port_num; m++)

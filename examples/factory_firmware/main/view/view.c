@@ -10,6 +10,7 @@
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
 
+#include "tf_module_util.h"
 
 static const char *TAG = "view";
 
@@ -136,8 +137,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         case VIEW_EVENT_AI_CAMERA_PREVIEW:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_PREVIEW");
             struct tf_module_ai_camera_preview_info *p_info = ( struct tf_module_ai_camera_preview_info *)event_data;
-            view_image_preview_flush(&p_info);
-            free(p_info);
+            view_image_preview_flush(p_info);
+            tf_data_image_free(&p_info->img);
+            tf_data_inference_free(&p_info->inference);
         }
 
         default:
