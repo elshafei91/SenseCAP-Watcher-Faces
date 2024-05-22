@@ -736,8 +736,8 @@ void handle_taskflow_command(char *params)
         concatenate_data(result);
 
         printf("Final data: %s\n", result);
-        
-        free(result);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &result, sizeof(char*), portMAX_DELAY);
+        //free(result);
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);

@@ -15,7 +15,7 @@
 #include "app_wifi.h"
 
 
-#define DATA_LENGTH 20480
+#define DATA_LENGTH 10240
 #define AT_EVENTS_COMMAND_ID 0x6F
 #define AT_EVENTS_RESPONSE_ID 0x70
 #define MEMORY_SIZE (1024 * 200)
