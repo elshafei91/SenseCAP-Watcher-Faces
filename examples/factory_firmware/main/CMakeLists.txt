@@ -1,11 +1,5 @@
-# set(UI_DIR ./ui)
-# file(GLOB_RECURSE UI_SRCS ${UI_DIR}/*.c)
-
 set(APP_DIR ./app)
 file(GLOB_RECURSE APP_SRCS ${APP_DIR}/*.c)
-
-# set(UIMANAGER_DIR ./ui_manager)
-# file(GLOB_RECURSE UIMANAGER_SRCS ${UIMANAGER_DIR}/*.c)
 
 set(VIEW_DIR ./view)
 file(GLOB_RECURSE VIEW_SRCS ${VIEW_DIR}/*.c)

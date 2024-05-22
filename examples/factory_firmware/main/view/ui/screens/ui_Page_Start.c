@@ -19,7 +19,7 @@ void ui_Page_Start_screen_init(void)
     lv_obj_set_align(ui_startlogo, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_startlogo, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
     lv_obj_clear_flag(ui_startlogo, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_img_set_zoom(ui_startlogo, 300);
+    lv_img_set_zoom(ui_startlogo, 256);
 
     lv_obj_add_event_cb(ui_Page_Start, ui_event_Page_Start, LV_EVENT_ALL, NULL);
 

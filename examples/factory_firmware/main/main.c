@@ -20,12 +20,14 @@
 #include "app_sr.h"
 #include "app_audio.h"
 #include "app_wifi.h"
+#include "app_ble.h"
 #include "app_time.h"
 #include "app_cmd.h"
 #include "app_sensecap_https.h"
 #include "app_mqtt_client.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
+#include "app_device_info.h"
 #include "util.h"
 #include "app_ota.h"
 #include "app_taskflow.h"
@@ -109,15 +111,17 @@ int board_init(void)
 
 int app_init(void)
 {
+    app_device_info_init();
     app_taskflow_init();
     app_wifi_init();
+    app_ble_init();
     app_time_init();
     app_cmd_init();
-    app_rgb_init();
+    // //app_rgb_init();
     app_mqtt_client_init();
     app_sensecap_https_init();
     app_device_status_monitor_init();
-    // app_ota_init();
+    app_ota_init();
     app_sr_start(false);
 
     return ESP_OK;
@@ -127,7 +131,7 @@ void task_app_init(void *p_arg)
 {
     // UI init
     view_init();
-
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
     app_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
@@ -225,7 +229,7 @@ void app_main(void)
      * Component config -> Heap memory debugging -> Enable heap task tracking (Yes)
     */
 #ifdef CONFIG_HEAP_TASK_TRACKING
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(10));
         esp_dump_per_task_heap_info();
 #endif
 

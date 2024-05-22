@@ -31,7 +31,6 @@ extern lv_obj_t * ui_startlogo;
 void ui_Page_Vir_screen_init(void);
 void ui_event_Page_Vir(lv_event_t * e);
 extern lv_obj_t * ui_Page_Vir;
-extern lv_obj_t * ui_Panel1;
 // SCREEN: ui_Page_main
 void ui_Page_main_screen_init(void);
 void ui_event_Page_main(lv_event_t * e);
@@ -103,6 +102,7 @@ extern lv_obj_t * ui_wifichange;
 extern lv_obj_t * ui_wifibtnt;
 extern lv_obj_t * ui_wifip2;
 extern lv_obj_t * ui_wifissid2;
+extern lv_obj_t * ui_wifiimg;
 void ui_event_wificancel(lv_event_t * e);
 extern lv_obj_t * ui_wificancel;
 // SCREEN: ui_Page_nwifi
@@ -345,6 +345,7 @@ LV_IMG_DECLARE(ui_img_ble_png);    // assets\ble.png
 LV_IMG_DECLARE(ui_img_button_cancel_png);    // assets\button_cancel.png
 LV_IMG_DECLARE(ui_img_arrow_png);    // assets\arrow.png
 LV_IMG_DECLARE(ui_img_wifi_4_png);    // assets\wifi_4.png
+LV_IMG_DECLARE(ui_img_190291343);    // assets\wifi-Instructions.png
 LV_IMG_DECLARE(ui_img_error_png);    // assets\error.png
 LV_IMG_DECLARE(ui_img_template1_png);    // assets\template1.png
 LV_IMG_DECLARE(ui_img_template1_f_png);    // assets\template1_f.png
@@ -368,12 +369,11 @@ LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets\wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets\wifi_1.png
 LV_IMG_DECLARE(ui_img_wifi_2_png);    // assets\wifi_2.png
 LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets\wifi_3.png
-LV_IMG_DECLARE(ui_img_wifi_disconnect_png);
-LV_IMG_DECLARE(ui_img_human_d_png);
+LV_IMG_DECLARE(ui_img_wifi_disconnect_png);    // assets\wifi_nonnet.png
 LV_IMG_DECLARE(ui_img_gesture_d_png);
+LV_IMG_DECLARE(ui_img_human_d_png);
 LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_gradient_png);
-
 
 LV_FONT_DECLARE(ui_font_Font1);
 LV_FONT_DECLARE(ui_font_fontbold26);

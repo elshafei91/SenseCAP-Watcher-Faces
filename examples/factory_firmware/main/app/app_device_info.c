@@ -13,15 +13,30 @@
 
 #include "data_defs.h"
 #include "app_device_info.h"
-#include "system_layer.h"
+#include "storage.h"
+
+#include "sensecap-watcher.h"
 #define SN_TAG                    "SN_TAG"
 #define APP_DEVICE_INFO_MAX_STACK 4096
 
+#define BRIGHTNESS_STORAGE "brightnressvalue"
+
 uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
 uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0xC2, 0x44, 0x81, 0x00, 0x47, 0xB0, 0x47, 0xD1, 0xD5, 0x8B, 0xC7, 0xF8, 0xFB };
+char software_version[] = "1.0.0";       // Initialize software_version
+char himax_software_version[] = "1.0.0"; // Initialize himax_software_version
 int server_code = 1;
 int create_batch = 1000205;
+int brightness = 100;      // Initialize brightness
+int brightness_past = 100; // restore past brightness value
 SemaphoreHandle_t MUTEX_SN = NULL;
+SemaphoreHandle_t MUTEX_software_version;
+SemaphoreHandle_t MUTEX_himax_software_version;
+SemaphoreHandle_t MUTEX_brightness;
+
+static StackType_t *app_device_info_task_stack =NULL;
+static StaticTask_t app_device_info_task_buffer;
+
 
 void byteArrayToHexString(const uint8_t *byteArray, size_t byteArraySize, char *hexString)
 {
@@ -62,7 +77,7 @@ uint8_t *get_sn(int caller)
                 hexString1[32] = '\0';
                 hexString4[18] = '\0';
                 char final_string[150];
-                snprintf(final_string, sizeof(final_string), "w1:%s:0:%s:%s:%s", hexString1, storage_space_2, storage_space_3, hexString4);
+                snprintf(final_string, sizeof(final_string), "w1:%s:%s:%s:%s", hexString1, storage_space_2, storage_space_3, hexString4);
                 printf("SN: %s\n", final_string);
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, &final_string, sizeof(final_string), portMAX_DELAY);
                 xSemaphoreGive(MUTEX_SN);
@@ -72,27 +87,127 @@ uint8_t *get_sn(int caller)
     }
 }
 
+uint8_t *get_eui()
+{
+    return EUI;
+}
+
+uint8_t *get_brightness(int caller)
+{
+    ESP_LOGI("BRIGHTNESS_TAG", "get_brightness");
+
+    return NULL;
+}
+
+uint8_t *set_brightness(int caller, int value)
+{
+    ESP_LOGI("BRIGHTNESS_TAG", "set_brightness");
+    brightness_past = brightness;
+    brightness = value;
+    return NULL;
+}
+
+static int __set_brightness()
+{
+    if (brightness_past != brightness)
+    {
+        esp_err_t ret = 0;
+        ret = storage_write(BRIGHTNESS_STORAGE, (void *)&brightness, sizeof(int));
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE("", "cfg write err:%d", ret);
+            return ret;
+        }
+        BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(brightness));
+    }
+    return 0;
+}
+
+
+char *get_software_version(int caller)
+{
+    char *result = NULL;
+    if (xSemaphoreTake(MUTEX_software_version, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("get_software_version_TAG", "get_software_version: MUTEX_software_version take failed");
+        return NULL;
+    }
+    else
+    {
+        switch (caller)
+        {
+            case AT_CMD_CALLER:
+                ESP_LOGI(SN_TAG, "BLE get software version");
+                result = strdup(software_version);
+                xSemaphoreGive(MUTEX_software_version);
+                break;
+            case UI_CALLER:
+                ESP_LOGI(SN_TAG, "UI get software version");
+                char final_string[150];
+                snprintf(final_string, sizeof(final_string), "v%s", software_version);
+                printf("Software Version: %s\n", final_string);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
+                result = strdup(software_version);
+                xSemaphoreGive(MUTEX_software_version);
+                break;
+        }
+    }
+    return result;
+}
+
+char *get_himax_software_version(int caller)
+{
+    char *result = NULL;
+    if (xSemaphoreTake(MUTEX_himax_software_version, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("get_himax_software_version_TAG", "get_himax_software_version: MUTEX_himax_software_version take failed");
+        return NULL;
+    }
+    else
+    {
+        switch (caller)
+        {
+            case AT_CMD_CALLER:
+                ESP_LOGI(SN_TAG, "BLE get himax software version");
+                result = strdup(himax_software_version);
+                xSemaphoreGive(MUTEX_himax_software_version);
+                break;
+            case UI_CALLER:
+                ESP_LOGI(SN_TAG, "UI get himax software version");
+                char final_string[150];
+                snprintf(final_string, sizeof(final_string), "v%s", himax_software_version);
+                printf("Himax Software Version: %s\n", final_string);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
+                result = strdup(himax_software_version);
+                xSemaphoreGive(MUTEX_himax_software_version);
+                break;
+        }
+    }
+    return result;
+}
+
 void app_device_info_task(void *pvParameter)
 {
+    MUTEX_brightness = xSemaphoreCreateBinary();
     MUTEX_SN = xSemaphoreCreateBinary();
+    MUTEX_software_version = xSemaphoreCreateBinary();
+    MUTEX_himax_software_version = xSemaphoreCreateBinary(); // Initialize MUTEX_himax_software_version
+    xSemaphoreGive(MUTEX_software_version);
+    xSemaphoreGive(MUTEX_himax_software_version);
     xSemaphoreGive(MUTEX_SN);
+    xSemaphoreGive(MUTEX_brightness);
     while (1)
     {
-        // efuse read function
+        // efuse or nvs read function
+        //__set_brightness();
+        // read and init brightness
+
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
 void app_device_info_init()
 {
-    // StaticTask_t app_device_info_layer_task_buffer;
-    // StackType_t *app_device_info_layer_stack_buffer = heap_caps_malloc(APP_DEVICE_INFO_MAX_STACK * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    // xTaskCreateStatic(&app_device_info_task,
-    //     "app_device_info_task",             // wifi_config_layer
-    //     APP_DEVICE_INFO_MAX_STACK,    // 1024*5
-    //     NULL,                            // NULL
-    //     4,                               // 10
-    //     app_device_info_layer_stack_buffer,  // wifi_config_layer_stack_buffer
-    //     &app_device_info_layer_task_buffer); // wifi_config_layer_task_buffer
-    xTaskCreate(&app_device_info_task, "app_device_info_task", 4096, NULL, 5, NULL);
+    app_device_info_task_stack =(StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t),MALLOC_CAP_SPIRAM);
+    TaskHandle_t task_handle =xTaskCreateStatic(&app_device_info_task, "app_device_info_task", 4096, NULL, 5, app_device_info_task_stack, &app_device_info_task_buffer);
 }

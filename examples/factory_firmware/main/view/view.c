@@ -1,13 +1,11 @@
 #include "view.h"
 #include "view_image_preview.h"
 #include "view_alarm.h"
-#include "view_status_bar.h"
 #include "sensecap-watcher.h"
 
 #include "util.h"
 #include "ui/ui_helpers.h"
 #include <time.h>
-#include "system_layer.h"
 #include "app_device_info.h"
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
@@ -16,29 +14,8 @@
 static const char *TAG = "view";
 
 char sn_data[66];
+uint8_t wifi_page_id;
 
-// void emoticon_png_play(lv_timer_t * timer)
-// {
-//     static uint8_t file_idx;
-//     lv_obj_t *img = lv_img_create(lv_scr_act());
-//     struct view_data_emoticon_display * user_data = timer->user_data;
-//     const char *file_name = user_data->file_names[file_idx];
-//     char *file_name_with_path = (char *) heap_caps_malloc(256, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-
-//     if (NULL != file_name_with_path) {
-//         strcpy(file_name_with_path, "S:/spiffs/");
-//         strcat(file_name_with_path, file_name);
-
-//         /* Set src of image with file name */
-//         lv_img_set_zoom(img, 0.5);
-//         lv_img_set_src(img, file_name_with_path);
-//         file_idx++;
-//         if(file_idx==user_data->file_count){
-//             file_idx = 0;
-//         }
-//         free(file_name_with_path);
-//     }
-// }
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
 {
@@ -68,13 +45,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             
             time_t now = 0;
             struct tm timeinfo = { 0 };
-            char *p_wday_str;
 
             time(&now);
             localtime_r(&now, &timeinfo);
-            // char buf_h[3];
-            // char buf_m[3];
-            // char buf[6];
             int hour = timeinfo.tm_hour;
 
             if( ! time_format_24 ) {
@@ -92,6 +65,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             ESP_LOGI("view", "event: VIEW_EVENT_WIFI_ST");
             struct view_data_wifi_st *p_st = ( struct view_data_wifi_st *)event_data;
             uint8_t *p_src =NULL;
+            if ( p_st->past_connected)
+            {
+                wifi_page_id = 1;
+            }else{
+                wifi_page_id = 0;
+            }
             if ( p_st->is_network ) {
                 switch (wifi_rssi_level_get( p_st->rssi )) {
                     case 1:
@@ -119,7 +98,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         }
         case VIEW_EVENT_SN_CODE:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_SN_CODE");
-         
             const char* _sn_data = (const char*)event_data;
             strncpy(sn_data, _sn_data, 66);
             sn_data[66] = '\0';
@@ -155,16 +133,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             break;
         }
 
-        case VIEW_EVENT_EMOTICON:{
-            ESP_LOGI(TAG, "event: VIEW_EVENT_EMOTICON");
-            struct view_data_emoticon_display *emo_data = (struct view_data_emoticon_display*)event_data;
-            for (uint8_t i = 0; i < emo_data->file_count; i++)
-            {
-                ESP_LOGI(TAG, "%s", emo_data->file_names[i]);
-            }
-            // lv_timer_create(emoticon_png_play, 1000, emo_data);
-
-            break;
+        case VIEW_EVENT_AI_CAMERA_PREVIEW:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_PREVIEW");
+            struct tf_module_ai_camera_preview_info *p_info = ( struct tf_module_ai_camera_preview_info *)event_data;
+            view_image_preview_flush(&p_info);
+            free(p_info);
         }
 
         default:
@@ -179,8 +152,7 @@ int view_init(void)
     ui_init();
     lv_pm_init();
     view_alarm_init(lv_layer_top());
-    // view_alarm_off();
-    // view_image_preview_init(ui_Page_ViewLive);
+    view_image_preview_init(ui_Page_ViewLive);
     lvgl_port_unlock();
     
 
@@ -192,7 +164,15 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
                                                             __view_event_handler, NULL, NULL));   
+                                                            
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, 
+                                                            __view_event_handler, NULL, NULL));   
 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE, 
+                                                            __view_event_handler, NULL, NULL)); 
+                                                            
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, 
                                                             __view_event_handler, NULL, NULL));                                                                                                                 
@@ -211,11 +191,11 @@ int view_init(void)
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
-                                                            __view_event_handler, NULL, NULL));  
-    
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-                                                            VIEW_EVENT_BASE, VIEW_EVENT_EMOTICON, 
                                                             __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_AI_CAMERA_PREVIEW, 
+                                                            __view_event_handler, NULL, NULL)); 
 
     return 0;
 }

@@ -9,18 +9,8 @@ void ui_Page_Vir_screen_init(void)
 {
     ui_Page_Vir = lv_obj_create(NULL);
     lv_obj_clear_flag(ui_Page_Vir, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-
-    ui_Panel1 = lv_obj_create(ui_Page_Vir);
-    lv_obj_set_width(ui_Panel1, 412);
-    lv_obj_set_height(ui_Panel1, 412);
-    lv_obj_set_align(ui_Panel1, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_Panel1, LV_OBJ_FLAG_EVENT_BUBBLE);     /// Flags
-    lv_obj_clear_flag(ui_Panel1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_Panel1, 200, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_Panel1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Panel1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_Panel1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_Panel1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_Page_Vir, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Vir, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_Page_Vir, ui_event_Page_Vir, LV_EVENT_ALL, NULL);
 

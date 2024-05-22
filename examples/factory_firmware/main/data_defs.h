@@ -36,7 +36,8 @@ struct view_data_wifi_st
 {
     bool   is_connected;
     bool   is_connecting;
-    bool   is_network;  //is network ping-able to internet?
+    bool   past_connected;
+    bool   is_network;  //is connect network
     char   ssid[32];
     int8_t rssi;
     wifi_auth_mode_t authmode;
@@ -65,9 +66,9 @@ struct view_data_wifi_list
     struct view_data_wifi_item aps[WIFI_SCAN_LIST_SIZE];
 };
 
-struct view_data_wifi_connect_result_msg 
+struct view_data_wifi_connet_ret_msg 
 {
-    uint8_t result; //0:successfull , 1: failure
+    uint8_t ret; //0:successfull , 1: failure
     char    msg[64];
 };
 
@@ -154,9 +155,8 @@ struct view_data_emoticon_display
 {
     char file_names[MAX_PNG_FILES][256];
     uint8_t file_count;
-};
+};// struct view_data_emoticon_display
 
-extern char sn_data[66];
 
 //OTA
 struct view_data_ota_status
@@ -165,6 +165,7 @@ struct view_data_ota_status
     int     percentage;   //percentage progress, this is for download, not flash
     int     err_code;     //enum esp_err_t, refer to app_ota.h for detailed error code define
 };
+
 
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
@@ -176,15 +177,16 @@ enum {
     VIEW_EVENT_SCREEN_START = 0,  // uint8_t, enum start_screen, which screen when start
 
     VIEW_EVENT_TIME,      // bool time_format_24
-    
+    VIEW_EVENT_TIME_ZONE,   // int8_t zone
     VIEW_EVENT_BATTERY_ST,// battery changed event
 
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
-
-    VIEW_EVENT_SN_CODE,     // generate ble pairing data
-    VIEW_EVENT_BLE_STATUS,  // bool 0:ble_off; 1:ble_on
-    VIEW_EVENT_EMOTICON,    // struct view_data_emoticon_display
+                            //device_info            
+    VIEW_EVENT_SN_CODE,
+    VIEW_EVENT_BLE_STATUS,
+    VIEW_EVENT_SOFTWARE_VERSION_CODE,
+    VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE,
     
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
@@ -212,10 +214,8 @@ enum {
 
     VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL
-        
-    VIEW_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
-    VIEW_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
-    VIEW_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
+
+    VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status
 
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
@@ -225,8 +225,12 @@ enum {
     VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
     VIEW_EVENT_ALL,
 };
-
-
+//config caller
+enum {
+    UI_CALLER,
+    AT_CMD_CALLER,
+    BLE_CALLER
+};
 /************************************************
  * Control Data Defines
 *************************************************/
@@ -246,11 +250,15 @@ enum {
 enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
     CTRL_EVENT_MQTT_CONNECTED,
-    CTRL_EVENT_MQTT_TASKLIST_JSON,          //received tasklist json from MQTT
     
     CTRL_EVENT_TASK_FLOW_START_BY_MQTT, // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_BLE,  // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_SR,   // char * , taskflow json, There can only be one listener
+
+    CTRL_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
+    CTRL_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
+    CTRL_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
+
     CTRL_EVENT_ALL,
 };
 
