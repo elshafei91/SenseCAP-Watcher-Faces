@@ -33,7 +33,7 @@ static int ble_status = BLE_DISCONNECTED;
 static uint8_t char1_str[] = { 0x11, 0x22, 0x33 };
 static uint8_t char2_str[] = { 0x44, 0x55, 0x66 };
 
-uint8_t watcher_sn_buffer[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
+uint8_t watcher_sn_buffer[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x11 };
 uint8_t watcher_name[] = { '-', 'W', 'A', 'C', 'H' };
 uint8_t adv_config_done = 0;
 uint8_t watcher_adv_data_RAW[] = { 0x05, 0x03, 0x86, 0x28, 0x86, 0xA8, 0x18, 0x09 };
@@ -231,7 +231,7 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
             }
             if (status == ESP_GATT_OK && prepare_write_env->prepare_buf == NULL)
             {
-                prepare_write_env->prepare_buf = heap_caps_malloc(PREPARE_BUF_MAX_SIZE * sizeof(uint8_t), MALLOC_CAP_SPIRAM);
+                prepare_write_env->prepare_buf = heap_caps_calloc(1,PREPARE_BUF_MAX_SIZE * sizeof(uint8_t), MALLOC_CAP_SPIRAM);
 
                 prepare_write_env->prepare_len = 0;
                 if (prepare_write_env->prepare_buf == NULL)
@@ -291,13 +291,20 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
 {
     if (prepare_write_env->prepare_buf)
     {
-        message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
-
+        // message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
+        message_event_t msg_at;
+        msg_at.size = prepare_write_env->prepare_len;
+        msg_at.msg = (uint8_t *)heap_caps_malloc(msg_at.size + 1, MALLOC_CAP_SPIRAM);
+        memcpy(msg_at.msg, prepare_write_env->prepare_buf, msg_at.size);
         size_t xBytesSent;
-        xBytesSent = xStreamBufferSend(xStreamBuffer, (void *)&msg_at, sizeof(msg_at), pdMS_TO_TICKS(1000));
-        if (xBytesSent != sizeof(msg_at))
+        // xBytesSent = xStreamBufferSend(xStreamBuffer, (void *)&msg_at, sizeof(msg_at), pdMS_TO_TICKS(1000));
+        if (xQueueSend(message_queue, &msg_at, portMAX_DELAY) != pdPASS)
         {
-            printf("Failed to send the complete message.\n");
+            printf("Failed to send message to queue\n");
+        }
+        else
+        {
+            printf("Message sent to queue\n");
         }
         uint32_t ulNotificationValue;
         xTaskToNotify_AT = xTaskGetCurrentTaskHandle();
@@ -366,23 +373,26 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     }
     if (prepare_write_env->prepare_buf)
     {
-        message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
-        size_t xBytesSent;
-        xBytesSent = xStreamBufferSend(xStreamBuffer, (void *)&msg_at, sizeof(msg_at), portMAX_DELAY);
-        if (xBytesSent != sizeof(msg_at))
+        message_event_t msg_at;
+        msg_at.size = prepare_write_env->prepare_len;
+        msg_at.msg = (uint8_t *)heap_caps_malloc(msg_at.size , MALLOC_CAP_SPIRAM);
+        memcpy(msg_at.msg, prepare_write_env->prepare_buf, msg_at.size);
+        esp_log_buffer_hex("TEST", msg_at.msg, msg_at.size);
+        if (xQueueSend(message_queue, &msg_at, portMAX_DELAY) != pdPASS)
         {
-            printf("Failed to send the complete message.\n");
+            printf("Failed to send message to queue\n");
         }
         else
         {
-            printf("Message sent successfully. Length: %d\n", msg_at.size);
+            printf("Message sent to queue\n");
         }
+        free(prepare_write_env->prepare_buf);
+        prepare_write_env->prepare_buf = NULL;
 
         uint32_t ulNotificationValue;
         xTaskToNotify_AT = xTaskGetCurrentTaskHandle();
         ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000)); // Do not change the timeout
-        free(prepare_write_env->prepare_buf);
-        prepare_write_env->prepare_buf = NULL;
+
         AT_Response msg_at_response;
         if (xQueueReceive(AT_response_queue, &msg_at_response, portMAX_DELAY) == pdTRUE)
         {

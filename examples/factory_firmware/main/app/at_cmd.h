@@ -19,32 +19,34 @@
 #define AT_EVENTS_COMMAND_ID 0x6F
 #define AT_EVENTS_RESPONSE_ID 0x70
 #define MEMORY_SIZE (1024 * 200)
-
+#define MESSAGE_QUEUE_SIZE 10
 typedef struct {
     char command_name[100];  // Assuming the command name will not exceed 100 characters
     void (*func)(char *params);  // Function pointer to the function that will process the command
     UT_hash_handle hh;  // Makes this structure hashable
 } command_entry;
 
-#pragma pack(push, 1)
 typedef struct {
     uint8_t *msg;
     int size;
 } message_event_t;
-#pragma pack(pop)
+
 
 typedef struct {
     char *response;
     int length;
 } AT_Response;
 
+
+
+
 extern SemaphoreHandle_t AT_response_semaphore;
 extern QueueHandle_t AT_response_queue;
+extern QueueHandle_t message_queue;
 
 
 
-
-extern esp_event_base_t const AT_EVENTS;
+//extern esp_event_base_t const AT_EVENTS;
 static const char *AT_EVENTS_TAG = "AT_EVENTS";
 extern StreamBufferHandle_t xStreamBuffer;
 extern TaskHandle_t xTaskToNotify_AT;

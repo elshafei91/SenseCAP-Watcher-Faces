@@ -45,14 +45,13 @@ static wifi_ap_record_t current_connected_wifi;
 
 typedef struct
 {
-    char *name;
     int package;
     int sum;
     char *data;
 } Task;
 
 Task *tasks = NULL;
-int num_jsons = 0;
+static int num_jsons = 0;
 /*----------------------------------------------------------------------------------------*/
 
 /**
@@ -598,8 +597,17 @@ void parse_json_and_concatenate(char *json_string)
     if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data))
     {
         printf("Invalid JSON format\n");
-        cJSON_Delete(json);
+        cJSON_Delete(json); 
     }
+
+    int index = package->valueint;
+
+
+    // if (index < 0 || index >= num_jsons)
+    // {
+    //     printf("Index out of range: %d\n", index);
+    //     cJSON_Delete(json); 
+    // }
 
     if (num_jsons == 0)
     {
@@ -610,23 +618,17 @@ void parse_json_and_concatenate(char *json_string)
             printf("Failed to allocate memory for tasks\n");
             cJSON_Delete(json);
         }
-
-        // init
         for (int i = 0; i < num_jsons; i++)
         {
-            tasks[i].name = NULL;
             tasks[i].data = NULL;
         }
     }
 
-    int index = package->valueint;
-    tasks[index].name = (char *)heap_caps_malloc(strlen(name->valuestring) + 1, MALLOC_CAP_SPIRAM);
-    if (tasks[index].name == NULL)
+    if (tasks == NULL || index < 0 || index >= num_jsons)
     {
-        printf("Failed to allocate memory for name\n");
+        printf("Tasks array is not properly allocated or index out of range\n");
         cJSON_Delete(json);
     }
-    strcpy(tasks[index].name, name->valuestring);
 
     tasks[index].package = package->valueint;
     tasks[index].sum = sum->valueint;
@@ -634,7 +636,6 @@ void parse_json_and_concatenate(char *json_string)
     if (tasks[index].data == NULL)
     {
         printf("Failed to allocate memory for data\n");
-        free(tasks[index].name);
         cJSON_Delete(json);
     }
     strncpy(tasks[index].data, data->valuestring, DATA_LENGTH);
@@ -675,9 +676,8 @@ void concatenate_data(char *result)
     {
         strcat(result, tasks[i].data);
         free(tasks[i].data);
-        free(tasks[i].name);
     }
-
+    num_jsons = 0;
     free(tasks);
     tasks = NULL;
 }
@@ -722,22 +722,21 @@ void handle_taskflow_command(char *params)
     }
     if (all_received)
     {
-        char *result = (char *)heap_caps_malloc(DATA_LENGTH * num_jsons + 1, MALLOC_CAP_SPIRAM); // 根据sum动态分配内存
+        char *result = (char *)heap_caps_malloc(DATA_LENGTH * num_jsons + 1, MALLOC_CAP_SPIRAM); 
         if (result == NULL)
         {
             printf("Failed to allocate memory for result\n");
             for (int k = 0; k < num_jsons; k++)
             {
-                free(tasks[k].name);
                 free(tasks[k].data);
             }
-            free(tasks);
+            //free(tasks);
         }
 
         concatenate_data(result);
 
         printf("Final data: %s\n", result);
-
+        
         free(result);
     }
 
@@ -786,6 +785,8 @@ static void hex_to_string(uint8_t *hex, int hex_size, char *output)
  *
  * This task is declared static, indicating that it is intended to be used only within the file it is defined in,and placed in PSRAM
  */
+
+QueueHandle_t message_queue;
 void task_handle_AT_command()
 {
     while (1)
@@ -793,67 +794,68 @@ void task_handle_AT_command()
         size_t memory_size = MEMORY_SIZE;
         size_t xReceivedBytes;
         message_event_t msg_at;
-        xReceivedBytes = xStreamBufferReceive(xStreamBuffer, &msg_at, sizeof(msg_at), portMAX_DELAY);
-
-        if (xReceivedBytes > 0)
+        // xReceivedBytes = xStreamBufferReceive(xStreamBuffer, &msg_at, sizeof(msg_at), portMAX_DELAY);
+        if (xQueueReceive(message_queue, &msg_at, portMAX_DELAY) == pdPASS)
         {
-            if (xReceivedBytes != sizeof(msg_at))
-            {
-                printf("Received incomplete message. Expected: %d, Received: %d\n", sizeof(msg_at), xReceivedBytes);
-                continue;
-            }
-            char *test_strings = (char *)heap_caps_malloc(memory_size + 1, MALLOC_CAP_SPIRAM);
-            memcpy(test_strings, msg_at.msg, msg_at.size);
-            test_strings[msg_at.size] = '\0';
-
-            if (test_strings == NULL)
-            {
-                printf("Memory allocation failed\n");
-            }
-            printf("AT command received\n");
-            hex_to_string(msg_at.msg, msg_at.size, test_strings);
-            printf("recv: %.*s\n", 1024, test_strings);
-            regex_t regex;
-            int ret;
-            ret = regcomp(&regex, pattern, REG_EXTENDED);
-            if (ret)
-            {
-                printf("Could not compile regex\n");
-            }
-            regmatch_t matches[4];
-            ret = regexec(&regex, test_strings, 4, matches, 0);
-            if (!ret)
-            {
-                printf("recv_in match: %.*s\n", 1024, test_strings);
-                char command_type[20];
-                snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
-
-                size_t data_size = 100 * 1024; // 100K
-                char *params = (char *)heap_caps_malloc(data_size + 1, MALLOC_CAP_SPIRAM);
-                if (matches[3].rm_so != -1)
-                {
-                    int length = (int)(matches[3].rm_eo - matches[3].rm_so);
-                    snprintf(params, length + 1, "%.*s", (int)(matches[3].rm_eo - matches[3].rm_so), test_strings + matches[3].rm_so);
-                    printf("Matched string: %.50s... (total length: %d)\n", params, length);
-                }
-                char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
-                exec_command(&commands, command_type, params, query_type);
-            }
-            else if (ret == REG_NOMATCH)
-            {
-                printf("No match: %s\n", test_strings);
-            }
-            else
-            {
-                char errbuf[100];
-                regerror(ret, &regex, errbuf, sizeof(errbuf));
-                printf("Regex match failed: %s\n", errbuf);
-            }
-            free(test_strings);
-            regfree(&regex);
-            vTaskDelay(500 / portTICK_PERIOD_MS);
-            xTaskNotifyGive(xTaskToNotify_AT);
+            printf("Received message: %s\n", msg_at.msg);
         }
+        else
+        {
+            printf("Failed to receive message from queue\n");
+        }
+
+        char *test_strings = (char *)heap_caps_malloc(msg_at.size+1, MALLOC_CAP_SPIRAM);
+        memcpy(test_strings, msg_at.msg, msg_at.size);
+        test_strings[msg_at.size] = '\0';
+
+        if (test_strings == NULL)
+        {
+            printf("Memory allocation failed\n");
+        }
+        printf("AT command received\n");
+        esp_log_buffer_hex("HEX TAG1",test_strings,strlen(test_strings));
+        //hex_to_string(msg_at.msg, msg_at.size, test_strings);
+        //printf("recv: %.*s\n", 1024, test_strings);
+        regex_t regex;
+        int ret;
+        ret = regcomp(&regex, pattern, REG_EXTENDED);
+        if (ret)
+        {
+            printf("Could not compile regex\n");
+        }
+        regmatch_t matches[4];
+        ret = regexec(&regex, test_strings, 4, matches, 0);
+        if (!ret)
+        {
+            printf("recv_in match: %.*s\n", 1024, test_strings);
+            char command_type[20];
+            snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
+
+            size_t data_size = 100 * 1024; // 100K
+            char *params = (char *)heap_caps_malloc(data_size + 1, MALLOC_CAP_SPIRAM);
+            if (matches[3].rm_so != -1)
+            {
+                int length = (int)(matches[3].rm_eo - matches[3].rm_so);
+                snprintf(params, length + 1, "%.*s", (int)(matches[3].rm_eo - matches[3].rm_so), test_strings + matches[3].rm_so);
+                printf("Matched string: %.50s... (total length: %d)\n", params, length);
+            }
+            char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
+            exec_command(&commands, command_type, params, query_type);
+        }
+        else if (ret == REG_NOMATCH)
+        {
+            printf("No match: %s\n", test_strings);
+        }
+        else
+        {
+            char errbuf[100];
+            regerror(ret, &regex, errbuf, sizeof(errbuf));
+            printf("Regex match failed: %s\n", errbuf);
+        }
+        free(test_strings);
+        regfree(&regex);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+        xTaskNotifyGive(xTaskToNotify_AT);
     }
 }
 
@@ -864,14 +866,15 @@ void task_handle_AT_command()
  * receiving messages and starts the `task_handle_AT_command` task to process these messages.
  */
 
-
 void init_at_cmd_task(void)
 {
-    //xStreamBuffer = xStreamBufferCreate(10240, sizeof(message_event_t));
-    xStreamBuffer= xStreamBufferCreateWithCaps(10240,sizeof(message_event_t),MALLOC_CAP_SPIRAM);
-    if (xStreamBuffer == NULL)
+    // xStreamBuffer = xStreamBufferCreate(10240, sizeof(message_event_t));
+    // xStreamBuffer = xStreamBufferCreateWithCaps(10240, sizeof(message_event_t), MALLOC_CAP_SPIRAM);
+    message_queue = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(message_event_t));
+    if (message_queue == NULL)
     {
-        printf("Failed to create the stream buffer.\n");
+        printf("Failed to create queue\n");
+        return;
     }
     at_task_stack = (StackType_t *)heap_caps_malloc(10240 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     if (at_task_stack == NULL)
@@ -879,21 +882,14 @@ void init_at_cmd_task(void)
         printf("Failed to allocate memory for WiFi task stack\n");
         return;
     }
-        TaskHandle_t at_task_handle = xTaskCreateStatic(
-        task_handle_AT_command,      
-        "wifi_config_entry",    
-        10240,                   
-        NULL,                   
-        9,                      
-        at_task_stack,        
-        &at_task_buffer       
-    );
+    TaskHandle_t at_task_handle = xTaskCreateStatic(task_handle_AT_command, "wifi_config_entry", 10240, NULL, 9, at_task_stack, &at_task_buffer);
 
-    if (at_task_handle == NULL) {
+    if (at_task_handle == NULL)
+    {
         printf("Failed to create WiFi task\n");
         free(at_task_handle);
         at_task_handle = NULL;
-    }    
+    }
 }
 
 /**
