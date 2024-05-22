@@ -118,8 +118,8 @@ void initGroup()
     // define objects array
     lv_obj_t * main_objects[]        = {ui_mainbtn1, ui_mainbtn2, ui_mainbtn3, ui_mainbtn4};
     lv_obj_t * template_objects[]    = {ui_menubtn1, ui_menubtn2, ui_menubtn3, ui_menubtn4};
-    lv_obj_t * set_objects[]         = {ui_setback, ui_setapp, ui_setwifi, ui_setble, ui_setvol, ui_setbri,
-                                            ui_setrgb, ui_setww,ui_setdev, ui_setdown, ui_setfac};
+    lv_obj_t * set_objects[]         = {ui_setback, ui_setapp, ui_setwifi, ui_setble, ui_setvol, ui_setbri,ui_settime,
+                                        ui_setrgb, ui_setww,ui_setdev, ui_setdown, ui_setfac};
     lv_obj_t * view_objects[]        = {ui_Page_ViewAva, ui_Page_ViewLive};
     lv_obj_t * ha_objects[]          = {ui_Page_HA};
 

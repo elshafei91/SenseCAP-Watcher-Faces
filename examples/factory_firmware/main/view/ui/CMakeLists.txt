@@ -5,7 +5,6 @@ SET(SOURCES components/ui_comp_menucomponent.c
     screens/ui_Page_main.c
     screens/ui_Page_Connect.c
     screens/ui_Page_Wifi.c
-    screens/ui_Page_nwifi.c
     screens/ui_Page_CurTask1.c
     screens/ui_Page_CurTask2.c
     screens/ui_Page_CurTask3.c
@@ -16,8 +15,9 @@ SET(SOURCES components/ui_comp_menucomponent.c
     screens/ui_Page_brivol.c
     screens/ui_Page_SAbout.c
     screens/ui_Page_Swipe.c
-    screens/ui_Page_STime.c
     screens/ui_Page_HA.c
+    screens/ui_Page_OTA.c
+    screens/ui_Page_Slpt.c
     ui.c
     components/ui_comp_hook.c
     ui_helpers.c
@@ -33,17 +33,17 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_setting_f_png.c
     images/ui_img_wifi_nonnet_png.c
     images/ui_img_wifi_disconnect_png.c
-    images/ui_img_human_d_png.c
-    images/ui_img_gesture_d_png.c
-    images/ui_img_dog_d_png.c
-    images/ui_img_gradient_png.c
     images/ui_img_battery_5_png.c
     images/ui_img_ble_png.c
     images/ui_img_button_cancel_png.c
     images/ui_img_arrow_png.c
     images/ui_img_wifi_4_png.c
     images/ui_img_190291343.c
-    images/ui_img_error_png.c
+    images/ui_img_setback_png.c
+    images/ui_img_brighticon_png.c
+    images/ui_img_gesture_d_png.c
+    images/ui_img_dog_d_png.c
+    images/ui_img_gradient_png.c
     images/ui_img_template1_png.c
     images/ui_img_template1_f_png.c
     images/ui_img_template2_png.c
@@ -58,10 +58,10 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_pet_png.c
     images/ui_img_gesture_png.c
     images/ui_img_880045930.c
-    images/ui_img_template_add_png.c
-    images/ui_img_setback_png.c
+    images/ui_img_human_d_png.c
+    images/ui_img_volicon_png.c
     images/ui_img_swipe_png.c
-    images/ui_img_left_png.c
+    images/ui_img_wifiok_png.c
     images/ui_img_wifi_0_png.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c

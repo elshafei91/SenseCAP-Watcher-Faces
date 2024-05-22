@@ -102,11 +102,6 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
         return -1;
     }
 
-    if (!p_info->inference.is_valid)
-    {
-        return -1;
-    }
-
     ret = mbedtls_base64_decode(image_buf, IMG_412_412_BUF_SIZE, &output_len, p_info->img.p_buf, p_info->img.len);
     if (ret != 0)
     {
@@ -117,6 +112,11 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
     img_dsc.data_size = output_len;
     img_dsc.data = image_buf;
     lv_img_set_src(ui_image, &img_dsc);
+
+    if (!p_info->inference.is_valid)
+    {
+        return -1;
+    }
 
     switch (p_info->inference.type)
     {

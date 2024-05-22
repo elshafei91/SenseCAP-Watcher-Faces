@@ -251,6 +251,7 @@ void viewac_cb(lv_event_t * e)
 void viewaf_cb(lv_event_t * e)
 {
 	_ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+	
 }
 
 void ava1c_cb(lv_event_t * e)
@@ -381,6 +382,11 @@ void mgesdown_cb(lv_event_t * e)
 	lv_group_focus_prev(g_main);
 }
 
+void vieback_cb(lv_event_t * e)
+{
+
+}
+
 void lgesleft_cb(lv_event_t * e)
 {
 	lv_group_focus_next(g_main);
@@ -403,6 +409,16 @@ void lclick_cb(lv_event_t * e)
 	lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
 }
 
+void lunlds_cb(lv_event_t * e)
+{
+
+}
+
+void lunlded_cb(lv_event_t * e)
+{
+
+}
+
 void custb1c_cb(lv_event_t * e)
 {
 
@@ -410,8 +426,7 @@ void custb1c_cb(lv_event_t * e)
 
 void custb1f_cb(lv_event_t * e)
 {
-	lv_label_set_text(ui_Label1, "Template\n1");
-	lv_obj_set_style_bg_img_src(ui_mimgp, &ui_img_template_add_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+
 }
 
 void custb1df_cb(lv_event_t * e)
@@ -426,8 +441,7 @@ void custb2c_cb(lv_event_t * e)
 
 void custb2f_cb(lv_event_t * e)
 {
-	lv_label_set_text(ui_Label1, "Template\n2");
-	lv_obj_set_style_bg_img_src(ui_mimgp, &ui_img_template_add_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+
 }
 
 void custb2df_cb(lv_event_t * e)
@@ -442,8 +456,7 @@ void custb3c_cb(lv_event_t * e)
 
 void custb3f_cb(lv_event_t * e)
 {
-	lv_label_set_text(ui_Label1, "Template\n3");
-	lv_obj_set_style_bg_img_src(ui_mimgp, &ui_img_template_add_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+
 }
 
 void custb3df_cb(lv_event_t * e)
@@ -520,17 +533,18 @@ void setvolc_cb(lv_event_t * e)
 {
 	lv_label_set_text(ui_bvtitle, "Sound");
 	lv_label_set_text(ui_bvbt, "Volume");
+	lv_img_set_src(ui_bvbimg, &ui_img_volicon_png);
 	lv_obj_add_flag(ui_bp, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_clear_flag(ui_vp, LV_OBJ_FLAG_HIDDEN);
 
-	esp_err_t ret = 0;
-	size_t len = sizeof(volbri);
-	ret = storage_read(VOLBRI_CFG, (void *)&volbri, &len);
-	if( ret == ESP_OK && len == sizeof(volbri))
-	{
-		ESP_LOGI(TAG, "cfg read successful");
-		lv_slider_set_value(ui_vslider, volbri.vs_value, LV_ANIM_OFF);
-	}
+	// esp_err_t ret = 0;
+	// size_t len = sizeof(volbri);
+	// ret = storage_read(VOLBRI_CFG, (void *)&volbri, &len);
+	// if( ret == ESP_OK && len == sizeof(volbri))
+	// {
+	// 	ESP_LOGI(TAG, "cfg read successful");
+	// 	lv_slider_set_value(ui_vslider, volbri.vs_value, LV_ANIM_OFF);
+	// }
 
 	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
 	lv_event_send(ui_vslider, LV_EVENT_VALUE_CHANGED, NULL);
@@ -550,17 +564,18 @@ void setbric_cb(lv_event_t * e)
 {
 	lv_label_set_text(ui_bvtitle, "Display");
 	lv_label_set_text(ui_bvbt, "Brightness");
+	lv_img_set_src(ui_bvbimg, &ui_img_brighticon_png);
 	lv_obj_clear_flag(ui_bp, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_add_flag(ui_vp, LV_OBJ_FLAG_HIDDEN);
 
-	esp_err_t ret = 0;
-	static size_t len = sizeof(volbri);
-	volbri.bs_value = get_brightness(0);
-	if( ret == ESP_OK && len == sizeof(volbri))
-	{
-		ESP_LOGI(TAG, "cfg read successful");
-		lv_slider_set_value(ui_bslider, volbri.bs_value, LV_ANIM_OFF);
-	}
+	// esp_err_t ret = 0;
+	// static size_t len = sizeof(volbri);
+	// volbri.bs_value = get_brightness(0);
+	// if( ret == ESP_OK && len == sizeof(volbri))
+	// {
+	// 	ESP_LOGI(TAG, "cfg read successful");
+	// 	lv_slider_set_value(ui_bslider, volbri.bs_value, LV_ANIM_OFF);
+	// }
 
 	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
 	lv_event_send(ui_bslider, LV_EVENT_VALUE_CHANGED, NULL);
@@ -590,8 +605,7 @@ void setwwdf_cb(lv_event_t * e)
 
 void settimec_cb(lv_event_t * e)
 {
-	lv_obj_clear_flag(ui_settimep, LV_OBJ_FLAG_HIDDEN);
-	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_STime, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_STime);
+
 }
 
 void settimef_cb(lv_event_t * e)
@@ -832,28 +846,10 @@ void sliderr_cb(lv_event_t * e)
 	lv_obj_set_style_bg_color(ui_spsilder, lv_color_hex(0xD47C2A), LV_PART_INDICATOR | LV_STATE_DEFAULT);
 }
 
-void stbtn_cb(lv_event_t * e)
-{
-	lv_obj_clear_flag(ui_settimep, LV_OBJ_FLAG_HIDDEN);
-	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_STime, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
-}
-
 void preset_cb(lv_event_t * e)
 {
 
 	lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
-}
-
-void timebtn_cb(lv_event_t * e)
-{
-
-}
-
-void timesc_cb(lv_event_t * e)
-{
-	lv_obj_add_flag(ui_settimep, LV_OBJ_FLAG_HIDDEN);
-	lv_group_add_obj(g_main, ui_Roller1);
-	lv_group_add_obj(g_main, ui_Roller2);
 }
 
 void volvc_cb(lv_event_t * e)
@@ -868,14 +864,6 @@ void volvc_cb(lv_event_t * e)
 void volre_cb(lv_event_t * e)
 {
 	// write volume value into nvs and post event
-	// esp_err_t ret = 0;
-	// ret = storage_write(VOLBRI_CFG, (void *)&volbri, sizeof(struct view_data_setting_volbri));
-	// if( ret != ESP_OK)
-	// {
-	// 	ESP_LOGI(TAG, "volbri-cfg write err:%d", ret);
-	// }else {
-	// 	ESP_LOGI(TAG, "volbri-cfg write successful");
-	// }
 }
 
 void brivc_cb(lv_event_t * e)
@@ -890,15 +878,6 @@ void brivc_cb(lv_event_t * e)
 void brire_cb(lv_event_t * e)
 {
 	// write brightness value into nvs and post event
-	// esp_err_t ret = 0;
-	// ret = storage_write(VOLBRI_CFG, (void *)&volbri, sizeof(struct view_data_setting_volbri));
-	// if( ret != ESP_OK)
-	// {
-	// 	ESP_LOGI(TAG, "volbri-cfg write err:%d", ret);
-	// }else {
-	// 	ESP_LOGI(TAG, "volbri-cfg write successful");
-	// }
-	set_brightness(0, volbri.bs_value);
 }
 
 void hap_cb(lv_event_t * e)
@@ -906,7 +885,9 @@ void hap_cb(lv_event_t * e)
 	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
-// Page status bundle
+/* Page status bundle
+ * 
+ */
 static void Page_ConnAPP_Mate()
 {
 	lv_arc_set_value(ui_conn_arcr, 0);
@@ -967,3 +948,33 @@ static void Page_facreset()
 	lv_label_set_text(ui_sptitle, "Factory reset");
 	lv_label_set_text(ui_sptext, "Swipe to reset");
 }
+
+// device bind config status
+static void waitForWifi()
+{
+	lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
+	lv_label_set_text(ui_wifitext3, "Waiting for Wi-Fi Setup...");
+}
+
+static void waitForBinding()
+{
+	lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_clear_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
+	lv_label_set_text(ui_wifitext3, "Waiting for binding...");
+}
+
+static void waitForAddDev()
+{
+
+}
+
+static void bindFinish()
+{
+
+}
+
