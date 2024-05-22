@@ -9,6 +9,8 @@
 
 #include "esp_err.h"
 
+#include "sensecap-watcher.h"
+
 #include "data_defs.h"
 
 #ifdef __cplusplus
@@ -27,6 +29,16 @@ enum {
 #define ESP_ERR_OTA_CONNECTION_FAIL         0x202
 #define ESP_ERR_OTA_GET_IMG_HEADER_FAIL     0x203
 #define ESP_ERR_OTA_DOWNLOAD_FAIL           0x204
+#define ESP_ERR_OTA_SSCMA_START_FAIL        0x205
+#define ESP_ERR_OTA_SSCMA_WRITE_FAIL        0x206
+
+
+typedef struct {
+    sscma_client_handle_t client;
+    sscma_client_flasher_handle_t flasher;
+    int ota_type;
+    esp_err_t *err;
+} ota_http_userdata_t;
 
 
 esp_err_t app_ota_init(void);

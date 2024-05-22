@@ -226,10 +226,8 @@ enum {
 
     VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL
-        
-    VIEW_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
-    VIEW_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
-    VIEW_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
+
+    VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status
 
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h)
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
@@ -264,6 +262,11 @@ enum {
 
     CTRL_EVENT_TASK_FLOW_START_BY_BLE, // char * , taskflow json
     CTRL_EVENT_TASK_FLOW_START_BY_SR,  // char * , taskflow json
+           
+    CTRL_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
+    CTRL_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
+    CTRL_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
+
     CTRL_EVENT_ALL,
 };
 
