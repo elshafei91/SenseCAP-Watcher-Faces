@@ -167,7 +167,7 @@
 #define LVGL_DRAW_BUFF_DOUBLE (1)
 #define LVGL_DRAW_BUFF_HEIGHT (CONFIG_LVGL_DRAW_BUFF_HEIGHT)
 
-#define DRV_FS_MAX_FILES    (10)
+#define DRV_FS_MAX_FILES    (20)
 #define DRV_BASE_PATH_SD    "/sdcard"
 #define DRV_BASE_PATH_FLASH "/spiffs"
 
