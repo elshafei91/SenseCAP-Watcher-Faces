@@ -31,6 +31,7 @@
 #include "util.h"
 #include "app_ota.h"
 #include "app_taskflow.h"
+#include "app_png.h"
 
 #include "view.h"
 
@@ -105,6 +106,7 @@ int board_init(void)
     bsp_codec_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
+    read_and_store_selected_pngs("detecting", 0);
 
     return ESP_OK;
 }
@@ -138,7 +140,7 @@ void task_app_init(void *p_arg)
                                                              VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
                                                              __view_event_handler, NULL, NULL));
 
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
+    // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
     vTaskDelete(NULL);
 }
 

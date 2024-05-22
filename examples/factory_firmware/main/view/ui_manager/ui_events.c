@@ -17,6 +17,7 @@
 #include "app_ble.h"
 #include "app_wifi.h"
 #include "storage.h"
+#include "app_png.h"
 
 #define VOLBRI_CFG 		"volbri-cfg"
 
@@ -28,12 +29,15 @@ static struct view_data_emoticon_display 	emo_disp;
 wifi_ap_record_t 							wifi_record;
 
 static uint8_t swipe_id = 0;	//0 for shutdown, 1 for factoryreset
-static uint8_t file_idx;
-static lv_obj_t * img;
+static lv_obj_t *img = NULL;
+static int file_idx = 0;
 static uint32_t local_task_id;
 
 extern char sn_data[66];
 extern uint8_t wifi_page_id;
+
+extern ImageData g_image_store[MAX_IMAGES];
+extern int g_image_count;
 
 extern GroupInfo group_page_main;
 extern GroupInfo group_page_template;
@@ -42,7 +46,6 @@ extern GroupInfo group_page_view;
 extern GroupInfo group_page_ha;
 
 static void periodic_timer_callback(void* arg);
-
 static const esp_timer_create_args_t periodic_timer_args = {
             .callback = &periodic_timer_callback,
             /* name is optional, but may help identify the timer when debugging */
@@ -100,56 +103,41 @@ void virtc_cb(lv_event_t * e)
 	lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
-static void periodic_timer_callback(void* arg)
-{
+static void periodic_timer_callback(void* arg) {
     if (img == NULL) {
-        img = lv_img_create(ui_Page_Vir);
+        img = lv_img_create(lv_scr_act()); 
     }
-    const char *file_name = emo_disp.file_names[file_idx];
-	char *file_name_with_path = (char *) heap_caps_malloc(100, MALLOC_CAP_SPIRAM);
+    if (file_idx < g_image_count) {
+        ImageData* image_data = &g_image_store[file_idx];
 
-    if (NULL != file_name_with_path) {
-        strcpy(file_name_with_path, "S:/spiffs/");
-        strcat(file_name_with_path, file_name);
+        if (image_data->data == NULL || image_data->size == 0 || image_data->type_id != 0) {
+            ESP_LOGE("Image Data", "Invalid image data or size");
+            return;
+        }
 
-        /* Set src of image with file name */
-        lv_img_set_src(img, file_name_with_path);
+        lv_img_dsc_t *img_dsc = (lv_img_dsc_t *)heap_caps_malloc((sizeof(lv_img_dsc_t)), MALLOC_CAP_SPIRAM);
+        img_dsc->header.always_zero = 0;
+        img_dsc->header.w = 412;  
+        img_dsc->header.h = 412; 
+        img_dsc->header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA;  // Ensure the color format matches your image
+        img_dsc->data_size = image_data->size;
+        img_dsc->data = image_data->data;
+
+        lv_img_set_src(img, img_dsc);
+
         file_idx++;
-        if(file_idx==emo_disp.file_count){
+        if (file_idx >= g_image_count) {
             file_idx = 0;
         }
-        free(file_name_with_path);
     }
 }
 
 void virtsl_cb(lv_event_t * e)
 {	
-	lv_group_add_obj(g_main, ui_Page_Vir);
-    static DIR *p_dir_stream;
-	p_dir_stream = opendir("/spiffs");
-    if (p_dir_stream == NULL) {
-        ESP_LOGE(TAG, "Failed to open /spiffs directory");
-        return;
-    }
-	emo_disp.file_count = 0;
+    lv_group_add_obj(g_main, ui_Page_Vir);
 
-    static struct dirent *p_dirent;
-    while ((p_dirent = readdir(p_dir_stream)) != NULL && emo_disp.file_count < MAX_PNG_FILES) {
-        if (strstr(p_dirent->d_name, ".png") != NULL) {
-            // ESP_LOGI(TAG, "Found image file: %s", p_dirent->d_name);
-            // copy filename into _dest
-            strncpy(emo_disp.file_names[emo_disp.file_count], p_dirent->d_name, sizeof(emo_disp.file_names[0]) - 1);
-            emo_disp.file_names[emo_disp.file_count][sizeof(emo_disp.file_names[0]) - 1] = '\0';
-            emo_disp.file_count++;
-        }
-    }
-    closedir(p_dir_stream);
-
-	// for (int i = 0; i < emo_disp.file_count; i++) {
-    //     ESP_LOGI(TAG, "Array file name: %s", emo_disp.file_names[i]);
-    // }
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-	ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 200000));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 500000));
 }
 
 void main1c_cb(lv_event_t * e)
@@ -251,7 +239,7 @@ void viewac_cb(lv_event_t * e)
 void viewaf_cb(lv_event_t * e)
 {
 	_ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-	
+
 }
 
 void ava1c_cb(lv_event_t * e)
