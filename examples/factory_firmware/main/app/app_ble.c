@@ -28,13 +28,12 @@
 #include "event_loops.h"
 #include "data_defs.h"
 
-
 // Static and global variables
 static int ble_status = BLE_DISCONNECTED;
 static uint8_t char1_str[] = { 0x11, 0x22, 0x33 };
 static uint8_t char2_str[] = { 0x44, 0x55, 0x66 };
 
-uint8_t watcher_sn_buffer[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
+uint8_t watcher_sn_buffer[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x11 };
 uint8_t watcher_name[] = { '-', 'W', 'A', 'C', 'H' };
 uint8_t adv_config_done = 0;
 uint8_t watcher_adv_data_RAW[] = { 0x05, 0x03, 0x86, 0x28, 0x86, 0xA8, 0x18, 0x09 };
@@ -70,14 +69,13 @@ esp_ble_adv_params_t adv_params = {
     .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
-
-
 // Properties
 esp_gatt_char_prop_t watcher_write_property = 0;
 esp_gatt_char_prop_t watcher_read_property = 1;
 
 // GATT profile instance struct definition
-struct gatts_profile_inst {
+struct gatts_profile_inst
+{
     esp_gatts_cb_t gatts_cb;
     uint16_t gatts_if;
     uint16_t app_id;
@@ -95,14 +93,13 @@ struct gatts_profile_inst {
     esp_bt_uuid_t descr_uuid;
 };
 // GATT profile instance
-struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = { 
-    [PROFILE_WATCHER_APP_ID] = {
-        .gatts_cb = gatts_profile_event_handler,
-        .gatts_if = ESP_GATT_IF_NONE,
-    } 
-};
+struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = { [PROFILE_WATCHER_APP_ID] = {
+                                                              .gatts_cb = gatts_profile_event_handler,
+                                                              .gatts_if = ESP_GATT_IF_NONE,
+                                                          } };
 // Prepare type environment struct
-typedef struct {
+typedef struct
+{
     uint8_t *prepare_buf;
     int prepare_len;
 } prepare_type_env_t;
@@ -110,15 +107,10 @@ typedef struct {
 prepare_type_env_t prepare_write_env;
 prepare_type_env_t tiny_write_env;
 
-
-
 static void ble_config_entry(void);
-
-
 
 static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
-
 
 /**
  * @brief Converts binary data to its hexadecimal string representation.
@@ -155,8 +147,6 @@ static void hexTonum(unsigned char *out_data, unsigned char *in_data, unsigned s
         }
     }
 }
-
-
 
 /**
  * @brief Handles GAP (Generic Access Profile) events for BLE (Bluetooth Low Energy).
@@ -211,10 +201,6 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
     }
 }
 
-
-
-
-
 /**
  * @brief Handles the preparation and writing of events for the specified GATT interface.
  *
@@ -235,7 +221,6 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
     {
         if (param->write.is_prep)
         {
-            
             if (param->write.offset > PREPARE_BUF_MAX_SIZE)
             {
                 status = ESP_GATT_INVALID_OFFSET;
@@ -246,8 +231,8 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
             }
             if (status == ESP_GATT_OK && prepare_write_env->prepare_buf == NULL)
             {
-                prepare_write_env->prepare_buf = heap_caps_malloc(PREPARE_BUF_MAX_SIZE * sizeof(uint8_t), MALLOC_CAP_SPIRAM);
-               
+                prepare_write_env->prepare_buf = heap_caps_calloc(1,PREPARE_BUF_MAX_SIZE * sizeof(uint8_t), MALLOC_CAP_SPIRAM);
+
                 prepare_write_env->prepare_len = 0;
                 if (prepare_write_env->prepare_buf == NULL)
                 {
@@ -290,9 +275,6 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
     }
 }
 
-
-
-
 /**
  * @brief Executes the prepared write events for the GATT server with tiny sittuation for data less than mtu handling.
  *
@@ -309,10 +291,24 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
 {
     if (prepare_write_env->prepare_buf)
     {
-        message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
-        
-        esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, msg_at.size, portMAX_DELAY);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
+        message_event_t msg_at;
+        msg_at.size = prepare_write_env->prepare_len;
+        msg_at.msg = (uint8_t *)heap_caps_malloc(msg_at.size + 1, MALLOC_CAP_SPIRAM);
+        memcpy(msg_at.msg, prepare_write_env->prepare_buf, msg_at.size);
+        size_t xBytesSent;
+        // xBytesSent = xStreamBufferSend(xStreamBuffer, (void *)&msg_at, sizeof(msg_at), pdMS_TO_TICKS(1000));
+        if (xQueueSend(message_queue, &msg_at, portMAX_DELAY) != pdPASS)
+        {
+            printf("Failed to send message to queue\n");
+        }
+        else
+        {
+            printf("Message sent to queue\n");
+        }
+        uint32_t ulNotificationValue;
+        xTaskToNotify_AT = xTaskGetCurrentTaskHandle();
+        ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));
         AT_Response msg_at_response;
         if (xQueueReceive(AT_response_queue, &msg_at_response, portMAX_DELAY) == pdTRUE)
         {
@@ -352,10 +348,6 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
     }
 }
 
-
-
-
-
 /**
  * @brief Executes the prepared write events for the GATT server.
  *
@@ -368,6 +360,7 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
  * @param prepare_write_env Pointer to the environment structure used for preparing write events.
  * @param param Pointer to the structure containing the GATT callback parameters.
  */
+
 static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
 {
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC)
@@ -380,11 +373,26 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     }
     if (prepare_write_env->prepare_buf)
     {
-        message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };
-        esp_event_post_to(at_event_loop_handle, AT_EVENTS, AT_EVENTS_COMMAND_ID, &msg_at, sizeof(msg_at), portMAX_DELAY);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        message_event_t msg_at;
+        msg_at.size = prepare_write_env->prepare_len;
+        msg_at.msg = (uint8_t *)heap_caps_malloc(msg_at.size , MALLOC_CAP_SPIRAM);
+        memcpy(msg_at.msg, prepare_write_env->prepare_buf, msg_at.size);
+        esp_log_buffer_hex("TEST", msg_at.msg, msg_at.size);
+        if (xQueueSend(message_queue, &msg_at, portMAX_DELAY) != pdPASS)
+        {
+            printf("Failed to send message to queue\n");
+        }
+        else
+        {
+            printf("Message sent to queue\n");
+        }
         free(prepare_write_env->prepare_buf);
         prepare_write_env->prepare_buf = NULL;
+
+        uint32_t ulNotificationValue;
+        xTaskToNotify_AT = xTaskGetCurrentTaskHandle();
+        ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000)); // Do not change the timeout
+
         AT_Response msg_at_response;
         if (xQueueReceive(AT_response_queue, &msg_at_response, portMAX_DELAY) == pdTRUE)
         {
@@ -402,7 +410,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
                 }
                 int segments = msg_at_response.length / 20;
                 int remaining_bytes = msg_at_response.length % 20;
-
                 for (int i = 0; i < segments; i++)
                 {
                     esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx,
@@ -414,7 +421,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
                     esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx,
                         remaining_bytes, response_data + (segments * 20), false);
                 }
-
                 free(response_data);
             }
         }
@@ -422,9 +428,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
         prepare_write_env->prepare_len = 0;
     }
 }
-
-
-
 
 /**
  * @brief Handles GATT (Generic Attribute Profile) events for BLE (Bluetooth Low Energy).
@@ -542,8 +545,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
                 }
                 else
                 {
- 
-                    tiny_write_env.prepare_buf = heap_caps_malloc(TINY_BUF_MAX_SIZE * sizeof(uint8_t),MALLOC_CAP_SPIRAM);
+                    tiny_write_env.prepare_buf = heap_caps_malloc(TINY_BUF_MAX_SIZE * sizeof(uint8_t), MALLOC_CAP_SPIRAM);
                     memcpy(tiny_write_env.prepare_buf, param->write.value, param->write.len);
                     tiny_write_env.prepare_len = param->write.len;
                     watcher_exec_write_tiny_event_env(gatts_if, &tiny_write_env, param);
@@ -667,10 +669,6 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
     }
 }
 
-
-
-
-
 /**
  * @brief GATT server event handler.
  *
@@ -701,8 +699,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         int idx;
         for (idx = 0; idx < PROFILE_NUM; idx++)
         {
-            if (gatts_if == ESP_GATT_IF_NONE || 
-                gatts_if == gl_profile_tab[idx].gatts_if)
+            if (gatts_if == ESP_GATT_IF_NONE || gatts_if == gl_profile_tab[idx].gatts_if)
             {
                 if (gl_profile_tab[idx].gatts_cb)
                 {
@@ -713,16 +710,6 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     }
     while (0);
 }
-
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief Initializes the BLE (Bluetooth Low Energy) application.
@@ -798,27 +785,14 @@ esp_err_t app_ble_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     AT_cmd_init();
-    ble_task_stack = (StackType_t *)heap_caps_malloc(4096 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    TaskHandle_t task_handle = xTaskCreateStatic(ble_config_entry, "ble_config_entry", 4096, NULL, 4, ble_task_stack, &ble_task_buffer);
+    ble_task_stack = (StackType_t *)heap_caps_malloc(8192 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    TaskHandle_t task_handle = xTaskCreateStatic(ble_config_entry, "ble_config_entry", 8192, NULL, 4, ble_task_stack, &ble_task_buffer);
     if (task_handle == NULL)
     {
         printf("Failed to create task\n");
     }
-#ifdef DEBUG_AT_CMD
-    // xTaskCreate(vTaskMonitor, "TaskMonitor", 1024 * 10, NULL, 2, NULL);                      // check status of all tasks while  task_handle_AT_command is running
-#endif
     return ESP_OK;
 }
-
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief Gets the current BLE status and sends it to the appropriate caller.
@@ -844,16 +818,6 @@ void set_ble_status(int caller, int status)
             break;
     }
 }
-
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief BLE configuration task entry.

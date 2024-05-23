@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
@@ -43,9 +42,6 @@ static char *g_topic_up_task_publish_ack;
 static char *g_topic_up_change_device_status;
 static char *g_topic_up_warn_event_report;
 
-static struct ctrl_data_mqtt_tasklist_cjson g_ctrl_data_mqtt_tasklist_cjson;
-
-
 static void log_error_if_nonzero(const char *message, int error_code)
 {
     if (error_code != 0) {
@@ -61,36 +57,54 @@ static void log_error_if_nonzero(const char *message, int error_code)
 */
 static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
 {
-    static struct ctrl_data_mqtt_tasklist_cjson *p_tasklist_cjson = &g_ctrl_data_mqtt_tasklist_cjson;
-
     ESP_LOGI(TAG, "start to parse tasklist from MQTT msg ...");
     ESP_LOGD(TAG, "MQTT msg: \r\n %.*s\r\nlen=%d", msg_buff_len, mqtt_msg_buff, msg_buff_len);
     
-    cJSON *tmp_cjson = cJSON_Parse(mqtt_msg_buff);
-
-    if (tmp_cjson == NULL) {
+    cJSON *json_root = cJSON_Parse(mqtt_msg_buff);
+    if (json_root == NULL) {
         ESP_LOGE(TAG, "failed to parse cJSON object for MQTT msg:");
         ESP_LOGE(TAG, "%.*s\r\n", msg_buff_len, mqtt_msg_buff);
         return;
     }
 
-    xSemaphoreTake(g_ctrl_data_mqtt_tasklist_cjson.mutex, portMAX_DELAY);
-    if (g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson != NULL) {
-        cJSON_Delete(g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson);
+    cJSON *order_arr = cJSON_GetObjectItem(json_root, "order");
+    if ( order_arr == NULL || !cJSON_IsArray(order_arr)) {
+        ESP_LOGE(TAG, "Order field is not an array\n");
+        cJSON_Delete(json_root);
+        return;
     }
-    g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson = tmp_cjson;
-    xSemaphoreGive(g_ctrl_data_mqtt_tasklist_cjson.mutex);
-    
-    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_TASKLIST_JSON, 
-                                    &p_tasklist_cjson,
-                                    sizeof(void *), /* ptr size */
-                                    portMAX_DELAY);
+
+    cJSON *order_arr_0 = cJSON_GetArrayItem(order_arr, 0);
+    if( order_arr_0 == NULL || !cJSON_IsObject(order_arr)) {
+        cJSON_Delete(json_root);
+        return;
+    }
+    cJSON *value = cJSON_GetObjectItem(order_arr_0, "value");
+    if( value == NULL || !cJSON_IsObject(value) ) {
+        cJSON_Delete(json_root);
+        return;
+    }
+    cJSON *tl = cJSON_GetObjectItem(value, "tl");
+    if( tl == NULL || !cJSON_IsObject(tl) ) {
+        cJSON_Delete(json_root);
+        return;
+    }
+
+    char *tl_str = cJSON_PrintUnformatted(tl);
+
+    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_MQTT, 
+                                &tl_str,
+                                sizeof(void *), /* ptr size */
+                                portMAX_DELAY);
+
+    // TODO requestId get
+    //TODO ACK
+
+    cJSON_Delete(json_root);
 }
 
 static void __parse_mqtt_version_notify(char *mqtt_msg_buff, int msg_buff_len)
 {
-    static struct ctrl_data_mqtt_tasklist_cjson *p_tasklist_cjson = &g_ctrl_data_mqtt_tasklist_cjson;
-
     ESP_LOGI(TAG, "start to parse version-notify from MQTT msg ...");
     ESP_LOGD(TAG, "MQTT msg: \r\n %.*s\r\nlen=%d", msg_buff_len, mqtt_msg_buff, msg_buff_len);
     
@@ -211,7 +225,7 @@ static void __app_mqtt_client_task(void *p_arg)
             //mqtt connect info changed, copy into here
             xSemaphoreTake(g_mqttinfo->mutex, portMAX_DELAY);
             snprintf(g_mqtt_broker_uri, MQTT_TOPIC_STR_LEN, "mqtt://%s:%d", g_mqttinfo->serverUrl, g_mqttinfo->mqttPort);
-            snprintf(g_mqtt_client_id, MQTT_TOPIC_STR_LEN, "device-6p-%s", g_deviceinfo.eui);
+            snprintf(g_mqtt_client_id,  MQTT_TOPIC_STR_LEN, "device-3000-%s", g_deviceinfo.eui);
             if (!mqtt_client_inited) {
             }
             memcpy(g_mqtt_password, g_mqttinfo->token, sizeof(g_mqttinfo->token));
@@ -274,8 +288,6 @@ esp_err_t app_mqtt_client_init(void)
 #endif
     g_sem_mqttinfo = xSemaphoreCreateBinary();
     g_sem_timesynced = xSemaphoreCreateBinary();
-    g_ctrl_data_mqtt_tasklist_cjson.mutex = xSemaphoreCreateMutex();
-    g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson = NULL;
 
     g_mqtt_broker_uri = psram_calloc(1, MQTT_TOPIC_STR_LEN);
     g_mqtt_client_id = psram_calloc(1, MQTT_TOPIC_STR_LEN);

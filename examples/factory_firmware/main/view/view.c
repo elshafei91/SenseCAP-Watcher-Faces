@@ -10,6 +10,7 @@
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
 
+#include "tf_module_util.h"
 
 static const char *TAG = "view";
 
@@ -106,7 +107,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             break;
         }
-
+        case VIEW_EVENT_BRIGHTNESS:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_BRIGHTNESS");
+            uint8_t brightness = *(uint8_t *)event_data;
+            break;
+        }
         case VIEW_EVENT_BLE_STATUS:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_BLE_STATUS");
             bool ble_connect_status = false;
@@ -136,8 +141,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         case VIEW_EVENT_AI_CAMERA_PREVIEW:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_PREVIEW");
             struct tf_module_ai_camera_preview_info *p_info = ( struct tf_module_ai_camera_preview_info *)event_data;
-            view_image_preview_flush(&p_info);
-            free(p_info);
+            view_image_preview_flush(p_info);
+            tf_data_image_free(&p_info->img);
+            tf_data_inference_free(&p_info->inference);
         }
 
         default:
@@ -164,7 +170,9 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
                                                             __view_event_handler, NULL, NULL));   
-                                                            
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, 
+                                                            __view_event_handler, NULL, NULL));                                                          
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, 
                                                             __view_event_handler, NULL, NULL));   
