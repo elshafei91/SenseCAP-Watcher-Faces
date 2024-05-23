@@ -119,11 +119,6 @@ int board_init(void)
     bsp_codec_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
-    read_and_store_selected_pngs("detecting", g_detect_store, &g_detect_image_count);
-    read_and_store_selected_pngs("speaking", g_speak_store, &g_speak_image_count);
-    read_and_store_selected_pngs("listening", g_listen_store, &g_listen_image_count);
-    read_and_store_selected_pngs("loading", g_load_store, &g_load_image_count);
-    read_and_store_selected_pngs("sleeping", g_sleep_store, &g_sleep_image_count);
     read_and_store_selected_pngs("smiling", g_smile_store, &g_smile_image_count);
 
     return ESP_OK;
@@ -131,6 +126,12 @@ int board_init(void)
 
 int app_init(void)
 {
+    read_and_store_selected_pngs("detecting", g_detect_store, &g_detect_image_count);
+    read_and_store_selected_pngs("speaking", g_speak_store, &g_speak_image_count);
+    read_and_store_selected_pngs("listening", g_listen_store, &g_listen_image_count);
+    read_and_store_selected_pngs("loading", g_load_store, &g_load_image_count);
+    read_and_store_selected_pngs("sleeping", g_sleep_store, &g_sleep_image_count);
+    
     app_device_info_init();
     app_taskflow_init();
     app_wifi_init();
