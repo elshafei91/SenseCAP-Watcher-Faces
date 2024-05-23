@@ -6,6 +6,7 @@
 extern "C"
 {
 #endif
+
 struct tf_module_wires
 {
     int *p_evt_id;
@@ -23,9 +24,23 @@ typedef struct tf_module_item
     tf_module_mgmt_t *mgmt_handle;
 } tf_module_item_t;
 
+typedef struct tf_info
+{
+    int type;
+    intmax_t tid;
+    intmax_t ctd;
+    const char* p_tf_name; //memory from json parser
+}tf_info_t;
+
+int tf_parse_json_with_length(const char *p_str, size_t len,
+                              cJSON **pp_json_root,
+                              tf_module_item_t **pp_head,
+                              tf_info_t *p_info);
+                              
 int tf_parse_json(const char *p_str,
-                    cJSON **pp_json_root,
-                    tf_module_item_t **pp_head);
+                  cJSON **pp_json_root,
+                  tf_module_item_t **pp_head,
+                  tf_info_t *p_info);
 
 void tf_parse_free(cJSON *p_json_root, tf_module_item_t *p_head, int num);
 

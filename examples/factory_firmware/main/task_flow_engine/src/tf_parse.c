@@ -28,7 +28,8 @@ static void __module_item_free(tf_module_item_t *p_item, int num)
 
 int tf_parse_json_with_length(const char *p_str, size_t len,
                               cJSON **pp_json_root,
-                              tf_module_item_t **pp_head)
+                              tf_module_item_t **pp_head,
+                              tf_info_t *p_info)
 {
     esp_err_t ret = ESP_OK;
 
@@ -38,6 +39,11 @@ int tf_parse_json_with_length(const char *p_str, size_t len,
     cJSON *p_json_root = NULL;
     cJSON *p_tasklist = NULL;
 
+    cJSON *p_tlid = NULL;
+    cJSON *p_ctd = NULL;
+    cJSON *p_tn = NULL;
+    cJSON *p_tf_type = NULL;
+
     tf_module_item_t *p_list_head = NULL;
 
     int module_item_num = 0;
@@ -45,10 +51,47 @@ int tf_parse_json_with_length(const char *p_str, size_t len,
     p_json_root = cJSON_ParseWithLength(p_str, len);
     ESP_GOTO_ON_FALSE(p_json_root, ESP_ERR_INVALID_ARG, err, TAG, "json parse failed");
 
-    p_tasklist = cJSON_GetObjectItem(p_json_root, "tl");
+
+    p_tf_type = cJSON_GetObjectItem(p_json_root, "type");
+    if (p_tf_type == NULL || !cJSON_IsNumber(p_tf_type))
+    {
+        ESP_LOGE(TAG, "type is not number");
+        goto err;
+    } else {
+        p_info->type = p_tf_type->valueint;
+    }
+
+    p_tlid = cJSON_GetObjectItem(p_json_root, "tlid");
+    if (p_tlid == NULL || !cJSON_IsNumber(p_tlid))
+    {
+        ESP_LOGE(TAG, "tlid is not number");
+        goto err;
+    } else {
+        p_info->tid = (intmax_t)p_tlid->valuedouble;
+    }
+
+    p_ctd = cJSON_GetObjectItem(p_json_root, "ctd");
+    if (p_ctd == NULL || !cJSON_IsNumber(p_ctd))
+    {
+        ESP_LOGE(TAG, "ctd is not number");
+        goto err;
+    } else {
+        p_info->ctd = (intmax_t)p_ctd->valuedouble;
+    }
+
+    p_tn = cJSON_GetObjectItem(p_json_root, "tn");
+    if (p_tn == NULL || !cJSON_IsString(p_tn))
+    {
+        ESP_LOGE(TAG, "ctd is not number");
+        goto err;
+    } else {
+        p_info->p_tf_name = p_tn->valuestring;
+    }
+
+    p_tasklist = cJSON_GetObjectItem(p_json_root, "task_flow");
     if (p_tasklist == NULL || !cJSON_IsArray(p_tasklist))
     {
-        ESP_LOGE(TAG, "tl is not array");
+        ESP_LOGE(TAG, "task_flow is not array");
         goto err;
     }
 
@@ -122,6 +165,7 @@ int tf_parse_json_with_length(const char *p_str, size_t len,
         {
             p_list_head[i].p_wires = (struct tf_module_wires *)tf_malloc(sizeof(struct tf_module_wires) * output_port_num);
             ESP_GOTO_ON_FALSE(p_list_head[i].p_wires, ESP_ERR_NO_MEM, err, TAG, "malloc failed");
+            memset((void *)p_list_head[i].p_wires, 0, sizeof(struct tf_module_wires) * output_port_num);
             p_list_head[i].output_port_num = output_port_num;
 
             for (int m = 0; m < output_port_num; m++)
@@ -170,11 +214,11 @@ err:
 
 int tf_parse_json(const char *p_str,
                   cJSON **pp_json_root,
-                  tf_module_item_t **pp_head)
+                  tf_module_item_t **pp_head,
+                  tf_info_t *p_info)
 {
-    return tf_parse_json_with_length(p_str, strlen(p_str), pp_json_root, pp_head);
+    return tf_parse_json_with_length(p_str, strlen(p_str), pp_json_root, pp_head, p_info);
 }
-
 void tf_parse_free(cJSON *p_json_root, tf_module_item_t *p_head, int num)
 {
     if (p_json_root)
