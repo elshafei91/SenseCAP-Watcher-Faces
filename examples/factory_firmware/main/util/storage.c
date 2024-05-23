@@ -69,7 +69,7 @@ static esp_err_t __storage_read(char *p_key, void *p_data, size_t *p_len)
 
 static void __storage_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
-    storage_event_data_t *evtdata = (storage_event_data_t *)event_data;
+    storage_event_data_t *evtdata = *(storage_event_data_t **)event_data;
 
     switch (id) {
         case EVENT_STG_WRITE:
@@ -109,9 +109,10 @@ esp_err_t storage_write(char *p_key, void *p_data, size_t len)
         .len = len,
         .err = ESP_OK
     };
+    storage_event_data_t *pevtdata = &evtdata;
 
     esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_WRITE, 
-                                        &evtdata, sizeof(storage_event_data_t),  portMAX_DELAY);
+                      &pevtdata, sizeof(storage_event_data_t *),  portMAX_DELAY);
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
@@ -127,9 +128,10 @@ esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
         .len = *p_len,
         .err = ESP_OK
     };
+    storage_event_data_t *pevtdata = &evtdata;
 
     esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_READ, 
-                                        &evtdata, sizeof(storage_event_data_t),  portMAX_DELAY);
+                      &pevtdata, sizeof(storage_event_data_t *),  portMAX_DELAY);
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
