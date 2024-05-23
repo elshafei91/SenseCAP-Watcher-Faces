@@ -14,7 +14,7 @@
 #include "storage.h"
 #include "data_defs.h"
 #include "event_loops.h"
-#include "app_mqtt_client.h"
+#include "app_sensecap_mqtt.h"
 #include "util.h"
 
 

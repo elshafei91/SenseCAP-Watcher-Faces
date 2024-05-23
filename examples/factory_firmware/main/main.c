@@ -24,7 +24,7 @@
 #include "app_time.h"
 #include "app_cmd.h"
 #include "app_sensecap_https.h"
-#include "app_mqtt_client.h"
+#include "app_sensecap_mqtt.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
 #include "app_device_info.h"
@@ -191,7 +191,7 @@ void app_main(void)
         .queue_size = 64,
         .task_name = "app_eventloop",
         .task_priority = 6, // uxTaskPriorityGet(NULL),
-        .task_stack_size = 1024 * 3,
+        .task_stack_size = 1024 * 4,
         .task_core_id = 0};
     ESP_ERROR_CHECK(esp_event_loop_create(&app_event_loop_args, &app_event_loop_handle));
 

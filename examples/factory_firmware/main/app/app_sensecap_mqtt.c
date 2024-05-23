@@ -8,14 +8,16 @@
 #include "esp_check.h"
 #include "mqtt_client.h"
 
-
-#include "app_mqtt_client.h"
+#include "app_sensecap_mqtt.h"
 #include "event_loops.h"
 #include "data_defs.h"
 #include "deviceinfo.h"
 #include "util.h"
 #include "uuid.h"
 
+
+#define MQTT_TOPIC_STR_LEN          256
+#define MQTT_TOPIC_STR_LEN_LONG     512
 
 static const char *TAG = "mqtt-client";
 
@@ -31,14 +33,15 @@ static struct view_data_mqtt_connect_info *g_mqttinfo;
 static esp_mqtt_client_handle_t g_mqtt_client;
 static esp_mqtt_client_config_t g_mqtt_cfg;
 
-static char g_mqtt_broker_uri[144];
-static char g_mqtt_client_id[32];
-static char g_mqtt_password[171];
+static char *g_mqtt_broker_uri;
+static char *g_mqtt_client_id;
+static char *g_mqtt_password;
 
-static char g_topic_down_task_publish[64];
-static char g_topic_up_task_publish_ack[64];
-static char g_topic_up_task_status_change[70];
-static char g_topic_up_warn_event_report[64];
+static char *g_topic_down_task_publish;
+static char *g_topic_down_version_notify;
+static char *g_topic_up_task_publish_ack;
+static char *g_topic_up_change_device_status;
+static char *g_topic_up_warn_event_report;
 
 static struct ctrl_data_mqtt_tasklist_cjson g_ctrl_data_mqtt_tasklist_cjson;
 
@@ -84,10 +87,31 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
                                     portMAX_DELAY);
 }
 
+static void __parse_mqtt_version_notify(char *mqtt_msg_buff, int msg_buff_len)
+{
+    static struct ctrl_data_mqtt_tasklist_cjson *p_tasklist_cjson = &g_ctrl_data_mqtt_tasklist_cjson;
+
+    ESP_LOGI(TAG, "start to parse version-notify from MQTT msg ...");
+    ESP_LOGD(TAG, "MQTT msg: \r\n %.*s\r\nlen=%d", msg_buff_len, mqtt_msg_buff, msg_buff_len);
+    
+    cJSON *tmp_cjson = cJSON_Parse(mqtt_msg_buff);
+
+    if (tmp_cjson == NULL) {
+        ESP_LOGE(TAG, "failed to parse cJSON object for MQTT msg:");
+        ESP_LOGE(TAG, "%.*s\r\n", msg_buff_len, mqtt_msg_buff);
+        return;
+    }
+    
+    // since there's only one consumer of version-notify msg, we just post it to event loop,
+    // it's up to the consumer to free the memory of the cJSON object.
+    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_OTA_JSON,
+                                    &tmp_cjson,
+                                    sizeof(void *), /* ptr size */
+                                    portMAX_DELAY);
+}
+
 static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
-    static char tmp_topic_holder[80];
-
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
@@ -101,6 +125,9 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
 
         msg_id = esp_mqtt_client_subscribe(client, g_topic_down_task_publish, 0);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d, topic=%s", msg_id, g_topic_down_task_publish);
+
+        msg_id = esp_mqtt_client_subscribe(client, g_topic_down_version_notify, 0);
+        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d, topic=%s", msg_id, g_topic_down_version_notify);
 
         break;
     case MQTT_EVENT_DISCONNECTED:
@@ -128,11 +155,15 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
         //printf("DATA=%.*s\r\n", event->data_len, event->data);
         ESP_LOGI(TAG, "topic=%.*s", event->topic_len, event->topic);
 
+        char *tmp_topic_holder = psram_calloc(1, MQTT_TOPIC_STR_LEN);
         memcpy(tmp_topic_holder, event->topic, event->topic_len);
         tmp_topic_holder[event->topic_len] = '\0';
         if (strstr(tmp_topic_holder, "task-publish")) {
             __parse_mqtt_tasklist(event->data, event->data_len);
+        } else if (strstr(tmp_topic_holder, "version-notify")) {
+            __parse_mqtt_version_notify(event->data, event->data_len);
         }
+        free(tmp_topic_holder);
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -151,7 +182,7 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
 
 static void __app_mqtt_client_task(void *p_arg)
 {
-    ESP_LOGI(TAG, "starting app_mqtt_client task ...");
+    ESP_LOGI(TAG, "starting sensecap mqtt task ...");
 
     bool mqtt_client_inited = false;
     
@@ -161,13 +192,15 @@ static void __app_mqtt_client_task(void *p_arg)
         vTaskDelay(portMAX_DELAY);
     }
 
-    sniprintf(g_topic_down_task_publish, sizeof(g_topic_down_task_publish), 
+    sniprintf(g_topic_down_task_publish, MQTT_TOPIC_STR_LEN, 
                 "iot/ipnode/%s/get/order/task-publish", g_deviceinfo.eui);
-    sniprintf(g_topic_up_task_publish_ack, sizeof(g_topic_up_task_publish_ack), 
+    sniprintf(g_topic_down_version_notify, MQTT_TOPIC_STR_LEN, 
+                "iot/ipnode/%s/get/order/task-publish", g_deviceinfo.eui);
+    sniprintf(g_topic_up_task_publish_ack, MQTT_TOPIC_STR_LEN, 
                 "iot/ipnode/%s/update/order/task-publish-ack", g_deviceinfo.eui);
-    sniprintf(g_topic_up_task_status_change, sizeof(g_topic_up_task_status_change), 
+    sniprintf(g_topic_up_change_device_status, MQTT_TOPIC_STR_LEN, 
                 "iot/ipnode/%s/update/event/change-device-status", g_deviceinfo.eui);
-    sniprintf(g_topic_up_warn_event_report, sizeof(g_topic_up_warn_event_report), 
+    sniprintf(g_topic_up_warn_event_report, MQTT_TOPIC_STR_LEN, 
                 "iot/ipnode/%s/update/event/measure-sensor", g_deviceinfo.eui);
 
     xSemaphoreTake(g_sem_timesynced, portMAX_DELAY);
@@ -177,8 +210,8 @@ static void __app_mqtt_client_task(void *p_arg)
         if (xSemaphoreTake(g_sem_mqttinfo, pdMS_TO_TICKS(1000)) == pdPASS) {
             //mqtt connect info changed, copy into here
             xSemaphoreTake(g_mqttinfo->mutex, portMAX_DELAY);
-            snprintf(g_mqtt_broker_uri, sizeof(g_mqtt_broker_uri), "mqtt://%s:%d", g_mqttinfo->serverUrl, g_mqttinfo->mqttPort);
-            snprintf(g_mqtt_client_id, sizeof(g_mqtt_client_id), "device-6p-%s", g_deviceinfo.eui);
+            snprintf(g_mqtt_broker_uri, MQTT_TOPIC_STR_LEN, "mqtt://%s:%d", g_mqttinfo->serverUrl, g_mqttinfo->mqttPort);
+            snprintf(g_mqtt_client_id, MQTT_TOPIC_STR_LEN, "device-6p-%s", g_deviceinfo.eui);
             if (!mqtt_client_inited) {
             }
             memcpy(g_mqtt_password, g_mqttinfo->token, sizeof(g_mqttinfo->token));
@@ -244,13 +277,18 @@ esp_err_t app_mqtt_client_init(void)
     g_ctrl_data_mqtt_tasklist_cjson.mutex = xSemaphoreCreateMutex();
     g_ctrl_data_mqtt_tasklist_cjson.tasklist_cjson = NULL;
 
-    //ESP_ERROR_CHECK(esp_event_loop_create_default());  //already done in app_wifi.c
-
-    // xTaskCreate(__app_mqtt_client_task, "app_mqtt_client_task", 1024 * 4, NULL, 4, NULL);
+    g_mqtt_broker_uri = psram_calloc(1, MQTT_TOPIC_STR_LEN);
+    g_mqtt_client_id = psram_calloc(1, MQTT_TOPIC_STR_LEN);
+    g_mqtt_password = psram_calloc(1, MQTT_TOPIC_STR_LEN);
+    g_topic_down_task_publish = psram_calloc(1, MQTT_TOPIC_STR_LEN);
+    g_topic_down_version_notify = psram_calloc(1, MQTT_TOPIC_STR_LEN);
+    g_topic_up_task_publish_ack = psram_calloc(1, MQTT_TOPIC_STR_LEN);
+    g_topic_up_change_device_status = psram_calloc(1, MQTT_TOPIC_STR_LEN);
+    g_topic_up_warn_event_report = psram_calloc(1, MQTT_TOPIC_STR_LEN);
 
     const uint32_t stack_size = 3 * 1024;
     StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
-    g_task = xTaskCreateStatic(__app_mqtt_client_task, "app_mqtt_client", stack_size, NULL, 4, task_stack, &g_task_tcb);
+    g_task = xTaskCreateStatic(__app_mqtt_client_task, "sensecap_mqtt", stack_size, NULL, 4, task_stack, &g_task_tcb);
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_MQTT_CONNECT_INFO,
                                                             __event_loop_handler, NULL, NULL));
@@ -344,7 +382,7 @@ esp_err_t app_mqtt_client_report_tasklist_status(intmax_t tasklist_id, int taskl
 
     ESP_LOGD(TAG, "app_mqtt_client_report_tasklist_status: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
-    int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_task_status_change, json_buff, strlen(json_buff),
+    int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_change_device_status, json_buff, strlen(json_buff),
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
 
     if (msg_id < 0) {
@@ -398,7 +436,7 @@ esp_err_t app_mqtt_client_report_warn_event(intmax_t tasklist_id, char *tasklist
 
     ESP_LOGD(TAG, "app_mqtt_client_report_warn_event: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
-    int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_task_status_change, json_buff, strlen(json_buff),
+    int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_change_device_status, json_buff, strlen(json_buff),
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
 
     if (msg_id < 0) {
@@ -446,7 +484,7 @@ esp_err_t app_mqtt_client_report_device_status(struct view_data_device_status *d
 
     ESP_LOGD(TAG, "app_mqtt_client_report_device_status: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
-    int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_task_status_change, json_buff, strlen(json_buff),
+    int msg_id = esp_mqtt_client_enqueue(g_mqtt_client, g_topic_up_change_device_status, json_buff, strlen(json_buff),
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
 
     if (msg_id < 0) {
