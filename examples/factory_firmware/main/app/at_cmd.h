@@ -18,7 +18,7 @@
 #define DATA_LENGTH 10320
 #define AT_EVENTS_COMMAND_ID 0x6F
 #define AT_EVENTS_RESPONSE_ID 0x70
-#define MEMORY_SIZE (1024 * 200)
+#define MEMORY_SIZE (1024 * 500)
 #define MESSAGE_QUEUE_SIZE 10
 typedef struct {
     char command_name[100];  // Assuming the command name will not exceed 100 characters

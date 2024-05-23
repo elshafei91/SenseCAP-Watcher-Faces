@@ -14,11 +14,11 @@ extern "C" {
 
 int storage_init(void);
 
-esp_err_t storage_write(const char *key, const void *value, size_t length);
+esp_err_t storage_write(char *p_key, void *p_data, size_t len);
 
 
 //p_len : inout
-esp_err_t storage_read(const char *key, void *value, size_t length);
+esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len);
 
 #ifdef __cplusplus
 }

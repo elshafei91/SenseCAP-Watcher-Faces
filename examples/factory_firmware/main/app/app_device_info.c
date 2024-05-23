@@ -44,7 +44,7 @@ void byteArrayToHexString(const uint8_t *byteArray, size_t byteArraySize, char *
 void init_brightness_from_nvs()
 {
     size_t size = sizeof(brightness);
-    esp_err_t ret = storage_read(BRIGHTNESS_STORAGE_KEY, &brightness, size);
+    esp_err_t ret = storage_read(BRIGHTNESS_STORAGE_KEY, &brightness, &size);
     if (ret == ESP_OK)
     {
         ESP_LOGI("NVS", "Brightness value loaded from NVS: %d", brightness);
@@ -107,7 +107,6 @@ uint8_t *get_eui()
 
 uint8_t *get_brightness(int caller)
 {
-    ESP_LOGI("BRIGHTNESS_TAG", "get_brightness");
     if (xSemaphoreTake(MUTEX_brightness, portMAX_DELAY) != pdTRUE)
     {
         ESP_LOGE("BRIGHTNESS_TAG", "get_brightness: MUTEX_brightness take failed");
@@ -126,6 +125,7 @@ uint8_t *get_brightness(int caller)
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, result, sizeof(uint8_t *), portMAX_DELAY);
             break;
     }
+    xSemaphoreGive(MUTEX_brightness);
     return result;
 }
 
@@ -146,6 +146,11 @@ uint8_t *set_brightness(int caller, int value)
 
 static int __set_brightness()
 {
+    if (xSemaphoreTake(MUTEX_brightness, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("BRIGHTNESS_TAG", "set_brightness: MUTEX_brightness take failed");
+        return NULL;
+    }
     if (brightness_past != brightness)
     {
         esp_err_t ret = storage_write(BRIGHTNESS_STORAGE_KEY, &brightness, sizeof(brightness));
@@ -161,6 +166,7 @@ static int __set_brightness()
             return ret;
         }
     }
+    xSemaphoreGive(MUTEX_brightness);
     return 0;
 }
 

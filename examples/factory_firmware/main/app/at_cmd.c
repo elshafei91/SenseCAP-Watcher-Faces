@@ -595,7 +595,7 @@ void parse_json_and_concatenate(char *json_string)
     cJSON *sum = cJSON_GetObjectItem(json, "sum");
     cJSON *data = cJSON_GetObjectItem(json, "data");
     cJSON *total_size =cJSON_GetObjectItem(json, "totalsize");
-    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data)||!cJSON_IsString(total_size))
+    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data)||!cJSON_IsNumber(total_size))
     {
         printf("Invalid JSON format\n");
         cJSON_Delete(json); 
@@ -723,7 +723,7 @@ void handle_taskflow_command(char *params)
     }
     if (all_received)
     {
-        char *result = (char *)heap_caps_malloc(total_size + 1, MALLOC_CAP_SPIRAM); 
+        char *result = (char *)heap_caps_malloc(MEMORY_SIZE, MALLOC_CAP_SPIRAM); 
         if (result == NULL)
         {
             printf("Failed to allocate memory for result\n");
@@ -814,8 +814,6 @@ void task_handle_AT_command()
         }
         printf("AT command received\n");
         esp_log_buffer_hex("HEX TAG1",test_strings,strlen(test_strings));
-        //hex_to_string(msg_at.msg, msg_at.size, test_strings);
-        //printf("recv: %.*s\n", 1024, test_strings);
         regex_t regex;
         int ret;
         ret = regcomp(&regex, pattern, REG_EXTENDED);
