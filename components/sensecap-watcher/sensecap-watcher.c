@@ -56,7 +56,7 @@ void bsp_set_btn_long_press_cb(void (*cb)(void))
     btn_custom_cb = cb;
 }
 
-void bsp_i2c_detect(i2c_port_t i2c_num)
+esp_err_t bsp_i2c_detect(i2c_port_t i2c_num)
 {
     BSP_ERROR_CHECK_RETURN_ERR(bsp_i2c_bus_init());
     uint8_t address;
@@ -89,6 +89,8 @@ void bsp_i2c_detect(i2c_port_t i2c_num)
         }
         printf("\r\n");
     }
+
+    return ESP_OK;
 }
 
 esp_io_expander_handle_t bsp_io_expander_init()

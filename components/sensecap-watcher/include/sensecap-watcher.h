@@ -282,7 +282,7 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b);
 uint16_t bsp_battery_get_voltage(void);
 uint8_t bsp_battery_get_percent(void);
 
-void bsp_i2c_detect(i2c_port_t i2c_num);
+esp_err_t bsp_i2c_detect(i2c_port_t i2c_num);
 
 void bsp_system_deep_sleep(uint32_t time_in_sec);
 void bsp_system_reboot(void);
