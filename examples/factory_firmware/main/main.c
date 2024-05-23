@@ -117,7 +117,7 @@ int app_init(void)
     app_ble_init();
     app_time_init();
     app_cmd_init();
-    app_rgb_init();
+    //app_rgb_init();
     app_mqtt_client_init();
     app_sensecap_https_init();
     app_device_status_monitor_init();
@@ -131,7 +131,7 @@ void task_app_init(void *p_arg)
 {
     // UI init
     view_init();
-    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(10));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
     app_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
@@ -187,8 +187,6 @@ void app_main(void)
 
     cJSON_InitHooks(&cJSONHooks);
 
-    ESP_ERROR_CHECK(board_init());
-
     esp_event_loop_args_t app_event_loop_args = {
         .queue_size = 64,
         .task_name = "app_eventloop",
@@ -197,8 +195,9 @@ void app_main(void)
         .task_core_id = 0};
     ESP_ERROR_CHECK(esp_event_loop_create(&app_event_loop_args, &app_event_loop_handle));
 
-    // app init
-    // app_init();
+    ESP_ERROR_CHECK(board_init());
+
+    // app modules init
     xTaskCreatePinnedToCore(task_app_init, "task_app_init", 4096, NULL, 5, NULL, 1);
 
     static char buffer[512];

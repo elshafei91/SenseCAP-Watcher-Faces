@@ -25,6 +25,7 @@
 #define HTTPS_TIMEOUT_MS                30000
 #define HTTPS_DOWNLOAD_RETRY_TIMES      5
 #define SSCMA_FLASH_CHUNK_SIZE          128   //this value is copied from the `sscma_client_ota` example
+#define WORKER_STACK_SIZE               3584
 
 enum {
     OTA_TYPE_ESP32 = 1,
@@ -39,12 +40,53 @@ static TaskHandle_t g_task;
 static StaticTask_t g_task_tcb;
 static bool g_ota_running = false;
 static uint8_t network_connect_flag = 0;
-static TaskHandle_t g_task_worker;
+// static TaskHandle_t g_task_worker;
 
 static SemaphoreHandle_t g_sem_network;
 static SemaphoreHandle_t g_sem_ai_model_downloaded;
+static SemaphoreHandle_t g_sem_worker_done;
 static esp_err_t g_result_err;
 static char *g_url;
+
+
+
+static void __app_ota_worker_task(void *parg)
+{
+    ota_worker_task_data_t *worker_data = (ota_worker_task_data_t *)parg;
+
+    switch(worker_data->worker_cmd) {
+        case CMD_esp_https_ota_begin:
+            worker_data->err = esp_https_ota_begin(worker_data->ota_config, worker_data->ota_handle);
+            break;
+        case CMD_esp_https_ota_get_img_desc:
+            worker_data->err = esp_https_ota_get_img_desc(*(worker_data->ota_handle), worker_data->app_desc);
+            break;
+        case CMD_esp_ota_get_running_partition:
+            worker_data->partition = esp_ota_get_running_partition();
+            break;
+        case CMD_esp_ota_get_partition_description:
+            worker_data->err = esp_ota_get_partition_description(worker_data->partition, worker_data->app_desc);
+            break;
+        case CMD_esp_https_ota_perform:
+            worker_data->err = esp_https_ota_perform(*(worker_data->ota_handle));
+            break;
+        case CMD_esp_https_ota_finish:
+            worker_data->err = esp_https_ota_finish(*(worker_data->ota_handle));
+            break;
+        default:
+            break;
+    }
+
+    xSemaphoreGive(g_sem_worker_done);
+    vTaskDelete(NULL);
+}
+
+static void worker_call(ota_worker_task_data_t *worker_data, int stack_size)
+{
+    TaskHandle_t h;
+    xTaskCreate(__app_ota_worker_task, "ota_worker", stack_size, worker_data, 1, &h);
+    xSemaphoreTake(g_sem_worker_done, portMAX_DELAY);
+}
 
 
 static int cmp_versions ( const char * version1, const char * version2 ) {
@@ -69,9 +111,19 @@ static esp_err_t validate_image_header(esp_app_desc_t *new_app_info)
 
     ESP_LOGI(TAG, "New firmware version: %s", new_app_info->version);
 
-    const esp_partition_t *running = esp_ota_get_running_partition();
+    ota_worker_task_data_t worker_data;
+
+    worker_data.worker_cmd = CMD_esp_ota_get_running_partition;
+    worker_call(&worker_data, WORKER_STACK_SIZE);
+
+    //esp_partition_t *running = worker_data.partition;
     esp_app_desc_t *running_app_info = psram_calloc(1, sizeof(esp_app_desc_t));
-    if (esp_ota_get_partition_description(running, running_app_info) == ESP_OK) {
+
+    worker_data.worker_cmd = CMD_esp_ota_get_partition_description;
+    worker_data.app_desc = running_app_info;
+    worker_call(&worker_data, WORKER_STACK_SIZE);
+
+    if (worker_data.err == ESP_OK) {
         ESP_LOGI(TAG, "Running firmware version: %s", running_app_info->version);
     } else {
         ESP_LOGW(TAG, "Failed to get running_app_info! Always do OTA.");
@@ -98,6 +150,7 @@ static void esp32_ota_process()
     ESP_LOGI(TAG, "starting esp32 ota process, downloading %s", g_url);
 
     esp_err_t ota_finish_err = ESP_OK;
+    ota_worker_task_data_t worker_data;
 
     esp_http_client_config_t *config = psram_calloc(1, sizeof(esp_http_client_config_t));
     config->url = g_url;
@@ -124,7 +177,12 @@ static void esp32_ota_process()
 
     for (i = 0; i < HTTPS_DOWNLOAD_RETRY_TIMES; i++)
     {
-        err = esp_https_ota_begin(ota_config, &https_ota_handle);
+        worker_data.ota_config = ota_config;
+        worker_data.ota_handle = &https_ota_handle;
+        worker_data.worker_cmd = CMD_esp_https_ota_begin;
+        worker_call(&worker_data, WORKER_STACK_SIZE);
+
+        err = worker_data.err;
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "esp32 ota begin failed [%d]", i);
             vTaskDelay(pdMS_TO_TICKS(1000));
@@ -151,7 +209,12 @@ static void esp32_ota_process()
                         portMAX_DELAY);
 
     esp_app_desc_t app_desc;
-    err = esp_https_ota_get_img_desc(https_ota_handle, &app_desc);
+    worker_data.ota_handle = &https_ota_handle;
+    worker_data.app_desc = &app_desc;
+    worker_data.worker_cmd = CMD_esp_https_ota_get_img_desc;
+    worker_call(&worker_data, WORKER_STACK_SIZE);
+
+    err = worker_data.err;
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp32 ota, esp_https_ota_get_img_desc failed");
         ota_status.status = OTA_STATUS_FAIL;
@@ -175,7 +238,10 @@ static void esp32_ota_process()
     last_report_bytes = step_bytes;
 
     while (1) {
-        err = esp_https_ota_perform(https_ota_handle);
+        worker_data.ota_handle = &https_ota_handle;
+        worker_data.worker_cmd = CMD_esp_https_ota_perform;
+        worker_call(&worker_data, WORKER_STACK_SIZE);
+        err = worker_data.err;
         if (err != ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
             break;
         }
@@ -201,7 +267,11 @@ static void esp32_ota_process()
         ota_status.status = OTA_STATUS_FAIL;
         ota_status.err_code = ESP_ERR_OTA_DOWNLOAD_FAIL;
     } else {
-        ota_finish_err = esp_https_ota_finish(https_ota_handle);
+        goto ota_end;
+        worker_data.ota_handle = &https_ota_handle;
+        worker_data.worker_cmd = CMD_esp_https_ota_finish;
+        worker_call(&worker_data, WORKER_STACK_SIZE);
+        ota_finish_err = worker_data.err;
         if ((err == ESP_OK) && (ota_finish_err == ESP_OK)) {
             ESP_LOGI(TAG, "esp32 ota, upgrade successful. Rebooting ...");
             vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -233,17 +303,17 @@ ota_end:
     free(ota_config);
 }
 
-static void __esp32_ota_worker_task(void *parg)
-{
-    ESP_LOGI(TAG, "starting esp32 ota worker task ...");
+// static void __esp32_ota_worker_task(void *parg)
+// {
+    // ESP_LOGI(TAG, "starting esp32 ota worker task ...");
 
-    while (1) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  //task sleep
-        ESP_LOGI(TAG, "esp32 ota worker task: start working ...");
+    // while (1) {
+    //     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  //task sleep
+    //     ESP_LOGI(TAG, "esp32 ota worker task: start working ...");
 
-        esp32_ota_process();
-    }
-}
+    //     esp32_ota_process();
+    // }
+// }
 
 static const char *ota_type_str(int ota_type)
 {
@@ -450,7 +520,8 @@ static void __app_ota_task(void *p_arg)
 
             g_ota_running = true;
             if (ota_type == OTA_TYPE_ESP32) {
-                xTaskNotifyGive(g_task_worker);  // wakeup the task
+                //xTaskNotifyGive(g_task_worker);  // wakeup the task
+                esp32_ota_process();
             } else if (ota_type == OTA_TYPE_HIMAX) {
 
             } else if (ota_type == OTA_TYPE_AI_MODEL) {
@@ -536,8 +607,8 @@ static void __ota_test_task(void *p_arg)
     }
     vTaskDelay(pdMS_TO_TICKS(3000));
 
-    // esp_err_t res = app_ota_esp32_fw_download("https://new.pxspeed.site/factory_firmware.bin");
-    // ESP_LOGI(TAG, "test app_ota_esp32_fw_download: 0x%x", res);
+    esp_err_t res = app_ota_esp32_fw_download("https://new.pxspeed.site/factory_firmware.bin");
+    ESP_LOGI(TAG, "test app_ota_esp32_fw_download: 0x%x", res);
 
     // esp_err_t res = app_ota_ai_model_download("https://new.pxspeed.site/human_pose.tflite", 0);
     // ESP_LOGI(TAG, "test app_ota_ai_model_download: 0x%x", res);
@@ -554,13 +625,14 @@ esp_err_t app_ota_init(void)
 
     g_sem_network = xSemaphoreCreateBinary();
     g_sem_ai_model_downloaded = xSemaphoreCreateBinary();
+    g_sem_worker_done = xSemaphoreCreateBinary();
 
     // esp32 ota worker task, due to PSRAM limitations, we need a task with internal RAM as stack
-    xTaskCreate(__esp32_ota_worker_task, "esp32_ota_worker", 1024 * 3, NULL, 1, &g_task_worker);
+    // xTaskCreate(__esp32_ota_worker_task, "esp32_ota_worker", 1024 * 3, NULL, 1, &g_task_worker);
 
     // ota main task
     const uint32_t stack_size = 10 * 1024;
-    StackType_t *task_stack = (StackType_t *)psram_calloc(1, stack_size);
+    StackType_t *task_stack = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
     g_task = xTaskCreateStatic(__app_ota_task, "app_ota", stack_size, NULL, 1, task_stack, &g_task_tcb);
 
     ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, __sys_event_handler, NULL));
@@ -569,7 +641,7 @@ esp_err_t app_ota_init(void)
                                                              __app_event_handler, NULL, NULL));
 
 #if CONFIG_ENABLE_TEST_ENV
-    StackType_t *task_stack2 = (StackType_t *)psram_calloc(1, stack_size);
+    StackType_t *task_stack2 = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
     StaticTask_t *task_tcb = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
     xTaskCreateStatic(__ota_test_task, "ota_test", stack_size, NULL, 1, task_stack2, task_tcb);
 #endif
