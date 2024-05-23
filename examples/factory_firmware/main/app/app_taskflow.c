@@ -11,6 +11,7 @@
 #include "tf_module_img_analyzer.h"
 #include "tf_module_local_alarm.h"
 #include "tf_module_alarm_trigger.h"
+#include "tf_module_sensecraft_alarm.h"
 
 static const char *TAG = "taskflow";
 
@@ -383,6 +384,8 @@ void app_taskflow_init(void)
     ESP_ERROR_CHECK(tf_module_img_analyzer_register());
     ESP_ERROR_CHECK(tf_module_local_alarm_register());
     ESP_ERROR_CHECK(tf_module_alarm_trigger_register());
+    ESP_ERROR_CHECK(tf_module_sensecraft_alarm_register());
+
     //add more module
 
     ESP_ERROR_CHECK(tf_engine_status_cb_register(__task_flow_status_cb, NULL));
