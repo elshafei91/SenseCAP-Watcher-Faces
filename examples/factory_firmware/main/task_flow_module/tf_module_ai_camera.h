@@ -25,6 +25,13 @@ extern "C"
 #endif
 #endif
 
+// module run err code
+#define TF_MODULE_AI_CAMERA_CODE_OK                  0
+#define TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_SIMPLE    (0X01 << 1)
+#define TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_INVOKE    (0X01 << 2)
+#define TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL     (0X01 << 3)
+#define TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL_OTA (0X01 << 4)
+
 /*************************************************************************
  * params config define
  ************************************************************************/
