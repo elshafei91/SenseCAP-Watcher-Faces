@@ -11,9 +11,17 @@
 // define global image data store and count variable
 ImageData g_detect_store[MAX_IMAGES];
 ImageData g_speak_store[MAX_IMAGES];
+ImageData g_listen_store[MAX_IMAGES];
+ImageData g_load_store[MAX_IMAGES];
+ImageData g_sleep_store[MAX_IMAGES];
+ImageData g_smile_store[MAX_IMAGES];
 
 int g_detect_image_count = 0;
 int g_speak_image_count = 0;
+int g_listen_image_count = 0;
+int g_load_image_count = 0;
+int g_sleep_image_count = 0;
+int g_smile_image_count = 0;
 
 // Function to read and store PNG files into PSRAM
 void* read_png_to_psram(const char *path, size_t *out_size) {
