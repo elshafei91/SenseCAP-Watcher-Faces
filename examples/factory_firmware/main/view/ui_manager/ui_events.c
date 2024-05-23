@@ -36,8 +36,10 @@ static uint32_t local_task_id;
 extern char sn_data[66];
 extern uint8_t wifi_page_id;
 
-extern ImageData g_image_store[MAX_IMAGES];
-extern int g_image_count;
+extern ImageData g_detect_store[MAX_IMAGES];
+extern ImageData g_speak_store[MAX_IMAGES];
+extern int g_detect_image_count;
+extern int g_speak_image_count;
 
 extern GroupInfo group_page_main;
 extern GroupInfo group_page_template;
@@ -107,10 +109,10 @@ static void periodic_timer_callback(void* arg) {
     if (img == NULL) {
         img = lv_img_create(lv_scr_act()); 
     }
-    if (file_idx < g_image_count) {
-        ImageData* image_data = &g_image_store[file_idx];
+    if (file_idx < g_speak_image_count) {
+        ImageData* image_data = &g_detect_store[file_idx];
 
-        if (image_data->data == NULL || image_data->size == 0 || image_data->type_id != 0) {
+        if (image_data->data == NULL || image_data->size == 0) {
             ESP_LOGE("Image Data", "Invalid image data or size");
             return;
         }
@@ -126,7 +128,7 @@ static void periodic_timer_callback(void* arg) {
         lv_img_set_src(img, img_dsc);
 
         file_idx++;
-        if (file_idx >= g_image_count) {
+        if (file_idx >= g_speak_image_count) {
             file_idx = 0;
         }
     }
@@ -206,11 +208,6 @@ void wifichange_cb(lv_event_t * e)
 	lv_obj_clear_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
 }
 
-void nwific_cb(lv_event_t * e)
-{
-
-}
-
 void ntaskb1c_cb(lv_event_t * e)
 {
 	lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask2_screen_init);
@@ -239,7 +236,6 @@ void viewac_cb(lv_event_t * e)
 void viewaf_cb(lv_event_t * e)
 {
 	_ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-
 }
 
 void ava1c_cb(lv_event_t * e)

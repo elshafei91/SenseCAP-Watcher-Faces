@@ -61,6 +61,10 @@ static heap_task_totals_t s_totals_arr[MAX_TASK_NUM];
 static heap_task_block_t s_block_arr[MAX_BLOCK_NUM];
 #endif
 
+extern ImageData g_detect_store[MAX_IMAGES];
+extern ImageData g_speak_store[MAX_IMAGES];
+extern int g_detect_image_count;
+extern int g_speak_image_count;
 
 static void *__cJSON_malloc(size_t sz)
 {
@@ -106,7 +110,8 @@ int board_init(void)
     bsp_codec_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
-    read_and_store_selected_pngs("detecting", 0);
+    read_and_store_selected_pngs("detecting", g_detect_store, &g_detect_image_count);
+    read_and_store_selected_pngs("speaking", g_speak_store, &g_speak_image_count);
 
     return ESP_OK;
 }

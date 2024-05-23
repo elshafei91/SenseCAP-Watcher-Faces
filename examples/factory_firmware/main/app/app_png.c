@@ -9,8 +9,11 @@
 #include <dirent.h>
 
 // define global image data store and count variable
-ImageData g_image_store[MAX_IMAGES];
-int g_image_count = 0;
+ImageData g_detect_store[MAX_IMAGES];
+ImageData g_speak_store[MAX_IMAGES];
+
+int g_detect_image_count = 0;
+int g_speak_image_count = 0;
 
 // Function to read and store PNG files into PSRAM
 void* read_png_to_psram(const char *path, size_t *out_size) {
@@ -52,13 +55,13 @@ static int is_png_file_for_expression(const char* filename, const char* prefix) 
 }
 
 // Function to read and store selected PNG files based on prefix
-void read_and_store_selected_pngs(const char *file_prefix, uint8_t type_id) {
+void read_and_store_selected_pngs(const char *file_prefix, ImageData *imagedata, int *image_count) {
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir("/spiffs")) != NULL) {
         while ((ent = readdir(dir)) != NULL) {
             if (is_png_file_for_expression(ent->d_name, file_prefix)) {
-                if (g_image_count >= MAX_IMAGES) {
+                if (*image_count >= MAX_IMAGES) {
                     ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
                     break;
                 }
@@ -70,10 +73,9 @@ void read_and_store_selected_pngs(const char *file_prefix, uint8_t type_id) {
                 if (data) {
                     ESP_LOGI("PNG Load", "Loaded %s into PSRAM", ent->d_name);
                     
-                    g_image_store[g_image_count].data = data;
-                    g_image_store[g_image_count].size = size;
-                    g_image_store[g_image_count].type_id = type_id;
-                    g_image_count++;
+                    imagedata[*image_count].data = data;
+                    imagedata[*image_count].size = size;
+                    (*image_count)++;
                 }
             }
         }
