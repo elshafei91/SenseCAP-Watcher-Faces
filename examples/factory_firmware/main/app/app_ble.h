@@ -17,19 +17,19 @@
 
 /*----------------------------------------------------*/
 // DEBUG MODE definition
-#define BLE_DEBUG
+//#define BLE_DEBUG
 #define GATTS_TAG "Watcher_BLE_Server"
 
 /*----------------------------------------------------*/
 // Data definitions
 
-#define GATTS_NUM_HANDLE_WATCHER 7
+#define GATTS_NUM_HANDLE_WATCHER 7      //critical warning - 7
 
-#define TEST_DEVICE_NAME "010203040506070809-WACH"
+#define TEST_DEVICE_NAME "010203040506070809-WACH"      
 
 #define GATTS_DEMO_CHAR_VAL_LEN_MAX 0x40
 
-#define PREPARE_BUF_MAX_SIZE 102400
+#define PREPARE_BUF_MAX_SIZE 1024000
 #define TINY_BUF_MAX_SIZE 1024
 #define PROFILE_NUM 2
 #define PROFILE_WATCHER_APP_ID 0

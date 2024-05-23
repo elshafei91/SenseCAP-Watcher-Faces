@@ -107,7 +107,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             break;
         }
-
+        case VIEW_EVENT_BRIGHTNESS:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_BRIGHTNESS");
+            uint8_t brightness = *(uint8_t *)event_data;
+            break;
+        }
         case VIEW_EVENT_BLE_STATUS:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_BLE_STATUS");
             bool ble_connect_status = false;
@@ -166,7 +170,9 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
                                                             __view_event_handler, NULL, NULL));   
-                                                            
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, 
+                                                            __view_event_handler, NULL, NULL));                                                          
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, 
                                                             __view_event_handler, NULL, NULL));   

@@ -20,6 +20,14 @@ menu "SenseCAP Watcher BSP Configuration"
         help
             "LCD panel SPI config trans_queue_depth"
 
+    config BSP_LCD_SPI_DMA_SIZE_DIV
+        int "LCD panel SPI DMA buffer size divider"
+        range 1 64
+        default 1
+        help
+            Setting this value greater than 1 to reduce the DMA buffer size for LCD panel's SPI transfer.
+            The divider is applied to the buffer which can just contain the full screen pixels data.
+
     menu "BSP LVGL Configuration"
 
         config LVGL_DRAW_BUFF_HEIGHT
@@ -28,27 +36,27 @@ menu "SenseCAP Watcher BSP Configuration"
             default 412
             help
                 "LVGL draw buffer height(rows)"
-        
+
         config LVGL_PORT_TASK_STACK_SIZE
             int "LVGL TASK STACK SIZE"
             range 4096 40960
             default 10240
             help
                 "LVGL task stack size"
-        
+
         config LVGL_PORT_TASK_PRIORITY
             int "LVGL TASK PRIORITY"
             range 1 25
             default 4
             help
                 "LVGL task priority"
-        
+
         choice LVGL_PORT_TASK_AFFINITY
             prompt "LVGL TASK AFFINITY"
             default LVGL_PORT_TASK_AFFINITY_NO_AFFINTY
-            help 
-                Configure the "LVGL task" core affinity. 
-        
+            help
+                Configure the "LVGL task" core affinity.
+
             config LVGL_PORT_TASK_AFFINITY_CPU0
                 bool "CPU0"
             config LVGL_PORT_TASK_AFFINITY_CPU1
@@ -57,14 +65,14 @@ menu "SenseCAP Watcher BSP Configuration"
             config LVGL_PORT_TASK_AFFINITY_NO_AFFINTY
                 bool "No affinity"
         endchoice
-        
+
         config LVGL_PORT_TASK_AFFINITY
             int
-            default 0 if LVGL_PORT_TASK_AFFINITY_CPU0 
+            default 0 if LVGL_PORT_TASK_AFFINITY_CPU0
             default 1 if LVGL_PORT_TASK_AFFINITY_CPU1
             default -1 if LVGL_PORT_TASK_AFFINITY_NO_AFFINTY
 
-        
+
         config LVGL_PORT_TASK_STACK_ALLOC_EXTERNAL
             bool "LVGL TASK STACK ALLOC EXTERNAL"
             default n
@@ -83,7 +91,7 @@ menu "SenseCAP Watcher BSP Configuration"
             default y
             help
                 "Enable to use touchpad as LVGL input device"
-    
+
     endmenu
 
 
@@ -110,14 +118,14 @@ menu "SenseCAP Watcher BSP Configuration"
             default 4096
             help
                 Config SSCMA TX buffer size
-        
+
         config SSCMA_RX_BUFFER_SIZE
             int "SSCMA Client RX Buffer Size"
             range 32768 131072
             default 65536
             help
                 Config SSCMA RX buffer size
-        
+
         menu "SSCMA Client Process Task"
             config SSCMA_PROCESS_TASK_STACK_SIZE
                 int "Stack Size"
@@ -136,8 +144,8 @@ menu "SenseCAP Watcher BSP Configuration"
             choice SSCMA_PROCESS_TASK_AFFINITY
                 prompt "Core Affinity"
                 default SSCMA_PROCESS_TASK_AFFINITY_NO_AFFINTY
-                help 
-                    Configure the "process task" core affinity. 
+                help
+                    Configure the "process task" core affinity.
 
                 config SSCMA_PROCESS_TASK_AFFINITY_CPU0
                     bool "CPU0"
@@ -180,8 +188,8 @@ menu "SenseCAP Watcher BSP Configuration"
             choice SSCMA_MONITOR_TASK_AFFINITY
                 prompt "Core Affinity"
                 default SSCMA_MONITOR_TASK_AFFINITY_NO_AFFINTY
-                help 
-                    Configure the "process task" core affinity. 
+                help
+                    Configure the "process task" core affinity.
 
                 config SSCMA_MONITOR_TASK_AFFINITY_CPU0
                     bool "CPU0"
