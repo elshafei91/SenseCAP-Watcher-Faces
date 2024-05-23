@@ -1,42 +1,47 @@
+#include "view_image_preview.h"
 #include "esp_log.h"
 #include <mbedtls/base64.h>
+#include "esp_jpeg_dec.h"
+#include "util.h"
 
-#include "view_image_preview.h"
 
-#define IMG_WIDTH            412
-#define IMG_HEIGHT           412
-#define IMG_412_412_BUF_SIZE 30 * 1024
+#define IMG_WIDTH            416
+#define IMG_HEIGHT           416
+
+#define IMG_JPEG_BUF_SIZE   30 * 1024
+#define IMG_RAM_BUF_SIZE    (IMG_WIDTH * IMG_HEIGHT * LV_COLOR_DEPTH / 8)
 
 #define IMAGE_INVOKED_BOXES 10
 
 #define RECTANGLE_COLOR lv_palette_main(LV_PALETTE_RED)
 
-#define IMAGE_INVOKED_BOXES_DISPLAY_ENABLE
 
 static lv_img_dsc_t img_dsc = {
     .header.always_zero = 0,
     .header.w = IMG_WIDTH,
     .header.h = IMG_HEIGHT,
-    .data_size = 0,
-    .header.cf = LV_IMG_CF_RAW_ALPHA,
+    .data_size = IMG_RAM_BUF_SIZE,
+    .header.cf = LV_IMG_CF_TRUE_COLOR,
     .data = NULL,
 };
 
-static lv_obj_t *ui_model_name = NULL;
 static lv_obj_t *ui_image = NULL;
 static lv_obj_t *ui_rectangle[IMAGE_INVOKED_BOXES];
 static lv_obj_t *ui_class_name[IMAGE_INVOKED_BOXES];
-static uint8_t *image_buf;
+
+static uint8_t *image_jpeg_buf = NULL;
+static uint8_t *image_ram_buf = NULL;
+
 static lv_color_t cls_color[20];
 
 static void classes_color_init()
 {
-    cls_color[0] = lv_color_hex(0x38761d); // class gesture 1
-    cls_color[1] = lv_color_hex(0x89cff0); // class gesture 2
-    cls_color[2] = lv_color_hex(0x351c75); // class gesture 3
-    cls_color[3] = lv_color_hex(0x53868b); // class pet
-    cls_color[4] = lv_color_hex(0x1e90ff); // class human
-    // cls_color[5] = lv_color_hex(0x00a86b); // class gesture 2
+    cls_color[0] = lv_palette_main(LV_PALETTE_RED);
+    cls_color[1] = lv_palette_main(LV_PALETTE_YELLOW); 
+    cls_color[2] = lv_palette_main(LV_PALETTE_GREEN);
+    cls_color[3] = lv_palette_main(LV_PALETTE_BROWN);
+    cls_color[4] = lv_palette_main(LV_PALETTE_PINK);
+    // cls_color[5] = lv_color_hex(0x00a86b);
     // cls_color[6] = lv_color_hex(0xfcc200);
     // cls_color[7] = lv_color_hex(0x4b0082);
     // cls_color[8] = lv_color_hex(0x36648b);
@@ -54,27 +59,68 @@ static void classes_color_init()
     // cls_color[19] = lv_color_hex(0xaaf0d1);
 }
 
+static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *output_buf)
+{
+    esp_err_t ret = ESP_OK;
+    // Generate default configuration
+    jpeg_dec_config_t config = { .output_type = JPEG_RAW_TYPE_RGB565_BE, .rotate = JPEG_ROTATE_0D };
+
+    // Empty handle to jpeg_decoder
+    jpeg_dec_handle_t jpeg_dec = NULL;
+
+    // Create jpeg_dec
+    jpeg_dec = jpeg_dec_open(&config);
+
+    // Create io_callback handle
+    static jpeg_dec_io_t jpeg_io;
+    memset(&jpeg_io, 0, sizeof(jpeg_io));
+
+    // Create out_info handle
+    static jpeg_dec_header_info_t out_info;
+    memset(&out_info, 0, sizeof(out_info));
+
+    // Set input buffer and buffer len to io_callback
+    jpeg_io.inbuf = input_buf;
+    jpeg_io.inbuf_len = len;
+
+    // Parse jpeg picture header and get picture for user and decoder
+    ret = jpeg_dec_parse_header(jpeg_dec, &jpeg_io, &out_info);
+    if (ret < 0)
+    {
+        goto _exit;
+    }
+
+    jpeg_io.outbuf = output_buf;
+    int inbuf_consumed = jpeg_io.inbuf_len - jpeg_io.inbuf_remain;
+    jpeg_io.inbuf = input_buf + inbuf_consumed;
+    jpeg_io.inbuf_len = jpeg_io.inbuf_remain;
+
+    // Start decode jpeg raw data
+    ret = jpeg_dec_process(jpeg_dec, &jpeg_io);
+    if (ret < 0)
+    {
+        goto _exit;
+    }
+
+_exit:
+    // Decoder deinitialize
+    jpeg_dec_close(jpeg_dec);
+    return ret;
+}
+
+
 int view_image_preview_init(lv_obj_t *ui_screen)
 {
-    image_buf = malloc(IMG_412_412_BUF_SIZE);
-    assert(image_buf);
+    image_jpeg_buf = psram_malloc(IMG_JPEG_BUF_SIZE);
+    assert(image_jpeg_buf);
+
+    //must be 16 byte aligned
+    image_ram_buf = heap_caps_aligned_alloc(16, IMG_RAM_BUF_SIZE, MALLOC_CAP_SPIRAM);
+    assert(image_ram_buf);
 
     ui_image = lv_img_create(ui_screen);
     lv_obj_set_align(ui_image, LV_ALIGN_CENTER);
 
-    ui_model_name = lv_label_create(ui_image);
-    lv_obj_set_width(ui_model_name, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_model_name, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_model_name, 0);
-    lv_obj_set_y(ui_model_name, 75);
-    lv_obj_set_align(ui_model_name, LV_ALIGN_CENTER);
-    // lv_label_set_text(ui_model_name, "Person Detection");
-    // lv_obj_set_style_text_color(ui_model_name, lv_palette_main(LV_PALETTE_GREEN), LV_PART_MAIN | LV_STATE_DEFAULT );
-    lv_obj_set_style_bg_color(ui_model_name, lv_palette_main(LV_PALETTE_GREEN), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_model_name, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_model_name, &lv_font_montserrat_26, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-#ifdef IMAGE_INVOKED_BOXES_DISPLAY_ENABLE
     for (size_t i = 0; i < IMAGE_INVOKED_BOXES; i++)
     {
         ui_rectangle[i] = lv_obj_create(ui_screen);
@@ -86,7 +132,6 @@ int view_image_preview_init(lv_obj_t *ui_screen)
         lv_obj_set_style_text_font(ui_class_name[i], &lv_font_montserrat_26, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_add_flag(ui_class_name[i], LV_OBJ_FLAG_HIDDEN);
     }
-#endif
 
     classes_color_init();
     return 0;
@@ -96,26 +141,29 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
 {
     int ret = 0;
     size_t output_len = 0;
-
     if (ui_image == NULL)
     {
         return -1;
     }
-
-    ret = mbedtls_base64_decode(image_buf, IMG_412_412_BUF_SIZE, &output_len, p_info->img.p_buf, p_info->img.len);
-    if (ret != 0)
+    
+    ret = mbedtls_base64_decode(image_jpeg_buf, IMG_JPEG_BUF_SIZE, &output_len, p_info->img.p_buf, p_info->img.len);
+    if (ret != 0 || output_len == 0)
     {
-        ESP_LOGI("", "mbedtls_base64_decode failed: %d", ret);
+        ESP_LOGE("view", "Failed to decode base64: %d", ret);
         return ret;
     }
 
-    img_dsc.data_size = output_len;
-    img_dsc.data = image_buf;
+    ret = esp_jpeg_decoder_one_picture(image_jpeg_buf, output_len, image_ram_buf);
+    if (ret != ESP_OK) {
+        ESP_LOGE("view", "Failed to decode jpeg: %d", ret);
+        return ret;
+    }
+
+    img_dsc.data = image_ram_buf;
     lv_img_set_src(ui_image, &img_dsc);
 
-    if (!p_info->inference.is_valid)
-    {
-        return -1;
+    if (!p_info->inference.is_valid) {
+        return 0;
     }
 
     switch (p_info->inference.type)

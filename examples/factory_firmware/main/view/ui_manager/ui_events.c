@@ -98,7 +98,7 @@ static void Page_facreset();
 
 static void smile_timer_callback(void *arg)
 {
-	ESP_LOGI(TAG, "smile_timer_callback");
+	// ESP_LOGI(TAG, "smile_timer_callback");
     if (img == NULL)
     {
         img = lv_img_create(lv_scr_act());
@@ -133,7 +133,7 @@ static void smile_timer_callback(void *arg)
 
 static void detect_timer_callback(void *arg)
 {
-	ESP_LOGI(TAG, "detect_timer_callback");
+	// ESP_LOGI(TAG, "detect_timer_callback");
     if (img == NULL)
     {
 		ESP_LOGI(TAG, "detect img create");

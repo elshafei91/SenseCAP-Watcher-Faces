@@ -135,7 +135,7 @@ int app_init(void)
     app_device_info_init();
     app_taskflow_init();
     app_wifi_init();
-    app_ble_init();
+    // app_ble_init();
     app_time_init();
     app_cmd_init();
     // //app_rgb_init();
