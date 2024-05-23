@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/ringbuf.h"
 #include "esp_check.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -29,7 +30,7 @@ ESP_EVENT_DEFINE_BASE(OTA_EVENT_BASE);
 #define HTTPS_TIMEOUT_MS                30000
 #define HTTPS_DOWNLOAD_RETRY_TIMES      5
 #define SSCMA_FLASH_CHUNK_SIZE          128   //this value is copied from the `sscma_client_ota` example
-#define WORKER_STACK_SIZE               3584
+#define AI_MODEL_RINGBUFF_SIZE          256
 
 enum {
     OTA_TYPE_ESP32 = 1,
@@ -51,6 +52,8 @@ static SemaphoreHandle_t g_sem_ai_model_downloaded;
 static SemaphoreHandle_t g_sem_worker_done;
 static esp_err_t g_result_err;
 static char *g_url;
+
+static RingbufHandle_t g_rb_ai_model;
 
 
 static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
@@ -85,7 +88,7 @@ static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32
 
 static void worker_call(ota_worker_task_data_t *worker_data, int cmd)
 {
-    esp_event_post_to(app_event_loop_handle, OTA_EVENT_BASE, cmd, 
+    esp_event_post_to(app_event_loop_handle, OTA_EVENT_BASE, cmd,
                       &worker_data, sizeof(ota_worker_task_data_t *),  portMAX_DELAY);
     xSemaphoreTake(g_sem_worker_done, portMAX_DELAY);
 }
@@ -180,7 +183,7 @@ static void esp32_ota_process()
         ESP_LOGE(TAG, "esp32 ota begin failed eventually");
         ota_status.status = OTA_STATUS_FAIL;
         ota_status.err_code = ESP_ERR_OTA_CONNECTION_FAIL;
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW, 
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                                     &ota_status, sizeof(struct view_data_ota_status),
                                     portMAX_DELAY);
         free(config);
@@ -191,7 +194,7 @@ static void esp32_ota_process()
     ESP_LOGI(TAG, "esp32 ota connection established, start downloading ...");
     ota_status.status = OTA_STATUS_DOWNLOADING;
     ota_status.percentage = 0;
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW, 
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                         &ota_status, sizeof(struct view_data_ota_status),
                         portMAX_DELAY);
 
@@ -238,7 +241,7 @@ static void esp32_ota_process()
             ota_status.status = OTA_STATUS_DOWNLOADING;
             ota_status.percentage = (int)(100 * read_bytes / total_bytes);
             ota_status.err_code = ESP_OK;
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW, 
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                                 &ota_status, sizeof(struct view_data_ota_status),
                                 portMAX_DELAY);
             last_report_bytes += step_bytes;
@@ -269,7 +272,7 @@ static void esp32_ota_process()
                 ESP_LOGE(TAG, "esp32 ota, image validation failed, image is corrupted");
             }
             ESP_LOGE(TAG, "esp32 ota, upgrade failed when trying to finish: 0x%x", ota_finish_err);
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW, 
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                         &ota_status, sizeof(struct view_data_ota_status),
                         portMAX_DELAY);
             free(config);
@@ -280,7 +283,7 @@ static void esp32_ota_process()
 
 ota_end:
     esp_https_ota_abort(https_ota_handle);
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW, 
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                         &ota_status, sizeof(struct view_data_ota_status),
                         portMAX_DELAY);
     free(config);
@@ -312,6 +315,12 @@ static esp_err_t __http_event_handler(esp_http_client_event_t *evt)
             content_len = 0;
             written_len = 0;
             last_report_bytes = 0;
+            //clear the ringbuffer
+            void *tmp;
+            size_t len;
+            while ((tmp = xRingbufferReceiveUpTo(g_rb_ai_model, &len, 0, AI_MODEL_RINGBUFF_SIZE))) {
+                vRingbufferReturnItem(g_rb_ai_model, tmp);
+            }
             break;
         case HTTP_EVENT_HEADER_SENT:
             ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
@@ -329,28 +338,115 @@ static esp_err_t __http_event_handler(esp_http_client_event_t *evt)
                 last_report_bytes = step_bytes;
             }
 
-            if (sscma_client_ota_write(userdata->client, evt->data, evt->data_len) != ESP_OK)
-            {
-                ESP_LOGW(TAG, "sscma_client_ota_write failed\n");
-                *(userdata->err) = ESP_ERR_OTA_SSCMA_WRITE_FAIL;
-            } else {
-                written_len += evt->data_len;
-                if (written_len >= last_report_bytes) {
-                    ota_status.status = OTA_STATUS_DOWNLOADING;
-                    ota_status.percentage = (int)(100 * written_len / content_len);
-                    ota_status.err_code = ESP_OK;
-                    int32_t eventid = ota_type == OTA_TYPE_HIMAX ? CTRL_EVENT_OTA_HIMAX_FW: CTRL_EVENT_OTA_AI_MODEL;
-                    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, eventid, 
-                                        &ota_status, sizeof(struct view_data_ota_status),
-                                        portMAX_DELAY);
-                    last_report_bytes += step_bytes;
-                    ESP_LOGI(TAG, "%s ota, bytes written: %d, %d%%", ota_type_str(ota_type), written_len, ota_status.percentage);
+            //push to ringbuffer
+            if (xRingbufferSend(g_rb_ai_model, evt->data, evt->data_len, 0) != pdTRUE) {
+                ESP_LOGW(TAG, "HTTP_EVENT_ON_DATA, ringbuffer full? this should never happen!");
+            }
+
+            UBaseType_t bytes_waiting = 0;
+            vRingbufferGetInfo(g_rb_ai_model, NULL, NULL, NULL, NULL, &bytes_waiting);
+
+            while (bytes_waiting >= SSCMA_FLASH_CHUNK_SIZE) {
+                //it's certain that we have a SSCMA_FLASH_CHUNK_SIZE bytes
+                int target = SSCMA_FLASH_CHUNK_SIZE;
+                void *chunk = psram_calloc(1, SSCMA_FLASH_CHUNK_SIZE);
+                size_t rcvlen = 0, rcvlen2 = 0;
+                void *item = xRingbufferReceiveUpTo(g_rb_ai_model, &rcvlen, 0, SSCMA_FLASH_CHUNK_SIZE);
+                if (!item) {
+                    ESP_LOGW(TAG, "HTTP_EVENT_ON_DATA, ringbuffer insufficient? this should never happen!");
+                    free(chunk);
+                    break;
                 }
+                memcpy(chunk, item, rcvlen);
+                target -= rcvlen;
+                vRingbufferReturnItem(g_rb_ai_model, item);
+
+                //rollover?
+                if (target > 0) {
+                    item = xRingbufferReceiveUpTo(g_rb_ai_model, &rcvlen2, 0, target);  //receive the 2nd part
+                    if (!item) {
+                        ESP_LOGW(TAG, "HTTP_EVENT_ON_DATA, ringbuffer insufficient? this should never happen [2]!");
+                        free(chunk);
+                        break;
+                    }
+                    memcpy(chunk + rcvlen, item, rcvlen2);
+                    target -= rcvlen2;
+                    vRingbufferReturnItem(g_rb_ai_model, item);
+                }
+
+                if (target != 0) ESP_LOGW(TAG, "HTTP_EVENT_ON_DATA, this really should never happen!");
+
+                //write to sscma client
+                ESP_LOGV(TAG, "HTTP_EVENT_ON_DATA, sscma_client_ota_write");
+                if (sscma_client_ota_write(userdata->client, chunk, SSCMA_FLASH_CHUNK_SIZE) != ESP_OK)
+                {
+                    ESP_LOGW(TAG, "sscma_client_ota_write failed\n");
+                    *(userdata->err) = ESP_ERR_OTA_SSCMA_WRITE_FAIL;
+                } else {
+                    written_len += SSCMA_FLASH_CHUNK_SIZE;
+                    if (written_len >= last_report_bytes) {
+                        ota_status.status = OTA_STATUS_DOWNLOADING;
+                        ota_status.percentage = (int)(100 * written_len / content_len);
+                        ota_status.err_code = ESP_OK;
+                        int32_t eventid = ota_type == OTA_TYPE_HIMAX ? CTRL_EVENT_OTA_HIMAX_FW: CTRL_EVENT_OTA_AI_MODEL;
+                        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, eventid,
+                                            &ota_status, sizeof(struct view_data_ota_status),
+                                            portMAX_DELAY);
+                        last_report_bytes += step_bytes;
+                        ESP_LOGI(TAG, "%s ota, bytes written: %d, %d%%", ota_type_str(ota_type), written_len, ota_status.percentage);
+                    }
+                }
+
+                free(chunk);
+
+                vRingbufferGetInfo(g_rb_ai_model, NULL, NULL, NULL, NULL, &bytes_waiting);
             }
 
             break;
         case HTTP_EVENT_ON_FINISH:
             ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
+            //there might be some bytes left in the ringbuffer, copy them out
+            UBaseType_t bytes_left = 0;
+            vRingbufferGetInfo(g_rb_ai_model, NULL, NULL, NULL, NULL, &bytes_left);
+
+            if (bytes_left > 0) {
+                if (bytes_left >= SSCMA_FLASH_CHUNK_SIZE) ESP_LOGW(TAG, "HTTP_EVENT_ON_FINISH, amazing!");
+                ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH, byte left in ringbuffer: %d", (int)bytes_left);
+
+                void *chunk = psram_calloc(1, SSCMA_FLASH_CHUNK_SIZE);
+                void *tmp;
+                size_t len, copied = 0;
+                while ((tmp = xRingbufferReceiveUpTo(g_rb_ai_model, &len, 0, AI_MODEL_RINGBUFF_SIZE))) {
+                    memcpy(chunk + copied, tmp, len);
+                    copied += len;
+                    vRingbufferReturnItem(g_rb_ai_model, tmp);
+                    ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH, byte left in ringbuffer: %d, copied len: %d", (int)bytes_left, copied);
+                }
+                if (copied != bytes_left) ESP_LOGW(TAG, "HTTP_EVENT_ON_FINISH, amazing again!");
+
+                //write to sscma client
+                if (sscma_client_ota_write(userdata->client, chunk, SSCMA_FLASH_CHUNK_SIZE) != ESP_OK)
+                {
+                    ESP_LOGW(TAG, "sscma_client_ota_write failed\n");
+                    *(userdata->err) = ESP_ERR_OTA_SSCMA_WRITE_FAIL;
+                } else {
+                    written_len += SSCMA_FLASH_CHUNK_SIZE;
+                    if (written_len >= last_report_bytes) {
+                        ota_status.status = OTA_STATUS_DOWNLOADING;
+                        ota_status.percentage = (int)(100 * written_len / content_len);
+                        ota_status.err_code = ESP_OK;
+                        int32_t eventid = ota_type == OTA_TYPE_HIMAX ? CTRL_EVENT_OTA_HIMAX_FW: CTRL_EVENT_OTA_AI_MODEL;
+                        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, eventid,
+                                            &ota_status, sizeof(struct view_data_ota_status),
+                                            portMAX_DELAY);
+                        last_report_bytes += step_bytes;
+                        ESP_LOGI(TAG, "%s ota, bytes written: %d, %d%%", ota_type_str(ota_type), written_len, ota_status.percentage);
+                    }
+                }
+
+                free(chunk);
+            }
+
             sscma_client_ota_finish(userdata->client);
             break;
         case HTTP_EVENT_DISCONNECTED:
@@ -379,7 +475,7 @@ static void sscma_ota_process(uint32_t ota_type)
     sscma_client_flasher_handle_t sscma_flasher = bsp_sscma_flasher_init();
     assert(sscma_flasher != NULL);
 
-    sscma_client_init(sscma_client);
+    //sscma_client_init(sscma_client);
 
     sscma_client_info_t *info;
     if (sscma_client_get_info(sscma_client, &info, true) == ESP_OK)
@@ -444,7 +540,7 @@ static void sscma_ota_process(uint32_t ota_type)
     http_client = esp_http_client_init(http_client_config);
     ESP_GOTO_ON_FALSE(http_client != NULL, ESP_ERR_OTA_CONNECTION_FAIL, sscma_ota_end,
                       TAG, "sscma ota, http client init fail");
-    
+
     esp_err_t err = esp_http_client_perform(http_client);
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "sscma ota, HTTP GET Status = %d, content_length = %"PRId64,
@@ -579,11 +675,11 @@ static void __ota_test_task(void *p_arg)
     }
     vTaskDelay(pdMS_TO_TICKS(3000));
 
-    esp_err_t res = app_ota_esp32_fw_download("https://new.pxspeed.site/factory_firmware.bin");
-    ESP_LOGI(TAG, "test app_ota_esp32_fw_download: 0x%x", res);
+    //esp_err_t res = app_ota_esp32_fw_download("https://new.pxspeed.site/factory_firmware.bin");
+    //ESP_LOGI(TAG, "test app_ota_esp32_fw_download: 0x%x", res);
 
-    // esp_err_t res = app_ota_ai_model_download("https://new.pxspeed.site/human_pose.tflite", 0);
-    // ESP_LOGI(TAG, "test app_ota_ai_model_download: 0x%x", res);
+    esp_err_t res = app_ota_ai_model_download("https://new.pxspeed.site/human_pose.tflite", 0);
+    ESP_LOGI(TAG, "test app_ota_ai_model_download: 0x%x", res);
 
     vTaskDelete(NULL);
 }
@@ -599,8 +695,10 @@ esp_err_t app_ota_init(void)
     g_sem_ai_model_downloaded = xSemaphoreCreateBinary();
     g_sem_worker_done = xSemaphoreCreateBinary();
 
-    // esp32 ota worker task, due to PSRAM limitations, we need a task with internal RAM as stack
-    // xTaskCreate(__esp32_ota_worker_task, "esp32_ota_worker", 1024 * 3, NULL, 1, &g_task_worker);
+    StaticRingbuffer_t *buffer_struct = (StaticRingbuffer_t *)psram_calloc(1, sizeof(StaticRingbuffer_t));
+    uint8_t *buffer_storage = (uint8_t *)psram_calloc(1, AI_MODEL_RINGBUFF_SIZE);
+
+    g_rb_ai_model = xRingbufferCreateStatic(AI_MODEL_RINGBUFF_SIZE, RINGBUF_TYPE_BYTEBUF, buffer_storage, buffer_struct);
 
     // ota main task
     const uint32_t stack_size = 10 * 1024;
