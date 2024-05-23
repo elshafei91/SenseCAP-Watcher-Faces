@@ -24,7 +24,7 @@
 #include "app_time.h"
 #include "app_cmd.h"
 #include "app_sensecap_https.h"
-#include "app_mqtt_client.h"
+#include "app_sensecap_mqtt.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
 #include "app_device_info.h"

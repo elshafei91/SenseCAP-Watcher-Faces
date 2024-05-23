@@ -265,6 +265,7 @@ enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
     CTRL_EVENT_MQTT_CONNECTED,
     CTRL_EVENT_MQTT_TASKLIST_JSON,          //received tasklist json from MQTT
+    CTRL_EVENT_MQTT_OTA_JSON,               //received ota json from MQTT
 
     CTRL_EVENT_TASK_FLOW_START_BY_BLE, // char * , taskflow json
     CTRL_EVENT_TASK_FLOW_START_BY_SR,  // char * , taskflow json

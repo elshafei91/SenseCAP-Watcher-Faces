@@ -136,14 +136,6 @@ static esp_err_t validate_image_header(esp_app_desc_t *new_app_info)
     return ESP_OK;
 }
 
-static esp_err_t __http_client_init_cb(esp_http_client_handle_t http_client)
-{
-    esp_err_t err = ESP_OK;
-    /* Uncomment to add custom headers to HTTP request */
-    // err = esp_http_client_set_header(http_client, "Custom-Header", "Value");
-    return err;
-}
-
 static void esp32_ota_process()
 {
     ESP_LOGI(TAG, "starting esp32 ota process, downloading %s", g_url);
@@ -165,9 +157,6 @@ static void esp32_ota_process()
 
     esp_https_ota_config_t *ota_config = psram_calloc(1, sizeof(esp_https_ota_config_t));
     ota_config->http_config = config;
-    ota_config->http_client_init_cb = __http_client_init_cb;
-    // ota_config->partial_http_download = true;
-    // ota_config->max_http_request_size = MBEDTLS_SSL_IN_CONTENT_LEN;
 
     esp_https_ota_handle_t https_ota_handle = NULL;
     esp_err_t err;
@@ -297,18 +286,6 @@ ota_end:
     free(config);
     free(ota_config);
 }
-
-// static void __esp32_ota_worker_task(void *parg)
-// {
-    // ESP_LOGI(TAG, "starting esp32 ota worker task ...");
-
-    // while (1) {
-    //     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  //task sleep
-    //     ESP_LOGI(TAG, "esp32 ota worker task: start working ...");
-
-    //     esp32_ota_process();
-    // }
-// }
 
 static const char *ota_type_str(int ota_type)
 {
