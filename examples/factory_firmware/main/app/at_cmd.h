@@ -14,37 +14,42 @@
 #include "uhash.h"
 #include "app_wifi.h"
 
+
+#define DATA_LENGTH 10320
+#define AT_EVENTS_COMMAND_ID 0x6F
+#define AT_EVENTS_RESPONSE_ID 0x70
+#define MEMORY_SIZE (1024 * 500)
+#define MESSAGE_QUEUE_SIZE 10
 typedef struct {
     char command_name[100];  // Assuming the command name will not exceed 100 characters
     void (*func)(char *params);  // Function pointer to the function that will process the command
     UT_hash_handle hh;  // Makes this structure hashable
 } command_entry;
 
-#pragma pack(push, 1)
 typedef struct {
     uint8_t *msg;
     int size;
 } message_event_t;
-#pragma pack(pop)
+
 
 typedef struct {
     char *response;
     int length;
 } AT_Response;
 
+
+
+
 extern SemaphoreHandle_t AT_response_semaphore;
 extern QueueHandle_t AT_response_queue;
+extern QueueHandle_t message_queue;
 
-#define DEBUG_AT_CMD
 
-#ifdef DEBUG_AT_CMD
 
-#define TASK_STATS_BUFFER_SIZE 50
-
-extern char *test_strings[];
-extern command_entry *commands;
-void vTaskMonitor(void *para);
-#endif
+//extern esp_event_base_t const AT_EVENTS;
+static const char *AT_EVENTS_TAG = "AT_EVENTS";
+extern StreamBufferHandle_t xStreamBuffer;
+extern TaskHandle_t xTaskToNotify_AT;
 
 void AT_command_reg();  // Function to register the AT commands
 void AT_command_free();  // Function to free the memory allocated for the commands
@@ -54,7 +59,7 @@ void exec_command(command_entry **commands, const char *name, char *params, char
 
 void task_handle_AT_command();  // Function to handle the AT command and select which command to execute
 
-void handle_type_1_command(char *params);  // Test command
+
 void handle_deviceinfo_command();  // Device info command
 void handle_wifi_set(char *params);  // WiFi command
 void handle_wifi_query(char *params);   //WiFi query command
@@ -72,12 +77,6 @@ void freeWiFiStack(WiFiStack *stack);
 void initWiFiStack(WiFiStack *stack, int capacity);
 void wifi_stack_semaphore_init();
 
-extern esp_event_base_t const AT_EVENTS;
-static const char *AT_EVENTS_TAG = "AT_EVENTS";
-#define AT_EVENTS_COMMAND_ID 0x6F
-#define AT_EVENTS_RESPONSE_ID 0x70
-#define MEMORY_SIZE (1024 * 100)
 
-extern esp_event_loop_handle_t at_event_loop_handle;
 
 #endif
