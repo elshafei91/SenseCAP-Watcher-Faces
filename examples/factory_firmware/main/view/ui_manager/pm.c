@@ -93,7 +93,6 @@ void lv_pm_open_page(lv_group_t * group, GroupInfo *groupInfo, pm_operation_t op
         case PM_NO_OPERATION:
             break;
         case PM_CLEAR_GROUP:
-            if (groupInfo != NULL)
                 lv_group_remove_all_objs(group);
             break;
     }
