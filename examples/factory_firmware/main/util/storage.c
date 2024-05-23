@@ -1,54 +1,68 @@
 #include "storage.h"
+#include "esp_log.h" 
 #include "nvs_flash.h"
 
 #define STORAGE_NAMESPACE "FACTORYCFG"
 
-int storage_init(void)
+static const char *TAG = "storage";
+
+esp_err_t storage_init()
 {
-    //ESP_ERROR_CHECK(nvs_flash_erase());
     esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
     }
     return ret;
 }
 
-esp_err_t storage_write(char *p_key, void *p_data, size_t len)
+esp_err_t storage_write(const char *key, const void *value, size_t length)
 {
     nvs_handle_t my_handle;
-    esp_err_t err;
-    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-    if (err != ESP_OK) return err;
+    esp_err_t ret = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(ret));
+        return ret;
+    }
 
-    err = nvs_set_blob(my_handle,  p_key, p_data, len);
-    if (err != ESP_OK) {
+    ret = nvs_set_blob(my_handle, key, value, length);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (%s) setting blob in NVS!", esp_err_to_name(ret));
         nvs_close(my_handle);
-        return err;
+        return ret;
     }
-    err = nvs_commit(my_handle);
-    if (err != ESP_OK) {
-        nvs_close(my_handle);
-        return err;
+
+    ret = nvs_commit(my_handle);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (%s) committing NVS!", esp_err_to_name(ret));
     }
+
     nvs_close(my_handle);
-    return ESP_OK;
+    return ret;
 }
 
-esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
+esp_err_t storage_read(const char *key, void *value, size_t length)
 {
     nvs_handle_t my_handle;
-    esp_err_t err;
-
-    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-    if (err != ESP_OK) return err;
-
-    err = nvs_get_blob(my_handle, p_key, p_data, p_len);
-    if (err != ESP_OK) {
-        nvs_close(my_handle);
-        return err;
+    esp_err_t ret = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(ret));
+        return ret;
     }
+
+    size_t required_size = length;
+    ret = nvs_get_blob(my_handle, key, value, &required_size);
+    if (ret != ESP_OK && ret != ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGE(TAG, "Error (%s) reading blob from NVS!", esp_err_to_name(ret));
+    }
+
     nvs_close(my_handle);
-    return ESP_OK;
+    return ret;
 }
 

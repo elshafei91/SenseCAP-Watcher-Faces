@@ -580,6 +580,7 @@ void handle_eui_command(char *params)
  * - sum: A number representing the total number of tasks.
  * - data: A string containing the task data.
  */
+static size_t total_size;
 void parse_json_and_concatenate(char *json_string)
 {
     printf("Params: %s\n", json_string);
@@ -593,15 +594,15 @@ void parse_json_and_concatenate(char *json_string)
     cJSON *package = cJSON_GetObjectItem(json, "package");
     cJSON *sum = cJSON_GetObjectItem(json, "sum");
     cJSON *data = cJSON_GetObjectItem(json, "data");
-
-    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data))
+    cJSON *total_size =cJSON_GetObjectItem(json, "totalsize");
+    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data)||!cJSON_IsString(total_size))
     {
         printf("Invalid JSON format\n");
         cJSON_Delete(json); 
     }
-
+    total_size =total_size->valueint;
     int index = package->valueint;
-
+    
 
     // if (index < 0 || index >= num_jsons)
     // {
@@ -722,7 +723,7 @@ void handle_taskflow_command(char *params)
     }
     if (all_received)
     {
-        char *result = (char *)heap_caps_malloc(DATA_LENGTH * num_jsons + 1, MALLOC_CAP_SPIRAM); 
+        char *result = (char *)heap_caps_malloc(total_size + 1, MALLOC_CAP_SPIRAM); 
         if (result == NULL)
         {
             printf("Failed to allocate memory for result\n");
@@ -730,14 +731,13 @@ void handle_taskflow_command(char *params)
             {
                 free(tasks[k].data);
             }
-            //free(tasks);
+            free(tasks);
         }
 
         concatenate_data(result);
 
         printf("Final data: %s\n", result);
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &result, sizeof(char*), portMAX_DELAY);
-        //free(result);
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -831,7 +831,7 @@ void task_handle_AT_command()
             char command_type[20];
             snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
 
-            size_t data_size = 100 * 1024; // 100K
+            size_t data_size = 10320; 
             char *params = (char *)heap_caps_malloc(data_size + 1, MALLOC_CAP_SPIRAM);
             if (matches[3].rm_so != -1)
             {

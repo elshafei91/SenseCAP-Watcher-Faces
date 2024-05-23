@@ -785,8 +785,8 @@ esp_err_t app_ble_init(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     AT_cmd_init();
-    ble_task_stack = (StackType_t *)heap_caps_malloc(4096 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    TaskHandle_t task_handle = xTaskCreateStatic(ble_config_entry, "ble_config_entry", 4096, NULL, 4, ble_task_stack, &ble_task_buffer);
+    ble_task_stack = (StackType_t *)heap_caps_malloc(8192 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    TaskHandle_t task_handle = xTaskCreateStatic(ble_config_entry, "ble_config_entry", 8192, NULL, 4, ble_task_stack, &ble_task_buffer);
     if (task_handle == NULL)
     {
         printf("Failed to create task\n");

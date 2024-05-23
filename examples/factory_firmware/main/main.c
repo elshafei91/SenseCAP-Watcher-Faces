@@ -117,11 +117,11 @@ int app_init(void)
     app_ble_init();
     app_time_init();
     app_cmd_init();
-    // //app_rgb_init();
+    app_rgb_init();
     app_mqtt_client_init();
     app_sensecap_https_init();
     app_device_status_monitor_init();
-    // app_ota_init();
+    app_ota_init();
     //app_sr_start(false);
 
     return ESP_OK;
@@ -131,7 +131,7 @@ void task_app_init(void *p_arg)
 {
     // UI init
     view_init();
-    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(10));
     app_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
