@@ -32,6 +32,7 @@ void waitbc_cb(lv_event_t * e);
 void revbc_cb(lv_event_t * e);
 void viewac_cb(lv_event_t * e);
 void viewaf_cb(lv_event_t * e);
+void viewasl_cb(lv_event_t * e);
 void ava1c_cb(lv_event_t * e);
 void ava2c_cb(lv_event_t * e);
 void viewlc_cb(lv_event_t * e);

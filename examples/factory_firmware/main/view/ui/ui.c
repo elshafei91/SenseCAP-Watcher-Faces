@@ -705,6 +705,9 @@ void ui_event_Page_ViewAva(lv_event_t * e)
     if(event_code == LV_EVENT_FOCUSED) {
         viewaf_cb(e);
     }
+    if(event_code == LV_EVENT_SCREEN_LOADED) {
+        viewasl_cb(e);
+    }
 }
 void ui_event_avabtn1(lv_event_t * e)
 {

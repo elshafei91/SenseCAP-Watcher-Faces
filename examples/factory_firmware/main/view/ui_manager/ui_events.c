@@ -56,11 +56,38 @@ extern GroupInfo group_page_set;
 extern GroupInfo group_page_view;
 extern GroupInfo group_page_ha;
 
-static void periodic_timer_callback(void *arg);
-static const esp_timer_create_args_t periodic_timer_args = { 
-	.callback = &periodic_timer_callback,
+typedef struct {
+    ImageData *imagedata;
+    int *image_count;
+} TimerContext;
+
+static void smile_timer_callback(void *arg);
+static void detect_timer_callback(void *arg);
+static const esp_timer_create_args_t detect_timer_args = { 
+	.callback = &detect_timer_callback,
     /* name is optional, but may help identify the timer when debugging */
-    .name = "periodic" };
+    .name = "detect_timer" };
+// static const esp_timer_create_args_t speak_timer_args = { 
+// 	.callback = &periodic_timer_callback,
+//     /* name is optional, but may help identify the timer when debugging */
+//     .name = "speak_timer" };
+// static const esp_timer_create_args_t listen_timer_args = { 
+// 	.callback = &periodic_timer_callback,
+//     /* name is optional, but may help identify the timer when debugging */
+//     .name = "listen_timer" };
+// static const esp_timer_create_args_t load_timer_args = { 
+// 	.callback = &periodic_timer_callback,
+//     /* name is optional, but may help identify the timer when debugging */
+//     .name = "load_timer" };
+// static const esp_timer_create_args_t sleep_timer_args = { 
+// 	.callback = &periodic_timer_callback,
+//     /* name is optional, but may help identify the timer when debugging */
+//     .name = "sleep_timer" };
+static const esp_timer_create_args_t smile_timer_args = { 
+	.callback = &smile_timer_callback,
+    /* name is optional, but may help identify the timer when debugging */
+    .name = "smile_timer" };
+
 static esp_timer_handle_t periodic_timer;
 
 static void Page_ConnAPP_BLE();
@@ -68,6 +95,78 @@ static void Page_ConnAPP_Mate();
 static void Task_end();
 static void Page_shutdown();
 static void Page_facreset();
+
+static void smile_timer_callback(void *arg)
+{
+	ESP_LOGI(TAG, "smile_timer_callback");
+    if (img == NULL)
+    {
+        img = lv_img_create(lv_scr_act());
+    }
+    if (file_idx < g_smile_image_count)
+    {
+		ImageData *image_data = &g_smile_store[file_idx];
+
+        if (image_data->data == NULL || image_data->size == 0)
+        {
+            ESP_LOGE("Image Data", "Invalid image data or size");
+            return;
+        }
+
+        lv_img_dsc_t *img_dsc = (lv_img_dsc_t *)heap_caps_malloc((sizeof(lv_img_dsc_t)), MALLOC_CAP_SPIRAM);
+        img_dsc->header.always_zero = 0;
+        img_dsc->header.w = 412;
+        img_dsc->header.h = 412;
+        img_dsc->header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA; // Ensure the color format matches your image
+        img_dsc->data_size = image_data->size;
+        img_dsc->data = image_data->data;
+
+        lv_img_set_src(img, img_dsc);
+
+        file_idx++;
+        if (file_idx >= g_smile_image_count)
+        {
+            file_idx = 0;
+        }
+    }
+}
+
+static void detect_timer_callback(void *arg)
+{
+	ESP_LOGI(TAG, "detect_timer_callback");
+    if (img == NULL)
+    {
+		ESP_LOGI(TAG, "detect img create");
+        img = lv_img_create(lv_scr_act());
+    }
+    if (file_idx < g_detect_image_count)
+    {
+		ImageData *image_data = &g_detect_store[file_idx];
+
+        if (image_data->data == NULL || image_data->size == 0)
+        {
+            ESP_LOGE("Image Data", "Invalid image data or size");
+            return;
+        }
+
+        lv_img_dsc_t *img_dsc = (lv_img_dsc_t *)heap_caps_malloc((sizeof(lv_img_dsc_t)), MALLOC_CAP_SPIRAM);
+        img_dsc->header.always_zero = 0;
+        img_dsc->header.w = 412;
+        img_dsc->header.h = 412;
+        img_dsc->header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA; // Ensure the color format matches your image
+        img_dsc->data_size = image_data->size;
+        img_dsc->data = image_data->data;
+
+        lv_img_set_src(img, img_dsc);
+
+        file_idx++;
+        if (file_idx >= g_detect_image_count)
+        {
+            file_idx = 0;
+        }
+    }
+}
+
 
 static void set_obj_style_defocused(lv_obj_t *obj, lv_obj_t *obj_text)
 {
@@ -110,50 +209,19 @@ void virtc_cb(lv_event_t *e)
 {
     ESP_ERROR_CHECK(esp_timer_stop(periodic_timer));
     ESP_ERROR_CHECK(esp_timer_delete(periodic_timer));
+	lv_obj_del(&img);
+	img = NULL;
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
-}
-
-static void periodic_timer_callback(void *arg)
-{
-    if (img == NULL)
-    {
-        img = lv_img_create(lv_scr_act());
-    }
-    if (file_idx < g_smile_image_count)
-    {
-        ImageData *image_data = &g_smile_store[file_idx];
-
-        if (image_data->data == NULL || image_data->size == 0)
-        {
-            ESP_LOGE("Image Data", "Invalid image data or size");
-            return;
-        }
-
-        lv_img_dsc_t *img_dsc = (lv_img_dsc_t *)heap_caps_malloc((sizeof(lv_img_dsc_t)), MALLOC_CAP_SPIRAM);
-        img_dsc->header.always_zero = 0;
-        img_dsc->header.w = 412;
-        img_dsc->header.h = 412;
-        img_dsc->header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA; // Ensure the color format matches your image
-        img_dsc->data_size = image_data->size;
-        img_dsc->data = image_data->data;
-
-        lv_img_set_src(img, img_dsc);
-
-        file_idx++;
-        if (file_idx >= g_smile_image_count)
-        {
-            file_idx = 0;
-        }
-    }
 }
 
 void virtsl_cb(lv_event_t *e)
 {
-    lv_group_add_obj(g_main, ui_Page_Vir);
+	lv_group_add_obj(g_main, ui_Page_Vir);
 
-    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&smile_timer_args, &periodic_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 500000));
 }
+
 
 void main1c_cb(lv_event_t *e)
 {
@@ -244,15 +312,26 @@ void revbc_cb(lv_event_t *e)
 void viewac_cb(lv_event_t *e)
 {
     lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+	lv_obj_move_foreground(ui_viewavap);
 }
 
 void viewaf_cb(lv_event_t *e)
+{	
+	_ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+}
+
+void viewasl_cb(lv_event_t * e)
 {
-    _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+	ESP_ERROR_CHECK(esp_timer_create(&detect_timer_args, &periodic_timer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 500000));
 }
 
 void ava1c_cb(lv_event_t *e)
 {
+	ESP_ERROR_CHECK(esp_timer_stop(periodic_timer));
+    ESP_ERROR_CHECK(esp_timer_delete(periodic_timer));
+	lv_obj_del(&img);
+	img = NULL;
     Task_end();
 }
 
@@ -264,6 +343,7 @@ void ava2c_cb(lv_event_t *e)
 void viewlc_cb(lv_event_t *e)
 {
     lv_obj_clear_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN); /// Flags
+	lv_obj_move_foreground(ui_viewlivp);
 }
 
 void viewlf_cb(lv_event_t *e)
@@ -326,8 +406,8 @@ void loctask3c_cb(lv_event_t *e)
 
 void loctask3f_cb(lv_event_t *e)
 {
-    lv_label_set_text(ui_Label1, "Gesture\nDetection");
-    lv_obj_set_style_bg_img_src(ui_mimgp, &ui_img_gesture_d_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_label_set_text(ui_Label1, "Pet\nDetection");
+    lv_obj_set_style_bg_img_src(ui_mimgp, &ui_img_dog_d_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void loctask4c_cb(lv_event_t *e)
@@ -339,8 +419,8 @@ void loctask4c_cb(lv_event_t *e)
 
 void loctask4f_cb(lv_event_t *e)
 {
-    lv_label_set_text(ui_Label1, "Pet\nDetection");
-    lv_obj_set_style_bg_img_src(ui_mimgp, &ui_img_dog_d_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_label_set_text(ui_Label1, "Gesture\nDetection");
+    lv_obj_set_style_bg_img_src(ui_mimgp, &ui_img_gesture_d_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void locavac_cb(lv_event_t *e) { }
