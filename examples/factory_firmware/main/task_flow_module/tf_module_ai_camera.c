@@ -364,7 +364,6 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
 {
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)user_ctx;
 
-    printf("sscma:%s\r\n",reply->data);
     int resolution = __get_camera_sensor_resolution(reply->payload);
     int mode = __get_camera_mode_get(reply->payload);
 
