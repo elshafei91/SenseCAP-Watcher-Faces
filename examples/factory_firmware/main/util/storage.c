@@ -102,6 +102,11 @@ int storage_init(void)
 
 esp_err_t storage_write(char *p_key, void *p_data, size_t len)
 {
+    TaskHandle_t h = xTaskGetCurrentTaskHandle();
+    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0) {
+        return __storage_write(p_key, p_data, len);
+    }
+
     storage_event_data_t evtdata = {
         .sem = xSemaphoreCreateBinary(),
         .key = p_key,
@@ -111,7 +116,7 @@ esp_err_t storage_write(char *p_key, void *p_data, size_t len)
     };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_WRITE, 
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_WRITE,
                       &pevtdata, sizeof(storage_event_data_t *),  portMAX_DELAY);
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
@@ -121,6 +126,11 @@ esp_err_t storage_write(char *p_key, void *p_data, size_t len)
 
 esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
 {
+    TaskHandle_t h = xTaskGetCurrentTaskHandle();
+    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0) {
+        return __storage_read(p_key, p_data, p_len);
+    }
+
     storage_event_data_t evtdata = {
         .sem = xSemaphoreCreateBinary(),
         .key = p_key,
@@ -130,7 +140,7 @@ esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
     };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_READ, 
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_READ,
                       &pevtdata, sizeof(storage_event_data_t *),  portMAX_DELAY);
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
