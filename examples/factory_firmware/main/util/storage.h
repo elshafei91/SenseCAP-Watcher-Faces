@@ -9,6 +9,9 @@ extern "C" {
 #include "nvs.h"
 #include "nvs_flash.h"
 
+
+#define STORAGE_NAMESPACE "storage"
+
 int storage_init(void);
 
 esp_err_t storage_write(char *p_key, void *p_data, size_t len);

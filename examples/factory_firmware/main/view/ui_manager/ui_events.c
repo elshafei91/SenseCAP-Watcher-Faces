@@ -556,7 +556,7 @@ void setbric_cb(lv_event_t * e)
 	esp_err_t ret = 0;
 	static size_t len = sizeof(volbri);
 	volbri.bs_value = get_brightness(0);
-	if( ret == ESP_OK && len == sizeof(volbri))
+	if(len == sizeof(volbri))
 	{
 		ESP_LOGI(TAG, "cfg read successful");
 		lv_slider_set_value(ui_bslider, volbri.bs_value, LV_ANIM_OFF);
