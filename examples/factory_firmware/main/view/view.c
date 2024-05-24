@@ -16,6 +16,7 @@ static const char *TAG = "view";
 
 char sn_data[66];
 uint8_t wifi_page_id;
+uint8_t emoticon_disp_id = 0;
 
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
@@ -124,22 +125,30 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
         case VIEW_EVENT_ALARM_ON:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_ON");
+            emoticon_disp_id = 1;
             view_alarm_on();
             break;
         }
 
         case VIEW_EVENT_ALARM_OFF:{
             ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
+            emoticon_disp_id = 0;
             view_alarm_off();
             break;
         }
 
-        case VIEW_EVENT_AI_CAMERA_PREVIEW:{
-            ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_PREVIEW");
-            struct tf_module_ai_camera_preview_info *p_info = ( struct tf_module_ai_camera_preview_info *)event_data;
-            view_image_preview_flush(p_info);
-            tf_data_image_free(&p_info->img);
-            tf_data_inference_free(&p_info->inference);
+        // case VIEW_EVENT_AI_CAMERA_PREVIEW:{
+        //     ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_PREVIEW");
+        //     struct tf_module_ai_camera_preview_info *p_info = ( struct tf_module_ai_camera_preview_info *)event_data;
+        //     view_image_preview_flush(p_info);
+        //     tf_data_image_free(&p_info->img);
+        //     tf_data_inference_free(&p_info->inference);
+        // }
+
+        case VIEW_EVENT_TASK_FLOW_REMOTE:{
+            ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_REMOTE");
+            _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
+            break;
         }
 
         default:
@@ -195,8 +204,12 @@ int view_init(void)
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                                                             __view_event_handler, NULL, NULL));
 
+    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_AI_CAMERA_PREVIEW, 
+    //                                                         __view_event_handler, NULL, NULL)); 
+    
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-                                                            VIEW_EVENT_BASE, VIEW_EVENT_AI_CAMERA_PREVIEW, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_REMOTE, 
                                                             __view_event_handler, NULL, NULL)); 
 
     return 0;

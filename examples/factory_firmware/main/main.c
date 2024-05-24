@@ -61,12 +61,12 @@ static heap_task_totals_t s_totals_arr[MAX_TASK_NUM];
 static heap_task_block_t s_block_arr[MAX_BLOCK_NUM];
 #endif
 
-extern ImageData g_detect_store[MAX_IMAGES];
-extern ImageData g_speak_store[MAX_IMAGES];
-extern ImageData g_listen_store[MAX_IMAGES];
-extern ImageData g_load_store[MAX_IMAGES];
-extern ImageData g_sleep_store[MAX_IMAGES];
-extern ImageData g_smile_store[MAX_IMAGES];
+extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
 
 extern int g_detect_image_count;
 extern int g_speak_image_count;
@@ -119,18 +119,18 @@ int board_init(void)
     bsp_codec_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
-    read_and_store_selected_pngs("smiling", g_smile_store, &g_smile_image_count);
+    read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
 
     return ESP_OK;
 }
 
 int app_init(void)
 {
-    read_and_store_selected_pngs("detecting", g_detect_store, &g_detect_image_count);
-    read_and_store_selected_pngs("speaking", g_speak_store, &g_speak_image_count);
-    read_and_store_selected_pngs("listening", g_listen_store, &g_listen_image_count);
-    read_and_store_selected_pngs("loading", g_load_store, &g_load_image_count);
-    read_and_store_selected_pngs("sleeping", g_sleep_store, &g_sleep_image_count);
+    read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
+    read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
+    read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
+    read_and_store_selected_pngs("loading", g_load_img_dsc, &g_load_image_count);
+    read_and_store_selected_pngs("sleeping", g_sleep_img_dsc, &g_sleep_image_count);
     
     app_device_info_init();
     app_taskflow_init();

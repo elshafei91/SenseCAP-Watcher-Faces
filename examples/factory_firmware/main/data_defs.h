@@ -225,6 +225,7 @@ enum {
     VIEW_EVENT_TASK_FLOW_EXIST, //uint32_t, 1 or 0, tell UI if there's already a tasklist running
     VIEW_EVENT_TASK_FLOW_STOP, //NULL
     VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
+    VIEW_EVENT_TASK_FLOW_REMOTE,
     VIEW_EVENT_ALL,
 };
 //config caller

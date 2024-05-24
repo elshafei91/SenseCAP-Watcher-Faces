@@ -7,6 +7,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "lvgl/lvgl.h"
 
 #define MAX_IMAGES 10
 
@@ -18,7 +19,7 @@ typedef struct
 
 
 void *read_png_to_psram(const char *path, size_t *out_size);
-void read_and_store_selected_pngs(const char *file_prefix, ImageData *imagedata, int *image_count);
+void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count);
 
 #ifdef __cplusplus
 }

@@ -8,13 +8,13 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-// define global image data store and count variable
-ImageData g_detect_store[MAX_IMAGES];
-ImageData g_speak_store[MAX_IMAGES];
-ImageData g_listen_store[MAX_IMAGES];
-ImageData g_load_store[MAX_IMAGES];
-ImageData g_sleep_store[MAX_IMAGES];
-ImageData g_smile_store[MAX_IMAGES];
+// // define global image data store and count variable
+lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
 
 int g_detect_image_count = 0;
 int g_speak_image_count = 0;
@@ -22,6 +22,22 @@ int g_listen_image_count = 0;
 int g_load_image_count = 0;
 int g_sleep_image_count = 0;
 int g_smile_image_count = 0;
+
+void create_img_dsc(lv_img_dsc_t **img_dsc, void *data, size_t size) {
+    *img_dsc = (lv_img_dsc_t *)heap_caps_malloc(sizeof(lv_img_dsc_t), MALLOC_CAP_SPIRAM);
+
+    if (*img_dsc == NULL) {
+        ESP_LOGE("Image DSC", "Failed to allocate memory for image descriptor");
+        return;
+    }
+
+    (*img_dsc)->header.always_zero = 0;
+    (*img_dsc)->header.w = 412;
+    (*img_dsc)->header.h = 412;
+    (*img_dsc)->header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
+    (*img_dsc)->data_size = size;
+    (*img_dsc)->data = data;
+}
 
 // Function to read and store PNG files into PSRAM
 void* read_png_to_psram(const char *path, size_t *out_size) {
@@ -63,7 +79,7 @@ static int is_png_file_for_expression(const char* filename, const char* prefix) 
 }
 
 // Function to read and store selected PNG files based on prefix
-void read_and_store_selected_pngs(const char *file_prefix, ImageData *imagedata, int *image_count) {
+void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir("/spiffs")) != NULL) {
@@ -81,8 +97,7 @@ void read_and_store_selected_pngs(const char *file_prefix, ImageData *imagedata,
                 if (data) {
                     ESP_LOGI("PNG Load", "Loaded %s into PSRAM", ent->d_name);
                     
-                    imagedata[*image_count].data = data;
-                    imagedata[*image_count].size = size;
+                    create_img_dsc(&img_dsc_array[*image_count], data, size);
                     (*image_count)++;
                 }
             }
