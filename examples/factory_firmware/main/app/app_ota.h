@@ -106,6 +106,11 @@ esp_err_t app_ota_ai_model_download(char *url, int size_bytes);
 esp_err_t app_ota_esp32_fw_download(char *url);
 esp_err_t app_ota_himax_fw_download(char *url);
 
+/**
+ * used by console cmd `ota` to force ota
+*/
+void  app_ota_any_ignore_version_check(bool ignore);
+
 
 #ifdef __cplusplus
 }

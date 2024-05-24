@@ -59,6 +59,8 @@ static QueueHandle_t g_Q_ota_msg;
 static QueueHandle_t g_Q_ota_status;
 static RingbufHandle_t g_rb_ai_model;
 
+static bool g_ignore_version_check = false;
+
 
 static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
@@ -100,6 +102,7 @@ static void worker_call(ota_worker_task_data_t *worker_data, int cmd)
 static int cmp_versions ( const char * version1, const char * version2 ) {
 	unsigned major1 = 0, minor1 = 0, bugfix1 = 0;
 	unsigned major2 = 0, minor2 = 0, bugfix2 = 0;
+    if (g_ignore_version_check) return 1;
 	sscanf(version1, "%u.%u.%u", &major1, &minor1, &bugfix1);
 	sscanf(version2, "%u.%u.%u", &major2, &minor2, &bugfix2);
 	if (major1 < major2) return -1;
@@ -648,7 +651,7 @@ static void ota_status_report_error(esp_err_t err)
  * process the ota status, calculate a final percentage, report to mqtt broker
  * 
  * ota_event_type: [in] himax or esp32?
- * total_progress: [inout] 100 or 200
+ * total_progress: [in] 100 or 200
  * return:
  * - ESP_OK: succeed for this ota subpart, can proceed next MCU ota if any
  * - ESP_FAIL: fail for this ota subpart, should abort the whole ota process
@@ -791,6 +794,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                             ESP_LOGI(TAG, "Running firmware version: %s", running_app_info->version);
                             cJSON *fwv = cJSON_GetObjectItem(order_value_himax, "fwv");
                             if (fwv && cJSON_IsString(fwv)) {
+                                app_ota_any_ignore_version_check(false);
                                 int res = cmp_versions(fwv->valuestring, running_app_info->version);
                                 if (res <= 0) {
                                     ESP_LOGW(TAG, "esp32 version too old (%s <= %s), skip ...", fwv->valuestring, running_app_info->version);
@@ -820,6 +824,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                 goto cleanup;
             }
 
+            bool need_reboot = false;
             //upgrade himax
             if (order_value_himax && new_himax) {
                 cJSON *file_url = cJSON_GetObjectItem(order_value_himax, "file_url");
@@ -839,6 +844,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                             goto cleanup;
                         } else {
                             ESP_LOGI(TAG, "himax firmware ota succeeded!!!");
+                            need_reboot = true;
                         }
                     }
                 } else {
@@ -852,6 +858,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
             if (order_value_esp32 && new_esp32) {
                 cJSON *file_url = cJSON_GetObjectItem(order_value_esp32, "file_url");
                 if (file_url && cJSON_IsString(file_url)) {
+                    app_ota_any_ignore_version_check(false);
                     esp_err_t err = app_ota_esp32_fw_download(file_url->valuestring);
                     if (err != ESP_OK) {
                         ESP_LOGW(TAG, "app_ota_esp32_fw_download err: 0x%x", err);
@@ -867,6 +874,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                             goto cleanup;
                         } else {
                             ESP_LOGI(TAG, "esp32 firmware ota succeeded!!!");
+                            need_reboot = true;
                         }
                     }
                 } else {
@@ -877,6 +885,11 @@ static void __mqtt_ota_executor_task(void *p_arg)
             }
 
             //lucky passthrough -_-!!
+            if (need_reboot) {
+                ESP_LOGW(TAG, "!!! WILL REBOOT IN 3 SEC !!!");
+                vTaskDelay(pdMS_TO_TICKS(3000));  // let the last mqtt msg sent
+                esp_restart();
+            }
 
             //the json is used up
 cleanup:
@@ -1093,3 +1106,7 @@ esp_err_t app_ota_himax_fw_download(char *url)
     return ESP_OK;
 }
 
+void  app_ota_any_ignore_version_check(bool ignore)
+{
+    g_ignore_version_check = ignore;
+}
