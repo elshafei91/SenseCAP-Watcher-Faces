@@ -242,11 +242,34 @@ enum {
     VIEW_EVENT_ALL,
 };
 //config caller
-enum {
+typedef enum {
     UI_CALLER,
     AT_CMD_CALLER,
-    BLE_CALLER
-};
+    BLE_CALLER,
+    SR,
+    ALARM,
+
+    
+    MAX_CALLER // Add new callers before MAX_CALLER
+}caller;
+//RGB service type
+typedef enum {
+    breath_red,
+    breath_green,
+    breath_blue,
+    breath_white,
+
+    glint_red,
+    glint_green,
+    glint_blue,
+    glint_white,
+
+    flare_red,
+    flare_green,
+    flare_white,
+    flare_blue,
+    off
+}rgb_service_t;
 /************************************************
  * Control Data Defines
 *************************************************/

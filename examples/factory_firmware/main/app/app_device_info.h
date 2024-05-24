@@ -19,7 +19,7 @@ char* get_himax_software_version(int caller);
 
 uint8_t *get_brightness(int caller);
 uint8_t *set_brightness(int caller, int value);
-
+uint8_t *set_rgb_switch(int caller, int value);
 uint8_t *get_rgb_switch(int caller);
 
 #endif 

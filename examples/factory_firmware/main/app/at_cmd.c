@@ -344,6 +344,13 @@ void handle_deviceinfo_cfg_command(char *params)
             set_brightness(AT_CMD_CALLER,brightness_value);
         }
 
+        //get rgb_switch item
+        cJSON *rgbswitch = cJSON_GetObjectItemCaseSensitive(data, "rgbswitch");
+        if(cJSON_IsNumber(rgbswitch)){
+            int rgbswitch_value =rgbswitch->valueint;
+            set_rgb_switch(AT_CMD_CALLER,rgbswitch_value);
+        }
+        
 
 
 

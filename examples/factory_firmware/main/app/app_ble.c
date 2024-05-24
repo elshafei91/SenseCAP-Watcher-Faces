@@ -216,6 +216,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
  */
 static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
 {
+    ESP_LOGI(GATTS_TAG, "watcher_write_event_env");
     esp_gatt_status_t status = ESP_GATT_OK;
     if (param->write.need_rsp)
     {
@@ -289,6 +290,8 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
  */
 static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
 {
+
+    ESP_LOGI(GATTS_TAG, "watcher_exec_write_tiny_event_env");
     if (prepare_write_env->prepare_buf)
     {
         // message_event_t msg_at = { .msg = prepare_write_env->prepare_buf, .size = prepare_write_env->prepare_len };

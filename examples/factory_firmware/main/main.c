@@ -116,8 +116,9 @@ int app_init(void)
     app_wifi_init();
     app_ble_init();
     app_time_init();
+    app_rgb_init();
     app_cmd_init();
-    //app_rgb_init();
+    
     app_mqtt_client_init();
     app_sensecap_https_init();
     app_device_status_monitor_init();

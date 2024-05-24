@@ -12,7 +12,7 @@
 #include "app_device_info.h"
 #include "storage.h"
 #include "sensecap-watcher.h"
-
+#include "app_rgb.h"
 #define SN_TAG                    "SN_TAG"
 #define APP_DEVICE_INFO_MAX_STACK 4096
 #define BRIGHTNESS_STORAGE_KEY    "brightness"
@@ -55,7 +55,7 @@ void byteArrayToHexString(const uint8_t *byteArray, size_t byteArraySize, char *
 /*----------------------------------------------------------init function--------------------------------------*/
 void app_device_info_init()
 {
-    app_device_info_task_stack = (StackType_t *)pvPortMalloc(APP_DEVICE_INFO_MAX_STACK * sizeof(StackType_t));
+    app_device_info_task_stack =  (StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     if (app_device_info_task_stack == NULL)
     {
         ESP_LOGE(SN_TAG, "Failed to allocate memory for task stack");
@@ -341,6 +341,14 @@ static int __set_rgb_switch()
     {
         esp_err_t ret = storage_write(RGB_SWITCH_STORAGE_KEY, &rgb_switch, sizeof(rgb_switch));
         printf("rgb_switch: %d\n", rgb_switch);
+        if(rgb_switch == 1)
+        {
+            set_rgb(UI_CALLER,breath_red); 
+        }
+        else
+        {
+            set_rgb(UI_CALLER,off); 
+        }
         if (ret != ESP_OK)
         {
             ESP_LOGE("rgb_switch_TAG", "cfg write err:%d", ret);
@@ -350,6 +358,8 @@ static int __set_rgb_switch()
     xSemaphoreGive(MUTEX_rgb_switch);
     return 0;
 }
+
+
 
 /*-----------------------------------------------------TASK----------------------------------------------------------*/
 void app_device_info_task(void *pvParameter)
@@ -363,9 +373,11 @@ void app_device_info_task(void *pvParameter)
     init_rgb_switch_from_nvs();
     while (1)
     {
+        
+
         __set_brightness();
         __set_rgb_switch();
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
