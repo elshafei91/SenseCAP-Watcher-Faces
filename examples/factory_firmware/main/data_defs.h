@@ -229,7 +229,7 @@ enum {
     VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL
 
-    VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status
+    VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status, this is the merged status reporting, e.g. both himax and esp32 ota
 
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h)
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL

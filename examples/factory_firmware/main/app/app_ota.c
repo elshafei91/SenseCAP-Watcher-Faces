@@ -14,6 +14,8 @@
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 #include "esp_https_ota.h"
+#include "cJSON.h"
+#include "cJSON_Utils.h"
 
 #include "sensecap-watcher.h"
 
@@ -21,6 +23,7 @@
 #include "data_defs.h"
 #include "event_loops.h"
 #include "util.h"
+#include "tf_module_ai_camera.h"
 
 
 ESP_EVENT_DEFINE_BASE(OTA_EVENT_BASE);
@@ -44,13 +47,15 @@ static TaskHandle_t g_task;
 static StaticTask_t g_task_tcb;
 static bool g_ota_running = false;
 static uint8_t network_connect_flag = 0;
-// static TaskHandle_t g_task_worker;
 
 static SemaphoreHandle_t g_sem_network;
 static SemaphoreHandle_t g_sem_ai_model_downloaded;
 static SemaphoreHandle_t g_sem_worker_done;
 static esp_err_t g_result_err;
 static char *g_url;
+
+static QueueHandle_t g_Q_ota_msg;
+static QueueHandle_t g_Q_ota_status;
 
 
 static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
@@ -253,15 +258,19 @@ static void esp32_ota_process()
         ota_status.err_code = ESP_ERR_OTA_DOWNLOAD_FAIL;
     } else {
         goto ota_end;
+
         worker_data.ota_handle = &https_ota_handle;
         worker_call(&worker_data, CMD_esp_https_ota_finish);
         ota_finish_err = worker_data.err;
         if ((err == ESP_OK) && (ota_finish_err == ESP_OK)) {
             ESP_LOGI(TAG, "esp32 ota, upgrade successful. Rebooting ...");
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            //vTaskDelay(1000 / portTICK_PERIOD_MS);
             // TODO: call mqtt client to report ota status, better do blocking call
-            esp_restart();
+            //esp_restart();
             //return;
+            ota_status.status = OTA_STATUS_SUCCEED;
+            ota_status.err_code = ESP_OK;
+            ota_status.percentage = 100;
         } else {
             ota_status.status = OTA_STATUS_FAIL;
             ota_status.err_code = ESP_ERR_OTA_DOWNLOAD_FAIL;
@@ -368,6 +377,8 @@ static void sscma_ota_process(uint32_t ota_type)
     ESP_LOGI(TAG, "starting sscma ota, ota_type = %s ...", ota_type_str(ota_type));
 
     esp_err_t ret = ESP_OK;
+    struct view_data_ota_status ota_status;
+    int32_t ota_eventid = ota_type == OTA_TYPE_HIMAX ? CTRL_EVENT_OTA_HIMAX_FW: CTRL_EVENT_OTA_AI_MODEL;
 
     //himax interfaces
     esp_io_expander_handle_t io_expander = bsp_io_expander_init();
@@ -379,7 +390,7 @@ static void sscma_ota_process(uint32_t ota_type)
     sscma_client_flasher_handle_t sscma_flasher = bsp_sscma_flasher_init();
     assert(sscma_flasher != NULL);
 
-    sscma_client_init(sscma_client);
+    //sscma_client_init(sscma_client);
 
     sscma_client_info_t *info;
     if (sscma_client_get_info(sscma_client, &info, true) == ESP_OK)
@@ -411,6 +422,11 @@ static void sscma_ota_process(uint32_t ota_type)
     {
         ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
         g_result_err = ESP_ERR_OTA_SSCMA_START_FAIL;
+        ota_status.status = OTA_STATUS_FAIL;
+        ota_status.err_code = g_result_err;
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
+                                        &ota_status, sizeof(struct view_data_ota_status),
+                                        portMAX_DELAY);
         return;
     }
 
@@ -468,6 +484,12 @@ sscma_ota_end:
     if (http_client) esp_http_client_cleanup(http_client);
 
     g_result_err = ret;
+
+    ota_status.status = g_result_err == ESP_OK ? OTA_STATUS_SUCCEED : OTA_STATUS_FAIL;
+    ota_status.err_code = g_result_err;
+    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
+                                    &ota_status, sizeof(struct view_data_ota_status),
+                                    portMAX_DELAY);
 }
 
 static void __app_ota_task(void *p_arg)
@@ -505,6 +527,266 @@ static void __app_ota_task(void *p_arg)
             g_ota_running = false;
 
         } while (network_connect_flag);
+    }
+}
+
+static void ota_status_report(struct view_data_ota_status *ota_status)
+{
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_STATUS, 
+                            ota_status, sizeof(struct view_data_ota_status),
+                            portMAX_DELAY);
+    // TODO: MQTT
+}
+
+static void ota_status_report_error(esp_err_t err)
+{
+    struct view_data_ota_status ota_status;
+
+    ota_status.status = SENSECRAFT_OTA_STATUS_FAIL;
+    ota_status.err_code = err;
+    ota_status.percentage = 0;
+    
+    ota_status_report(&ota_status);
+}
+
+/**
+ * process the ota status, calculate a final percentage, report to mqtt broker
+ * 
+ * ota_event_type: [in] himax or esp32?
+ * total_progress: [inout] 100 or 200
+ * return:
+ * - ESP_OK: succeed for this ota subpart, can proceed next MCU ota if any
+ * - ESP_FAIL: fail for this ota subpart, should abort the whole ota process
+*/
+static esp_err_t ota_status(int ota_event_type, int total_progress)
+{
+    esp_err_t ret = ESP_FAIL;
+    ota_status_q_item_t ota_status_q_item;
+    struct view_data_ota_status ota_status;
+    bool ever_processed = false;
+    int percentage = 0;
+
+    while (xQueueReceive(g_Q_ota_status, &ota_status_q_item, pdMS_TO_TICKS(60000/*enough long*/))) {
+        if (ota_status_q_item.ota_src != ota_event_type) break;
+        else ever_processed = true;
+
+        if (ota_status_q_item.ota_status.status == OTA_STATUS_DOWNLOADING) {
+            int progress = ota_status_q_item.ota_status.percentage;
+            if (total_progress == 200 && ota_event_type == CTRL_EVENT_OTA_ESP32_FW) {
+                progress += 100;  //himax must be succeeded
+            }
+            percentage = (int)(100 * progress / (total_progress));
+            // report
+            ota_status.status = SENSECRAFT_OTA_STATUS_UPGRADING;
+            ota_status.err_code = ESP_OK;
+            ota_status.percentage = percentage;
+            ota_status_report(&ota_status);
+        }
+        else if (ota_status_q_item.ota_status.status == OTA_STATUS_SUCCEED) {
+            ret = ESP_OK;
+            break;
+        }
+        else if (ota_status_q_item.ota_status.status == OTA_STATUS_FAIL) {
+            break;
+        }
+    }
+
+    if (!ever_processed) {
+        // timeout
+        ota_status.status = SENSECRAFT_OTA_STATUS_FAIL;
+        ota_status.err_code = ESP_ERR_OTA_TIMEOUT;
+        ota_status.percentage = 0;
+    } else if (ret == ESP_OK) {
+        ota_status.status = SENSECRAFT_OTA_STATUS_SUCCEED;
+        ota_status.err_code = ESP_OK;
+        ota_status.percentage = 100;
+    } else {
+        ota_status.status = SENSECRAFT_OTA_STATUS_FAIL;
+        ota_status.err_code = ota_status_q_item.ota_status.err_code;
+        ota_status.percentage = 0;
+    }
+    ota_status_report(&ota_status);
+
+    return ret;
+}
+
+static void __mqtt_ota_executor_task(void *p_arg)
+{
+    ESP_LOGI(TAG, "starting mqtt ota executor task ...");
+
+    cJSON *ota_msg_cjson;
+
+    while (1) {
+        if (xQueueReceive(g_Q_ota_msg, &ota_msg_cjson, portMAX_DELAY)) {
+            //lightly check validation
+            bool valid = false;
+            do {
+                if (!cJSON_IsObject(ota_msg_cjson)) break;
+
+                cJSON *intent = cJSONUtils_GetPointer(ota_msg_cjson, "/intent");
+                if (!intent || !cJSON_IsString(intent) || strcmp(intent->valuestring, "order") != 0) break;
+
+                cJSON *order = cJSONUtils_GetPointer(ota_msg_cjson, "/order");
+                if (!order || !cJSON_IsArray(order) || cJSON_GetArraySize(order) == 0 || cJSON_GetArraySize(order) > 2) break;
+
+                cJSON *order_name = cJSONUtils_GetPointer(ota_msg_cjson, "/order/0/name");
+                if (!order_name || !cJSON_IsString(order_name) || strcmp(order_name->valuestring, "version-notify") != 0) break;
+
+                valid = true;
+            } while (0);
+
+            if (!valid) {
+                ESP_LOGW(TAG, "incoming ota cjson invalid!");
+                ota_status_report_error(ESP_ERR_OTA_JSON_INVALID);
+                goto cleanup;
+            }
+
+            //parse the json order
+            cJSON *orders = cJSONUtils_GetPointer(ota_msg_cjson, "/order");
+            int num_orders = cJSON_GetArraySize(orders);
+            int total_progress = 0;
+
+            //search himax and esp32
+            int found = 0;
+            cJSON *order_value_himax = NULL, *order_value_esp32 = NULL;
+            bool new_himax = false, new_esp32 = false;
+            cJSON *one_order;
+            cJSON_ArrayForEach(one_order, orders)
+            {
+                cJSON *order_value = cJSON_GetObjectItem(one_order, "value");
+                cJSON *order_value_sku = cJSON_GetObjectItem(order_value, "sku");
+                if (order_value_sku && cJSON_IsString(order_value_sku)) {
+                    if (strstr(order_value_sku->valuestring, "himax")) {
+                        found++;
+                        order_value_himax = order_value;
+                        //version compare
+                        char *himax_version = tf_module_ai_camera_himax_version_get();
+                        if (!himax_version) {
+                            ESP_LOGW(TAG, "can not get himax version!");
+                            ota_status_report_error(ESP_ERR_OTA_NO_HIMAX_VERSION);
+                            goto cleanup;
+                        }
+                        cJSON *fwv = cJSON_GetObjectItem(order_value_himax, "fwv");
+                        if (fwv && cJSON_IsString(fwv)) {
+                            int res = cmp_versions(fwv->valuestring, himax_version);
+                            if (res <= 0) {
+                                ESP_LOGW(TAG, "himax version too old (%s <= %s), skip ...", fwv->valuestring, himax_version);
+                            } else {
+                                ESP_LOGI(TAG, "will upgrade himax (%s > %s)", fwv->valuestring, himax_version);
+                                new_himax = true;
+                                total_progress += 100;
+                            }
+                        } else {
+                            ESP_LOGW(TAG, "incoming ota cjson invalid, no fwv field!");
+                            ota_status_report_error(ESP_ERR_OTA_JSON_INVALID);
+                            goto cleanup;
+                        }
+                    }
+                    else if (strstr(order_value_sku->valuestring, "esp32")) {
+                        found++;
+                        order_value_esp32 = order_value;
+                        //version compare
+                        ota_worker_task_data_t worker_data;
+                        worker_call(&worker_data, CMD_esp_ota_get_running_partition);
+                        esp_app_desc_t *running_app_info = psram_calloc(1, sizeof(esp_app_desc_t));
+                        worker_data.app_desc = running_app_info;
+                        worker_call(&worker_data, CMD_esp_ota_get_partition_description);
+
+                        if (worker_data.err == ESP_OK) {
+                            ESP_LOGI(TAG, "Running firmware version: %s", running_app_info->version);
+                            cJSON *fwv = cJSON_GetObjectItem(order_value_himax, "fwv");
+                            if (fwv && cJSON_IsString(fwv)) {
+                                int res = cmp_versions(fwv->valuestring, running_app_info->version);
+                                if (res <= 0) {
+                                    ESP_LOGW(TAG, "esp32 version too old (%s <= %s), skip ...", fwv->valuestring, running_app_info->version);
+                                } else {
+                                    ESP_LOGI(TAG, "will upgrade esp32 (%s > %s)", fwv->valuestring, running_app_info->version);
+                                    new_esp32 = true;
+                                    total_progress += 100;
+                                }
+                            } else {
+                                ESP_LOGW(TAG, "incoming ota cjson invalid, no fwv field [2]!");
+                                ota_status_report_error(ESP_ERR_OTA_JSON_INVALID);
+                                free(running_app_info);
+                                goto cleanup;
+                            }
+                        } else {
+                            ESP_LOGW(TAG, "Failed to get running_app_info! Always do OTA [2].");
+                            new_esp32 = true;
+                            total_progress += 100;
+                        }
+                        free(running_app_info);
+                    }
+                }
+            }
+            if (found != num_orders) {
+                ESP_LOGW(TAG, "incoming ota cjson invalid [2]!");
+                ota_status_report_error(ESP_ERR_OTA_JSON_INVALID);
+                goto cleanup;
+            }
+
+            //upgrade himax
+            if (order_value_himax && new_himax) {
+                cJSON *file_url = cJSON_GetObjectItem(order_value_himax, "file_url");
+                if (file_url && cJSON_IsString(file_url)) {
+                    esp_err_t err = app_ota_himax_fw_download(file_url->valuestring);
+                    if (err != ESP_OK) {
+                        ESP_LOGW(TAG, "app_ota_himax_fw_download err: 0x%x", err);
+                        ota_status_report_error(err);
+                        goto cleanup;
+                    } else {
+                        // now it's downloading, listen to the status events
+                        // this is blocking
+                        esp_err_t ret = ota_status(CTRL_EVENT_OTA_HIMAX_FW, total_progress);
+                        if (ret != ESP_OK) {
+                            ESP_LOGW(TAG, "himax firmware ota aborted!!!");
+                            //status already reported in ota_status();
+                            goto cleanup;
+                        } else {
+                            ESP_LOGI(TAG, "himax firmware ota succeeded!!!");
+                        }
+                    }
+                } else {
+                    ESP_LOGW(TAG, "incoming ota cjson invalid, no file_url field!");
+                    ota_status_report_error(ESP_ERR_OTA_JSON_INVALID);
+                    goto cleanup;
+                }
+            }
+
+            //upgrade esp32
+            if (order_value_esp32 && new_esp32) {
+                cJSON *file_url = cJSON_GetObjectItem(order_value_esp32, "file_url");
+                if (file_url && cJSON_IsString(file_url)) {
+                    esp_err_t err = app_ota_esp32_fw_download(file_url->valuestring);
+                    if (err != ESP_OK) {
+                        ESP_LOGW(TAG, "app_ota_esp32_fw_download err: 0x%x", err);
+                        ota_status_report_error(err);
+                        goto cleanup;
+                    } else {
+                        // now it's downloading, listen to the status events
+                        // this is blocking
+                        esp_err_t ret = ota_status(CTRL_EVENT_OTA_ESP32_FW, total_progress);
+                        if (ret != ESP_OK) {
+                            ESP_LOGW(TAG, "esp32 firmware ota aborted!!!");
+                            //status already reported in ota_status();
+                            goto cleanup;
+                        } else {
+                            ESP_LOGI(TAG, "esp32 firmware ota succeeded!!!");
+                        }
+                    }
+                } else {
+                    ESP_LOGW(TAG, "incoming ota cjson invalid, no file_url field [2]!");
+                    ota_status_report_error(ESP_ERR_OTA_JSON_INVALID);
+                    goto cleanup;
+                }
+            }
+
+            //lucky passthrough -_-!!
+
+            //the json is used up
+cleanup:
+            cJSON_Delete(ota_msg_cjson);
+        }
     }
 }
 
@@ -555,19 +837,44 @@ static void __sys_event_handler(void* arg, esp_event_base_t event_base, int32_t 
 
 static void __app_event_handler(void *handler_args, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
-    switch (event_id)
-    {
-    //wifi connection state changed
-    case VIEW_EVENT_WIFI_ST:
-    {
-        ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_ST");
-        struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
-        network_connect_flag = p_st->is_network ? 1 : 0;
-        xSemaphoreGive(g_sem_network);
-        break;
+    if (event_base == VIEW_EVENT_BASE) {
+        switch (event_id) {
+            //wifi connection state changed
+            case VIEW_EVENT_WIFI_ST:
+            {
+                ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_ST");
+                struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
+                network_connect_flag = p_st->is_network ? 1 : 0;
+                xSemaphoreGive(g_sem_network);
+                break;
+            }
+            default:
+                break;
+        }
     }
-    default:
-        break;
+    else if (event_base == CTRL_EVENT_BASE) {
+        switch (event_id) {
+            case CTRL_EVENT_MQTT_OTA_JSON:
+                ESP_LOGI(TAG, "event: CTRL_EVENT_MQTT_OTA_JSON");
+                if (xQueueSend(g_Q_ota_msg, event_data, pdMS_TO_TICKS(5000)) != pdPASS) {
+                    ESP_LOGW(TAG, "can not push to ota msg Q, maybe full? drop this item!");
+                }
+                break;
+            case CTRL_EVENT_OTA_HIMAX_FW:
+            case CTRL_EVENT_OTA_ESP32_FW:
+                ESP_LOGD(TAG, "event: CTRL_EVENT_OTA_%s_FW", event_id == CTRL_EVENT_OTA_HIMAX_FW ? "HIMAX" : "ESP32");
+                //event_data is ptr to struct view_data_ota_status
+                ota_status_q_item_t *item = psram_calloc(1, sizeof(ota_status_q_item_t));
+                item->ota_src = event_id;
+                memcpy(&(item->ota_status), event_data, sizeof(struct view_data_ota_status));
+                if (xQueueSend(g_Q_ota_status, item, pdMS_TO_TICKS(5000)) != pdPASS) {
+                    ESP_LOGW(TAG, "can not push to ota status Q, maybe full? drop this item!");
+                }
+                free(item);  //item is copied to Q
+                break;
+            default:
+                break;
+        }
     }
 }
 
@@ -579,8 +886,8 @@ static void __ota_test_task(void *p_arg)
     }
     vTaskDelay(pdMS_TO_TICKS(3000));
 
-    esp_err_t res = app_ota_esp32_fw_download("https://new.pxspeed.site/factory_firmware.bin");
-    ESP_LOGI(TAG, "test app_ota_esp32_fw_download: 0x%x", res);
+    // esp_err_t res = app_ota_esp32_fw_download("https://new.pxspeed.site/factory_firmware.bin");
+    // ESP_LOGI(TAG, "test app_ota_esp32_fw_download: 0x%x", res);
 
     // esp_err_t res = app_ota_ai_model_download("https://new.pxspeed.site/human_pose.tflite", 0);
     // ESP_LOGI(TAG, "test app_ota_ai_model_download: 0x%x", res);
@@ -599,25 +906,45 @@ esp_err_t app_ota_init(void)
     g_sem_ai_model_downloaded = xSemaphoreCreateBinary();
     g_sem_worker_done = xSemaphoreCreateBinary();
 
-    // esp32 ota worker task, due to PSRAM limitations, we need a task with internal RAM as stack
-    // xTaskCreate(__esp32_ota_worker_task, "esp32_ota_worker", 1024 * 3, NULL, 1, &g_task_worker);
+    // Q init
+    const int q_size = 2;
+    StaticQueue_t *q_buf = heap_caps_calloc(1, sizeof(StaticQueue_t), MALLOC_CAP_INTERNAL);
+    uint8_t *q_storage = psram_calloc(1, q_size * sizeof(void *));
+    g_Q_ota_msg = xQueueCreateStatic(q_size, sizeof(void *), q_storage, q_buf);
+
+    const int q_size1 = 10;
+    StaticQueue_t *q_buf1 = heap_caps_calloc(1, sizeof(StaticQueue_t), MALLOC_CAP_INTERNAL);
+    uint8_t *q_storage1 = psram_calloc(1, q_size1 * sizeof(ota_status_q_item_t));
+    g_Q_ota_status = xQueueCreateStatic(q_size1, sizeof(ota_status_q_item_t), q_storage1, q_buf1);
 
     // ota main task
     const uint32_t stack_size = 10 * 1024;
     StackType_t *task_stack = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
     g_task = xTaskCreateStatic(__app_ota_task, "app_ota", stack_size, NULL, 1, task_stack, &g_task_tcb);
 
+    // task for handling incoming mqtt
+    StackType_t *task_stack1 = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
+    StaticTask_t *task_tcb1 = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+    xTaskCreateStatic(__mqtt_ota_executor_task, "mqtt_ota", stack_size, NULL, 2, task_stack1, task_tcb1);
+
     ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, __sys_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTP_CLIENT_EVENT, ESP_EVENT_ANY_ID, __sys_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,
                                                     __app_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_OTA_JSON,
+                                                    __app_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, OTA_EVENT_BASE, ESP_EVENT_ANY_ID,
                                                     __ota_event_handler, NULL));
+    // ota status handling
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_HIMAX_FW,
+                                                    __app_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
+                                                    __app_event_handler, NULL));
 
 #if CONFIG_ENABLE_TEST_ENV
     StackType_t *task_stack2 = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
-    StaticTask_t *task_tcb = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
-    xTaskCreateStatic(__ota_test_task, "ota_test", stack_size, NULL, 1, task_stack2, task_tcb);
+    StaticTask_t *task_tcb2 = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+    xTaskCreateStatic(__ota_test_task, "ota_test", stack_size, NULL, 1, task_stack2, task_tcb2);
 #endif
 
     return ESP_OK;
@@ -656,6 +983,12 @@ esp_err_t app_ota_esp32_fw_download(char *url)
 esp_err_t app_ota_himax_fw_download(char *url)
 {
     if (g_ota_running) return ESP_ERR_OTA_ALREADY_RUNNING;
+
+    g_url = url;
+
+    if (xTaskNotify(g_task, OTA_TYPE_HIMAX, eSetValueWithoutOverwrite) == pdFAIL) {
+        return ESP_ERR_OTA_ALREADY_RUNNING;
+    }
 
     return ESP_OK;
 }
