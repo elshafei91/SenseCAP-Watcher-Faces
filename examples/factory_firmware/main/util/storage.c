@@ -29,7 +29,7 @@ typedef struct {
 } storage_event_data_t;
 
 
-static esp_err_t __storage_write(char *p_key, void *p_data, size_t len)
+esp_err_t storage_direct_write(char *p_key, void *p_data, size_t len)
 {
     nvs_handle_t my_handle;
     esp_err_t err;
@@ -50,7 +50,7 @@ static esp_err_t __storage_write(char *p_key, void *p_data, size_t len)
     return ESP_OK;
 }
 
-static esp_err_t __storage_read(char *p_key, void *p_data, size_t *p_len)
+esp_err_t storage_direct_read(char *p_key, void *p_data, size_t *p_len)
 {
     nvs_handle_t my_handle;
     esp_err_t err;
@@ -73,11 +73,11 @@ static void __storage_event_handler(void *handler_args, esp_event_base_t base, i
 
     switch (id) {
         case EVENT_STG_WRITE:
-            evtdata->err = __storage_write(evtdata->key, evtdata->data, evtdata->len);
+            evtdata->err = storage_direct_write(evtdata->key, evtdata->data, evtdata->len);
             xSemaphoreGive(evtdata->sem);
             break;
         case EVENT_STG_READ:
-            evtdata->err = __storage_read(evtdata->key, evtdata->data, &(evtdata->len));
+            evtdata->err = storage_direct_read(evtdata->key, evtdata->data, &(evtdata->len));
             xSemaphoreGive(evtdata->sem);
             break;
         default:

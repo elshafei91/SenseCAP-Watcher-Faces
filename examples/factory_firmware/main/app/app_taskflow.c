@@ -198,7 +198,7 @@ static void __task_flow_clean( void )
     struct app_taskflow_info info;
     info.len = 0;
     info.is_valid = false;
-    ret = storage_write(TASK_FLOW_INFO_STORAGE, (void *)&info, sizeof(struct app_taskflow_info));
+    ret = storage_direct_write(TASK_FLOW_INFO_STORAGE, (void *)&info, sizeof(struct app_taskflow_info));
     if( ret != ESP_OK ) {
         ESP_LOGD(TAG, "taskflow info save err:%d", ret);
     } else {
@@ -213,7 +213,7 @@ static void __task_flow_save(const char *p_str, int len)
     __task_flow_clean();
 
     //save taskflow json
-    ret = storage_write(TASK_FLOW_JSON_STORAGE, (void *)p_str, len);
+    ret = storage_direct_write(TASK_FLOW_JSON_STORAGE, (void *)p_str, len);
     if( ret != ESP_OK ) {
         ESP_LOGD(TAG, "taskflow json save err:%d", ret);
         return;
@@ -225,7 +225,7 @@ static void __task_flow_save(const char *p_str, int len)
     struct app_taskflow_info info;
     info.len = len;
     info.is_valid = true;
-    ret = storage_write(TASK_FLOW_INFO_STORAGE, (void *)&info, sizeof(struct app_taskflow_info));
+    ret = storage_direct_write(TASK_FLOW_INFO_STORAGE, (void *)&info, sizeof(struct app_taskflow_info));
     if( ret != ESP_OK ) {
         ESP_LOGD(TAG, "taskflow info save err:%d", ret);
     } else {
@@ -239,14 +239,14 @@ static void  __task_flow_restore()
     uint32_t flag = 1;
     struct app_taskflow_info info;
     size_t len = sizeof(info);
-    ret = storage_read(TASK_FLOW_INFO_STORAGE, (void *)&info, &len);
+    ret = storage_direct_read(TASK_FLOW_INFO_STORAGE, (void *)&info, &len);
     if( ret == ESP_OK  && len== (sizeof(info)) ) {
         ESP_LOGI(TAG, "Find taskflow info");
         if (info.is_valid && info.len > 0) {
             ESP_LOGI(TAG, "Need load taskflow...");
             char *p_json = psram_malloc(info.len);
             len = info.len;
-            ret = storage_read(TASK_FLOW_JSON_STORAGE, (void *)p_json, &len);
+            ret = storage_direct_read(TASK_FLOW_JSON_STORAGE, (void *)p_json, &len);
             if( ret == ESP_OK ) {
 
                 ESP_LOGI(TAG, "Start last taskflow");
