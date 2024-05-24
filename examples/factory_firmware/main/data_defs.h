@@ -113,16 +113,6 @@ struct view_data_audio_play_data
     uint32_t len;
 };
 
-struct view_data_mqtt_connect_info
-{
-    SemaphoreHandle_t mutex;
-    char serverUrl[128];
-    char token[171];
-    int mqttPort;
-    int mqttsPort;
-    int expiresIn;
-};
-
 struct view_data_deviceinfo
 {
     char eui[17];
@@ -210,8 +200,6 @@ enum {
     VIEW_EVENT_AUDIO_WAKE, //NULL
     VIEW_EVENT_AUDIO_VAD_TIMEOUT,   //struct view_data_record
     VIEW_EVENT_AUDIO_PALY, //struct view_data_audio_play_data
-
-    VIEW_EVENT_MQTT_CONNECT_INFO,  // struct view_data_mqtt_connect_info
 
     VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL

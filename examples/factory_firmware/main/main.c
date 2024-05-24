@@ -23,8 +23,7 @@
 #include "app_ble.h"
 #include "app_time.h"
 #include "app_cmd.h"
-#include "app_sensecap_https.h"
-#include "app_sensecap_mqtt.h"
+#include "app_sensecraft.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
 #include "app_device_info.h"
@@ -112,18 +111,18 @@ int board_init(void)
 int app_init(void)
 {
     app_device_info_init();
+    app_wifi_init(); //TODO Network update events may be missed
+    app_ota_init();
     app_taskflow_init();
-    app_wifi_init();
     app_ble_init();
     app_time_init();
     app_cmd_init();
     //app_rgb_init();
-    app_mqtt_client_init();
-    app_sensecap_https_init();
+    app_sensecraft_init();
     app_device_status_monitor_init();
-    app_ota_init();
-    //app_sr_start(false);
+ 
 
+    //app_sr_start(false);
     return ESP_OK;
 }
 
