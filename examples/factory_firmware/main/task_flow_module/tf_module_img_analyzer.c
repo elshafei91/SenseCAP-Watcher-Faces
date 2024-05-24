@@ -10,12 +10,18 @@
 #include "esp_crt_bundle.h"
 #include "data_defs.h"
 #include "event_loops.h"
+#include "esp_event_base.h"
 
 static const char *TAG = "tfm.img_analyzer";
 
 #define EVENT_NEED_DELETE   BIT0
 #define EVENT_TASK_DELETED  BIT1 
 
+// #define IMG_ANALYZER_NET_CHECK_ENABLE 
+
+#ifdef IMG_ANALYZER_NET_CHECK_ENABLE
+static bool g_net_flag = false;
+#endif
 static void __data_lock( tf_module_img_analyzer_t *p_module)
 {
     xSemaphoreTake(p_module->sem_handle, portMAX_DELAY);
@@ -72,29 +78,27 @@ static int __params_parse(struct tf_module_img_analyzer_params *p_params, cJSON 
     }
     return 0;
 }
+
+#ifdef IMG_ANALYZER_NET_CHECK_ENABLE
 static void __wifi_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
-    tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)handler_args;
-
-    __data_lock(p_module_ins);
     switch (id)
     {
         case VIEW_EVENT_WIFI_ST:
         {
             struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)p_event_data;
             if (p_st->is_network){
-                p_module_ins->net_flag = true;
+                g_net_flag= true;
             } else {
-                p_module_ins->net_flag = false;
+                g_net_flag = false;
             }
             break;
         }
         default:
             break;
     }
-    __data_unlock(p_module_ins);
 }
-
+#endif
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)handler_args;
@@ -108,12 +112,14 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         return;
     }
 
+#ifdef IMG_ANALYZER_NET_CHECK_ENABLE
     // TODO local area network ？
-    if(!p_module_ins->net_flag) {
+    if(!g_net_flag) {
         ESP_LOGE(TAG, "No network");
         tf_data_free(p_event_data);
         return;
     }
+#endif
 
     if( xQueueSend(p_module_ins->queue_handle, p_event_data, portMAX_DELAY) != pdTRUE) {
         ESP_LOGW(TAG, "xQueueSend failed");
@@ -412,7 +418,6 @@ static void img_analyzer_task_destroy( tf_module_img_analyzer_t *p_module_ins)
         vEventGroupDelete(p_module_ins->event_group);
         p_module_ins->event_group = NULL;
     }
-    esp_event_handler_instance_unregister_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, p_module_ins->event_context);
 }
 
 /*************************************************************************
@@ -573,11 +578,6 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
                                                 p_module_ins->p_task_buf);
     ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
 
-    // event_context is for multiple instantiations
-    ret = esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, \
-                                                    __wifi_event_handler, p_module_ins, &p_module_ins->event_context);
-    ESP_GOTO_ON_FALSE(ESP_OK == ret, ESP_FAIL, err, TAG, "Failed to register event handler");
-
     return &p_module_ins->module_serv;
 
 err:
@@ -606,6 +606,16 @@ err:
 
 esp_err_t tf_module_img_analyzer_register(void)
 {
+
+#ifdef IMG_ANALYZER_NET_CHECK_ENABLE
+    esp_err_t ret = ESP_OK;
+    ret = esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, \
+                                                    __wifi_event_handler, NULL, NULL);
+    if( ret != ESP_OK ) {
+        return ret;
+    }
+#endif
+
     return tf_module_register(TF_MODULE_IMG_ANALYZER_NAME,
                               TF_MODULE_IMG_ANALYZER_DESC,
                               TF_MODULE_IMG_ANALYZER_VERSION,
