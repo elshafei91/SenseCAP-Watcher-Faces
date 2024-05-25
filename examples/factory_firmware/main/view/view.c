@@ -9,13 +9,24 @@
 #include "app_device_info.h"
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
-
+#include "tf_module_local_alarm.h"
 #include "tf_module_util.h"
 
 static const char *TAG = "view";
 
 char sn_data[66];
 uint8_t wifi_page_id;
+lv_obj_t * view_show_img;
+
+static lv_img_dsc_t img_dsc = {
+    .header.always_zero = 0,
+    .header.w = 412,
+    .header.h = 412,
+    .data_size = NULL,
+    .header.cf = LV_IMG_CF_TRUE_COLOR,
+    .data = NULL,
+};
+
 
 static void update_ota_progress(int percentage)
 {
@@ -130,6 +141,17 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_ALARM_ON:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_ON");
+                struct tf_module_local_alarm_info * alarm_st = ( struct tf_module_local_alarm_info *)event_data;
+                if(alarm_st->is_show_text && alarm_st->text.p_buf)
+                {
+                    lv_label_set_text(ui_viewtext, (const char *)alarm_st->text.p_buf);
+                }
+                if(alarm_st->is_show_img)
+                {
+                    img_dsc.data = alarm_st->img.p_buf;
+                    img_dsc.data_size = alarm_st->img.len;
+                    lv_obj_set_style_bg_img_src(ui_Page_ViewLive, &img_dsc, LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
                 view_alarm_on(5);
                 break;
             }
