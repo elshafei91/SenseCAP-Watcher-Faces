@@ -15,7 +15,7 @@
 
 static const char *TAG = "tfm.ai_camera";
 
-tf_module_t *g_handle = NULL;
+static tf_module_t *g_handle = NULL;
 
 #define EVENT_STATRT          BIT0
 #define EVENT_STOP            BIT1

@@ -16,10 +16,14 @@ extern "C"
 
 #define TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE  "/spiffs/alarm-di.wav"
 
+#define TF_MODULE_LOCAL_ALARM_TIMER_ENABLE  1
+
 struct tf_module_local_alarm_params
 {
     bool rgb;
     bool sound;
+    bool img;
+    bool text;
     int  duration; //seconds
 };
 
@@ -37,7 +41,9 @@ typedef struct tf_module_local_alarm
     tf_module_t module_serv;
     int input_evt_id; // no output
     struct tf_module_local_alarm_params params;
+#if TF_MODULE_LOCAL_ALARM_TIMER_ENABLE
     esp_timer_handle_t timer_handle;
+#endif
     struct tf_data_buf audio;
 } tf_module_local_alarm_t;
 

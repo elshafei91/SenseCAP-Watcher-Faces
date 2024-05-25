@@ -209,7 +209,7 @@ enum {
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
    
-    VIEW_EVENT_TASK_FLOW_EXIST, //uint32_t, 1 or 0, tell UI if there's already a tasklist running
+    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, //NULL
     VIEW_EVENT_TASK_FLOW_STOP, //NULL
     VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
     VIEW_EVENT_ALL,
