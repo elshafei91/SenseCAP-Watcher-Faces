@@ -8,6 +8,9 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "esp_https_ota.h"
+
+#include "sensecap-watcher.h"
 
 #include "data_defs.h"
 
@@ -27,6 +30,34 @@ enum {
 #define ESP_ERR_OTA_CONNECTION_FAIL         0x202
 #define ESP_ERR_OTA_GET_IMG_HEADER_FAIL     0x203
 #define ESP_ERR_OTA_DOWNLOAD_FAIL           0x204
+#define ESP_ERR_OTA_SSCMA_START_FAIL        0x205
+#define ESP_ERR_OTA_SSCMA_WRITE_FAIL        0x206
+
+
+typedef struct {
+    sscma_client_handle_t client;
+    sscma_client_flasher_handle_t flasher;
+    int ota_type;
+    esp_err_t *err;
+} ota_http_userdata_t;
+
+
+//worker cmd
+enum {
+    CMD_esp_https_ota_begin = 0,
+    CMD_esp_https_ota_get_img_desc,
+    CMD_esp_ota_get_running_partition,
+    CMD_esp_ota_get_partition_description,
+    CMD_esp_https_ota_perform,
+    CMD_esp_https_ota_finish,
+};
+typedef struct {
+    esp_https_ota_config_t *ota_config;
+    esp_https_ota_handle_t *ota_handle;
+    esp_app_desc_t *app_desc;
+    esp_partition_t *partition;
+    esp_err_t err;
+} ota_worker_task_data_t;
 
 
 esp_err_t app_ota_init(void);

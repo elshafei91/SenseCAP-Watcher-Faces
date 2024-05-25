@@ -23,8 +23,7 @@
 #include "app_ble.h"
 #include "app_time.h"
 #include "app_cmd.h"
-#include "app_sensecap_https.h"
-#include "app_mqtt_client.h"
+#include "app_sensecraft.h"
 #include "app_rgb.h"
 #include "deviceinfo.h"
 #include "app_device_info.h"
@@ -133,18 +132,17 @@ int app_init(void)
     read_and_store_selected_pngs("sleeping", g_sleep_img_dsc, &g_sleep_image_count);
     
     app_device_info_init();
+    app_wifi_init(); //TODO Network update events may be missed
+    app_ota_init();
     app_taskflow_init();
-    app_wifi_init();
-    // app_ble_init();
+    app_ble_init();
     app_time_init();
     app_cmd_init();
-    // //app_rgb_init();
-    app_mqtt_client_init();
-    app_sensecap_https_init();
+    //app_rgb_init();
+    app_sensecraft_init();
     app_device_status_monitor_init();
-    // app_ota_init();
-    app_sr_start(false);
-
+ 
+    //app_sr_start(false);
     return ESP_OK;
 }
 
@@ -159,7 +157,7 @@ void task_app_init(void *p_arg)
                                                              VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
                                                              __view_event_handler, NULL, NULL));
 
-    // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
     vTaskDelete(NULL);
 }
 
@@ -208,18 +206,17 @@ void app_main(void)
 
     cJSON_InitHooks(&cJSONHooks);
 
-    ESP_ERROR_CHECK(board_init());
-
     esp_event_loop_args_t app_event_loop_args = {
         .queue_size = 64,
         .task_name = "app_eventloop",
         .task_priority = 6, // uxTaskPriorityGet(NULL),
-        .task_stack_size = 1024 * 3,
+        .task_stack_size = 1024 * 4,
         .task_core_id = 0};
     ESP_ERROR_CHECK(esp_event_loop_create(&app_event_loop_args, &app_event_loop_handle));
 
-    // app init
-    // app_init();
+    ESP_ERROR_CHECK(board_init());
+
+    // app modules init
     xTaskCreatePinnedToCore(task_app_init, "task_app_init", 4096, NULL, 5, NULL, 1);
 
     static char buffer[512];
