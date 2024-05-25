@@ -905,7 +905,7 @@ esp_err_t app_sensecraft_mqtt_report_warn_event(intmax_t taskflow_id,
     return ret;
 }
 
-esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_status *dev_status)
+esp_err_t app_sensecraft_mqtt_report_device_status_generic(char *event_value_fields)
 {
     int ret = ESP_OK;
     struct app_sensecraft * p_sensecraft = gp_sensecraft;
@@ -920,12 +920,7 @@ esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_statu
         "\"deviceEui\": \"%s\","
         "\"events\":  [{"
             "\"name\": \"change-device-status\","
-            "\"value\": {"
-                "\"3000\": %d,"
-                "\"3001\": \"%s\","
-                "\"3002\": \"%s\","
-                "\"3003\": \"%s\""
-            "},"
+            "\"value\": {%s},"
             "\"timestamp\": %jd"
         "}]"
     "}";
@@ -933,16 +928,14 @@ esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_statu
     ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle, ESP_FAIL, TAG, "mqtt_client is not inited yet [4]");
     ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet [4]");
 
-    char *json_buff = psram_malloc(2048);
+    char *json_buff = psram_malloc(3000);
     ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
 
     char uuid[37];
     time_t timestamp_ms = util_get_timestamp_ms();
 
     UUIDGen(uuid);
-    sniprintf(json_buff, 2048, json_fmt, uuid, timestamp_ms, p_sensecraft->deviceinfo.eui, 
-                dev_status->battery_per, dev_status->hw_version, dev_status->fw_version, dev_status->fw_version,
-                timestamp_ms);
+    sniprintf(json_buff, 3000, json_fmt, uuid, timestamp_ms, p_sensecraft->deviceinfo.eui, event_value_fields, timestamp_ms);
 
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_device_status: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
@@ -953,6 +946,47 @@ esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_statu
         ESP_LOGW(TAG, "app_sensecraft_mqtt_report_device_status enqueue failed, err=%d", msg_id);
         ret = ESP_FAIL;
     }
+
+    free(json_buff);
+
+    return ret;
+}
+
+esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_status *dev_status)
+{
+    int ret = ESP_OK;
+    struct app_sensecraft * p_sensecraft = gp_sensecraft;
+    if( p_sensecraft == NULL) {
+        return ESP_FAIL;
+    }
+
+    // please be carefull about the `comma` if you're appending more fields,
+    // there should be NO trailing comma.
+    const char *fields =  \
+                "\"3000\": %d,"
+                "\"3001\": \"%s\","
+                "\"3002\": \"%s\","
+                "\"3003\": \"%s\","
+                "\"3502\": \"%s\"";
+
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle, ESP_FAIL, TAG, "mqtt_client is not inited yet [4]");
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet [4]");
+
+    const int buff_sz = 2048;
+    char *json_buff = psram_calloc(1, buff_sz);
+    ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
+
+    sniprintf(json_buff, buff_sz, fields, 
+              dev_status->battery_per, dev_status->hw_version, dev_status->fw_version, dev_status->fw_version, dev_status->fw_version);
+
+    if (dev_status->himax_fw_version) {
+        // himax version might be NULL, if NULL don't include 3577
+        int len = strlen(json_buff);
+        const char *field3577 = ",\"3577\": \"%s\"";
+        sniprintf(json_buff + len, buff_sz - len, field3577, dev_status->himax_fw_version);
+    }
+
+    ret = app_sensecraft_mqtt_report_device_status_generic(json_buff);
 
     free(json_buff);
 

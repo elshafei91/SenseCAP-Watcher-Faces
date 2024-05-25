@@ -15,6 +15,7 @@
 #include "data_defs.h"
 #include "event_loops.h"
 #include "app_sensecraft.h"
+#include "tf_module_ai_camera.h"
 #include "util.h"
 
 
@@ -54,12 +55,15 @@ static void __deviceinfo_task(void *p_arg)
 {
     uint8_t batnow;
 
+    //this is neccessary because we reply on MQTT connection to report device status
     xSemaphoreTake(g_sem_mqttconn, portMAX_DELAY);
-    vTaskDelay(pdMS_TO_TICKS(10000));  //postpone a bit for other more important routines
+    //postpone a bit for other more important routines, but before OTA
+    vTaskDelay(pdMS_TO_TICKS(2000));
 
     //mqtt connected implies time has been synced
     //send once after boot
     g_device_status.battery_per = bsp_battery_get_percent();
+    g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
 
     //mqtt pub
     app_sensecraft_mqtt_report_device_status(&g_device_status);
