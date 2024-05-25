@@ -30,6 +30,7 @@
 #include "util.h"
 #include "app_ota.h"
 #include "app_taskflow.h"
+#include "app_png.h"
 
 #include "view.h"
 
@@ -59,6 +60,19 @@ static heap_task_totals_t s_totals_arr[MAX_TASK_NUM];
 static heap_task_block_t s_block_arr[MAX_BLOCK_NUM];
 #endif
 
+extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+
+extern int g_detect_image_count;
+extern int g_speak_image_count;
+extern int g_listen_image_count;
+extern int g_load_image_count;
+extern int g_sleep_image_count;
+extern int g_smile_image_count;
 
 static void *__cJSON_malloc(size_t sz)
 {
@@ -104,12 +118,19 @@ int board_init(void)
     bsp_codec_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
+    read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
+
 
     return ESP_OK;
 }
 
 int app_init(void)
 {
+    read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
+    read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
+    read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
+    read_and_store_selected_pngs("loading", g_load_img_dsc, &g_load_image_count);
+    read_and_store_selected_pngs("sleeping", g_sleep_img_dsc, &g_sleep_image_count);
     app_device_info_init();
     app_wifi_init(); //TODO Network update events may be missed
     app_ota_init();
@@ -130,7 +151,7 @@ void task_app_init(void *p_arg)
 {
     // UI init
     view_init();
-
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
     app_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,

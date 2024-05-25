@@ -87,7 +87,7 @@ static void __audio_player_cb(audio_player_cb_ctx_t *p_arg)
 
 static void __alarm_off_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
-    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_event_data;
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)handler_args;
     struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
     
     //TODO 
