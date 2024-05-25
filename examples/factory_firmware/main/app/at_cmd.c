@@ -251,6 +251,52 @@ void AT_command_reg()
     add_command(&commands, "wifitable?", handle_wifi_table);
     add_command(&commands, "devicecfg=", handle_deviceinfo_cfg_command);
     add_command(&commands, "taskflow=", handle_taskflow_command);
+    add_command(&commands, "cloudservice=", handle_cloud_service_command);
+}
+
+void handle_cloud_service_command(char *params)
+{
+    printf("handle_cloud_service_command\n");
+    cJSON *json = cJSON_Parse(params);
+    if (json == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+    }
+
+    cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
+    if (cJSON_IsObject(data))
+    {
+        // Get the "Time_Zone" item
+        cJSON *cloud_service = cJSON_GetObjectItemCaseSensitive(data, "cloud_service");
+        if (cJSON_IsNumber(cloud_service))
+        {
+            int cloud_service_switch = cloud_service->valueint;
+            printf("Cloud_Service: %d\n", cloud_service_switch);
+            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CLOUD_SERVICE, &cloud_service_cfg, sizeof(cloud_service_cfg), portMAX_DELAY);
+        }
+    }
+    else
+    {
+        printf("Cloud_Service not found or not a valid string in JSON\n");
+    }
+
+    cJSON_Delete(json);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data_rep = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "name", "cloudservice");
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data_rep);
+    cJSON_AddStringToObject(data_rep, "cloudservice", "");
+    char *json_string = cJSON_Print(root);
+    printf("JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
+    send_at_response(&response);
+    cJSON_Delete(root);
 }
 
 /**
@@ -281,7 +327,7 @@ void handle_deviceinfo_cfg_command(char *params)
     if (cJSON_IsObject(data))
     {
         // Get the "Time_Zone" item
-        cJSON *time_zone = cJSON_GetObjectItemCaseSensitive(data, "Time_Zone");
+        cJSON *time_zone = cJSON_GetObjectItemCaseSensitive(data, "timezone");
         if (cJSON_IsNumber(time_zone))
         {
             int timezone = time_zone->valueint;
@@ -289,14 +335,38 @@ void handle_deviceinfo_cfg_command(char *params)
             time_cfg.zone = timezone;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
         }
+
+
+        //get brightness item
+        cJSON *brightness = cJSON_GetObjectItemCaseSensitive(data, "brightness");
+        if(cJSON_IsNumber(brightness)){
+            int brightness_value =brightness->valueint;
+            set_brightness(AT_CMD_CALLER,brightness_value);
+        }
+
+        //get rgb_switch item
+        cJSON *rgbswitch = cJSON_GetObjectItemCaseSensitive(data, "rgbswitch");
+        if(cJSON_IsNumber(rgbswitch)){
+            int rgbswitch_value =rgbswitch->valueint;
+            set_rgb_switch(AT_CMD_CALLER,rgbswitch_value);
+        }
+        
+
+
+
     }
     else
     {
-        printf("Time_Zone not found or not a valid string in JSON\n");
+        printf("failed at config json\n");
     }
 
     cJSON_Delete(json);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    int brightness_value_resp =get_brightness(AT_CMD_CALLER);
+
+
+
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "timezone");
@@ -305,6 +375,7 @@ void handle_deviceinfo_cfg_command(char *params)
     cJSON_AddStringToObject(data_rep, "timezone", "");
     cJSON_AddStringToObject(data_rep, "wakeword", "");
     cJSON_AddStringToObject(data_rep, "volume", "");
+    cJSON_AddNumberToObject(data_rep, "brightness", brightness_value_resp);
     char *json_string = cJSON_Print(root);
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
@@ -349,16 +420,16 @@ void handle_deviceinfo_command(char *params)
     cJSON *data = cJSON_CreateObject();
     cJSON_AddItemToObject(root, "data", data);
 
-    cJSON_AddStringToObject(data, "Eui", "1");
-    cJSON_AddStringToObject(data, "Token", "1");
-    cJSON_AddStringToObject(data, "Ble_Mac", "123");
-    cJSON_AddStringToObject(data, "Version", "1");
-    cJSON_AddStringToObject(data, "Time_Zone", "01");
+    cJSON_AddStringToObject(data, "eui", "1");
+    cJSON_AddStringToObject(data, "token", "1");
+    cJSON_AddStringToObject(data, "blemac", "123");
+    cJSON_AddStringToObject(data, "version", "1");
+    cJSON_AddStringToObject(data, "timezone", "01");
 
     // add Himax_Software_Versionfield
-    cJSON_AddStringToObject(data, "Himax_Software_Version", (const char *)himax_version);
+    cJSON_AddStringToObject(data, "himaxsoftwareversion", (const char *)himax_version);
 
-    cJSON_AddStringToObject(data, "Esp32_Software_Version", (const char *)software_version);
+    cJSON_AddStringToObject(data, "esp32softwareversion", (const char *)software_version);
 
     char *json_string = cJSON_Print(root);
 
@@ -403,8 +474,8 @@ void handle_wifi_set(char *params)
             fprintf(stderr, "Error before: %s\n", error_ptr);
         }
     }
-    cJSON *json_ssid = cJSON_GetObjectItemCaseSensitive(json, "Ssid");
-    cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "Password");
+    cJSON *json_ssid = cJSON_GetObjectItemCaseSensitive(json, "ssid");
+    cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
     if (cJSON_IsString(json_ssid) && (json_ssid->valuestring != NULL))
     {
         strncpy(ssid, json_ssid->valuestring, sizeof(ssid));
@@ -458,17 +529,15 @@ void handle_wifi_set(char *params)
 
     config->caller = AT_CMD_CALLER;
 
-    ESP_LOGE("AT_CMD_CALLER die01_ssid", "base:%s, memcpy:%s", json_ssid->valuestring, config->ssid);
-    ESP_LOGE("AT_CMD_CALLER die01_password", "base:%s, memcpy:%s", json_password->valuestring, config->password);
 
     set_wifi_config(config);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     cJSON_AddStringToObject(root, "name", config->ssid);
     cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
     cJSON_AddItemToObject(root, "data", data);
-    cJSON_AddStringToObject(data, "Ssid", ssid);
-    cJSON_AddStringToObject(data, "Rssi", "2");
-    cJSON_AddStringToObject(data, "Encryption", "WPA");
+    cJSON_AddStringToObject(data, "ssid", ssid);
+    cJSON_AddStringToObject(data, "rssi", "2");
+    cJSON_AddStringToObject(data, "encryption", "WPA");
     char *json_string = cJSON_Print(root);
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
@@ -504,10 +573,10 @@ void handle_wifi_query(char *params)
     cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
     cJSON_AddNumberToObject(root, "code", network_connect_flag); // finish
     cJSON_AddItemToObject(root, "data", data);
-    cJSON_AddStringToObject(data, "Ssid", ssid_string);
+    cJSON_AddStringToObject(data, "ssid", ssid_string);
     char rssi_str[10];
     snprintf(rssi_str, sizeof(rssi_str), "%d", current_connected_wifi.rssi);
-    cJSON_AddStringToObject(data, "Rssi", rssi_str);
+    cJSON_AddStringToObject(data, "rssi", rssi_str);
 
     printf("current_connected_wifi.ssid: %s\n", current_connected_wifi.ssid);
     printf("current_connected_wifi.rssi: %d\n", current_connected_wifi.rssi);
@@ -594,20 +663,19 @@ void parse_json_and_concatenate(char *json_string)
     cJSON *package = cJSON_GetObjectItem(json, "package");
     cJSON *sum = cJSON_GetObjectItem(json, "sum");
     cJSON *data = cJSON_GetObjectItem(json, "data");
-    cJSON *total_size =cJSON_GetObjectItem(json, "totalsize");
-    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data)||!cJSON_IsNumber(total_size))
+    cJSON *total_size = cJSON_GetObjectItem(json, "totalsize");
+    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data) || !cJSON_IsNumber(total_size))
     {
         printf("Invalid JSON format\n");
-        cJSON_Delete(json); 
+        cJSON_Delete(json);
     }
-    total_size =total_size->valueint;
+    total_size = total_size->valueint;
     int index = package->valueint;
-    
 
     // if (index < 0 || index >= num_jsons)
     // {
     //     printf("Index out of range: %d\n", index);
-    //     cJSON_Delete(json); 
+    //     cJSON_Delete(json);
     // }
 
     if (num_jsons == 0)
@@ -723,7 +791,7 @@ void handle_taskflow_command(char *params)
     }
     if (all_received)
     {
-        char *result = (char *)heap_caps_malloc(MEMORY_SIZE, MALLOC_CAP_SPIRAM); 
+        char *result = (char *)heap_caps_malloc(MEMORY_SIZE, MALLOC_CAP_SPIRAM);
         if (result == NULL)
         {
             printf("Failed to allocate memory for result\n");
@@ -737,7 +805,7 @@ void handle_taskflow_command(char *params)
         concatenate_data(result);
 
         printf("Final data: %s\n", result);
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &result, sizeof(char*), portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &result, sizeof(char *), portMAX_DELAY);
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -804,7 +872,7 @@ void task_handle_AT_command()
             printf("Failed to receive message from queue\n");
         }
 
-        char *test_strings = (char *)heap_caps_malloc(msg_at.size+1, MALLOC_CAP_SPIRAM);
+        char *test_strings = (char *)heap_caps_malloc(msg_at.size + 1, MALLOC_CAP_SPIRAM);
         memcpy(test_strings, msg_at.msg, msg_at.size);
         test_strings[msg_at.size] = '\0';
 
@@ -813,7 +881,7 @@ void task_handle_AT_command()
             printf("Memory allocation failed\n");
         }
         printf("AT command received\n");
-        esp_log_buffer_hex("HEX TAG1",test_strings,strlen(test_strings));
+        esp_log_buffer_hex("HEX TAG1", test_strings, strlen(test_strings));
         regex_t regex;
         int ret;
         ret = regcomp(&regex, pattern, REG_EXTENDED);
@@ -829,7 +897,7 @@ void task_handle_AT_command()
             char command_type[20];
             snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
 
-            size_t data_size = 10320; 
+            size_t data_size = 10320;
             char *params = (char *)heap_caps_malloc(data_size + 1, MALLOC_CAP_SPIRAM);
             if (matches[3].rm_so != -1)
             {
