@@ -1,9 +1,9 @@
 #include "app_taskflow.h"
 #include "esp_err.h"
 #include "event_loops.h"
+#include "data_defs.h"
 #include "storage.h"
 #include "util.h"
-#include "app_mqtt_client.h"
 #include "tf.h"
 #include "tf_module_timer.h"
 #include "tf_module_debug.h"
@@ -268,7 +268,6 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int status)
 {
     //TODO  state may be discarded
     if( g_mqtt_connect_flag ) {
-        app_mqtt_client_report_tasklist_status(tid, status);
     }
 }
 

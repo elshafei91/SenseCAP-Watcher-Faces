@@ -6,7 +6,7 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "tf_module_img_analyzer.h"
-
+#include "app_sensecraft.h"
 
 static const char *TAG = "tfm.sensecraft_alarm";
 static void __data_lock( tf_module_sensecraft_alarm_t *p_module)
@@ -31,6 +31,7 @@ static int __params_parse(struct tf_module_sensecraft_alarm_params *p_params, cJ
 
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
+    esp_err_t ret = ESP_OK;
     tf_module_sensecraft_alarm_t *p_module_ins = (tf_module_sensecraft_alarm_t *)handler_args;
     struct tf_module_sensecraft_alarm_params *p_params = &p_module_ins->params;
     ESP_LOGI(TAG, "Input shutter");
@@ -47,10 +48,24 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 
     time(&now);
     diff = difftime(now, p_module_ins->last_alarm_time);
-    if( diff >= p_params->silence_duration  ) {
-        //TODO
+    if( diff >= p_params->silence_duration  || (p_module_ins->last_alarm_time == 0) ) {
         ESP_LOGI(TAG, "Notify sensecraft alarm...");
+
         p_module_ins->last_alarm_time = now;
+        tf_data_dualimage_with_audio_text_t *p_data = (tf_data_dualimage_with_audio_text_t*)p_event_data;
+
+        tf_info_t tf_info;
+        tf_engine_info_get(&tf_info);
+        ret = app_sensecraft_mqtt_report_warn_event(tf_info.tid, 
+                                              tf_info.p_tf_name,
+                                              (char *)p_data->img_small.p_buf, p_data->img_small.len,
+                                              (char *)p_data->text.p_buf, p_data->text.len);
+        if( ret != ESP_OK ) {
+            ESP_LOGE(TAG, "Faild to report sensecraft alarm");
+        }
+        free(tf_info.p_tf_name);
+    } else {
+        ESP_LOGI(TAG, "Silence: %d, diff: %f, Skip sensecraft alarm", p_params->silence_duration, diff);
     }
     tf_data_free(p_event_data);
 }
