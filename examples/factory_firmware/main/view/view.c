@@ -146,27 +146,27 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         //     tf_data_inference_free(&p_info->inference);
         // }
 
-        case VIEW_EVENT_TASK_FLOW_REMOTE:{
-            ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_REMOTE");
-            _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
-            break;
-        }
+        // case VIEW_EVENT_TASK_FLOW_REMOTE:{
+        //     ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_REMOTE");
+        //     _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
+        //     break;
+        // }
 
-        case VIEW_EVENT_OTA_AI_MODEL:{
-            ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_AI_MODEL");
-            struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
-            if(ota_st->status == 0)
-            {
-                ESP_LOGI(TAG, "OTA download succeeded");
-                _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
-            }else if (ota_st->status == 1)
-            {
-                update_ota_progress(ota_st->percentage);
-            }else{
-                ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
-            }
-            break;
-        }
+        // case VIEW_EVENT_OTA_AI_MODEL:{
+        //     ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_AI_MODEL");
+        //     struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
+        //     if(ota_st->status == 0)
+        //     {
+        //         ESP_LOGI(TAG, "OTA download succeeded");
+        //         _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
+        //     }else if (ota_st->status == 1)
+        //     {
+        //         update_ota_progress(ota_st->percentage);
+        //     }else{
+        //         ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
+        //     }
+        //     break;
+        // }
 
         default:
             break;

@@ -177,6 +177,8 @@ enum {
     VIEW_EVENT_BLE_STATUS,
     VIEW_EVENT_SOFTWARE_VERSION_CODE,
     VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE,
+    VIEW_EVENT_BRIGHTNESS,
+    VIEW_EVENT_RGB_SWITCH,
     
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
@@ -202,10 +204,8 @@ enum {
 
     VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL
-        
-    VIEW_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
-    VIEW_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
-    VIEW_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
+
+    VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status
 
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
@@ -213,15 +213,37 @@ enum {
     VIEW_EVENT_TASK_FLOW_EXIST, //uint32_t, 1 or 0, tell UI if there's already a tasklist running
     VIEW_EVENT_TASK_FLOW_STOP, //NULL
     VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
-    VIEW_EVENT_TASK_FLOW_REMOTE,
     VIEW_EVENT_ALL,
 };
 //config caller
-enum {
+typedef enum {
     UI_CALLER,
     AT_CMD_CALLER,
-    BLE_CALLER
-};
+    BLE_CALLER,
+    SR,
+    ALARM,
+
+    
+    MAX_CALLER // Add new callers before MAX_CALLER
+}caller;
+//RGB service type
+typedef enum {
+    breath_red,
+    breath_green,
+    breath_blue,
+    breath_white,
+
+    glint_red,
+    glint_green,
+    glint_blue,
+    glint_white,
+
+    flare_red,
+    flare_green,
+    flare_white,
+    flare_blue,
+    off
+}rgb_service_t;
 /************************************************
  * Control Data Defines
 *************************************************/

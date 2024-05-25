@@ -149,3 +149,4 @@ esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
 
     return evtdata.err;
 }
+

@@ -10,7 +10,6 @@
 extern "C" {
 #endif
 
-#define CONFIG_ENABLE_TEST_ENV 1
 #if CONFIG_ENABLE_TEST_ENV
 #define SENSECAP_URL "http://intranet-sensecap-env-expose-publicdns.seeed.cc"
 #else

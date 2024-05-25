@@ -678,8 +678,12 @@ int set_wifi_config(wifi_config *config)
 }
 void wifi_config_entry(void *pvParameters)
 {
+
+    uint32_t ulNotificationValue;
+    xTask_wifi_config_entry = xTaskGetCurrentTaskHandle();
     while (1)
     {
+
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         //ESP_LOGE(TAG, "wifi_config_layer");
         wifi_scan();

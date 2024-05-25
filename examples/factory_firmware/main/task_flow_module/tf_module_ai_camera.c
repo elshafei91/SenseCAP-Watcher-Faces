@@ -476,7 +476,6 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
             lvgl_port_lock(0);
             view_image_preview_flush(&info);
             lvgl_port_unlock();
-
             tf_data_image_free(&info.img);
             tf_data_inference_free(&info.inference);
 
