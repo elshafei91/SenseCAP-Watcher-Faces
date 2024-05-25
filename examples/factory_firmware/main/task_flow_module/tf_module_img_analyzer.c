@@ -14,6 +14,8 @@
 
 static const char *TAG = "tfm.img_analyzer";
 
+#define EVENT_STOP          BIT0
+#define EVENT_STOP_DONE     BIT1 
 #define EVENT_NEED_DELETE   BIT0
 #define EVENT_TASK_DELETED  BIT1 
 
@@ -289,7 +291,7 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
             p_result->audio.p_buf = NULL;
             p_result->audio.len   = 0;
             cJSON *json_audio = cJSON_GetObjectItem(json_data, "audio");
-            if (json_audio != NULL && cJSON_IsString(json_audio) ) {
+            if (json_audio != NULL && cJSON_IsString(json_audio) && strlen(json_audio->valuestring) > 0 ) {
                 size_t output_len = 0;
                 uint8_t *p_audio = NULL;
                 int decode_ret = mbedtls_base64_decode(NULL, 0, &output_len, \
@@ -347,16 +349,30 @@ static void img_analyzer_task(void *p_arg)
     tf_data_dualimage_with_inference_t data;
     struct tf_module_img_analyzer_result result;
     tf_data_dualimage_with_audio_text_t output_data;
+    EventBits_t bits;
+
     while(1) {
         
-        if (EVENT_NEED_DELETE && xEventGroupGetBits(p_module_ins->event_group)) {
+        bits = xEventGroupWaitBits(p_module_ins->event_group, \
+                EVENT_NEED_DELETE | EVENT_STOP , pdTRUE, pdFALSE, portMAX_DELAY);
+
+        if (( bits & EVENT_NEED_DELETE ) != 0)  {
+            ESP_LOGI(TAG, "EVENT_NEED_DELETE");
             while (xQueueReceive(p_module_ins->queue_handle, &data,0) == pdPASS ) {
                 tf_data_free((void *)&data); //clear queue
             }
             xEventGroupSetBits(p_module_ins->event_group, EVENT_TASK_DELETED);
-            vTaskDelete(p_module_ins->task_handle);
             vTaskDelete(NULL);
         }
+
+        if (( bits & EVENT_STOP ) != 0)  {
+            ESP_LOGI(TAG, "EVENT_STOP");
+            while (xQueueReceive(p_module_ins->queue_handle, &data,0) == pdPASS ) {
+                tf_data_free((void *)&data); //clear queue
+            }
+            xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP_DONE);
+        }
+
         if(xQueueReceive(p_module_ins->queue_handle, &data, ( TickType_t ) 10 ) == pdPASS ) {
             ESP_LOGI(TAG, "Start analyse image");
             memset( &result, 0, sizeof(result) );
@@ -453,6 +469,10 @@ static int __stop(void *p_module)
     __data_unlock(p_module_ins);
 
     esp_err_t ret = tf_event_handler_unregister(p_module_ins->input_evt_id, __event_handler);
+
+    xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP);
+    xEventGroupWaitBits(p_module_ins->event_group, EVENT_STOP_DONE, 1, 1, portMAX_DELAY);
+
     return ret;
 }
 static int __cfg(void *p_module, cJSON *p_json)

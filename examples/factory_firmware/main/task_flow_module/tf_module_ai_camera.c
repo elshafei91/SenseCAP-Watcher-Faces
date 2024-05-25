@@ -19,8 +19,9 @@ tf_module_t *g_handle = NULL;
 
 #define EVENT_STATRT          BIT0
 #define EVENT_STOP            BIT1
-#define EVENT_SIMPLE_640_480  BIT2     
-#define EVENT_PRVIEW_416_416  BIT3 
+#define EVENT_STOP_DONE       BIT2
+#define EVENT_SIMPLE_640_480  BIT3     
+#define EVENT_PRVIEW_416_416  BIT4 
 
 static int __time_to_seconds(struct tf_module_ai_camera_time *time) {
     if (!time) return -1;
@@ -630,17 +631,19 @@ static int __params_parse(struct tf_module_ai_camera_params *p_params, cJSON *p_
     {
         cJSON *model_id_json = cJSON_GetObjectItem(model_json, "model_id");
         cJSON *version_json = cJSON_GetObjectItem(model_json, "version");
-        cJSON *checksum_json = cJSON_GetObjectItem(model_json, "checksum"); 
+       
         if (model_id_json && cJSON_IsString(model_id_json) &&
-            checksum_json && cJSON_IsString(checksum_json) &&
             version_json && cJSON_IsString(version_json) )
         {
-
             strncpy(p_params->model.model_id, model_id_json->valuestring, sizeof(p_params->model.model_id) - 1);
             strncpy(p_params->model.version, version_json->valuestring, sizeof(p_params->model.version) - 1);
-            strncpy(p_params->model.checksum, checksum_json->valuestring, sizeof(p_params->model.checksum) - 1);
         }
 
+        cJSON *checksum_json = cJSON_GetObjectItem(model_json, "checksum"); // old model not contain checksum
+        if(checksum_json && cJSON_IsString(checksum_json)) {
+            strncpy(p_params->model.checksum, checksum_json->valuestring, sizeof(p_params->model.checksum) - 1);
+        }
+        
         cJSON *arguments_json = cJSON_GetObjectItem(model_json, "arguments");
         if (arguments_json != NULL) {
             cJSON *url_json = cJSON_GetObjectItem(arguments_json, "url");
@@ -953,15 +956,15 @@ static void ai_camera_task(void *p_arg)
                 run_flag = true;
             }
         }
+        if( err_flag != 0 ) {
+            tf_module_status_set(TF_MODULE_AI_CAMERA_NAME, err_flag);
+        }
 
         if( ( bits & EVENT_STOP ) != 0 ) {
             sscma_client_break(p_module_ins->sscma_client_handle);
             ESP_LOGI(TAG, "EVENT_STOP");
             run_flag = false;
-        }
-        
-        if( err_flag != 0 ) {
-            tf_module_status_set(TF_MODULE_AI_CAMERA_NAME, err_flag);
+            xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP_DONE);
         }
     }
 }
@@ -980,6 +983,7 @@ static int __stop(void *p_module)
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)p_module;
     
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP);
+    xEventGroupWaitBits(p_module_ins->event_group, EVENT_STOP_DONE, 1, 1, portMAX_DELAY);
 
     __data_lock(p_module_ins);
     if( p_module_ins->p_output_evt_id ) {
