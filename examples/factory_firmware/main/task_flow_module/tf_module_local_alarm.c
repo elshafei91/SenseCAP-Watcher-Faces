@@ -13,6 +13,7 @@
 #include "data_defs.h"
 #include "event_loops.h"
 #include "tf_module_img_analyzer.h"
+#include "app_rgb.h"
 
 
 
@@ -67,6 +68,7 @@ static void __timer_callback(void* p_arg)
     if( p_params->rgb) {
         // TODO RGB OFF
         ESP_LOGI(TAG, "RGB OFF");
+        set_rgb_with_priority(ALARM, off);
     }
     if( p_params->sound) {
         // TODO SOUND OFF
@@ -85,9 +87,21 @@ static void __audio_player_cb(audio_player_cb_ctx_t *p_arg)
 
 static void __alarm_off_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_event_data;
+    struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
+    
     //TODO 
     // RGB OFF
     // SOUND OFF
+    if( p_params->rgb) {
+        // TODO RGB OFF
+        ESP_LOGI(TAG, "RGB OFF");
+        set_rgb_with_priority(ALARM, off);
+    }
+    if( p_params->sound) {
+        // TODO SOUND OFF
+        ESP_LOGI(TAG, "SOUND OFF");
+    }
 }
 
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
@@ -155,6 +169,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     if(p_params->rgb) {
         // TODO RGB ON
         ESP_LOGI(TAG, "RGB ON");
+        set_rgb_with_priority(ALARM, glint_red);
     }
     
     // free data
