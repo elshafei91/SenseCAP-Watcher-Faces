@@ -234,8 +234,8 @@ void __select_service_set_rgb(int caller, int service)
     rgb_status_instance.min_brightness_led = 0;
     if (service == breath_red || service == breath_green || service == breath_blue || service == breath_white || service == off)
     {
-        rgb_status_instance.step = 50;
-        rgb_status_instance.delay_time = 200;
+        rgb_status_instance.step = 1;
+        rgb_status_instance.delay_time = 5;
     }
 
     // Log the current RGB status
@@ -319,10 +319,6 @@ void release_rgb(int caller)
     if (context.caller != -1)
     {
         __select_service_set_rgb(context.caller, context.service);
-        if (context.service == glint_blue || glint_green || glint_red || glint_white)
-        {
-            __blink(0.5, false);
-        }
     }
     else
     {
@@ -331,6 +327,149 @@ void release_rgb(int caller)
 
     xSemaphoreGive(rgb_semaphore);
 }
+
+
+
+
+/**
+ * @brief Set breath color effect
+ *
+ * This function sets the RGB light to perform a breathing effect with the specified color.
+ *
+ * @param status The current RGB status
+ */
+void __set_breath_color(rgb_status *status)
+{
+    static uint8_t brightness_led = 0;
+    static bool increasing = true;
+
+    if (increasing)
+    {
+        brightness_led += status->step;
+        if (brightness_led >= status->max_brightness_led)
+        {
+            brightness_led = status->max_brightness_led;
+            increasing = false;
+        }
+    }
+    else
+    {
+        brightness_led -= status->step;
+        if (brightness_led <= status->min_brightness_led)
+        {
+            brightness_led = status->min_brightness_led;
+            increasing = true;
+        }
+    }
+
+    uint8_t current_r = (status->r * brightness_led) / 255;
+    uint8_t current_g = (status->g * brightness_led) / 255;
+    uint8_t current_b = (status->b * brightness_led) / 255;
+    bsp_rgb_set(current_r, current_g, current_b);
+
+    vTaskDelay(pdMS_TO_TICKS(status->delay_time));
+}
+
+
+
+
+/**
+ * @brief Blink effect
+ *
+ * This function starts or stops the blink effect based on the start parameter.
+ *
+ * @param interval The interval for the blink effect in seconds
+ * @param start True to start the effect, false to stop
+ */
+
+
+static void blink_timer_callback(void *arg)
+{
+    static bool led_on = false;
+    if (led_on)
+    {
+        bsp_rgb_set(0, 0, 0);
+    }
+    else
+    {
+        bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
+    }
+    led_on = !led_on;
+}
+
+
+void __blink(double interval, bool start)
+{
+    static bool is_blinking = false;
+    static esp_timer_handle_t blink_timer_handle = NULL;
+
+    if (start)
+    {
+        if (!is_blinking)
+        {
+            is_blinking = true;
+            esp_timer_create_args_t timer_args = {
+                .callback = &blink_timer_callback,
+                .arg = NULL,
+                .name = "blink_timer"
+            };
+            esp_timer_create(&timer_args, &blink_timer_handle);
+            esp_timer_start_periodic(blink_timer_handle, interval * 1000000*0.5);
+        }
+    }
+    else
+    {
+        if (is_blinking)
+        {
+            is_blinking = false;
+            esp_timer_stop(blink_timer_handle);
+            esp_timer_delete(blink_timer_handle);
+            blink_timer_handle = NULL;
+        }
+    }
+}
+
+
+/**
+ * @brief Flare effect
+ *
+ * This function sets the RGB light to perform a flare effect.
+ */
+void __flare()
+{
+    // Take the semaphore to ensure thread safety
+    xSemaphoreTake(__rgb_semaphore, portMAX_DELAY);
+    bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
+    // Release the semaphore after updating the RGB status
+    xSemaphoreGive(__rgb_semaphore);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+// void system_verification_task(void *arg)
+// {
+//     while (true)
+//     {
+//         set_rgb_with_priority(UI_CALLER, breath_red);
+//         vTaskDelay(pdMS_TO_TICKS(5000)); // Log every 5 seconds
+//         set_rgb_with_priority(UI_CALLER, glint_green);
+//         vTaskDelay(pdMS_TO_TICKS(5000)); // Log every 5 seconds
+//         set_rgb_with_priority(UI_CALLER, flare_blue);
+//         vTaskDelay(pdMS_TO_TICKS(5000)); // Log every 5 seconds
+//         set_rgb_with_priority(UI_CALLER, off);
+//     }
+// }
+
 
 /**
  * @brief RGB breath effect task
@@ -348,126 +487,22 @@ void breath_effect_task(void *arg)
             case 1:
                 __set_breath_color(&rgb_status_instance);
                 break;
-            case 2: // blink
-                __blink(0.5, true);
+            case 2: 
+                __blink(1, true);
                 break;
-            case 3:
-                __flare(); // flare
+            case 3: 
+                __flare();
                 break;
-            case 4:
-                bsp_rgb_set(0, 0, 0);
+            case 4: 
+                bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
                 break;
             default:
+                bsp_rgb_set(0, 0, 0);
                 break;
         }
     }
 }
 
-
-/**
- * @brief Set breath color effect
- *
- * This function sets the RGB light to perform a breathing effect with the specified color.
- *
- * @param status The current RGB status
- */
-void __set_breath_color(rgb_status *status)
-{
-    uint8_t brightness_led = status->min_brightness_led;
-    bool increasing = true;
-
-    uint8_t current_r = (status->r * brightness_led) / 255;
-    uint8_t current_g = (status->g * brightness_led) / 255;
-    uint8_t current_b = (status->b * brightness_led) / 255;
-
-    bsp_rgb_set(current_r, current_g, current_b);
-
-    while (true)
-    {
-        if (increasing)
-        {
-            brightness_led += status->step;
-            if (brightness_led >= status->max_brightness_led)
-            {
-                brightness_led = status->max_brightness_led;
-                increasing = false;
-            }
-        }
-        else
-        {
-            brightness_led -= status->step;
-            if (brightness_led <= status->min_brightness_led)
-            {
-                brightness_led = status->min_brightness_led;
-                increasing = true;
-            }
-        }
-        current_r = (status->r * brightness_led) / 255;
-        current_g = (status->g * brightness_led) / 255;
-        current_b = (status->b * brightness_led) / 255;
-        bsp_rgb_set(current_r, current_g, current_b);
-        vTaskDelay(pdMS_TO_TICKS(status->delay_time));
-    }
-}
-
-/**
- * @brief Timer callback for blinking effect
- *
- * This function is called periodically by the timer to toggle the RGB light on and off for the blink effect.
- *
- * @param arg Timer argument (not used)
- */
-static void __timer_callback(void *arg)
-{
-    if (flag)
-    {
-        bsp_rgb_set(0, 0, 0);
-    }
-    else
-    {
-        bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
-    }
-    flag = !flag;
-}
-
-/**
- * @brief Blink effect
- *
- * This function starts or stops the blink effect based on the start parameter.
- *
- * @param interval The interval for the blink effect in seconds
- * @param start True to start the effect, false to stop
- */
-void __blink(double interval, bool start)
-{
-    // Take the semaphore to ensure thread safety
-    xSemaphoreTake(__rgb_semaphore, portMAX_DELAY);
-    if (start)
-    {
-        esp_timer_start_periodic(rgb_timer_handle, (int64_t)(interval * 1000000)); // interval in microseconds
-    }
-    else
-    {
-        esp_timer_stop(rgb_timer_handle);
-        bsp_rgb_set(0, 0, 0);
-    }
-    // Release the semaphore after updating the RGB status
-    xSemaphoreGive(__rgb_semaphore);
-}
-
-/**
- * @brief Flare effect
- *
- * This function sets the RGB light to perform a flare effect.
- */
-void __flare()
-{
-    // Take the semaphore to ensure thread safety
-    xSemaphoreTake(__rgb_semaphore, portMAX_DELAY);
-    bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
-    // Release the semaphore after updating the RGB status
-    xSemaphoreGive(__rgb_semaphore);
-}
 
 /**
  * @brief Initialize the RGB application
@@ -501,15 +536,13 @@ int app_rgb_init(void)
         return -1;
     }
 
-
-    // Create the timer for blink effect
-    esp_timer_create_args_t timer_args = { .callback = &__timer_callback, .arg = NULL, .name = "rgb_timer" };
-
-    esp_err_t err = esp_timer_create(&timer_args, &rgb_timer_handle);
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(RGB_TAG, "Failed to create timer: %s", esp_err_to_name(err));
-        return -1;
-    }
+    //     TaskHandle_t system_verification_task_handle;
+    // if (xTaskCreate(system_verification_task, "system_verification_task", 4096, NULL, 5, &system_verification_task_handle) != pdPASS)
+    // {
+    //     ESP_LOGE(RGB_TAG, "Failed to create system verification task");
+    //     return -1;
+    // }
     return 0;
 }
+
+
