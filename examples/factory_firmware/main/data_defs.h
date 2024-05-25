@@ -121,9 +121,10 @@ struct view_data_deviceinfo
 
 struct view_data_device_status
 {
-    char *fw_version;
+    char *fw_version;  //ESP32's firmware
     char *hw_version;
     uint8_t battery_per;
+    char *himax_fw_version;
 };
 
 struct view_data_setting_volbri

@@ -84,6 +84,7 @@ esp_err_t app_sensecraft_mqtt_report_warn_event(intmax_t taskflow_id,
                                                 char *p_img, size_t img_len, 
                                                 char *p_msg, size_t msg_len);
 
+esp_err_t app_sensecraft_mqtt_report_device_status_generic(char *event_value_fields);
 esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_status *dev_status);
 
 

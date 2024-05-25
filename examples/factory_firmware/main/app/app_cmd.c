@@ -209,8 +209,9 @@ static int do_force_ota(int argc, char **argv)
             return -1;
         }
         change = 2;
-        url = psram_calloc(1, 256);
-        strncpy( url, force_ota_args.url->sval[0], len );
+        // url = psram_calloc(1, 256);
+        // strncpy( url, force_ota_args.url->sval[0], len );
+        url = force_ota_args.url->sval[0];
     }
 
     if( change == 2 ) {
@@ -232,7 +233,7 @@ static int do_force_ota(int argc, char **argv)
         default:
             break;
         }
-        if (url) free(url);
+        // if (url) free(url);  // we let memory leak, because we need it exist
     } else {
         ESP_LOGE(TAG, "both args must be provided");
         return -1;
