@@ -25,6 +25,13 @@ extern "C"
 #endif
 #endif
 
+// module run err code
+#define TF_MODULE_AI_CAMERA_CODE_OK                  0
+#define TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_SIMPLE    (0X01 << 1)
+#define TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_INVOKE    (0X01 << 2)
+#define TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL     (0X01 << 3)
+#define TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL_OTA (0X01 << 4)
+
 /*************************************************************************
  * params config define
  ************************************************************************/
@@ -55,8 +62,8 @@ extern "C"
 #define TF_MODULE_AI_CAMERA_CONDITION_MODE_NUM_CHANGE           2
 
 
-#define TF_MODULE_AI_CAMERA_OUTPUT_TYPE_SMALL_IMG_AND_LARGE_IMG  0
-#define TF_MODULE_AI_CAMERA_OUTPUT_TYPE_SMALL_IMG_ONLY           1
+#define TF_MODULE_AI_CAMERA_OUTPUT_TYPE_SMALL_IMG_ONLY           0
+#define TF_MODULE_AI_CAMERA_OUTPUT_TYPE_SMALL_IMG_AND_LARGE_IMG  1
 
 struct tf_module_ai_camera_model
 {

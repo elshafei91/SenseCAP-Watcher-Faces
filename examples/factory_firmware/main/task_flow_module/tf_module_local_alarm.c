@@ -118,8 +118,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     }
 
     // TODO notify screen
-
-    esp_timer_start_once(p_module_ins->timer_handle, p_params->duration * 1000000);
+    // esp_timer_start_once(p_module_ins->timer_handle, p_params->duration * 1000000);
 }
 /*************************************************************************
  * Interface implementation

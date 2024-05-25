@@ -28,6 +28,8 @@ struct tf_module_local_alarm_info
     int  duration; //seconds
     struct  tf_data_image img;
     bool is_show_img;
+    struct  tf_data_buf text;
+    bool is_show_text;
 };
 
 typedef struct tf_module_local_alarm

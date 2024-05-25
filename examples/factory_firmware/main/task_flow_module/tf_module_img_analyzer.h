@@ -7,7 +7,7 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "tf_module_ai_camera.h"
-#include "esp_event_base.h"
+
 
 #ifdef __cplusplus
 extern "C"
@@ -85,11 +85,9 @@ typedef struct tf_module_img_analyzer
     TaskHandle_t task_handle;
     StaticTask_t *p_task_buf;
     StackType_t *p_task_stack_buf;
-    esp_event_handler_instance_t event_context;
     char url[256];
     char token[128];
     char head[128];
-    bool net_flag;
 } tf_module_img_analyzer_t;
 
 tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins);
