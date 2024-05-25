@@ -10,7 +10,7 @@ extern "C" {
 
 int view_alarm_init(lv_obj_t *ui_screen);
 
-void view_alarm_on(void);
+void view_alarm_on(int alarm_time);
 
 void view_alarm_off(void);
 

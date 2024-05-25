@@ -24,21 +24,6 @@ void ui_Page_CurTask2_screen_init(void)
     lv_obj_set_style_text_align(ui_waittext, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_waittext, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_waitspinner = lv_spinner_create(ui_Page_CurTask2, 1000, 90);
-    lv_obj_set_width(ui_waitspinner, 40);
-    lv_obj_set_height(ui_waitspinner, 40);
-    lv_obj_set_x(ui_waitspinner, 0);
-    lv_obj_set_y(ui_waitspinner, -90);
-    lv_obj_set_align(ui_waitspinner, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_waitspinner, LV_OBJ_FLAG_CLICKABLE);      /// Flags
-    lv_obj_set_style_arc_color(ui_waitspinner, lv_color_hex(0x7C7C7C), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_opa(ui_waitspinner, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_width(ui_waitspinner, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    lv_obj_set_style_arc_color(ui_waitspinner, lv_color_hex(0x91BF25), LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_opa(ui_waitspinner, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_width(ui_waitspinner, 6, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-
     ui_waitb = lv_btn_create(ui_Page_CurTask2);
     lv_obj_set_width(ui_waitb, 60);
     lv_obj_set_height(ui_waitb, 60);
@@ -53,6 +38,22 @@ void ui_Page_CurTask2_screen_init(void)
     lv_obj_set_style_bg_img_src(ui_waitb, &ui_img_button_cancel_png, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_color(ui_waitb, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_waitb, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_waitarc = lv_arc_create(ui_Page_CurTask2);
+    lv_obj_set_width(ui_waitarc, 412);
+    lv_obj_set_height(ui_waitarc, 412);
+    lv_obj_set_align(ui_waitarc, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_waitarc, LV_OBJ_FLAG_CLICKABLE);      /// Flags
+    lv_arc_set_bg_angles(ui_waitarc, 0, 360);
+    lv_arc_set_rotation(ui_waitarc, 270);
+    lv_obj_set_style_arc_color(ui_waitarc, lv_color_hex(0x1D2608), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_opa(ui_waitarc, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_set_style_arc_color(ui_waitarc, lv_color_hex(0xA1D42A), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_opa(ui_waitarc, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
+    lv_obj_set_style_bg_color(ui_waitarc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_waitarc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_waitb, ui_event_waitb, LV_EVENT_ALL, NULL);
 

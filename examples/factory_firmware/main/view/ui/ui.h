@@ -109,9 +109,9 @@ extern lv_obj_t * ui_Label3;
 void ui_Page_CurTask2_screen_init(void);
 extern lv_obj_t * ui_Page_CurTask2;
 extern lv_obj_t * ui_waittext;
-extern lv_obj_t * ui_waitspinner;
 void ui_event_waitb(lv_event_t * e);
 extern lv_obj_t * ui_waitb;
+extern lv_obj_t * ui_waitarc;
 // SCREEN: ui_Page_CurTask3
 void ui_Page_CurTask3_screen_init(void);
 void ui_event_Page_CurTask3(lv_event_t * e);
@@ -146,10 +146,9 @@ extern lv_obj_t * ui_liv1;
 void ui_event_livbtn2(lv_event_t * e);
 extern lv_obj_t * ui_livbtn2;
 extern lv_obj_t * ui_viewlivp2;
-extern lv_obj_t * ui_livt;
+extern lv_obj_t * ui_viewtext;
 void ui_event_viewback(lv_event_t * e);
 extern lv_obj_t * ui_viewback;
-extern lv_obj_t * ui_viewtext;
 // SCREEN: ui_Page_LocTask
 void ui_Page_LocTask_screen_init(void);
 void ui_event_Page_LocTask(lv_event_t * e);

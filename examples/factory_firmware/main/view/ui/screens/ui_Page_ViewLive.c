@@ -70,29 +70,27 @@ void ui_Page_ViewLive_screen_init(void)
     lv_obj_add_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_viewlivp2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_viewlivp2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_viewlivp2, 180, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_viewlivp2, 20, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_viewlivp2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_viewlivp2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_livt = lv_label_create(ui_viewlivp2);
-    lv_obj_set_width(ui_livt, 350);
-    lv_obj_set_height(ui_livt, 120);
-    lv_obj_set_x(ui_livt, 0);
-    lv_obj_set_y(ui_livt, 20);
-    lv_obj_set_align(ui_livt, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_livt, "Detected, sending to cloud to analysis");
-    lv_obj_set_style_text_color(ui_livt, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_livt, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui_livt, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_livt, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_viewtext = lv_label_create(ui_viewlivp2);
+    lv_obj_set_width(ui_viewtext, 360);
+    lv_obj_set_height(ui_viewtext, 31);
+    lv_obj_set_align(ui_viewtext, LV_ALIGN_CENTER);
+    lv_label_set_long_mode(ui_viewtext, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_label_set_text(ui_viewtext, "A man is smoking here.                    ");
+    lv_obj_set_style_text_color(ui_viewtext, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_viewtext, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_viewtext, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_viewback = lv_btn_create(ui_Page_ViewLive);
+    ui_viewback = lv_btn_create(ui_viewlivp2);
     lv_obj_set_width(ui_viewback, 80);
     lv_obj_set_height(ui_viewback, 80);
     lv_obj_set_x(ui_viewback, 0);
     lv_obj_set_y(ui_viewback, 120);
     lv_obj_set_align(ui_viewback, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_viewback, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_add_flag(ui_viewback, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_viewback, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_viewback, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_viewback, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -100,17 +98,6 @@ void ui_Page_ViewLive_screen_init(void)
     lv_obj_set_style_bg_img_src(ui_viewback, &ui_img_setback_png, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_color(ui_viewback, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_viewback, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_viewtext = lv_label_create(ui_Page_ViewLive);
-    lv_obj_set_width(ui_viewtext, 360);
-    lv_obj_set_height(ui_viewtext, 31);
-    lv_obj_set_align(ui_viewtext, LV_ALIGN_CENTER);
-    lv_label_set_long_mode(ui_viewtext, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    lv_label_set_text(ui_viewtext, "A man is smoking here.                    ");
-    lv_obj_add_flag(ui_viewtext, LV_OBJ_FLAG_HIDDEN);     /// Flags
-    lv_obj_set_style_text_color(ui_viewtext, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_viewtext, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_viewtext, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_livbtn1, ui_event_livbtn1, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_livbtn2, ui_event_livbtn2, LV_EVENT_ALL, NULL);

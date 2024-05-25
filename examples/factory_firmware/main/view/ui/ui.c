@@ -115,9 +115,9 @@ lv_obj_t * ui_Label3;
 void ui_Page_CurTask2_screen_init(void);
 lv_obj_t * ui_Page_CurTask2;
 lv_obj_t * ui_waittext;
-lv_obj_t * ui_waitspinner;
 void ui_event_waitb(lv_event_t * e);
 lv_obj_t * ui_waitb;
+lv_obj_t * ui_waitarc;
 
 
 // SCREEN: ui_Page_CurTask3
@@ -158,10 +158,9 @@ lv_obj_t * ui_liv1;
 void ui_event_livbtn2(lv_event_t * e);
 lv_obj_t * ui_livbtn2;
 lv_obj_t * ui_viewlivp2;
-lv_obj_t * ui_livt;
+lv_obj_t * ui_viewtext;
 void ui_event_viewback(lv_event_t * e);
 lv_obj_t * ui_viewback;
-lv_obj_t * ui_viewtext;
 
 
 // SCREEN: ui_Page_LocTask
@@ -358,7 +357,18 @@ const lv_img_dsc_t * ui_imgset_wifi_[5] = {&ui_img_wifi_0_png, &ui_img_wifi_1_pn
     #error "LV_COLOR_16_SWAP should be 1 to match SquareLine Studio's settings"
 #endif
 
+#include "esp_log.h"
 ///////////////////// ANIMATIONS ////////////////////
+static bool animation_done = false;
+static uint8_t animation_count = 0;
+static void anim_ready_callback(lv_anim_t * a)
+{
+    animation_count ++;
+    if(animation_count == 3){
+        animation_done = true;
+        ESP_LOGI("animation_test", "Animation done for object %p", a->var);
+    }
+}
 void start_anim_Animation(lv_obj_t * TargetObject, int delay)
 {
     ui_anim_user_data_t * PropertyAnimation_0_user_data = lv_mem_alloc(sizeof(ui_anim_user_data_t));
@@ -479,6 +489,7 @@ void rec_task_Animation(lv_obj_t * TargetObject, int delay)
     lv_anim_set_repeat_delay(&PropertyAnimation_3, 0);
     lv_anim_set_early_apply(&PropertyAnimation_3, true);
     lv_anim_set_get_value_cb(&PropertyAnimation_3, &_ui_anim_callback_get_opacity);
+    lv_anim_set_ready_cb(&PropertyAnimation_3, anim_ready_callback);
     lv_anim_start(&PropertyAnimation_3);
 
 }
@@ -687,8 +698,10 @@ void ui_event_Page_CurTask3(lv_event_t * e)
         rec_task_Animation(ui_revsec2, 2000);
         rec_task_Animation(ui_revsec1, 3000);
     }
-    if(event_code == LV_EVENT_CLICKED){
-        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 4000, &ui_Page_ViewAva_screen_init);  
+    if(animation_done){
+        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 4000, &ui_Page_ViewAva_screen_init);
+        animation_count = 0;
+        animation_done = false;
     }
 }
 void ui_event_revb(lv_event_t * e)
