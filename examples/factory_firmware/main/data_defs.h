@@ -113,30 +113,6 @@ struct view_data_audio_play_data
     uint32_t len;
 };
 
-struct view_data_mqtt_connect_info
-{
-    SemaphoreHandle_t mutex;
-    char serverUrl[128];
-    char token[171];
-    int mqttPort;
-    int mqttsPort;
-    int expiresIn;
-};
-
-struct view_data_trigger_cfg
-{   
-    int detect_class;
-    int condition_type; // 0-小于，1-小于等于，2-小于，3-大于等于，4-大于，5-不等于
-    int condition_num;
-};
-
-struct view_data_task
-{
-    int task_type; // 0: local example task; 1: cloud task 
-    int model_id; // 运行模型ID:1,2,3, 不需要运行模型，model id 为0
-    int num; // 运行次数, -1表示无限次数
-};
-
 struct view_data_deviceinfo
 {
     char eui[17];
@@ -226,14 +202,12 @@ enum {
     VIEW_EVENT_AUDIO_VAD_TIMEOUT,   //struct view_data_record
     VIEW_EVENT_AUDIO_PALY, //struct view_data_audio_play_data
 
-    VIEW_EVENT_MQTT_CONNECT_INFO,  // struct view_data_mqtt_connect_info
-
     VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL
 
     VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status
 
-    VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h)
+    VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
    
     VIEW_EVENT_TASK_FLOW_EXIST, //uint32_t, 1 or 0, tell UI if there's already a tasklist running
@@ -274,11 +248,11 @@ typedef enum {
  * Control Data Defines
 *************************************************/
 
-struct ctrl_data_mqtt_tasklist_cjson
-{
-    SemaphoreHandle_t mutex;
-    cJSON *tasklist_cjson;
-};
+// struct ctrl_data_mqtt_tasklist_cjson
+// {
+//     SemaphoreHandle_t mutex;
+//     cJSON *tasklist_cjson;
+// };
 
 /**
  * Control Events are used for control logic within the app backend scope.
@@ -289,11 +263,12 @@ struct ctrl_data_mqtt_tasklist_cjson
 enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
     CTRL_EVENT_MQTT_CONNECTED,
-    CTRL_EVENT_MQTT_TASKLIST_JSON,          //received tasklist json from MQTT
+    CTRL_EVENT_MQTT_OTA_JSON,               //received ota json from MQTT
+ 
+    CTRL_EVENT_TASK_FLOW_START_BY_MQTT, // char * , taskflow json, There can only be one listener
+    CTRL_EVENT_TASK_FLOW_START_BY_BLE,  // char * , taskflow json, There can only be one listener
+    CTRL_EVENT_TASK_FLOW_START_BY_SR,   // char * , taskflow json, There can only be one listener
 
-    CTRL_EVENT_TASK_FLOW_START_BY_BLE, // char * , taskflow json
-    CTRL_EVENT_TASK_FLOW_START_BY_SR,  // char * , taskflow json
-           
     CTRL_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
     CTRL_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
     CTRL_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status

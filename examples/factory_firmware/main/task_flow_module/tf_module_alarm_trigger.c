@@ -28,12 +28,12 @@ static void __parmas_default(struct tf_module_alarm_trigger_params *p_params)
 static int __params_parse(struct tf_module_alarm_trigger_params *p_params, cJSON *p_json)
 {
     cJSON *json_audio = cJSON_GetObjectItem(p_json, "audio");
-    if (json_audio != NULL  && cJSON_IsString(json_audio)) {
+    if (json_audio != NULL  && cJSON_IsString(json_audio) && strlen(json_audio->valuestring) > 0 ) {
         size_t output_len = 0;
         uint8_t *p_audio = NULL;
         int decode_ret = mbedtls_base64_decode(NULL, 0, &output_len, \
                             (uint8_t *)json_audio->valuestring, strlen(json_audio->valuestring));
-        if( decode_ret == 0 && output_len > 0 ) {
+        if( decode_ret != MBEDTLS_ERR_BASE64_INVALID_CHARACTER  && output_len > 0 ) {
             uint8_t *p_audio = (uint8_t *)tf_malloc( output_len);
             if( p_audio != NULL ) {
                 decode_ret = mbedtls_base64_decode(p_audio, output_len, &output_len, \
@@ -46,11 +46,13 @@ static int __params_parse(struct tf_module_alarm_trigger_params *p_params, cJSON
                     ESP_LOGE(TAG, "base64 decode failed");
                 }
             }
+        } else {
+            ESP_LOGE(TAG, "Base64 decode failed, ret: %d, len:%d", decode_ret, output_len);
         } 
     }
 
     cJSON *json_text = cJSON_GetObjectItem(p_json, "text");
-    if (json_text != NULL  && cJSON_IsNumber(json_text)) {
+    if (json_text != NULL  && cJSON_IsString(json_text)) {
         p_params->text.p_buf = (uint8_t *)tf_malloc(strlen(json_text->valuestring) + 1);
         if( p_params->text.p_buf ) {
             memcpy(p_params->text.p_buf, json_text->valuestring, strlen(json_text->valuestring));

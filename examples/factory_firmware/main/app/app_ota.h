@@ -52,7 +52,6 @@ enum {
     CMD_esp_https_ota_finish,
 };
 typedef struct {
-    int worker_cmd;
     esp_https_ota_config_t *ota_config;
     esp_https_ota_handle_t *ota_handle;
     esp_app_desc_t *app_desc;

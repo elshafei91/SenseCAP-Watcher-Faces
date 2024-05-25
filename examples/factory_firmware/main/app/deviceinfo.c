@@ -14,7 +14,7 @@
 #include "storage.h"
 #include "data_defs.h"
 #include "event_loops.h"
-#include "app_mqtt_client.h"
+#include "app_sensecraft.h"
 #include "util.h"
 
 
@@ -62,7 +62,7 @@ static void __deviceinfo_task(void *p_arg)
     g_device_status.battery_per = bsp_battery_get_percent();
 
     //mqtt pub
-    app_mqtt_client_report_device_status(&g_device_status);
+    app_sensecraft_mqtt_report_device_status(&g_device_status);
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(30000));
@@ -71,7 +71,7 @@ static void __deviceinfo_task(void *p_arg)
         if (g_device_status.battery_per - batnow > 10 || batnow == 0) {
             g_device_status.battery_per = batnow;
             //mqtt pub
-            app_mqtt_client_report_device_status(&g_device_status);
+            app_sensecraft_mqtt_report_device_status(&g_device_status);
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
         }
     }
@@ -106,7 +106,7 @@ esp_err_t app_device_status_monitor_init(void)
 
     // xTaskCreate(__deviceinfo_task, "deviceinfo_task", 1024 * 3, NULL, 1, NULL);
 
-    const uint32_t stack_size = 2 * 1024 + 256;
+    const uint32_t stack_size = 5 * 1024 + 256;
     StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
     g_task = xTaskCreateStatic(__deviceinfo_task, "deviceinfo", stack_size, NULL, 1, task_stack, &g_task_tcb);
 
