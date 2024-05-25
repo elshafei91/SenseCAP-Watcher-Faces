@@ -172,7 +172,10 @@ int view_init(void)
                                                             __view_event_handler, NULL, NULL));   
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, 
-                                                            __view_event_handler, NULL, NULL));                                                          
+                                                            __view_event_handler, NULL, NULL));     
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, 
+                                                            __view_event_handler, NULL, NULL));                                                                                                                  
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, 
                                                             __view_event_handler, NULL, NULL));   

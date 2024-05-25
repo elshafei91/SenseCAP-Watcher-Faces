@@ -68,6 +68,10 @@ void handle_eui_command(char *params);  // EUI command
 void handle_wifi_table(char *params);  // WiFi table command
 void handle_deviceinfo_cfg_command(char *params);  // Timezone command
 void handle_taskflow_command(char *params); // Taskflow command
+void handle_cloud_service_command(char *params);
+
+
+
 
 void init_event_loop_and_task();
 void AT_cmd_init();
