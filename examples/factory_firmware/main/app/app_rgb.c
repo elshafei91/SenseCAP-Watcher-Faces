@@ -1,177 +1,378 @@
 #include <time.h>
-
 #include "esp_timer.h"
 #include "esp_log.h"
-
-
 #include "sensecap-watcher.h"
 #include "app_rgb.h"
 #include "event_loops.h"
 #include "data_defs.h"
 
-#define RGB_TAG "RGB_TAG"
+#define RGB_TAG     "RGB_TAG"
+#define MAX_CALLERS 5
+#define STACK_SIZE  10
 
-// Stack memory allocation for the RGB effect task
+typedef struct
+{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t max_brightness_led;
+    uint8_t min_brightness_led;
+    int step;
+    int delay_time;
+    int type;
+} rgb_status;
+
+static rgb_status rgb_status_instance;
 static StackType_t *app_rgb_stack = NULL;
 static StaticTask_t app_rgb_stack_buffer;
 
-// Structure to hold the RGB status, including color and brightness settings
-typedef struct {
-    uint8_t r;  // Red component of the RGB color
-    uint8_t g;  // Green component of the RGB color
-    uint8_t b;  // Blue component of the RGB color
-    uint8_t max_brightness_led;  // Maximum brightness level of the LED
-    uint8_t min_brightness_led;  // Minimum brightness level of the LED
-    int step;  // Step value for changing brightness
-    int delay_time;  // Delay time between brightness changes
-} rgb_status;
-
-// Instance of the RGB status structure to hold the current RGB settings
-static rgb_status rgb_status_instance;
-
-// Structure to hold the caller context, including the caller type, service, and RGB status
-typedef struct {
-    caller caller_type;  // Type of the caller (e.g., UI_CALLER, AT_CMD_CALLER)
-    rgb_service_t service;  // Type of the RGB service (e.g., breath_red, off)
-    rgb_status status;  // RGB status associated with the caller
+typedef struct
+{
+    int caller;
+    rgb_service_t service;
+    rgb_status status;
 } caller_context_t;
 
-// Stack to hold the contexts of different callers, used for priority management
-static caller_context_t caller_stack[MAX_CALLER];
+static caller_context_t caller_contexts[STACK_SIZE];
+static int stack_top = -1; // Empty stack
+static SemaphoreHandle_t rgb_semaphore;
+static SemaphoreHandle_t __rgb_semaphore;
 
-// Top index for the caller stack, used to manage the stack operations
-static int top = -1;
+static esp_timer_handle_t rgb_timer_handle;
+static uint8_t flag = 0;
 
-// Current active caller, initialized to the lowest priority caller (BLE_CALLER)
-static caller current_caller = BLE_CALLER;
+void __blink(double interval, bool start);
+void __flare();
+void __set_breath_color(rgb_status *status);
 
-void breath_effect_task(void *arg);
-esp_err_t push_caller_context(caller caller_type, rgb_service_t service, rgb_status status) {
-    if (top < MAX_CALLER - 1) {
-        caller_stack[++top] = (caller_context_t){caller_type, service, status};
-        return ESP_OK;
+/**
+ * @brief Push a caller context onto the stack
+ *
+ * This function adds a caller context to the stack, which includes the caller ID,
+ * the RGB service requested, and the current RGB status.
+ *
+ * @param caller The ID of the caller
+ * @param service The RGB service requested
+ * @param status The current RGB status
+ */
+void push_caller_context(int caller, rgb_service_t service, rgb_status status)
+{
+    if (stack_top < STACK_SIZE - 1)
+    {
+        stack_top++;
+        caller_contexts[stack_top].caller = caller;
+        caller_contexts[stack_top].service = service;
+        caller_contexts[stack_top].status = status;
+        ESP_LOGI(RGB_TAG, "Pushed caller %d with service %d to stack at position %d", caller, service, stack_top);
     }
-    return ESP_FAIL;
+    else
+    {
+        ESP_LOGE(RGB_TAG, "Stack overflow! Unable to push caller %d with service %d", caller, service);
+    }
 }
 
-esp_err_t pop_caller_context(caller_context_t *context) {
-    if (top >= 0) {
-        *context = caller_stack[top--];
-        return ESP_OK;
+/**
+ * @brief Pop a caller context from the stack
+ *
+ * This function removes the top caller context from the stack and returns it.
+ *
+ * @return The popped caller context
+ */
+caller_context_t pop_caller_context()
+{
+    caller_context_t context = { .caller = -1 };
+    if (stack_top >= 0)
+    {
+        context = caller_contexts[stack_top];
+        stack_top--;
+        ESP_LOGI(RGB_TAG, "Popped caller %d with service %d from stack at position %d", context.caller, context.service, stack_top + 1);
     }
-    return ESP_FAIL;
+    else
+    {
+        ESP_LOGE(RGB_TAG, "Stack underflow! Unable to pop context");
+    }
+    return context;
 }
 
-esp_err_t set_rgb(int caller_type, int service) {
-    caller rgb_caller = (caller)caller_type;
-    rgb_service_t rgb_service = (rgb_service_t)service;
-
-    // If the service is 'off', it indicates the end of the caller's operation
-    if (rgb_service == off) {
-        if (rgb_caller == UI_CALLER || rgb_caller == AT_CMD_CALLER) {
-            // If UI_CALLER or AT_CMD_CALLER is turning off, clear the stack
-            top = -1;
-            current_caller = BLE_CALLER; // Reset to lowest priority
-            rgb_status_instance = (rgb_status){0, 0, 0, 0, 0, 0, 0};
-            bsp_rgb_set(0, 0, 0);
-        } else {
-            // For other callers, pop the previous context
-            caller_context_t prev_context;
-            if (pop_caller_context(&prev_context) == ESP_OK) {
-                current_caller = prev_context.caller_type;
-                rgb_status_instance = prev_context.status;
-
-                // Restart the breath effect task with the previous settings
-                if (app_rgb_stack != NULL) {
-                    vTaskDelete(NULL);
-                    TaskHandle_t task_handle = xTaskCreateStatic(&breath_effect_task, "app_rgb_task", 4096, &rgb_status_instance, 5, app_rgb_stack, &app_rgb_stack_buffer);
-                    if (task_handle == NULL) {
-                        ESP_LOGE(RGB_TAG, "Failed to create task");
-                        return ESP_FAIL;
-                    }
-                }
-            }
-        }
-        return ESP_OK;
+/**
+ * @brief Peek the top caller context on the stack
+ *
+ * This function returns the top caller context from the stack without removing it.
+ *
+ * @return The top caller context
+ */
+caller_context_t peek_caller_context()
+{
+    caller_context_t context = { .caller = -1 };
+    if (stack_top >= 0)
+    {
+        context = caller_contexts[stack_top];
+        ESP_LOGI(RGB_TAG, "Peeked caller %d with service %d from stack at position %d", context.caller, context.service, stack_top);
     }
+    else
+    {
+        ESP_LOGI(RGB_TAG, "Stack is empty! Unable to peek context");
+    }
+    return context;
+}
 
-    rgb_status new_status;
+/**
+ * @brief Select and set the RGB service
+ *
+ * This function sets the RGB status based on the service requested by the caller.
+ *
+ * @param caller The ID of the caller
+ * @param service The RGB service requested
+ */
+void __select_service_set_rgb(int caller, int service)
+{
+    ESP_LOGI(RGB_TAG, "Caller_inside: %d, Service_inside: %d", caller, service);
 
-    switch (rgb_service) {
+    // Take the semaphore to ensure thread safety
+    xSemaphoreTake(__rgb_semaphore, portMAX_DELAY);
+    switch (service)
+    {
         case breath_red:
-            new_status = (rgb_status){255, 0, 0, 255, 0, 50, 200};
+            rgb_status_instance.r = 255;
+            rgb_status_instance.g = 0;
+            rgb_status_instance.b = 0;
+            rgb_status_instance.type = 1;
             break;
         case breath_green:
-            new_status = (rgb_status){0, 255, 0, 255, 0, 50, 200};
+            rgb_status_instance.r = 0;
+            rgb_status_instance.g = 255;
+            rgb_status_instance.b = 0;
+            rgb_status_instance.type = 1;
             break;
         case breath_blue:
-            new_status = (rgb_status){0, 0, 255, 255, 0, 50, 200};
+            rgb_status_instance.r = 0;
+            rgb_status_instance.g = 0;
+            rgb_status_instance.b = 255;
+            rgb_status_instance.type = 1;
             break;
         case breath_white:
-            new_status = (rgb_status){255, 255, 255, 255, 0, 50, 200};
+            rgb_status_instance.r = 255;
+            rgb_status_instance.g = 255;
+            rgb_status_instance.b = 255;
+            rgb_status_instance.type = 1;
             break;
         case glint_red:
-            new_status = (rgb_status){255, 0, 0, 255, 0, 0, 500};
+            rgb_status_instance.r = 255;
+            rgb_status_instance.g = 0;
+            rgb_status_instance.b = 0;
+            rgb_status_instance.step = 10;
+            rgb_status_instance.delay_time = 50;
+            rgb_status_instance.type = 2;
             break;
         case glint_green:
-            new_status = (rgb_status){0, 255, 0, 255, 0, 0, 500};
+            rgb_status_instance.r = 0;
+            rgb_status_instance.g = 255;
+            rgb_status_instance.b = 0;
+            rgb_status_instance.step = 10;
+            rgb_status_instance.delay_time = 50;
+            rgb_status_instance.type = 2;
             break;
         case glint_blue:
-            new_status = (rgb_status){0, 0, 255, 255, 0, 0, 500};
+            rgb_status_instance.r = 0;
+            rgb_status_instance.g = 0;
+            rgb_status_instance.b = 255;
+            rgb_status_instance.step = 10;
+            rgb_status_instance.delay_time = 50;
+            rgb_status_instance.type = 2;
             break;
         case glint_white:
-            new_status = (rgb_status){255, 255, 255, 255, 0, 0, 500};
+            rgb_status_instance.r = 255;
+            rgb_status_instance.g = 255;
+            rgb_status_instance.b = 255;
+            rgb_status_instance.step = 10;
+            rgb_status_instance.delay_time = 50;
+            rgb_status_instance.type = 2;
             break;
         case flare_red:
-            new_status = (rgb_status){255, 0, 0, 255, 255, 0, 0};
+            rgb_status_instance.r = 255;
+            rgb_status_instance.g = 0;
+            rgb_status_instance.b = 0;
+            rgb_status_instance.step = 5;
+            rgb_status_instance.delay_time = 25;
+            rgb_status_instance.type = 3;
             break;
         case flare_green:
-            new_status = (rgb_status){0, 255, 0, 255, 255, 0, 0};
+            rgb_status_instance.r = 0;
+            rgb_status_instance.g = 255;
+            rgb_status_instance.b = 0;
+            rgb_status_instance.step = 5;
+            rgb_status_instance.delay_time = 25;
             break;
         case flare_blue:
-            new_status = (rgb_status){0, 0, 255, 255, 255, 0, 0};
+            rgb_status_instance.r = 0;
+            rgb_status_instance.g = 0;
+            rgb_status_instance.b = 255;
+            rgb_status_instance.step = 5;
+            rgb_status_instance.delay_time = 25;
+            rgb_status_instance.type = 3;
             break;
         case flare_white:
-            new_status = (rgb_status){255, 255, 255, 255, 255, 0, 0};
+            rgb_status_instance.r = 255;
+            rgb_status_instance.g = 255;
+            rgb_status_instance.b = 255;
+            rgb_status_instance.step = 5;
+            rgb_status_instance.delay_time = 25;
+            rgb_status_instance.type = 3;
+            break;
+        case off:
+            rgb_status_instance.r = 0;
+            rgb_status_instance.g = 0;
+            rgb_status_instance.b = 0;
+            rgb_status_instance.type = 4;
             break;
         default:
-            return ESP_ERR_INVALID_ARG;
+            ESP_LOGW(RGB_TAG, "Unknown service: %d", service);
+            break;
     }
 
-    if ((current_caller == UI_CALLER || current_caller == AT_CMD_CALLER) && 
-        (rgb_caller != UI_CALLER && rgb_caller != AT_CMD_CALLER)) {
-        return ESP_FAIL; // UI_CALLER and AT_CMD_CALLER are controlling, ignore others
+    rgb_status_instance.max_brightness_led = 255;
+    rgb_status_instance.min_brightness_led = 0;
+    if (service == breath_red || service == breath_green || service == breath_blue || service == breath_white || service == off)
+    {
+        rgb_status_instance.step = 50;
+        rgb_status_instance.delay_time = 200;
     }
 
-    if (rgb_caller == UI_CALLER || rgb_caller == AT_CMD_CALLER || (rgb_caller > current_caller)) {
-        // Save current status and caller if new caller has higher priority
-        push_caller_context(current_caller, rgb_service, rgb_status_instance);
-        current_caller = rgb_caller;
-        rgb_status_instance = new_status;
+    // Log the current RGB status
+    ESP_LOGI(RGB_TAG, "RGB Status - R: %d, G: %d, B: %d", rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
+    // Release the semaphore after updating the RGB status
+    xSemaphoreGive(__rgb_semaphore);
+}
 
-        // Restart the breath effect task with the new settings
-        if (app_rgb_stack != NULL) {
-            vTaskDelete(NULL);
-            TaskHandle_t task_handle = xTaskCreateStatic(&breath_effect_task, "app_rgb_task", 4096, &rgb_status_instance, 5, app_rgb_stack, &app_rgb_stack_buffer);
-            if (task_handle == NULL) {
-                ESP_LOGE(RGB_TAG, "Failed to create task");
-                return ESP_FAIL;
+/**
+ * @brief Set RGB status with priority
+ *
+ * This function sets the RGB status for a caller with priority, ensuring thread safety with a semaphore.
+ *
+ * @param caller The ID of the caller
+ * @param service The RGB service requested
+ */
+void set_rgb_with_priority(int caller, int service)
+{
+    if (caller < 0 || caller >= MAX_CALLERS)
+    {
+        ESP_LOGE(RGB_TAG, "Invalid caller: %d", caller);
+        return;
+    }
+
+    ESP_LOGI(RGB_TAG, "Caller: %d, Service: %d", caller, service);
+
+    xSemaphoreTake(rgb_semaphore, portMAX_DELAY);
+
+    // Save current status before changing
+    push_caller_context(caller, service, rgb_status_instance);
+
+    // Set new status
+    __select_service_set_rgb(caller, service);
+
+    xSemaphoreGive(rgb_semaphore);
+}
+
+/**
+ * @brief Release RGB control for a caller
+ *
+ * This function releases the RGB control for a caller, removing its context from the stack and restoring the next highest priority context.
+ *
+ * @param caller The ID of the caller
+ */
+void release_rgb(int caller)
+{
+    if (caller < 0 || caller >= MAX_CALLERS)
+    {
+        ESP_LOGE(RGB_TAG, "Invalid caller: %d", caller);
+        return;
+    }
+
+    ESP_LOGI(RGB_TAG, "Releasing Caller: %d", caller);
+
+    xSemaphoreTake(rgb_semaphore, portMAX_DELAY);
+
+    // Remove the caller from the stack
+    bool found = false;
+    for (int i = stack_top; i >= 0; i--)
+    {
+        if (caller_contexts[i].caller == caller)
+        {
+            found = true;
+            for (int j = i; j < stack_top; j++)
+            {
+                caller_contexts[j] = caller_contexts[j + 1];
             }
+            stack_top--;
+            break;
         }
     }
-    return ESP_OK;
+    if (!found)
+    {
+        ESP_LOGE(RGB_TAG, "Caller %d not found in stack", caller);
+        xSemaphoreGive(rgb_semaphore);
+        return;
+    }
+
+    // Restore the highest priority caller context
+    caller_context_t context = peek_caller_context();
+    if (context.caller != -1)
+    {
+        __select_service_set_rgb(context.caller, context.service);
+        if (context.service == glint_blue || glint_green || glint_red || glint_white)
+        {
+            __blink(0.5, false);
+        }
+    }
+    else
+    {
+        __select_service_set_rgb(caller, off);
+    }
+
+    xSemaphoreGive(rgb_semaphore);
+}
+
+/**
+ * @brief RGB breath effect task
+ *
+ * This task handles the breath effect of the RGB lights.
+ *
+ * @param arg Task argument (not used)
+ */
+void breath_effect_task(void *arg)
+{
+    while (true)
+    {
+        switch (rgb_status_instance.type)
+        {
+            case 1:
+                __set_breath_color(&rgb_status_instance);
+                break;
+            case 2: // blink
+                __blink(0.5, true);
+                break;
+            case 3:
+                __flare(); // flare
+                break;
+            case 4:
+                bsp_rgb_set(0, 0, 0);
+                break;
+            default:
+                break;
+        }
+    }
 }
 
 
-
-
-
-
-
-
-
-
-void __set_breath_color(rgb_status *status) {
+/**
+ * @brief Set breath color effect
+ *
+ * This function sets the RGB light to perform a breathing effect with the specified color.
+ *
+ * @param status The current RGB status
+ */
+void __set_breath_color(rgb_status *status)
+{
     uint8_t brightness_led = status->min_brightness_led;
     bool increasing = true;
 
@@ -181,16 +382,22 @@ void __set_breath_color(rgb_status *status) {
 
     bsp_rgb_set(current_r, current_g, current_b);
 
-    while (true) {
-        if (increasing) {
+    while (true)
+    {
+        if (increasing)
+        {
             brightness_led += status->step;
-            if (brightness_led >= status->max_brightness_led) {
+            if (brightness_led >= status->max_brightness_led)
+            {
                 brightness_led = status->max_brightness_led;
                 increasing = false;
             }
-        } else {
+        }
+        else
+        {
             brightness_led -= status->step;
-            if (brightness_led <= status->min_brightness_led) {
+            if (brightness_led <= status->min_brightness_led)
+            {
                 brightness_led = status->min_brightness_led;
                 increasing = true;
             }
@@ -203,34 +410,105 @@ void __set_breath_color(rgb_status *status) {
     }
 }
 
-
-
-void breath_effect_task(void *arg) {
-    rgb_status *status = (rgb_status *)arg;
-    __set_breath_color(status);
+/**
+ * @brief Timer callback for blinking effect
+ *
+ * This function is called periodically by the timer to toggle the RGB light on and off for the blink effect.
+ *
+ * @param arg Timer argument (not used)
+ */
+static void __timer_callback(void *arg)
+{
+    if (flag)
+    {
+        bsp_rgb_set(0, 0, 0);
+    }
+    else
+    {
+        bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
+    }
+    flag = !flag;
 }
 
+/**
+ * @brief Blink effect
+ *
+ * This function starts or stops the blink effect based on the start parameter.
+ *
+ * @param interval The interval for the blink effect in seconds
+ * @param start True to start the effect, false to stop
+ */
+void __blink(double interval, bool start)
+{
+    // Take the semaphore to ensure thread safety
+    xSemaphoreTake(__rgb_semaphore, portMAX_DELAY);
+    if (start)
+    {
+        esp_timer_start_periodic(rgb_timer_handle, (int64_t)(interval * 1000000)); // interval in microseconds
+    }
+    else
+    {
+        esp_timer_stop(rgb_timer_handle);
+        bsp_rgb_set(0, 0, 0);
+    }
+    // Release the semaphore after updating the RGB status
+    xSemaphoreGive(__rgb_semaphore);
+}
 
+/**
+ * @brief Flare effect
+ *
+ * This function sets the RGB light to perform a flare effect.
+ */
+void __flare()
+{
+    // Take the semaphore to ensure thread safety
+    xSemaphoreTake(__rgb_semaphore, portMAX_DELAY);
+    bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
+    // Release the semaphore after updating the RGB status
+    xSemaphoreGive(__rgb_semaphore);
+}
 
-int app_rgb_init(void) {
-    rgb_status_instance = (rgb_status){
-        .r = 255,
-        .g = 255,
-        .b = 255,
-        .max_brightness_led = 255,
-        .min_brightness_led = 0,
-        .step = 50,
-        .delay_time = 200
-    };
+/**
+ * @brief Initialize the RGB application
+ *
+ * This function initializes the RGB application, creating necessary tasks and resources.
+ *
+ * @return 0 on success, -1 on failure
+ */
+int app_rgb_init(void)
+{
+    rgb_status_instance = (rgb_status) { .r = 255, .g = 255, .b = 255, .max_brightness_led = 255, .min_brightness_led = 0, .step = 50, .delay_time = 200 };
+    // esp_timer_create_args_t timer_args = { .callback = &__timer_callback, .arg = (void *)rgb_timer_handle, .name = "rgb timer" };
+    rgb_semaphore = xSemaphoreCreateMutex();
+    __rgb_semaphore=xSemaphoreCreateMutex();
+    if (rgb_semaphore == NULL)
+    {
+        ESP_LOGE(RGB_TAG, "Failed to create semaphore");
+        return -1;
+    }
 
     app_rgb_stack = (StackType_t *)heap_caps_malloc(4096 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    if (app_rgb_stack == NULL) {
+    if (app_rgb_stack == NULL)
+    {
         ESP_LOGE(RGB_TAG, "Failed to allocate memory for task stack");
         return -1;
     }
     TaskHandle_t task_handle = xTaskCreateStatic(&breath_effect_task, "app_rgb_task", 4096, &rgb_status_instance, 5, app_rgb_stack, &app_rgb_stack_buffer);
-    if (task_handle == NULL) {
+    if (task_handle == NULL)
+    {
         ESP_LOGE(RGB_TAG, "Failed to create task");
+        return -1;
+    }
+
+
+    // Create the timer for blink effect
+    esp_timer_create_args_t timer_args = { .callback = &__timer_callback, .arg = NULL, .name = "rgb_timer" };
+
+    esp_err_t err = esp_timer_create(&timer_args, &rgb_timer_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(RGB_TAG, "Failed to create timer: %s", esp_err_to_name(err));
         return -1;
     }
     return 0;

@@ -343,11 +343,11 @@ static int __set_rgb_switch()
         printf("rgb_switch: %d\n", rgb_switch);
         if(rgb_switch == 1)
         {
-            set_rgb(UI_CALLER,breath_red); 
+            //set_rgb(UI_CALLER,breath_red); 
         }
         else
         {
-            set_rgb(UI_CALLER,off); 
+            //set_rgb(UI_CALLER,off); 
         }
         if (ret != ESP_OK)
         {

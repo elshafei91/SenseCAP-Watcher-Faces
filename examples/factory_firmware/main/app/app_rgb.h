@@ -6,7 +6,8 @@ extern "C" {
 #endif
 
 int app_rgb_init(void);
-esp_err_t set_rgb(int caller_type, int service);
+void set_rgb_with_priority(int caller, int service);
+void release_rgb(int caller);
 
 #ifdef __cplusplus
 }
