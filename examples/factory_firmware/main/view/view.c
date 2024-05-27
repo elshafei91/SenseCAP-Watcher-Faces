@@ -137,11 +137,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-
-
             case VIEW_EVENT_ALARM_OFF:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
-                view_alarm_off();
+                uint8_t * task_st = (uint8_t *)event_data;
+                view_alarm_off(task_st);
                 break;
             }
 
@@ -247,7 +246,7 @@ int view_init(void)
                                                             __view_event_handler, NULL, NULL));
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-                                                            CTRL_EVENT_BASE, CTRL_EVENT_OTA_AI_MODEL, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_OTA_STATUS, 
                                                             __view_event_handler, NULL, NULL)); 
 
     return 0;

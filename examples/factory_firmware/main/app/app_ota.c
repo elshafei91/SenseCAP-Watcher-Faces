@@ -678,8 +678,8 @@ static void __ota_test_task(void *p_arg)
     //esp_err_t res = app_ota_esp32_fw_download("https://new.pxspeed.site/factory_firmware.bin");
     //ESP_LOGI(TAG, "test app_ota_esp32_fw_download: 0x%x", res);
 
-    esp_err_t res = app_ota_ai_model_download("https://new.pxspeed.site/human_pose.tflite", 0);
-    ESP_LOGI(TAG, "test app_ota_ai_model_download: 0x%x", res);
+    // esp_err_t res = app_ota_ai_model_download("https://new.pxspeed.site/human_pose.tflite", 0);
+    // ESP_LOGI(TAG, "test app_ota_ai_model_download: 0x%x", res);
 
     vTaskDelete(NULL);
 }

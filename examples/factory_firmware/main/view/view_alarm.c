@@ -12,6 +12,7 @@ lv_obj_t *ui_alarm_indicator;
 lv_anim_t a;
 static int16_t indicator_value = 0;
 static lv_obj_t * ui_image = NULL;
+static uint8_t task_view_current = 0;
 
 static uint8_t *image_jpeg_buf = NULL;
 static uint8_t *image_ram_buf = NULL;
@@ -128,11 +129,17 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     // send focused event to call function
     lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
     alarm_timer_start(alarm_st->duration);
-
     // the alarm_indicator will not display within the ViewLive Page
     if (lv_scr_act() != ui_Page_ViewLive){
-        return 0;
+        task_view_current = 0;
+        _ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+    }else
+    {
+        task_view_current = 1;
     }
+    // clear alarm text
+    lv_label_set_text(ui_viewtext, "");
+    // record the page when the alarm is triggered
     // text display
     if (alarm_st->is_show_text)
     {
@@ -176,7 +183,6 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
             tf_data_image_free(&alarm_st->img);
         }
     }
-
     // initial indicator and state
     indicator_value = 0;
     lv_arc_set_value(ui_alarm_indicator, indicator_value);
@@ -195,14 +201,17 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     return ESP_OK;
 }
 
-void view_alarm_off(void)
-{
-    // clear alarm text
-    lv_label_set_text(ui_viewtext, "");
-    
+void view_alarm_off(uint8_t task_down)
+{    
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
     // for switch avatar emoticon
     emoticon_disp_id = 0;
     lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
+
+    // if the page is avatar when the alarm is triggered, turn the page back when the alarm is off
+    if(task_view_current == 0 && task_down == 0)
+    {
+        _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+    }
 }

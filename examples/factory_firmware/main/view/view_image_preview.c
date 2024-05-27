@@ -4,10 +4,6 @@
 #include "esp_jpeg_dec.h"
 #include "util.h"
 
-
-#define IMG_WIDTH            416
-#define IMG_HEIGHT           416
-
 #define IMAGE_INVOKED_BOXES 10
 
 #define RECTANGLE_COLOR lv_palette_main(LV_PALETTE_RED)

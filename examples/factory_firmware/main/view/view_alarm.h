@@ -16,7 +16,7 @@ int view_alarm_init(lv_obj_t *ui_screen);
 
 int view_alarm_on(struct tf_module_local_alarm_info *alarm_st);
 
-void view_alarm_off(void);
+void view_alarm_off(uint8_t task_down);
 
 
 #ifdef __cplusplus

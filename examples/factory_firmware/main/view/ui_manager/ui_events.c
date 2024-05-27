@@ -23,10 +23,11 @@
 
 static const char *TAG = "ui_event";
 
+wifi_ap_record_t wifi_record;
+uint8_t task_down = 0;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
 static struct view_data_emoticon_display emo_disp;
-wifi_ap_record_t wifi_record;
 extern lv_obj_t * ui_alarm_indicator;
 
 static uint8_t swipe_id = 0; // 0 for shutdown, 1 for factoryreset
@@ -940,10 +941,11 @@ static void Page_ConnAPP_BLE()
 
 static void Task_end()
 {
+    task_down = 1;
     lv_obj_add_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN); /// Flags
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
     // event_post_to
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, NULL, NULL, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &task_down, sizeof(uint8_t), portMAX_DELAY);
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
     lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
 }
