@@ -1222,8 +1222,8 @@ char *tf_module_ai_camera_himax_version_get(void)
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)g_handle->p_module;
     
     // It is only modified during initialization and no protection is required.
-    if( p_module_ins->himax_info &&  p_module_ins->himax_info->sw_ver) {
-        return p_module_ins->himax_info->sw_ver;
+    if( p_module_ins->himax_info &&  p_module_ins->himax_info->fw_ver) {
+        return p_module_ins->himax_info->fw_ver;
     }
     return NULL;
 }

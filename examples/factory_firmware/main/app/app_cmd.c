@@ -10,9 +10,11 @@
 #include "esp_system.h"
 
 #include "app_cmd.h"
+#include "app_ota.h"
 #include "event_loops.h"
 #include "storage.h"
 #include "deviceinfo.h"
+#include "util.h"
 
 static const char *TAG = "cmd";
 
@@ -171,6 +173,97 @@ static void register_cmd_reboot(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* force ota **************/
+static struct {
+    struct arg_int *type;
+    struct arg_str *url;
+    struct arg_end *end;
+} force_ota_args;
+
+static int do_force_ota(int argc, char **argv)
+{
+    int change = 0;
+    esp_err_t ret = ESP_OK;
+    int type = -1;
+    char *url = NULL;
+
+    int nerrors = arg_parse(argc, argv, (void **) &force_ota_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, force_ota_args.end, argv[0]);
+        return 1;
+    }
+
+    if (force_ota_args.type->count) {
+        type = *(force_ota_args.type->ival);
+        if( type < 0 || type > 2 ) { 
+            ESP_LOGE(TAG,  "must be in range [0, 2]");
+            return -1;
+        }
+        change = 1;
+    }
+
+    if (force_ota_args.url->count) {
+        int len = strlen(force_ota_args.url->sval[0]);
+        if( len < 16 ){ 
+            ESP_LOGE(TAG,  "url too short");
+            return -1;
+        }
+        change = 2;
+        // url = psram_calloc(1, 256);
+        // strncpy( url, force_ota_args.url->sval[0], len );
+        url = force_ota_args.url->sval[0];
+    }
+
+    if( change == 2 ) {
+        switch (type)
+        {
+        case 0:
+            ESP_LOGI(TAG, "the ai model ota is blocking, please wait a while ...");
+            ret = app_ota_ai_model_download(url, 0);
+            break;
+        case 1:
+            ret = app_ota_himax_fw_download(url);
+            break;
+        case 2:
+            app_ota_any_ignore_version_check(true);
+            ret = app_ota_esp32_fw_download(url);
+            app_ota_any_ignore_version_check(false);
+            break;
+        
+        default:
+            break;
+        }
+        // if (url) free(url);  // we let memory leak, because we need it exist
+    } else {
+        ESP_LOGE(TAG, "both args must be provided");
+        return -1;
+    }
+
+    if ( ret == ESP_OK ) {
+        ESP_LOGI(TAG, "the ota is %s", type == 0 ? "done" : "going...");
+    } else {
+        ESP_LOGE(TAG, "the ota request failed, err=0x%x", ret);
+    }
+    
+    return 0;
+}
+
+static void register_cmd_force_ota(void)
+{
+    force_ota_args.type =  arg_int0("t", "ota_type", "<int>", "0: ai model, 1: himax, 2: esp32");
+    force_ota_args.url =  arg_str0(NULL, "url", "<string>", "url for ai model, himax or esp32 firmware");
+    force_ota_args.end = arg_end(2);
+
+    const esp_console_cmd_t cmd = {
+        .command = "ota",
+        .help = "force ota, ignoring version check",
+        .hint = NULL,
+        .func = &do_force_ota,
+        .argtable = &force_ota_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
 int app_cmd_init(void)
 {
     esp_console_repl_t *repl = NULL;
@@ -183,6 +276,7 @@ int app_cmd_init(void)
 
     register_cmd_wifi_sta();
     register_cmd_deviceinfo();
+    register_cmd_force_ota();
     register_cmd_reboot();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
