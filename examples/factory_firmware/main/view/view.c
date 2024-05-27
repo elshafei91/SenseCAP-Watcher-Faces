@@ -9,23 +9,12 @@
 #include "app_device_info.h"
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
-#include "tf_module_local_alarm.h"
-#include "tf_module_util.h"
 
 static const char *TAG = "view";
 
 char sn_data[66];
 uint8_t wifi_page_id;
 lv_obj_t * view_show_img;
-
-static lv_img_dsc_t img_dsc = {
-    .header.always_zero = 0,
-    .header.w = 412,
-    .header.h = 412,
-    .data_size = NULL,
-    .header.cf = LV_IMG_CF_TRUE_COLOR,
-    .data = NULL,
-};
 
 
 static void update_ota_progress(int percentage)
@@ -141,20 +130,14 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_ALARM_ON:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_ON");
-                struct tf_module_local_alarm_info * alarm_st = ( struct tf_module_local_alarm_info *)event_data;
-                if(alarm_st->is_show_text && alarm_st->text.p_buf)
-                {
-                    lv_label_set_text(ui_viewtext, (const char *)alarm_st->text.p_buf);
-                }
-                if(alarm_st->is_show_img)
-                {
-                    img_dsc.data = alarm_st->img.p_buf;
-                    img_dsc.data_size = alarm_st->img.len;
-                    lv_obj_set_style_bg_img_src(ui_Page_ViewLive, &img_dsc, LV_PART_MAIN | LV_STATE_DEFAULT);
-                }
-                view_alarm_on(5);
+                struct tf_module_local_alarm_info *alarm_st = (struct tf_module_local_alarm_info *)event_data;
+                             
+                view_alarm_on(alarm_st);
+
                 break;
             }
+
+
 
             case VIEW_EVENT_ALARM_OFF:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
@@ -164,32 +147,25 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             // case VIEW_EVENT_AI_CAMERA_PREVIEW:{
             //     struct tf_module_ai_camera_preview_info *p_info = ( struct tf_module_ai_camera_preview_info *)event_data;
-            //     view_image_preview_flush(p_info);
+                // view_image_preview_flush(p_info);
             //     tf_data_image_free(&p_info->img);
-            //     tf_data_inference_free(&p_info->inference);
+                // tf_data_inference_free(&p_info->inference);
             // }
 
-            // case VIEW_EVENT_TASK_FLOW_REMOTE:{
-            //     ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_REMOTE");
-            //     _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
-            //     break;
-            // }
-
-            default:
+            case VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK");
+                _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
                 break;
-        }
-    }
-    else if(base == CTRL_EVENT_BASE){
-        switch (id)
-        {
-            case CTRL_EVENT_OTA_AI_MODEL:{
-                ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_AI_MODEL");
+            }
+
+            case VIEW_EVENT_OTA_STATUS:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
                 _ui_screen_change(&ui_Page_CurTask2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask2_screen_init);
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 if(ota_st->status == 0)
                 {
                     ESP_LOGI(TAG, "OTA download succeeded");
-                    _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
+                    _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
                 }else if (ota_st->status == 1)
                 {
                     update_ota_progress(ota_st->percentage);
@@ -198,6 +174,14 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }
                 break;
             }
+
+            default:
+                break;
+        }
+    }
+    else if(base == CTRL_EVENT_BASE){
+        switch (id)
+        {
         
         default:
             break;
@@ -258,9 +242,9 @@ int view_init(void)
     //                                                         VIEW_EVENT_BASE, VIEW_EVENT_AI_CAMERA_PREVIEW, 
     //                                                         __view_event_handler, NULL, NULL)); 
     
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_REMOTE, 
-    //                                                         __view_event_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, 
+                                                            __view_event_handler, NULL, NULL));
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             CTRL_EVENT_BASE, CTRL_EVENT_OTA_AI_MODEL, 

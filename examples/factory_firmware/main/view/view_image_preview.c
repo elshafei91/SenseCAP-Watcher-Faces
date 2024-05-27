@@ -8,9 +8,6 @@
 #define IMG_WIDTH            416
 #define IMG_HEIGHT           416
 
-#define IMG_JPEG_BUF_SIZE   30 * 1024
-#define IMG_RAM_BUF_SIZE    (IMG_WIDTH * IMG_HEIGHT * LV_COLOR_DEPTH / 8)
-
 #define IMAGE_INVOKED_BOXES 10
 
 #define RECTANGLE_COLOR lv_palette_main(LV_PALETTE_RED)

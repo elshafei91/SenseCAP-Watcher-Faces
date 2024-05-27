@@ -119,18 +119,17 @@ int board_init(void)
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
     read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
-
+    read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
+    read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
+    read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
+    read_and_store_selected_pngs("loading", g_load_img_dsc, &g_load_image_count);
+    read_and_store_selected_pngs("sleeping", g_sleep_img_dsc, &g_sleep_image_count);
 
     return ESP_OK;
 }
 
 int app_init(void)
 {
-    read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
-    read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
-    read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
-    read_and_store_selected_pngs("loading", g_load_img_dsc, &g_load_image_count);
-    read_and_store_selected_pngs("sleeping", g_sleep_img_dsc, &g_sleep_image_count);
     app_device_info_init();
     app_wifi_init(); //TODO Network update events may be missed
     app_ota_init();
