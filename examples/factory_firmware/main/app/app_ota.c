@@ -761,7 +761,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
             if (g_ota_running) {
                 goto cleanup;  // an ota is under going, might be issued manually by console command, just drop
             }
-            
+
             //lightly check validation
             bool valid = false;
             do {
@@ -1018,7 +1018,7 @@ static void __app_event_handler(void *handler_args, esp_event_base_t event_base,
         switch (event_id) {
             case CTRL_EVENT_MQTT_OTA_JSON:
                 ESP_LOGI(TAG, "event: CTRL_EVENT_MQTT_OTA_JSON");
-                if (xQueueSend(g_Q_ota_msg, event_data, pdMS_TO_TICKS(5000)) != pdPASS) {
+                if (xQueueSend(g_Q_ota_msg, event_data, 0) != pdPASS) {
                     ESP_LOGW(TAG, "can not push to ota msg Q, maybe full? drop this item!");
                 }
                 break;
@@ -1029,7 +1029,7 @@ static void __app_event_handler(void *handler_args, esp_event_base_t event_base,
                 ota_status_q_item_t *item = psram_calloc(1, sizeof(ota_status_q_item_t));
                 item->ota_src = event_id;
                 memcpy(&(item->ota_status), event_data, sizeof(struct view_data_ota_status));
-                if (xQueueSend(g_Q_ota_status, item, pdMS_TO_TICKS(5000)) != pdPASS) {
+                if (xQueueSend(g_Q_ota_status, item, 0) != pdPASS) {
                     ESP_LOGW(TAG, "can not push to ota status Q, maybe full? drop this item!");
                 }
                 free(item);  //item is copied to Q
