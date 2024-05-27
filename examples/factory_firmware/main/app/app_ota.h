@@ -80,6 +80,13 @@ typedef struct {
     struct view_data_ota_status ota_status;
 } ota_status_q_item_t;
 
+// ota cmd queue item
+typedef struct {
+    int ota_type;
+    char url[1000];  //we need copy url here, allocate large enough memory here
+    size_t  file_size;
+} ota_cmd_q_item_t;
+
 esp_err_t app_ota_init(void);
 
 /**
