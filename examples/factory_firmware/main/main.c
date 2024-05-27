@@ -141,7 +141,7 @@ int app_init(void)
     app_sensecraft_init();
     app_device_status_monitor_init();
  
-
+    audio_player_init();
     //app_sr_start(false);
     return ESP_OK;
 }

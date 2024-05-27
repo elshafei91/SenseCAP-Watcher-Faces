@@ -77,13 +77,15 @@ static void __timer_callback(void* p_arg)
 }
 
 
-//TODO
-static void __audio_player_cb(audio_player_cb_ctx_t *p_arg)
-{
-    ESP_LOGI(TAG, "audio play end");
-    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_arg;
-    tf_data_image_free(&p_module_ins->audio);
-}
+ static void __audio_play_finish_cb(void)
+ {  
+    ESP_LOGI(TAG, "audio play finish");
+    if( g_handle != NULL) {
+        tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)g_handle->p_module;
+        tf_data_image_free(&p_module_ins->audio);
+        p_module_ins->is_audio_playing = false;
+    }
+ }
 
 static void __alarm_off_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
@@ -151,6 +153,21 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 
         if( p_data->audio.p_buf != NULL && p_data->audio.len > 0 ) {
             ESP_LOGI(TAG,"play audio buf");
+
+            if( !p_module_ins->is_audio_playing ) {
+                p_module_ins->is_audio_playing = true;
+                fp = fmemopen((void *)p_data->audio.p_buf, p_data->audio.len, "rb");
+                if (fp) {
+                    status = audio_player_play(fp);
+                }
+                if (status == ESP_OK) {
+                    p_module_ins->audio.p_buf = p_data->audio.p_buf;
+                    p_module_ins->audio.len = p_data->audio.len;
+                    audio_used = true;
+                }
+            } else {
+                ESP_LOGE(TAG, "audio is playing");
+            }
             fp = fmemopen((void *)p_data->audio.p_buf, p_data->audio.len, "rb");
             if (fp) {
                 status = audio_player_play(fp);
@@ -212,6 +229,8 @@ static int __stop(void *p_module)
 }
 static int __cfg(void *p_module, cJSON *p_json)
 {
+    ESP_LOGI(TAG, "cfg");
+
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_module;
     __data_lock(p_module_ins);
     __parmas_default(&p_module_ins->params);
@@ -255,9 +274,7 @@ static tf_module_t * __module_instance(void)
 
 static  void __module_destroy(tf_module_t *handle)
 {
-    if( handle ) {
-        free(handle->p_module);
-    }
+    //Don't free handle
 }
 
 const static struct tf_module_ops  __g_module_ops = {
@@ -313,9 +330,7 @@ tf_module_t * tf_module_local_alarm_init(tf_module_local_alarm_t *p_module_ins)
         return NULL;
     }
 
-    //TODO
-    audio_record_init();
-    audio_player_callback_register(__audio_player_cb, p_module_ins);
+    audio_register_play_finish_cb(__audio_play_finish_cb);
 
     return &p_module_ins->module_serv;
 }
