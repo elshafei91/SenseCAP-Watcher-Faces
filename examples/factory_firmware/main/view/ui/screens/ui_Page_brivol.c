@@ -27,7 +27,7 @@ void ui_Page_brivol_screen_init(void)
     lv_obj_set_style_border_opa(ui_bvpb, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_bvbimg = lv_img_create(ui_bvpb);
-    lv_img_set_src(ui_bvbimg, &ui_img_battery_5_png);
+    lv_img_set_src(ui_bvbimg, &ui_img_volicon_png);
     lv_obj_set_width(ui_bvbimg, LV_SIZE_CONTENT);   /// 18
     lv_obj_set_height(ui_bvbimg, LV_SIZE_CONTENT);    /// 18
     lv_obj_set_align(ui_bvbimg, LV_ALIGN_LEFT_MID);
