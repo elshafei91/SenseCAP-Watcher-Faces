@@ -112,6 +112,10 @@ extern lv_obj_t * ui_waittext;
 void ui_event_waitb(lv_event_t * e);
 extern lv_obj_t * ui_waitb;
 extern lv_obj_t * ui_waitarc;
+extern lv_obj_t * ui_Spinner1;
+extern lv_obj_t * ui_otap;
+extern lv_obj_t * ui_otatper;
+extern lv_obj_t * ui_otatsym;
 // SCREEN: ui_Page_CurTask3
 void ui_Page_CurTask3_screen_init(void);
 void ui_event_Page_CurTask3(lv_event_t * e);

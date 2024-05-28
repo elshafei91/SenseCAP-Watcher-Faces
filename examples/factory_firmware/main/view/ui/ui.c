@@ -118,6 +118,10 @@ lv_obj_t * ui_waittext;
 void ui_event_waitb(lv_event_t * e);
 lv_obj_t * ui_waitb;
 lv_obj_t * ui_waitarc;
+lv_obj_t * ui_Spinner1;
+lv_obj_t * ui_otap;
+lv_obj_t * ui_otatper;
+lv_obj_t * ui_otatsym;
 
 
 // SCREEN: ui_Page_CurTask3
@@ -357,8 +361,8 @@ const lv_img_dsc_t * ui_imgset_wifi_[5] = {&ui_img_wifi_0_png, &ui_img_wifi_1_pn
     #error "LV_COLOR_16_SWAP should be 1 to match SquareLine Studio's settings"
 #endif
 
-#include "esp_log.h"
 ///////////////////// ANIMATIONS ////////////////////
+#include "esp_log.h"
 static bool animation_done = false;
 static uint8_t animation_count = 0;
 static void anim_ready_callback(lv_anim_t * a)
