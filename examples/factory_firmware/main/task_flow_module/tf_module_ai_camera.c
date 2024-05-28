@@ -15,7 +15,7 @@
 
 static const char *TAG = "tfm.ai_camera";
 
-tf_module_t *g_handle = NULL;
+static tf_module_t *g_handle = NULL;
 
 #define EVENT_STATRT          BIT0
 #define EVENT_STOP            BIT1
@@ -963,7 +963,12 @@ static void ai_camera_task(void *p_arg)
         if( ( bits & EVENT_STOP ) != 0 ) {
             sscma_client_break(p_module_ins->sscma_client_handle);
             ESP_LOGI(TAG, "EVENT_STOP");
+            vTaskDelay(1000 / portTICK_PERIOD_MS); //TODO , wait sscma handle event done
             run_flag = false;
+
+            xEventGroupClearBits(p_module_ins->event_group, \
+                EVENT_STATRT | EVENT_STOP | \
+                EVENT_SIMPLE_640_480 | EVENT_PRVIEW_416_416);
             xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP_DONE);
         }
     }
