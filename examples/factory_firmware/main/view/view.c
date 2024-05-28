@@ -20,6 +20,9 @@ lv_obj_t * view_show_img;
 static void update_ota_progress(int percentage)
 {
     lv_arc_set_value(ui_waitarc, percentage);
+    char percentage_str[4];
+    sprintf(percentage_str, "%d", percentage);
+    lv_label_set_text(ui_otatper, percentage_str);
     ESP_LOGI(TAG, "OTA progress updated: %d%%", percentage);
 }
 

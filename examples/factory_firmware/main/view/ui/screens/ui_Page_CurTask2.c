@@ -16,7 +16,7 @@ void ui_Page_CurTask2_screen_init(void)
     lv_obj_set_width(ui_waittext, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_waittext, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_waittext, 0);
-    lv_obj_set_y(ui_waittext, 7);
+    lv_obj_set_y(ui_waittext, -20);
     lv_obj_set_align(ui_waittext, LV_ALIGN_CENTER);
     lv_label_set_text(ui_waittext, "Task \ndownloading....");
     lv_obj_set_style_text_color(ui_waittext, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -42,8 +42,11 @@ void ui_Page_CurTask2_screen_init(void)
     ui_waitarc = lv_arc_create(ui_Page_CurTask2);
     lv_obj_set_width(ui_waitarc, 412);
     lv_obj_set_height(ui_waitarc, 412);
+    lv_obj_set_x(ui_waitarc, 0);
+    lv_obj_set_y(ui_waitarc, -1);
     lv_obj_set_align(ui_waitarc, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_waitarc, LV_OBJ_FLAG_CLICKABLE);      /// Flags
+    lv_arc_set_value(ui_waitarc, 20);
     lv_arc_set_bg_angles(ui_waitarc, 0, 360);
     lv_arc_set_rotation(ui_waitarc, 270);
     lv_obj_set_style_arc_color(ui_waitarc, lv_color_hex(0x1D2608), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -54,6 +57,53 @@ void ui_Page_CurTask2_screen_init(void)
 
     lv_obj_set_style_bg_color(ui_waitarc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_waitarc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
+
+    ui_Spinner1 = lv_spinner_create(ui_Page_CurTask2, 1000, 90);
+    lv_obj_set_width(ui_Spinner1, 50);
+    lv_obj_set_height(ui_Spinner1, 50);
+    lv_obj_set_x(ui_Spinner1, 0);
+    lv_obj_set_y(ui_Spinner1, -100);
+    lv_obj_set_align(ui_Spinner1, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_Spinner1, LV_OBJ_FLAG_CLICKABLE);      /// Flags
+    lv_obj_set_style_arc_width(ui_Spinner1, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_set_style_arc_color(ui_Spinner1, lv_color_hex(0xA1D42A), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_opa(ui_Spinner1, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_width(ui_Spinner1, 8, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
+    ui_otap = lv_obj_create(ui_Page_CurTask2);
+    lv_obj_set_width(ui_otap, 100);
+    lv_obj_set_height(ui_otap, 50);
+    lv_obj_set_x(ui_otap, 0);
+    lv_obj_set_y(ui_otap, 50);
+    lv_obj_set_align(ui_otap, LV_ALIGN_CENTER);
+    lv_obj_set_flex_flow(ui_otap, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(ui_otap, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_otap, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_otap, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_otap, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_otap, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_otap, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_otatper = lv_label_create(ui_otap);
+    lv_obj_set_width(ui_otatper, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_otatper, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_align(ui_otatper, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_otatper, "0");
+    lv_obj_set_style_text_color(ui_otatper, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_otatper, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_otatper, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_otatsym = lv_label_create(ui_otap);
+    lv_obj_set_width(ui_otatsym, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_otatsym, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_x(ui_otatsym, 20);
+    lv_obj_set_y(ui_otatsym, 0);
+    lv_obj_set_align(ui_otatsym, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_otatsym, "%");
+    lv_obj_set_style_text_color(ui_otatsym, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_otatsym, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_otatsym, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_waitb, ui_event_waitb, LV_EVENT_ALL, NULL);
 
