@@ -24,10 +24,10 @@
 #define BRIGHTNESS_STORAGE_KEY        "brightness"
 #define SOUND_STORAGE_KEY             "sound"
 #define RGB_SWITCH_STORAGE_KEY        "rgbswitch"
-#define AI_SERVICE_TEXT_STORAGE_KEY   "ai_service_text"
-#define AI_SERVICE_VISION_STORAGE_KEY "ai_service_vision"
+#define CLOUD_SERVICE_STORAGE_KEY       "cloudserviceswitch"
+#define AI_SERVICE_STORAGE_KEY          "aiservice"
 
-uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x11 };
+uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x50};
 uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0xC2, 0x44, 0x81, 0x00, 0x47, 0xB0, 0x47, 0xD1, 0xD5, 0x8B, 0xC7, 0xF8, 0xFB };
 char software_version[] = "1.0.0";
 char himax_software_version[] = "1.0.0";
@@ -43,10 +43,14 @@ int sound_value_past = 50;
 int rgb_switch = 0;
 int rgb_switch_past = 0;
 
+
+int cloud_service_switch =0;
+int cloud_service_switch_past =0;
+
+
 // ai service ip for mqtt
 ai_service_pack ai_service;
 ai_service_pack ai_service_past;
-
 
 SemaphoreHandle_t MUTEX_SN = NULL;
 SemaphoreHandle_t MUTEX_software_version;
@@ -55,6 +59,7 @@ SemaphoreHandle_t MUTEX_brightness;
 SemaphoreHandle_t MUTEX_rgb_switch;
 SemaphoreHandle_t MUTEX_sound;
 SemaphoreHandle_t MUTEX_ai_service;
+SemaphoreHandle_t MUTEX_cloud_service_switch;
 
 static StackType_t *app_device_info_task_stack = NULL;
 static StaticTask_t app_device_info_task_buffer;
@@ -88,19 +93,14 @@ void app_device_info_init()
     }
 }
 
-
-
-
 void init_ai_service_param_from_nvs()
 {
-   
-    size_t size = sizeof(ai_service); 
+    size_t size = sizeof(ai_service);
     esp_err_t ret = storage_read(AI_SERVICE_VISION_STORAGE_KEY, &ai_service, &size);
     if (ret == ESP_OK)
     {
-        ai_service_past = ai_service;   
+        ai_service_past = ai_service;
         ESP_LOGI("NVS", "ai_service value loaded from NVS: %d", ai_service);
-
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
@@ -181,7 +181,26 @@ void init_soud_from_nvs()
     }
 }
 
+void init_cloud_service_switch_from_nvs()
+{
+    size_t size = sizeof(cloud_service_switch);
+    esp_err_t ret = storage_read(CLOUD_SERVICE_STORAGE_KEY, &cloud_service_switch, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI("NVS", "cloud_service_switch value loaded from NVS: %d", cloud_service_switch);
+        cloud_service_switch_past = cloud_service_switch;
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI("NVS", "No rgb_switch value found in NVS. Using default: %d", cloud_service_switch);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading rgb_switch from NVS: %s", esp_err_to_name(ret));
+    }
+}
 /*----------------------------------------------------------------------------------------------------------------------*/
+/*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
 
 uint8_t *get_sn(int caller)
 {
@@ -293,7 +312,7 @@ static int __set_brightness()
     xSemaphoreGive(MUTEX_brightness);
     return 0;
 }
-/*---------------------------------------------------------------------------------------------------------------------*/
+
 
 /*---------------------------------------------version module--------------------------------------------------------------*/
 
@@ -357,7 +376,7 @@ char *get_himax_software_version(int caller)
     return result;
 }
 
-/*---------------------------------------------------------------------------------------------------------------------*/
+
 
 /*--------------------------------------------rgb switch  module----------------------------------------------------------------*/
 
@@ -417,7 +436,7 @@ static int __set_rgb_switch()
         }
         else
         {
-            void set_rgb_with_priority(UI_CALLER, off);
+            set_rgb_with_priority(UI_CALLER, off);
         }
         if (ret != ESP_OK)
         {
@@ -502,6 +521,127 @@ static int __set_sound()
 }
 
 /*-----------------------------------------------------Claud_service_switch------------------------------------------*/
+uint8_t *get_cloud_service_switch(int caller)
+{
+    if (xSemaphoreTake(MUTEX_cloud_service_switch, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("Claud_service_switch_TAG", "get_Claud_service_switch: MUTEX_Claud_service_switch take failed");
+        return NULL;
+    }
+    uint8_t *result = NULL;
+    result =cloud_service_switch;
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI("Claud_service_switch_TAG", "AT_CMD_CALLER get Claud_service_switch");
+            break;
+        case UI_CALLER:
+            ESP_LOGI("Claud_service_switch_TAG", "UI get Claud_service_switch");
+            break;
+    }
+    xSemaphoreGive(MUTEX_cloud_service_switch);
+    return result;
+}
+
+
+uint8_t *set_cloud_service_switch(int caller, int value)
+{
+    ESP_LOGI("Claud_service_switch_TAG", "set_cloud_service_switch");
+    if (xSemaphoreTake(MUTEX_cloud_service_switch, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("Claud_service_switch_TAG", "set_cloud_service_switch: MUTEX_cloud_service_switch take failed");
+        return NULL;
+    }
+    cloud_service_switch_past = cloud_service_switch;
+    cloud_service_switch = value;
+    
+    xSemaphoreGive(MUTEX_cloud_service_switch);
+    return NULL;
+}
+
+
+static int __set_cloud_service_switch()
+{
+    if (xSemaphoreTake(MUTEX_cloud_service_switch, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("Claud_service_switch_TAG", "set_rgb_switch: MUTEX_rgb_switch take failed");
+        return NULL;
+    }
+    if (cloud_service_switch_past != cloud_service_switch)
+    {
+        esp_err_t ret = storage_write(CLOUD_SERVICE_STORAGE_KEY, &cloud_service_switch, sizeof(cloud_service_switch));
+        printf("cloud_service_switch: %d\n", cloud_service_switch);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE("Claud_service_switch_TAG", "cfg write err:%d", ret);
+            return ret;
+        }
+    }
+    xSemaphoreGive(MUTEX_cloud_service_switch);
+    return 0;
+}
+/*----------------------------------------------------AI_service_package----------------------------------------------*/
+ai_service_pack* get_ai_service(int caller)
+{
+    if (xSemaphoreTake(MUTEX_ai_service, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("ai_service_TAG", "get_ai_service: MUTEX_ai_service take failed");
+        return NULL;
+    }
+    ai_service_pack *result = NULL;
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI("ai_service_TAG", "BLE get ai_service");
+            result = &ai_service;
+            break;
+        case UI_CALLER:
+            ESP_LOGI("ai_service_TAG", "UI get ai_service");
+            result = &ai_service;
+            //esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AI_SERVICE, result, sizeof(ai_service_pack), portMAX_DELAY);
+            break;
+    }
+    xSemaphoreGive(MUTEX_ai_service);
+    return result;
+}
+
+
+void set_ai_service(int caller, ai_service_pack value)
+{
+    ESP_LOGI("ai_service_TAG", "set_ai_service");
+    if (xSemaphoreTake(MUTEX_ai_service, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("ai_service_TAG", "set_ai_service: MUTEX_ai_service take failed");
+        return;
+    }
+    ai_service_past = ai_service;
+    ai_service = value;
+
+    xSemaphoreGive(MUTEX_ai_service);
+}
+
+
+static int __set_ai_service()
+{
+    if (xSemaphoreTake(MUTEX_ai_service, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("ai_service_TAG", "set_ai_service: MUTEX_ai_service take failed");
+        return -1;
+    }
+    if (memcmp(&ai_service_past, &ai_service, sizeof(ai_service_pack)) != 0)
+    {
+        esp_err_t ret = storage_write(AI_SERVICE_STORAGE_KEY, &ai_service, sizeof(ai_service));
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE("ai_service_TAG", "cfg write err:%d", ret);
+            xSemaphoreGive(MUTEX_ai_service);
+            return ret;
+        }
+    }
+    xSemaphoreGive(MUTEX_ai_service);
+    return 0;
+}
+
 
 /*-----------------------------------------------------TASK----------------------------------------------------------*/
 void app_device_info_task(void *pvParameter)
@@ -512,15 +652,19 @@ void app_device_info_task(void *pvParameter)
     MUTEX_himax_software_version = xSemaphoreCreateMutex();
     MUTEX_rgb_switch = xSemaphoreCreateMutex();
     MUTEX_sound = xSemaphoreCreateMutex();
+    MUTEX_cloud_service_switch = xSemaphoreCreateMutex();
     init_ai_service_param_from_nvs();
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
     init_soud_from_nvs();
+    init_ai_service_param_from_nvs();
     while (1)
     {
+        __set_cloud_service_switch();
         __set_brightness();
         __set_rgb_switch();
         __set_sound();
+        __set_ai_service();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }

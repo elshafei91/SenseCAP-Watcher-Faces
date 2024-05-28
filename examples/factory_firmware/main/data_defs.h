@@ -257,7 +257,7 @@ typedef struct ai_service_pack
     ai_service_param ai_vision;
     int saved_flag;
 } ai_service_pack;
-extern ai_service_pack ai_service;
+
 
 /************************************************
  * Control Data Defines
