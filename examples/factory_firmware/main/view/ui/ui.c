@@ -23,6 +23,14 @@ lv_obj_t * ui_Page_Start;
 lv_obj_t * ui_startlogo;
 
 
+// SCREEN: ui_Page_loading
+void ui_Page_loading_screen_init(void);
+lv_obj_t * ui_Page_loading;
+lv_obj_t * ui_Arc1;
+lv_obj_t * ui_Label4;
+lv_obj_t * ui_Label5;
+
+
 // SCREEN: ui_Page_Vir
 void ui_Page_Vir_screen_init(void);
 void ui_event_Page_Vir(lv_event_t * e);
@@ -333,15 +341,32 @@ lv_obj_t * ui_otaback;
 void ui_Page_Slpt_screen_init(void);
 lv_obj_t * ui_Page_Slpt;
 lv_obj_t * ui_slptpanel;
+void ui_event_slpt1(lv_event_t * e);
 lv_obj_t * ui_slpt1;
+void ui_event_slpt2(lv_event_t * e);
 lv_obj_t * ui_slpt2;
+void ui_event_slpt3(lv_event_t * e);
 lv_obj_t * ui_slpt3;
+void ui_event_slpt4(lv_event_t * e);
 lv_obj_t * ui_slpt4;
+void ui_event_slpt5(lv_event_t * e);
 lv_obj_t * ui_slpt5;
+void ui_event_slpt6(lv_event_t * e);
 lv_obj_t * ui_slpt6;
+void ui_event_slpt7(lv_event_t * e);
 lv_obj_t * ui_slpt7;
 void ui_event_slpback(lv_event_t * e);
 lv_obj_t * ui_slpback;
+
+
+// SCREEN: ui_Page_Wakup
+void ui_Page_Wakup_screen_init(void);
+lv_obj_t * ui_Page_Wakup;
+lv_obj_t * ui_wakeuppanel;
+lv_obj_t * ui_wakeupt1;
+lv_obj_t * ui_wakeupt2;
+lv_obj_t * ui_wakeupt3;
+lv_obj_t * ui_wakeupt4;
 void ui_event____initial_actions0(lv_event_t * e);
 lv_obj_t * ui____initial_actions0;
 const lv_img_dsc_t * ui_imgset_1328823148[1] = {&ui_img_1822480148};
@@ -352,6 +377,7 @@ const lv_img_dsc_t * ui_imgset_1225629734[1] = {&ui_img_1870802764};
 const lv_img_dsc_t * ui_imgset_1798734462[1] = {&ui_img_487263452};
 const lv_img_dsc_t * ui_imgset_template[3] = {&ui_img_template1_png, &ui_img_template2_png, &ui_img_template3_png};
 const lv_img_dsc_t * ui_imgset_wifi_[5] = {&ui_img_wifi_0_png, &ui_img_wifi_1_png, &ui_img_wifi_2_png, &ui_img_wifi_3_png, &ui_img_wifi_4_png};
+const lv_img_dsc_t * ui_imgset_smile[1] = {&ui_img_smile1_png};
 
 ///////////////////// TEST LVGL SETTINGS ////////////////////
 #if LV_COLOR_DEPTH != 16
@@ -1204,6 +1230,62 @@ void ui_event_otaback(lv_event_t * e)
         preset_cb(e);
     }
 }
+void ui_event_slpt1(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        slpt1c_cb(e);
+    }
+}
+void ui_event_slpt2(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        slpt2c_cb(e);
+    }
+}
+void ui_event_slpt3(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        slpt3c_cb(e);
+    }
+}
+void ui_event_slpt4(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        slpt4c_cb(e);
+    }
+}
+void ui_event_slpt5(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        slpt5c_cb(e);
+    }
+}
+void ui_event_slpt6(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        slpt6c_cb(e);
+    }
+}
+void ui_event_slpt7(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        slpt7c_cb(e);
+    }
+}
 void ui_event_slpback(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1232,6 +1314,7 @@ void ui_init(void)
                                                false, LV_FONT_DEFAULT);
     lv_disp_set_theme(dispp, theme);
     ui_Page_Start_screen_init();
+    ui_Page_loading_screen_init();
     ui_Page_Vir_screen_init();
     ui_Page_main_screen_init();
     ui_Page_Connect_screen_init();
@@ -1249,6 +1332,7 @@ void ui_init(void)
     ui_Page_HA_screen_init();
     ui_Page_OTA_screen_init();
     ui_Page_Slpt_screen_init();
+    ui_Page_Wakup_screen_init();
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_obj_add_event_cb(ui____initial_actions0, ui_event____initial_actions0, LV_EVENT_ALL, NULL);
 

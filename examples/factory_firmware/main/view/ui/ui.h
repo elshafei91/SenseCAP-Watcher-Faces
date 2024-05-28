@@ -27,6 +27,12 @@ void ui_Page_Start_screen_init(void);
 void ui_event_Page_Start(lv_event_t * e);
 extern lv_obj_t * ui_Page_Start;
 extern lv_obj_t * ui_startlogo;
+// SCREEN: ui_Page_loading
+void ui_Page_loading_screen_init(void);
+extern lv_obj_t * ui_Page_loading;
+extern lv_obj_t * ui_Arc1;
+extern lv_obj_t * ui_Label4;
+extern lv_obj_t * ui_Label5;
 // SCREEN: ui_Page_Vir
 void ui_Page_Vir_screen_init(void);
 void ui_event_Page_Vir(lv_event_t * e);
@@ -305,15 +311,30 @@ extern lv_obj_t * ui_otaback;
 void ui_Page_Slpt_screen_init(void);
 extern lv_obj_t * ui_Page_Slpt;
 extern lv_obj_t * ui_slptpanel;
+void ui_event_slpt1(lv_event_t * e);
 extern lv_obj_t * ui_slpt1;
+void ui_event_slpt2(lv_event_t * e);
 extern lv_obj_t * ui_slpt2;
+void ui_event_slpt3(lv_event_t * e);
 extern lv_obj_t * ui_slpt3;
+void ui_event_slpt4(lv_event_t * e);
 extern lv_obj_t * ui_slpt4;
+void ui_event_slpt5(lv_event_t * e);
 extern lv_obj_t * ui_slpt5;
+void ui_event_slpt6(lv_event_t * e);
 extern lv_obj_t * ui_slpt6;
+void ui_event_slpt7(lv_event_t * e);
 extern lv_obj_t * ui_slpt7;
 void ui_event_slpback(lv_event_t * e);
 extern lv_obj_t * ui_slpback;
+// SCREEN: ui_Page_Wakup
+void ui_Page_Wakup_screen_init(void);
+extern lv_obj_t * ui_Page_Wakup;
+extern lv_obj_t * ui_wakeuppanel;
+extern lv_obj_t * ui_wakeupt1;
+extern lv_obj_t * ui_wakeupt2;
+extern lv_obj_t * ui_wakeupt3;
+extern lv_obj_t * ui_wakeupt4;
 void ui_event____initial_actions0(lv_event_t * e);
 extern lv_obj_t * ui____initial_actions0;
 
@@ -362,10 +383,13 @@ LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets\wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets\wifi_1.png
 LV_IMG_DECLARE(ui_img_wifi_2_png);    // assets\wifi_2.png
 LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets\wifi_3.png
+LV_IMG_DECLARE(ui_img_smile1_png);    // assets\smile1.png
 
 LV_FONT_DECLARE(ui_font_Font1);
 LV_FONT_DECLARE(ui_font_fontbold26);
 LV_FONT_DECLARE(ui_font_font_bold);
+LV_FONT_DECLARE(ui_font_fbold16);
+LV_FONT_DECLARE(ui_font_fbold24);
 
 void ui_init(void);
 

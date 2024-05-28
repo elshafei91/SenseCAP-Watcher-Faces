@@ -644,7 +644,10 @@ void setwwdf_cb(lv_event_t *e)
     lv_obj_add_flag(ui_setwwsw, LV_OBJ_FLAG_HIDDEN);
 }
 
-void settimec_cb(lv_event_t *e) { }
+void settimec_cb(lv_event_t *e) 
+{ 
+    lv_pm_open_page(g_main, NULL, PM_ADD_OBJS_TO_GROUP, &ui_Page_Slpt, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Slpt_screen_init);
+}
 
 void settimef_cb(lv_event_t *e)
 {
@@ -896,6 +899,40 @@ void hap_cb(lv_event_t *e)
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
+void slpt1c_cb(lv_event_t * e)
+{
+
+}
+
+void slpt2c_cb(lv_event_t * e)
+{
+
+}
+
+void slpt3c_cb(lv_event_t * e)
+{
+
+}
+
+void slpt4c_cb(lv_event_t * e)
+{
+
+}
+
+void slpt5c_cb(lv_event_t * e)
+{
+
+}
+
+void slpt6c_cb(lv_event_t * e)
+{
+
+}
+
+void slpt7c_cb(lv_event_t * e)
+{
+    
+}
 /* Page status bundle
  *
  */

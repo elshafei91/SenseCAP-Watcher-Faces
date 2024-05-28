@@ -1,6 +1,7 @@
 SET(SOURCES components/ui_comp_menucomponent.c
     components/ui_comp.c
     screens/ui_Page_Start.c
+    screens/ui_Page_loading.c
     screens/ui_Page_Vir.c
     screens/ui_Page_main.c
     screens/ui_Page_Connect.c
@@ -18,6 +19,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     screens/ui_Page_HA.c
     screens/ui_Page_OTA.c
     screens/ui_Page_Slpt.c
+    screens/ui_Page_Wakup.c
     ui.c
     components/ui_comp_hook.c
     ui_helpers.c
@@ -66,8 +68,11 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c
     images/ui_img_wifi_3_png.c
+    images/ui_img_smile1_png.c
     fonts/ui_font_Font1.c
     fonts/ui_font_fontbold26.c
-    fonts/ui_font_font_bold.c)
+    fonts/ui_font_font_bold.c
+    fonts/ui_font_fbold16.c
+    fonts/ui_font_fbold24.c)
 
 add_library(ui ${SOURCES})

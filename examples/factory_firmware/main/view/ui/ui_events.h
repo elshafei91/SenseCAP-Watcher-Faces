@@ -121,6 +121,13 @@ void paboutc_cb(lv_event_t * e);
 void slidervc_cb(lv_event_t * e);
 void sliderr_cb(lv_event_t * e);
 void hap_cb(lv_event_t * e);
+void slpt1c_cb(lv_event_t * e);
+void slpt2c_cb(lv_event_t * e);
+void slpt3c_cb(lv_event_t * e);
+void slpt4c_cb(lv_event_t * e);
+void slpt5c_cb(lv_event_t * e);
+void slpt6c_cb(lv_event_t * e);
+void slpt7c_cb(lv_event_t * e);
 
 #ifdef __cplusplus
 } /*extern "C"*/

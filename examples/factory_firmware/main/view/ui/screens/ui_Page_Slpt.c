@@ -144,6 +144,13 @@ void ui_Page_Slpt_screen_init(void)
     lv_obj_set_style_bg_opa(ui_slpback, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_src(ui_slpback, &ui_img_button_cancel_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    lv_obj_add_event_cb(ui_slpt1, ui_event_slpt1, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_slpt2, ui_event_slpt2, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_slpt3, ui_event_slpt3, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_slpt4, ui_event_slpt4, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_slpt5, ui_event_slpt5, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_slpt6, ui_event_slpt6, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_slpt7, ui_event_slpt7, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_slpback, ui_event_slpback, LV_EVENT_ALL, NULL);
 
 }
