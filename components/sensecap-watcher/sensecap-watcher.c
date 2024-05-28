@@ -56,7 +56,7 @@ void bsp_set_btn_long_press_cb(void (*cb)(void))
     btn_custom_cb = cb;
 }
 
-void bsp_i2c_detect(i2c_port_t i2c_num)
+esp_err_t bsp_i2c_detect(i2c_port_t i2c_num)
 {
     BSP_ERROR_CHECK_RETURN_ERR(bsp_i2c_bus_init());
     uint8_t address;
@@ -89,6 +89,8 @@ void bsp_i2c_detect(i2c_port_t i2c_num)
         }
         printf("\r\n");
     }
+
+    return ESP_OK;
 }
 
 esp_io_expander_handle_t bsp_io_expander_init()
@@ -555,7 +557,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
     BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_mirror(*ret_panel, DRV_LCD_MIRROR_X, DRV_LCD_MIRROR_Y));
     BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_disp_on_off(*ret_panel, true));
 
-    bsp_lcd_brightness_set(100);
+    bsp_lcd_brightness_set(CONFIG_BSP_LCD_DEFAULT_BRIGHTNESS);
 
     return ret;
 err:
