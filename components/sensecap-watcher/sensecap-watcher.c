@@ -160,7 +160,7 @@ esp_err_t bsp_spi_bus_init(void)
         .data1_io_num = BSP_SPI3_HOST_DATA1,
         .data2_io_num = BSP_SPI3_HOST_DATA2,
         .data3_io_num = BSP_SPI3_HOST_DATA3,
-        .max_transfer_sz = DRV_LCD_H_RES * DRV_LCD_V_RES * DRV_LCD_BITS_PER_PIXEL / 8,
+        .max_transfer_sz = DRV_LCD_H_RES * DRV_LCD_V_RES * DRV_LCD_BITS_PER_PIXEL / 8 / CONFIG_BSP_LCD_SPI_DMA_SIZE_DIV,
     };
 
     BSP_ERROR_CHECK_RETURN_ERR(spi_bus_initialize(SPI3_HOST, &qspi_cfg, SPI_DMA_CH_AUTO));
@@ -555,7 +555,7 @@ static esp_err_t bsp_lcd_pannel_init(esp_lcd_panel_handle_t *ret_panel, esp_lcd_
     BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_mirror(*ret_panel, DRV_LCD_MIRROR_X, DRV_LCD_MIRROR_Y));
     BSP_ERROR_CHECK_RETURN_ERR(esp_lcd_panel_disp_on_off(*ret_panel, true));
 
-    bsp_lcd_brightness_set(0);
+    bsp_lcd_brightness_set(100);
 
     return ret;
 err:
