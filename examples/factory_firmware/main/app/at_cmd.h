@@ -68,9 +68,9 @@ void handle_eui_command(char *params);  // EUI command
 void handle_wifi_table(char *params);  // WiFi table command
 void handle_deviceinfo_cfg_command(char *params);  // Timezone command
 void handle_taskflow_command(char *params); // Taskflow command
-void handle_cloud_service_command(char *params);
-
-
+void handle_cloud_service_command(char *params);    // Cloud service command
+void handle_emoji_command(char *params);    // Emoji command
+void handle_taskflow_query_command(char *params); // Taskflow qurey command
 
 
 void init_event_loop_and_task();
