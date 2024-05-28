@@ -258,6 +258,7 @@ void AT_command_reg()
     add_command(&commands, "taskflow?", handle_taskflow_query_command);
     add_command(&commands, "taskflow=", handle_taskflow_command);
     add_command(&commands, "cloudservice=", handle_cloud_service_command);
+    add_command(&commands, "cloudservice?", handle_cloud_service_qurey_command);
     add_command(&commands, "emoji=", handle_emoji_command);
 }
 
@@ -451,6 +452,32 @@ void handle_emoji_command(char *params)
     cJSON_Delete(root);
 }
 
+
+
+
+static int cloud_service_switch ;
+
+void handle_cloud_service_qurey_command(char *params){
+    printf("Handling handle_cloud_service_qurey_command \n");
+
+    
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data_rep = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "name", "cloudservice");
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data_rep);
+    cJSON_AddNumberToObject(data_rep, "cloudservice", cloud_service_switch);
+    char *json_string = cJSON_Print(root);
+    printf("JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
+    send_at_response(&response);
+    cJSON_Delete(root);
+}
+
+
+
+
 void handle_cloud_service_command(char *params)
 {
     printf("handle_cloud_service_command\n");
@@ -467,11 +494,10 @@ void handle_cloud_service_command(char *params)
     cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
     if (cJSON_IsObject(data))
     {
-        // Get the "Time_Zone" item
         cJSON *cloud_service = cJSON_GetObjectItemCaseSensitive(data, "cloud_service");
         if (cJSON_IsNumber(cloud_service))
         {
-            int cloud_service_switch = cloud_service->valueint;
+            cloud_service_switch = cloud_service->valueint;
             printf("Cloud_Service: %d\n", cloud_service_switch);
             // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CLOUD_SERVICE, &cloud_service_cfg, sizeof(cloud_service_cfg), portMAX_DELAY);
         }

@@ -14,6 +14,8 @@ enum{
 uint8_t * get_sn(int caller);
 void app_device_info_init();
 
+void NewFunction();
+
 char* get_software_version(int caller);
 char* get_himax_software_version(int caller);
 

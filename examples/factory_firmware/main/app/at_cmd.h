@@ -69,6 +69,7 @@ void handle_wifi_table(char *params);  // WiFi table command
 void handle_deviceinfo_cfg_command(char *params);  // Timezone command
 void handle_taskflow_command(char *params); // Taskflow command
 void handle_cloud_service_command(char *params);    // Cloud service command
+void handle_cloud_service_qurey_command(char *params);    // Cloud service query command
 void handle_emoji_command(char *params);    // Emoji command
 void handle_taskflow_query_command(char *params); // Taskflow qurey command
 

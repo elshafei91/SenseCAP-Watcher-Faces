@@ -13,10 +13,19 @@
 #include "storage.h"
 #include "sensecap-watcher.h"
 #include "app_rgb.h"
-#define SN_TAG                    "SN_TAG"
-#define APP_DEVICE_INFO_MAX_STACK 4096
-#define BRIGHTNESS_STORAGE_KEY    "brightness"
-#define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
+#include "app_audio.h"
+#include "audio_player.h"
+
+#include <string.h>
+#include "mqtt_client.h"
+
+#define SN_TAG                        "SN_TAG"
+#define APP_DEVICE_INFO_MAX_STACK     4096
+#define BRIGHTNESS_STORAGE_KEY        "brightness"
+#define SOUND_STORAGE_KEY             "sound"
+#define RGB_SWITCH_STORAGE_KEY        "rgbswitch"
+#define AI_SERVICE_TEXT_STORAGE_KEY   "ai_service_text"
+#define AI_SERVICE_VISION_STORAGE_KEY "ai_service_vision"
 
 uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x11 };
 uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0xC2, 0x44, 0x81, 0x00, 0x47, 0xB0, 0x47, 0xD1, 0xD5, 0x8B, 0xC7, 0xF8, 0xFB };
@@ -28,14 +37,24 @@ int create_batch = 1000205;
 int brightness = 100;
 int brightness_past = 100;
 
+int sound_value = 50;
+int sound_value_past = 50;
+
 int rgb_switch = 0;
 int rgb_switch_past = 0;
+
+// ai service ip for mqtt
+ai_service_pack ai_service;
+ai_service_pack ai_service_past;
+
 
 SemaphoreHandle_t MUTEX_SN = NULL;
 SemaphoreHandle_t MUTEX_software_version;
 SemaphoreHandle_t MUTEX_himax_software_version;
 SemaphoreHandle_t MUTEX_brightness;
 SemaphoreHandle_t MUTEX_rgb_switch;
+SemaphoreHandle_t MUTEX_sound;
+SemaphoreHandle_t MUTEX_ai_service;
 
 static StackType_t *app_device_info_task_stack = NULL;
 static StaticTask_t app_device_info_task_buffer;
@@ -55,7 +74,7 @@ void byteArrayToHexString(const uint8_t *byteArray, size_t byteArraySize, char *
 /*----------------------------------------------------------init function--------------------------------------*/
 void app_device_info_init()
 {
-    app_device_info_task_stack =  (StackType_t *)heap_caps_malloc(4096*sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+    app_device_info_task_stack = (StackType_t *)heap_caps_malloc(4096 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     if (app_device_info_task_stack == NULL)
     {
         ESP_LOGE(SN_TAG, "Failed to allocate memory for task stack");
@@ -69,6 +88,30 @@ void app_device_info_init()
     }
 }
 
+
+
+
+void init_ai_service_param_from_nvs()
+{
+   
+    size_t size = sizeof(ai_service); 
+    esp_err_t ret = storage_read(AI_SERVICE_VISION_STORAGE_KEY, &ai_service, &size);
+    if (ret == ESP_OK)
+    {
+        ai_service_past = ai_service;   
+        ESP_LOGI("NVS", "ai_service value loaded from NVS: %d", ai_service);
+
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI("NVS", "No ai_service value found in NVS. Using default: %d", ai_service);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading ai_service from NVS: %s", esp_err_to_name(ret));
+    }
+}
+
 void init_rgb_switch_from_nvs()
 {
     size_t size = sizeof(rgb_switch);
@@ -77,6 +120,8 @@ void init_rgb_switch_from_nvs()
     {
         ESP_LOGI("NVS", "rgb_switch value loaded from NVS: %d", rgb_switch);
         rgb_switch_past = rgb_switch;
+        if (rgb_switch == 1)
+            set_rgb_with_priority(UI_CALLER, off);
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
@@ -111,6 +156,31 @@ void init_brightness_from_nvs()
         ESP_LOGE("NVS", "Error reading brightness from NVS: %s", esp_err_to_name(ret));
     }
 }
+
+void init_soud_from_nvs()
+{
+    size_t size = sizeof(sound_value);
+    esp_err_t ret = storage_read(SOUND_STORAGE_KEY, &sound_value, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI("NVS", "Sound value loaded from NVS: %d", sound_value);
+        ret = bsp_codec_volume_set(sound_value, NULL);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE("SOUND_TAG", "sound value set err:%d", ret);
+        }
+        sound_value_past = sound_value;
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI("NVS", "No sound value found in NVS. Using default: %d", sound_value);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading sound value from NVS: %s", esp_err_to_name(ret));
+    }
+}
+
 /*----------------------------------------------------------------------------------------------------------------------*/
 
 uint8_t *get_sn(int caller)
@@ -341,13 +411,13 @@ static int __set_rgb_switch()
     {
         esp_err_t ret = storage_write(RGB_SWITCH_STORAGE_KEY, &rgb_switch, sizeof(rgb_switch));
         printf("rgb_switch: %d\n", rgb_switch);
-        if(rgb_switch == 1)
+        if (rgb_switch == 1)
         {
-            //set_rgb(UI_CALLER,breath_red); 
+            release_rgb(UI_CALLER);
         }
         else
         {
-            //set_rgb(UI_CALLER,off); 
+            void set_rgb_with_priority(UI_CALLER, off);
         }
         if (ret != ESP_OK)
         {
@@ -359,7 +429,79 @@ static int __set_rgb_switch()
     return 0;
 }
 
+/*-----------------------------------------------------sound_Volume---------------------------------------------------*/
 
+uint8_t *get_sound(int caller)
+{
+    if (xSemaphoreTake(MUTEX_sound, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("SOUND_TAG", "get_sound: MUTEX_sound take failed");
+        return NULL;
+    }
+    uint8_t *result = NULL;
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI("SOUND_TAG", "AT_CMD_CALLER get sound");
+            result = (uint8_t *)&sound_value;
+            break;
+        case UI_CALLER:
+            ESP_LOGI("SOUND_TAG", "UI get sound");
+            result = (uint8_t *)&sound_value;
+            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOUND, result, sizeof(uint8_t *), portMAX_DELAY);
+            break;
+    }
+    xSemaphoreGive(MUTEX_sound);
+    return sound_value;
+}
+
+uint8_t *set_sound(int caller, int value)
+{
+    ESP_LOGI("SOUND_TAG", "set_sound");
+    if (xSemaphoreTake(MUTEX_sound, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("SOUND_TAG", "set_sound: MUTEX_sound take failed");
+        return NULL;
+    }
+    sound_value_past = sound_value;
+    sound_value = value;
+
+    xSemaphoreGive(MUTEX_sound);
+    return NULL;
+}
+
+static int __set_sound()
+{
+    if (xSemaphoreTake(MUTEX_sound, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("SOUND_TAG", "set_sound: MUTEX_sound take failed");
+        return NULL;
+    }
+    if (sound_value_past != sound_value)
+    {
+        FILE *fp = fopen("/spiffs/waitPlease.mp3", "r");
+        if (fp)
+        {
+            audio_player_play(fp);
+        }
+        esp_err_t ret = storage_write(SOUND_STORAGE_KEY, &sound_value, sizeof(sound_value));
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE("BRIGHTNESS_TAG", "cfg write err:%d", ret);
+            return ret;
+        }
+        ret = bsp_codec_volume_set(100, NULL);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE("SOUND_TAG", "sound set err:%d", ret);
+            return ret;
+        }
+    }
+    xSemaphoreGive(MUTEX_brightness);
+    return 0;
+}
+
+/*-----------------------------------------------------Claud_service_switch------------------------------------------*/
 
 /*-----------------------------------------------------TASK----------------------------------------------------------*/
 void app_device_info_task(void *pvParameter)
@@ -369,14 +511,16 @@ void app_device_info_task(void *pvParameter)
     MUTEX_software_version = xSemaphoreCreateMutex();
     MUTEX_himax_software_version = xSemaphoreCreateMutex();
     MUTEX_rgb_switch = xSemaphoreCreateMutex();
+    MUTEX_sound = xSemaphoreCreateMutex();
+    init_ai_service_param_from_nvs();
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
+    init_soud_from_nvs();
     while (1)
     {
-        
-
         __set_brightness();
         __set_rgb_switch();
+        __set_sound();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }

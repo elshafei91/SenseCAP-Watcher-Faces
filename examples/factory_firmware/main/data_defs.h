@@ -244,6 +244,21 @@ typedef enum {
     flare_blue,
     off
 }rgb_service_t;
+
+typedef struct ai_service_param
+{
+    char host[20];
+    char port[20];
+} ai_service_param;
+
+typedef struct ai_service_pack
+{
+    ai_service_param ai_text;
+    ai_service_param ai_vision;
+    int saved_flag;
+} ai_service_pack;
+extern ai_service_pack ai_service;
+
 /************************************************
  * Control Data Defines
 *************************************************/
