@@ -30,8 +30,6 @@ static i2s_chan_handle_t i2s_tx_chan = NULL;
 static i2s_chan_handle_t i2s_rx_chan = NULL;
 static const audio_codec_data_if_t *i2s_data_if = NULL;
 
-static void (*btn_custom_cb)(void) = NULL;
-
 void bsp_lvgl_rounder_cb(struct _lv_disp_drv_t *disp_drv, lv_area_t *area)
 {
     uint16_t x1 = area->x1;
@@ -43,17 +41,56 @@ void bsp_lvgl_rounder_cb(struct _lv_disp_drv_t *disp_drv, lv_area_t *area)
     area->x2 = ((x2 >> 2) << 2) + 3;
 }
 
-static void bsp_btn_long_press_cb(void)
+static void bsp_btn_cb(void *arg, void *arg2)
 {
-    if (btn_custom_cb != NULL)
+    void (*cb)(void) = arg2;
+    button_handle_t btn = (button_handle_t)arg;
+    if (cb && btn)
     {
-        btn_custom_cb();
+        cb();
     }
 }
 
 void bsp_set_btn_long_press_cb(void (*cb)(void))
 {
-    btn_custom_cb = cb;
+    lv_indev_t *tp = NULL;
+    while (1)
+    {
+        tp = lv_indev_get_next(tp);
+        if (tp == NULL || tp->driver->type == LV_INDEV_TYPE_ENCODER)
+        {
+            break;
+        }
+    }
+
+    if (tp == NULL)
+    {
+        ESP_LOGE(TAG, "No encoder found");
+        return;
+    }
+
+    lvgl_port_encoder_btn_register_event_cb(tp, BUTTON_LONG_PRESS_START, bsp_btn_cb, cb);
+}
+
+void bsp_set_btn_long_release_cb(void (*cb)(void))
+{
+    lv_indev_t *tp = NULL;
+    while (1)
+    {
+        tp = lv_indev_get_next(tp);
+        if (tp == NULL || tp->driver->type == LV_INDEV_TYPE_ENCODER)
+        {
+            break;
+        }
+    }
+
+    if (tp == NULL)
+    {
+        ESP_LOGE(TAG, "No encoder found");
+        return;
+    }
+
+    lvgl_port_encoder_btn_register_event_cb(tp, BUTTON_LONG_PRESS_UP, bsp_btn_cb, cb);
 }
 
 esp_err_t bsp_i2c_detect(i2c_port_t i2c_num)
@@ -625,7 +662,6 @@ static lv_indev_t *bsp_knob_indev_init(lv_disp_t *disp)
             .button_custom_init = bsp_knob_btn_init,
             .button_custom_deinit = bsp_knob_btn_deinit,
             .button_custom_get_key_value = bsp_knob_btn_get_key_value,
-            .priv = bsp_btn_long_press_cb,
         },
     };
     const lvgl_port_encoder_cfg_t encoder = { .disp = disp, .encoder_a_b = &knob_cfg, .encoder_enter = &btn_config };
