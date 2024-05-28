@@ -82,7 +82,7 @@ static void async_img_switch_viewava(void *arg)
 static void smile_timer_callback(lv_timer_t *timer) {
     current_img_index = (current_img_index + 1) % g_smile_image_count;
     lv_img_dsc_t *current_img = g_smile_img_dsc[current_img_index];
-    ESP_LOGI(TAG, "Smile timer callback, img index: %d", current_img_index);
+    // ESP_LOGI(TAG, "Smile timer callback, img index: %d", current_img_index);
     if (emoticon_disp_id) {
         async_img_switch_vir(current_img);
     } else {
@@ -208,7 +208,7 @@ static void set_obj_style_focused(lv_obj_t *obj, lv_obj_t *obj_text)
 
 void startload_cb(lv_event_t *e)
 {
-    _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_Vir_screen_init);
+    _ui_screen_change(&ui_Page_loading, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_loading_screen_init);
 }
 
 void virtc_cb(lv_event_t *e)
@@ -931,7 +931,7 @@ void slpt6c_cb(lv_event_t * e)
 
 void slpt7c_cb(lv_event_t * e)
 {
-    
+
 }
 /* Page status bundle
  *
