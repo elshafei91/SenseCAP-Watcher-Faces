@@ -42,10 +42,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_PNG_LOADING:{
                 PNG_LOADING_COUNT++;
                 int progress_percentage = (PNG_LOADING_COUNT * 100) / PNG_IMG_NUMS;
-                lv_arc_set_value(ui_Arc1, progress_percentage);
-                static char load_per[5];
-                sprintf(load_per, "%d%%", progress_percentage);
-                lv_label_set_text(ui_Label5, load_per);
+                if(progress_percentage <= 100){
+                    lv_arc_set_value(ui_Arc1, progress_percentage);
+                    static char load_per[5];
+                    sprintf(load_per, "%d%%", progress_percentage);
+                    lv_label_set_text(ui_Label5, load_per);
+                }
                 break;
             }
 
