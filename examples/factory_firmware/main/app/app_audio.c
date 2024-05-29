@@ -20,7 +20,7 @@
 #include "esp_vfs.h"
 #include "file_iterator.h"
 
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "app_sr.h"
 #include "app_audio.h"
@@ -317,13 +317,12 @@ void sr_handler_task(void *pvParam)
                 audio_player_play(fp);
             }
 
-            //todo
             if( g_sr_data->wifi_connected ) {
-                //app_https_upload_audio( (uint8_t *)record_audio_buffer, record_total_len);
+                //TODO upload audio
                 struct view_data_record data;
                 data.p_buf = record_audio_buffer;
                 data.len = record_total_len;
-                esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_VAD_TIMEOUT, &data, sizeof(data), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_VAD_TIMEOUT, &data, sizeof(data), portMAX_DELAY);
             }
 
             continue;
@@ -335,7 +334,7 @@ void sr_handler_task(void *pvParam)
             // UI show listen
             // ui_ctrl_guide_jump();
             // ui_ctrl_show_panel(UI_CTRL_PANEL_LISTEN, 0);
-
+            
             audio_play_task("/spiffs/echo_en_wake.wav");
             continue;
         }

@@ -2,45 +2,54 @@
  * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2024 Seeed Tech. Co., Ltd.
  */
 
+#include "esp_io_expander_pca95xx_16bit.h"
+
 #include <inttypes.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "driver/i2c.h"
 #include "esp_bit_defs.h"
 #include "esp_check.h"
+#include "esp_io_expander.h"
 #include "esp_log.h"
 
-#include "esp_io_expander.h"
-#include "esp_io_expander_pca95xx_16bit.h"
-
 /* Timeout of each I2C communication */
-#define I2C_TIMEOUT_MS          (10)
+#define I2C_TIMEOUT_MS (10)
 
-#define IO_COUNT                (16)
+#define IO_COUNT (16)
 
 /* Register address */
-#define INPUT_REG_ADDR          (0x00)
-#define OUTPUT_REG_ADDR         (0x02)
-#define DIRECTION_REG_ADDR      (0x06)
+#define INPUT_REG_ADDR     (0x00)
+#define OUTPUT_REG_ADDR    (0x02)
+#define DIRECTION_REG_ADDR (0x06)
 
 /* Default register value on power-up */
-#define DIR_REG_DEFAULT_VAL     (0xffff)
-#define OUT_REG_DEFAULT_VAL     (0xffff)
+#define DIR_REG_DEFAULT_VAL (0xffff)
+#define OUT_REG_DEFAULT_VAL (0x0000)
 
 /**
  * @brief Device Structure Type
  *
  */
-typedef struct {
+typedef struct
+{
     esp_io_expander_t base;
     i2c_port_t i2c_num;
     uint32_t i2c_address;
-    struct {
+    gpio_num_t int_gpio;
+    bool need_update;
+    void (*isr_cb)(void *arg);
+    void *user_ctx;
+    struct
+    {
         uint16_t direction;
         uint16_t output;
+        uint16_t input;
     } regs;
 } esp_io_expander_pca95xx_16bit_t;
 
@@ -54,6 +63,16 @@ static esp_err_t read_direction_reg(esp_io_expander_handle_t handle, uint32_t *v
 static esp_err_t reset(esp_io_expander_t *handle);
 static esp_err_t del(esp_io_expander_t *handle);
 
+static void io_exp_isr_handler(void *arg)
+{
+    esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)arg;
+    pca->need_update = true;
+    if (pca->isr_cb)
+    {
+        pca->isr_cb(pca->user_ctx);
+    }
+}
+
 esp_err_t esp_io_expander_new_i2c_pca95xx_16bit(i2c_port_t i2c_num, uint32_t i2c_address, esp_io_expander_handle_t *handle)
 {
     ESP_RETURN_ON_FALSE(i2c_num < I2C_NUM_MAX, ESP_ERR_INVALID_ARG, TAG, "Invalid i2c num");
@@ -61,6 +80,61 @@ esp_err_t esp_io_expander_new_i2c_pca95xx_16bit(i2c_port_t i2c_num, uint32_t i2c
 
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)calloc(1, sizeof(esp_io_expander_pca95xx_16bit_t));
     ESP_RETURN_ON_FALSE(pca, ESP_ERR_NO_MEM, TAG, "Malloc failed");
+
+    pca->isr_cb = NULL;
+    pca->user_ctx = NULL;
+    pca->int_gpio = -1;
+    pca->need_update = true;
+
+    pca->base.config.io_count = IO_COUNT;
+    pca->base.config.flags.dir_out_bit_zero = 1;
+    pca->i2c_num = i2c_num;
+    pca->i2c_address = i2c_address;
+    pca->base.read_input_reg = read_input_reg;
+    pca->base.write_output_reg = write_output_reg;
+    pca->base.read_output_reg = read_output_reg;
+    pca->base.write_direction_reg = write_direction_reg;
+    pca->base.read_direction_reg = read_direction_reg;
+    pca->base.del = del;
+    pca->base.reset = reset;
+
+    esp_err_t ret = ESP_OK;
+    /* Reset configuration and register status */
+    ESP_GOTO_ON_ERROR(reset(&pca->base), err, TAG, "Reset failed");
+
+    *handle = &pca->base;
+    return ESP_OK;
+err:
+    free(pca);
+    return ret;
+}
+
+esp_err_t esp_io_expander_new_i2c_pca95xx_16bit_ex(i2c_port_t i2c_num, uint32_t i2c_address, const pca95xx_16bit_ex_config_t *config, esp_io_expander_handle_t *handle)
+{
+    ESP_RETURN_ON_FALSE(i2c_num < I2C_NUM_MAX, ESP_ERR_INVALID_ARG, TAG, "Invalid i2c num");
+    ESP_RETURN_ON_FALSE(handle, ESP_ERR_INVALID_ARG, TAG, "Invalid handle");
+
+    esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)calloc(1, sizeof(esp_io_expander_pca95xx_16bit_t));
+    ESP_RETURN_ON_FALSE(pca, ESP_ERR_NO_MEM, TAG, "Malloc failed");
+
+    pca->int_gpio = config->int_gpio;
+    pca->isr_cb = config->isr_cb;
+    pca->user_ctx = config->user_ctx;
+    pca->need_update = true;
+
+    if (pca->int_gpio != -1)
+    {
+        const gpio_config_t io_conf = {
+            .pin_bit_mask = (1ULL << pca->int_gpio),
+            .intr_type = GPIO_INTR_NEGEDGE,
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = 1,
+        };
+        gpio_config(&io_conf);
+        gpio_set_intr_type(pca->int_gpio, GPIO_INTR_NEGEDGE);
+        gpio_install_isr_service(ESP_INTR_FLAG_SHARED);
+        gpio_isr_handler_add(pca->int_gpio, io_exp_isr_handler, pca);
+    }
 
     pca->base.config.io_count = IO_COUNT;
     pca->base.config.flags.dir_out_bit_zero = 1;
@@ -89,13 +163,21 @@ static esp_err_t read_input_reg(esp_io_expander_handle_t handle, uint32_t *value
 {
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
 
-    uint8_t temp[2] = {0, 0};
+    uint8_t temp[2] = { 0, 0 };
     // *INDENT-OFF*
-    ESP_RETURN_ON_ERROR(
-        i2c_master_write_read_device(pca->i2c_num, pca->i2c_address, (uint8_t[]){INPUT_REG_ADDR}, 1, (uint8_t*)&temp, 2, pdMS_TO_TICKS(I2C_TIMEOUT_MS)),
-        TAG, "Read input reg failed");
+    if (pca->int_gpio == -1 || pca->need_update)
+    {
+        ESP_RETURN_ON_ERROR(i2c_master_write_read_device(pca->i2c_num, pca->i2c_address, (uint8_t[]) { INPUT_REG_ADDR }, 1, (uint8_t *)&temp, 2, pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG,
+            "Read input reg failed");
+        pca->regs.input = (((uint32_t)temp[1]) << 8) | (temp[0]);
+        pca->need_update = false;
+    }
+    else
+    {
+        *value = pca->regs.input;
+    }
     // *INDENT-ON*
-    *value = (((uint32_t)temp[1]) << 8) | (temp[0]);
+    *value = pca->regs.input & 0xffff;
     return ESP_OK;
 }
 
@@ -104,10 +186,8 @@ static esp_err_t write_output_reg(esp_io_expander_handle_t handle, uint32_t valu
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
     value &= 0xffff;
 
-    uint8_t data[] = {OUTPUT_REG_ADDR, value & 0xff, value >> 8};
-    ESP_RETURN_ON_ERROR(
-        i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)),
-        TAG, "Write output reg failed");
+    uint8_t data[] = { OUTPUT_REG_ADDR, value & 0xff, value >> 8 };
+    ESP_RETURN_ON_ERROR(i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG, "Write output reg failed");
     pca->regs.output = value;
     return ESP_OK;
 }
@@ -125,10 +205,8 @@ static esp_err_t write_direction_reg(esp_io_expander_handle_t handle, uint32_t v
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
     value &= 0xffff;
 
-    uint8_t data[] = {DIRECTION_REG_ADDR, value & 0xff, value >> 8};
-    ESP_RETURN_ON_ERROR(
-        i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)),
-        TAG, "Write direction reg failed");
+    uint8_t data[] = { DIRECTION_REG_ADDR, value & 0xff, value >> 8 };
+    ESP_RETURN_ON_ERROR(i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG, "Write direction reg failed");
     pca->regs.direction = value;
     return ESP_OK;
 }
@@ -143,6 +221,8 @@ static esp_err_t read_direction_reg(esp_io_expander_handle_t handle, uint32_t *v
 
 static esp_err_t reset(esp_io_expander_t *handle)
 {
+    esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
+    pca->need_update = true;
     ESP_RETURN_ON_ERROR(write_direction_reg(handle, DIR_REG_DEFAULT_VAL), TAG, "Write dir reg failed");
     ESP_RETURN_ON_ERROR(write_output_reg(handle, OUT_REG_DEFAULT_VAL), TAG, "Write output reg failed");
     return ESP_OK;
@@ -151,6 +231,11 @@ static esp_err_t reset(esp_io_expander_t *handle)
 static esp_err_t del(esp_io_expander_t *handle)
 {
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
+    if (pca->int_gpio != -1)
+    {
+        gpio_intr_disable(pca->int_gpio);
+        gpio_reset_pin(pca->int_gpio);
+    }
 
     free(pca);
     return ESP_OK;

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024 Seeed Technology Co., Ltd.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include "esp_err.h"
 #include "esp_log.h"
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 
 extern void lv_demo_keypad_encoder(void);

@@ -8,16 +8,21 @@
 #include "esp_event.h"
 #include "esp_app_desc.h"
 
-#include "indoor_ai_camera.h"
+#include "sensecap-watcher.h"
 
 #include "deviceinfo.h"
 #include "storage.h"
 #include "data_defs.h"
 #include "event_loops.h"
-#include "app_mqtt_client.h"
+#include "app_sensecraft.h"
+#include "tf_module_ai_camera.h"
+#include "util.h"
 
 
 static const char *TAG = "deviceinfo";
+
+static TaskHandle_t g_task;
+static StaticTask_t g_task_tcb;
 
 #define DEVICEINFO_STORAGE  "deviceinfo"
 
@@ -50,24 +55,28 @@ static void __deviceinfo_task(void *p_arg)
 {
     uint8_t batnow;
 
+    //this is neccessary because we reply on MQTT connection to report device status
     xSemaphoreTake(g_sem_mqttconn, portMAX_DELAY);
-    vTaskDelay(pdMS_TO_TICKS(10000));  //postpone a bit for other more important routines
+    //postpone a bit for other more important routines, but before OTA
+    vTaskDelay(pdMS_TO_TICKS(2000));
 
     //mqtt connected implies time has been synced
     //send once after boot
-    g_device_status.battery_per = bsp_bat_get_percentage();
+    g_device_status.battery_per = bsp_battery_get_percent();
+    g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
 
     //mqtt pub
-    app_mqtt_client_report_device_status(&g_device_status);
+    app_sensecraft_mqtt_report_device_status(&g_device_status);
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(30000));
 
-        batnow = bsp_bat_get_percentage();
+        batnow = bsp_battery_get_percent();
         if (g_device_status.battery_per - batnow > 10 || batnow == 0) {
             g_device_status.battery_per = batnow;
             //mqtt pub
-            app_mqtt_client_report_device_status(&g_device_status);
+            app_sensecraft_mqtt_report_device_status(&g_device_status);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
         }
     }
 }
@@ -99,9 +108,13 @@ esp_err_t app_device_status_monitor_init(void)
 
     g_sem_mqttconn = xSemaphoreCreateBinary();
 
-    xTaskCreate(__deviceinfo_task, "deviceinfo_task", 1024 * 3, NULL, 1, NULL);
+    // xTaskCreate(__deviceinfo_task, "deviceinfo_task", 1024 * 3, NULL, 1, NULL);
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(ctrl_event_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED,
+    const uint32_t stack_size = 5 * 1024 + 256;
+    StackType_t *task_stack = (StackType_t *)psram_malloc(stack_size);
+    g_task = xTaskCreateStatic(__deviceinfo_task, "deviceinfo", stack_size, NULL, 1, task_stack, &g_task_tcb);
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED,
                                                             __event_loop_handler, NULL, NULL));
 
     return ESP_OK;

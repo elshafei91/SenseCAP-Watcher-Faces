@@ -10,9 +10,8 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "esp_wifi.h"
 #include "cJSON.h"
-
-#include "sscma_client_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,15 +30,17 @@ enum start_screen{
 
 
 #define WIFI_SCAN_LIST_SIZE  15
-#define IMAGE_INVOKED_BOXES  10
+
 
 struct view_data_wifi_st
 {
     bool   is_connected;
     bool   is_connecting;
+    bool   past_connected;
     bool   is_network;  //is connect network
     char   ssid[32];
     int8_t rssi;
+    wifi_auth_mode_t authmode;
 };
 
 
@@ -112,77 +113,6 @@ struct view_data_audio_play_data
     uint32_t len;
 };
 
-struct view_data_boxes
-{
-    uint16_t x;
-    uint16_t y;
-    uint16_t w;
-    uint16_t h;
-    uint8_t score;
-    uint8_t target;
-} ;
-
-struct view_data_image
-{
-    uint8_t *p_buf; //image data
-    uint32_t len;
-    time_t   time;
-    bool     need_free;
-};
-
-struct view_data_image_invoke
-{
-    int boxes_cnt;
-    struct view_data_boxes boxes[IMAGE_INVOKED_BOXES]; // todo 使用联合体考虑其他推理类型
-    struct view_data_image image;
-};
-
-union sscma_client_inference  {
-    sscma_client_box_t   *p_box;
-    sscma_client_class_t *p_class;
-    sscma_client_point_t *p_point;
-};
-
-
-struct view_data_inference
-{
-    int      type;      //0 box, 1 class; 2 point
-    union sscma_client_inference  data;  // 数组首地址, sscma_client_box_t、sscma_client_class_t、sscma_client_point_t
-    uint32_t  cnt;  // 个数
-    char     *classes;
-    bool      need_free;
-};
-
-struct view_data_image_inference
-{   
-    struct view_data_inference  inference;
-    struct view_data_image      image;
-};
-
-struct view_data_mqtt_connect_info
-{
-    SemaphoreHandle_t mutex;
-    char serverUrl[128];
-    char token[171];
-    int mqttPort;
-    int mqttsPort;
-    int expiresIn;
-};
-
-struct view_data_trigger_cfg
-{   
-    int detect_class;
-    int condition_type; // 0-小于，1-小于等于，2-小于，3-大于等于，4-大于，5-不等于
-    int condition_num;
-};
-
-struct view_data_task
-{
-    int task_type; // 0: local example task; 1: cloud task 
-    int model_id; // 运行模型ID:1,2,3, 不需要运行模型，model id 为0
-    int num; // 运行次数, -1表示无限次数
-};
-
 struct view_data_deviceinfo
 {
     char eui[17];
@@ -191,10 +121,42 @@ struct view_data_deviceinfo
 
 struct view_data_device_status
 {
-    char *fw_version;
+    char *fw_version;  //ESP32's firmware
     char *hw_version;
     uint8_t battery_per;
+    char *himax_fw_version;
 };
+
+struct view_data_setting_volbri
+{
+    int32_t vs_value;		//volume value
+    int32_t bs_value;		//brightness value
+};
+
+struct view_data_setting_switch
+{
+    bool ble_sw;
+    bool rgb_sw;
+    bool wake_word_sw;
+};
+
+#define MAX_PNG_FILES 6
+
+struct view_data_emoticon_display
+{
+    char file_names[MAX_PNG_FILES][256];
+    uint8_t file_count;
+};// struct view_data_emoticon_display
+
+
+//OTA
+struct view_data_ota_status
+{
+    int     status;       //0:succeed, 1:downloading, 2:fail
+    int     percentage;   //percentage progress, this is for download, not flash
+    int     err_code;     //enum esp_err_t, refer to app_ota.h for detailed error code define
+};
+
 
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
@@ -206,12 +168,19 @@ enum {
     VIEW_EVENT_SCREEN_START = 0,  // uint8_t, enum start_screen, which screen when start
 
     VIEW_EVENT_TIME,      // bool time_format_24
-    
+    VIEW_EVENT_TIME_ZONE,   // int8_t zone
     VIEW_EVENT_BATTERY_ST,// battery changed event
 
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
-
+                            //device_info            
+    VIEW_EVENT_SN_CODE,
+    VIEW_EVENT_BLE_STATUS,
+    VIEW_EVENT_SOFTWARE_VERSION_CODE,
+    VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE,
+    VIEW_EVENT_BRIGHTNESS,
+    VIEW_EVENT_RGB_SWITCH,
+    
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
     VIEW_EVENT_WIFI_CONNECT,    // struct view_data_wifi_config
@@ -234,51 +203,53 @@ enum {
     VIEW_EVENT_AUDIO_VAD_TIMEOUT,   //struct view_data_record
     VIEW_EVENT_AUDIO_PALY, //struct view_data_audio_play_data
 
-
-    VIEW_EVENT_IMAGE_240_240,  // struct view_data_image_invoke
-    VIEW_EVENT_IMAGE_640_480,  // struct view_data_image
-    VIEW_EVENT_IMAGE_240_240_REQ,  //NULL
-    VIEW_EVENT_IMAGE_640_480_REQ,  //NULL
-    VIEW_EVENT_IMAGE_640_480_SEND,  //NULL
-    VIEW_EVENT_IMAGE_STOP,  //NULL
-    VIEW_EVENT_IMAGE_MODEL, //int
-
-
-    VIEW_EVENT_TASK_START, //struct view_data_task
-    VIEW_EVENT_TASK_STOP,   //struct view_data_task
-    VIEW_EVENT_TRIGGER_CFG, //struct view_data_trigger_cfg
-
-    VIEW_EVENT_IMAGE_240_240_1, //struct view_data_image_inference //todo
-
-    VIEW_EVENT_MQTT_CONNECT_INFO,  // struct view_data_mqtt_connect_info
-
-    VIEW_EVENT_ALARM_ON,  //struct view_data_task //todo
+    VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL
 
-    VIEW_EVENT_TASKLIST_EXIST,        //uint32_t, 1 or 0, tell UI if there's already a tasklist running
+    VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status, this is the merged status reporting, e.g. both himax and esp32 ota
 
+    VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
+    VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
+   
+    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, //NULL
+    VIEW_EVENT_TASK_FLOW_STOP, //NULL
+    VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
     VIEW_EVENT_ALL,
 };
+//config caller
+typedef enum {
+    UI_CALLER,
+    AT_CMD_CALLER,
+    BLE_CALLER,
+    SR,
+    ALARM,
+
+    
+    MAX_CALLER // Add new callers before MAX_CALLER
+}caller;
+typedef struct ai_service_param
+{
+    char host[20];
+    char port[20];
+} ai_service_param;
+
+typedef struct ai_service_pack
+{
+    ai_service_param ai_text;
+    ai_service_param ai_vision;
+    int saved_flag;
+} ai_service_pack;
 
 
 /************************************************
  * Control Data Defines
 *************************************************/
 
-struct ctrl_data_mqtt_tasklist_cjson
-{
-    SemaphoreHandle_t mutex;
-    cJSON *tasklist_cjson;
-};
-
-// this is temp
-struct ctrl_data_taskinfo7
-{
-    SemaphoreHandle_t mutex;
-    cJSON *task7;
-    bool no_task7;  //if no task 7, imply local warn
-    intmax_t
-};
+// struct ctrl_data_mqtt_tasklist_cjson
+// {
+//     SemaphoreHandle_t mutex;
+//     cJSON *tasklist_cjson;
+// };
 
 /**
  * Control Events are used for control logic within the app backend scope.
@@ -289,8 +260,16 @@ struct ctrl_data_taskinfo7
 enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
     CTRL_EVENT_MQTT_CONNECTED,
-    CTRL_EVENT_MQTT_TASKLIST_JSON,          //received tasklist json from MQTT
-    CTRL_EVENT_BROADCAST_TASK7,             //broadcast info of task7 to all listeners, this is temp
+    CTRL_EVENT_MQTT_OTA_JSON,               //received ota json from MQTT
+ 
+    CTRL_EVENT_TASK_FLOW_START_BY_MQTT, // char * , taskflow json, There can only be one listener
+    CTRL_EVENT_TASK_FLOW_START_BY_BLE,  // char * , taskflow json, There can only be one listener
+    CTRL_EVENT_TASK_FLOW_START_BY_SR,   // char * , taskflow json, There can only be one listener
+
+    CTRL_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
+    CTRL_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
+    CTRL_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
+
     CTRL_EVENT_ALL,
 };
 
