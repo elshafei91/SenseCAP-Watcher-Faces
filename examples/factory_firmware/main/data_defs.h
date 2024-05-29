@@ -255,12 +255,6 @@ typedef struct ai_service_pack
  * Control Data Defines
 *************************************************/
 
-// struct ctrl_data_mqtt_tasklist_cjson
-// {
-//     SemaphoreHandle_t mutex;
-//     cJSON *tasklist_cjson;
-// };
-
 /**
  * Control Events are used for control logic within the app backend scope.
  * Typically there are two types of control events:

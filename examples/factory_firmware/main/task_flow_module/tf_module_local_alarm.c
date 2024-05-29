@@ -67,7 +67,7 @@ static void __timer_callback(void* p_arg)
     if( p_params->rgb) {
         // TODO RGB OFF
         ESP_LOGI(TAG, "RGB OFF");
-        set_rgb_with_priority(ALARM, off);
+        release_rgb(ALARM);
     }
     if( p_params->sound) {
         // TODO SOUND OFF
