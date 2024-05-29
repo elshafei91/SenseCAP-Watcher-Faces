@@ -456,6 +456,8 @@ static void __view_event_handler(void* handler_args,
                                  int32_t id, 
                                  void* event_data)
 {
+    struct app_taskflow * p_taskflow = ( struct app_taskflow *)handler_args;
+
     switch (id)
     {
         case VIEW_EVENT_TASK_FLOW_STOP:
@@ -494,10 +496,11 @@ static void __view_event_handler(void* handler_args,
                 size_t len = strlen(p_task_flow);
                 UUIDGen(uuid);
 
-                tf_engine_flow_set(p_task_flow, len);
-                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
-                if( ret != ESP_OK ) {
-                    ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+                if( p_taskflow->mqtt_connect_flag ) {
+                    ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
+                    if( ret != ESP_OK ) {
+                        ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+                    }
                 }
 
             }
@@ -547,9 +550,11 @@ static void __ctrl_event_handler(void* handler_args,
             tf_engine_flow_set(p_task_flow, len);
             __task_flow_save(p_task_flow, len); 
 
-            ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
-            if( ret != ESP_OK ) {
-                ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+            if( p_taskflow->mqtt_connect_flag ) {
+                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
+                if( ret != ESP_OK ) {
+                    ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+                }
             }
 
             free(p_task_flow);
@@ -571,9 +576,11 @@ static void __ctrl_event_handler(void* handler_args,
             tf_engine_flow_set(p_task_flow, len);
             __task_flow_save(p_task_flow, len); 
 
-            ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
-            if( ret != ESP_OK ) {
-                ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+            if( p_taskflow->mqtt_connect_flag ) {
+                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
+                if( ret != ESP_OK ) {
+                    ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+                }
             }
             free(p_task_flow);
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
@@ -621,12 +628,10 @@ esp_err_t app_taskflow_init(void)
     // engine init and module register
     taskflow_engine_module_init(p_taskflow);
 
-    __task_flow_restore(p_taskflow);
-
     p_taskflow->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_taskflow->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
 
-    p_taskflow->p_task_stack_buf = (StackType_t *)psram_malloc(SENSECRAFT_TASK_STACK_SIZE);
+    p_taskflow->p_task_stack_buf = (StackType_t *)psram_malloc(TASKFLOW_TASK_STACK_SIZE);
     ESP_GOTO_ON_FALSE(NULL != p_taskflow->p_task_stack_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task stack");
 
     p_taskflow->p_task_buf =  heap_caps_malloc(sizeof(StaticTask_t),  MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
@@ -646,38 +651,41 @@ esp_err_t app_taskflow_init(void)
                                                         VIEW_EVENT_BASE, 
                                                         VIEW_EVENT_TASK_FLOW_STOP, 
                                                         __view_event_handler, 
-                                                        NULL));
+                                                        p_taskflow));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                         VIEW_EVENT_BASE, 
                                                         VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, 
                                                         __view_event_handler, 
-                                                        NULL));
+                                                        p_taskflow));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                         CTRL_EVENT_BASE, 
                                                         CTRL_EVENT_TASK_FLOW_START_BY_MQTT, 
                                                         __ctrl_event_handler, 
-                                                        NULL));
+                                                        p_taskflow));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                         CTRL_EVENT_BASE, 
                                                         CTRL_EVENT_TASK_FLOW_START_BY_BLE, 
                                                         __ctrl_event_handler, 
-                                                        NULL));
+                                                        p_taskflow));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                         CTRL_EVENT_BASE, 
                                                         CTRL_EVENT_TASK_FLOW_START_BY_SR, 
                                                         __ctrl_event_handler, 
-                                                        NULL));
+                                                        p_taskflow));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                         CTRL_EVENT_BASE, 
                                                         CTRL_EVENT_MQTT_CONNECTED, 
                                                         __ctrl_event_handler, 
-                                                        NULL));
+                                                        p_taskflow));
 
+    __task_flow_restore(p_taskflow);
+    
+    return ESP_OK; 
 err:
     if(p_taskflow->task_handle ) {
         vTaskDelete(p_taskflow->task_handle);
