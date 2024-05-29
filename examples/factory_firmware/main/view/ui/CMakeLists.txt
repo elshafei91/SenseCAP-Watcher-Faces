@@ -71,6 +71,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_dog_d_png.c
     images/ui_img_gradient_png.c
     images/ui_img_onboardclick_png.c
+    images/ui_img_error_png.c
     fonts/ui_font_fbold16.c
     fonts/ui_font_fbold24.c
     fonts/ui_font_Font1.c

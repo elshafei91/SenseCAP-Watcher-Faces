@@ -358,6 +358,7 @@ LV_IMG_DECLARE(ui_img_gesture_d_png);
 LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_gradient_png);
 LV_IMG_DECLARE(ui_img_onboardclick_png);
+LV_IMG_DECLARE(ui_img_error_png);
 LV_IMG_DECLARE(ui_img_battery_5_png);    // assets\battery_5.png
 LV_IMG_DECLARE(ui_img_ble_png);    // assets\ble.png
 LV_IMG_DECLARE(ui_img_button_cancel_png);    // assets\button_cancel.png
