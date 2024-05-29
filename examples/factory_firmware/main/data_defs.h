@@ -227,25 +227,6 @@ typedef enum {
     
     MAX_CALLER // Add new callers before MAX_CALLER
 }caller;
-//RGB service type
-typedef enum {
-    breath_red,
-    breath_green,
-    breath_blue,
-    breath_white,
-
-    glint_red,
-    glint_green,
-    glint_blue,
-    glint_white,
-
-    flare_red,
-    flare_green,
-    flare_white,
-    flare_blue,
-    off
-}rgb_service_t;
-
 typedef struct ai_service_param
 {
     char host[20];

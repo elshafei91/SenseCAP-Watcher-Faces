@@ -145,9 +145,9 @@ void freeWiFiStack(WiFiStack *stack)
 cJSON *create_wifi_entry_json(WiFiEntry *entry)
 {
     cJSON *wifi_json = cJSON_CreateObject();
-    cJSON_AddStringToObject(wifi_json, "Ssid", entry->ssid);
-    cJSON_AddStringToObject(wifi_json, "Rssi", entry->rssi);
-    cJSON_AddStringToObject(wifi_json, "Encryption", entry->encryption);
+    cJSON_AddStringToObject(wifi_json, "ssid", entry->ssid);
+    cJSON_AddStringToObject(wifi_json, "rssi", entry->rssi);
+    cJSON_AddStringToObject(wifi_json, "encryption", entry->encryption);
     return wifi_json;
 }
 
@@ -175,8 +175,8 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
     {
         cJSON_AddItemToArray(scanned_array, create_wifi_entry_json(&stack_scnned_wifi->entries[i]));
     }
-    cJSON_AddItemToObject(root, "Connected_Wifi", connected_array);
-    cJSON_AddItemToObject(root, "Scanned_Wifi", scanned_array);
+    cJSON_AddItemToObject(root, "connected_Wifi", connected_array);
+    cJSON_AddItemToObject(root, "scanned_Wifi", scanned_array);
     return root;
 }
 
