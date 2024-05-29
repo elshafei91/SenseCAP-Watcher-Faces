@@ -30,8 +30,6 @@ static const char *TAG = "taskflow";
 
 struct app_taskflow *gp_taskflow = NULL;
 
-static bool g_mqtt_connect_flag = false;
-
 const char local_taskflow_gesture[] = \
 "{  \ 
 	\"tlid\": 1,    \  
@@ -234,6 +232,16 @@ const char local_taskflow_human[] = \
     }   \
     ]    \  
 }";
+
+static void __data_lock(struct app_taskflow * p_taskflow )
+{
+    xSemaphoreTake(p_taskflow->sem_handle, portMAX_DELAY);
+}
+static void __data_unlock(struct app_taskflow * p_taskflow )
+{
+    xSemaphoreGive(p_taskflow->sem_handle);  
+}
+
 static void __task_flow_clean( void )
 {
     esp_err_t ret = ESP_OK;
@@ -276,7 +284,7 @@ static void __task_flow_save(const char *p_str, int len)
     }
 }
 
-static void  __task_flow_restore()
+static void  __task_flow_restore(struct app_taskflow * p_taskflow)
 {
     esp_err_t ret = ESP_OK;
     uint32_t flag = 1;
@@ -291,14 +299,11 @@ static void  __task_flow_restore()
             len = info.len;
             ret = storage_read(TASK_FLOW_JSON_STORAGE, (void *)p_json, &len);
             if( ret == ESP_OK ) {
-
                 ESP_LOGI(TAG, "Start last taskflow");
+                p_taskflow->taskflow_need_report = true;
                 tf_engine_flow_set(p_json, len);
-
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
-
-                //TODO notify MQTT?
             } else {
                 ESP_LOGE(TAG, "Faild to load taskflow json");
             }
@@ -308,28 +313,140 @@ static void  __task_flow_restore()
 }
 
 
-static void __task_flow_status_cb(void *p_arg, intmax_t tid, int status)
+static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, const char *p_err_module)
 {
-    //TODO  state may be discarded
-    if( g_mqtt_connect_flag ) {
-        app_sensecraft_mqtt_report_taskflow_status(tid, status);
+    struct app_taskflow * p_taskflow = ( struct app_taskflow *)p_arg;
+    struct view_data_taskflow_status status;
+    bool need_report = false;
+    char *p_module_name = NULL;
+
+    memset(&status, 0, sizeof(status));
+    status.tid = tid;
+    status.engine_status = engine_status;
+    
+    if( p_err_module != NULL ) {
+        strncpy(status.module_name, p_err_module, sizeof(status.module_name) - 1);
+        status.module_status = -1; // general error
+    } else {
+        status.module_status = 0;  // no error
+        strncpy(status.module_name, "unknown", sizeof(status.module_name) - 1);
+    }
+
+    //notify UI and ble
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                    VIEW_EVENT_TASK_FLOW_STATUS, &status, sizeof(status), portMAX_DELAY);
+
+    if( p_taskflow->mqtt_connect_flag ) {
+        need_report = false;
+        app_sensecraft_mqtt_report_taskflow_module_status(tid, status.engine_status , p_module_name, status.module_status);
+    } else {
+        need_report = true;
+    }
+
+    __data_lock(p_taskflow);
+    p_taskflow->status_need_report = need_report;
+    memcpy(&p_taskflow->status, &status, sizeof(struct view_data_taskflow_status));
+    __data_unlock(p_taskflow);
+
+    switch (engine_status)
+    {
+        case TF_STATUS_ERR_JSON_PARSE:
+        case TF_STATUS_ERR_MODULE_NOT_FOUND:
+        case TF_STATUS_ERR_MODULES_INSTANCE:
+        case TF_STATUS_ERR_MODULES_PARAMS:
+        case TF_STATUS_ERR_MODULES_WIRES:
+        case TF_STATUS_ERR_MODULES_START:{
+            ESP_LOGE(TAG, "Broken taskflow, clean it. err:%d", engine_status);
+            __task_flow_clean();
+            break;
+        }
+    default:
+        break;
     }
 }
 
-static void __task_flow_module_status_cb(void *p_arg, const char *p_name, int status)
+static void __task_flow_module_status_cb(void *p_arg, const char *p_name, int module_status)
 {
-    //TODO  state may be discarded
-    if( g_mqtt_connect_flag ) {
-        intmax_t tid = 0;
-        tf_engine_tid_get(&tid);
-        app_sensecraft_mqtt_report_taskflow_module_status(tid, TF_STATUS_ERR_MODULES_INTERNAL ,p_name, status);
+    struct app_taskflow * p_taskflow = ( struct app_taskflow *)p_arg;
+    struct view_data_taskflow_status status;
+    bool need_report = false;
+    intmax_t tid = 0;
+    char *p_module_name = NULL;
+    
+    tf_engine_tid_get(&tid);
+
+    memset(&status, 0, sizeof(status));
+    status.tid = tid;
+    status.engine_status = TF_STATUS_ERR_MODULES_INTERNAL; // module internal error
+    
+    if( p_name != NULL ) {
+        strncpy(status.module_name, p_name, sizeof(status.module_name) - 1);
+        status.module_status = module_status;
+        p_module_name = p_name;
+    } else {
+        status.module_status = module_status;
+        strncpy(status.module_name, "unknown", sizeof(status.module_name) - 1);
+        p_module_name = "unknown";
     }
+
+    //notify UI and ble
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                    VIEW_EVENT_TASK_FLOW_STATUS, &status, sizeof(status), portMAX_DELAY);
+
+    if( p_taskflow->mqtt_connect_flag ) {
+        need_report = false;
+        app_sensecraft_mqtt_report_taskflow_module_status(tid, status.engine_status , p_module_name, status.module_status);
+    } else {
+        need_report = true;
+    }
+
+    __data_lock(p_taskflow);
+    p_taskflow->status_need_report = need_report;
+    memcpy(&p_taskflow->status, &status, sizeof(struct view_data_taskflow_status));
+    __data_unlock(p_taskflow);
 }
 
 static void __taskflow_task(void *p_arg)
 {
+    struct app_taskflow * p_taskflow = ( struct app_taskflow *)p_arg;
+
+    struct view_data_taskflow_status status;
+    bool status_need_report;
+    bool taskflow_need_report;
+
     while(1) {
-        //TODO
+        
+        if( p_taskflow->mqtt_connect_flag ) {
+
+            if( p_taskflow->taskflow_need_report ) {
+                char uuid[37];
+                char *p_json;
+                size_t len = 0;
+                p_json = tf_engine_flow_get();
+                
+                if( p_json != NULL ) {
+                    len = strlen(p_json);
+                    UUIDGen(uuid);
+                    app_sensecraft_mqtt_report_taskflow_ack(uuid, p_json, len);
+                    free(p_json);
+                }
+                p_taskflow->taskflow_need_report = false;
+            }
+
+            if( p_taskflow->status_need_report ) {
+                intmax_t tid = 0;
+                struct view_data_taskflow_status status;
+
+                __data_lock(p_taskflow);
+                memcpy(&status, &p_taskflow->status, sizeof(struct view_data_taskflow_status));
+                __data_unlock(p_taskflow);
+
+                app_sensecraft_mqtt_report_taskflow_module_status(tid, status.engine_status , status.module_name, status.module_status);
+
+                p_taskflow->status_need_report = false;
+            }
+
+        }
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
@@ -345,11 +462,12 @@ static void __view_event_handler(void* handler_args,
         {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
             tf_engine_stop();
-            __task_flow_clean(); //TODO  local taskflow stop will execute?
+            __task_flow_clean();
             break;
         }
         case VIEW_EVENT_TASK_FLOW_START_BY_LOCAL:
         {
+            esp_err_t ret = ESP_OK;
             uint32_t *p_tf_num = (uint32_t *)event_data;
             const char *p_task_flow = NULL;
             ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_START_BY_LOCAL:%d", *p_tf_num);
@@ -372,8 +490,16 @@ static void __view_event_handler(void* handler_args,
                     break;
             }
             if( p_task_flow ) {
-                tf_engine_flow_set(p_task_flow, strlen(p_task_flow));
-                //TODO mqtt report
+                char uuid[37];
+                size_t len = strlen(p_task_flow);
+                UUIDGen(uuid);
+
+                tf_engine_flow_set(p_task_flow, len);
+                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
+                if( ret != ESP_OK ) {
+                    ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+                }
+
             }
             break;
         }
@@ -388,10 +514,12 @@ static void __ctrl_event_handler(void* handler_args,
                                  int32_t id, 
                                  void* event_data)
 {
+    struct app_taskflow * p_taskflow = ( struct app_taskflow *)handler_args;
+
     switch (id)
     {
         case CTRL_EVENT_MQTT_CONNECTED: {
-            g_mqtt_connect_flag = true;
+            p_taskflow->mqtt_connect_flag = true;
             break;
         }
         case CTRL_EVENT_TASK_FLOW_START_BY_MQTT:{
@@ -458,7 +586,7 @@ static void __ctrl_event_handler(void* handler_args,
     }
 
 }
-static  void taskflow_engine_module_init(void)
+static  void taskflow_engine_module_init( struct app_taskflow * p_taskflow)
 {
     ESP_ERROR_CHECK(tf_engine_init());
     ESP_ERROR_CHECK(tf_module_timer_register());
@@ -470,8 +598,8 @@ static  void taskflow_engine_module_init(void)
     ESP_ERROR_CHECK(tf_module_sensecraft_alarm_register());
     //add more module
 
-    ESP_ERROR_CHECK(tf_engine_status_cb_register(__task_flow_status_cb, NULL));
-    ESP_ERROR_CHECK(tf_module_status_cb_register(__task_flow_module_status_cb, NULL));
+    ESP_ERROR_CHECK(tf_engine_status_cb_register(__task_flow_status_cb, p_taskflow));
+    ESP_ERROR_CHECK(tf_module_status_cb_register(__task_flow_module_status_cb, p_taskflow));
 }
 
 esp_err_t app_taskflow_init(void)
@@ -491,9 +619,9 @@ esp_err_t app_taskflow_init(void)
     memset(p_taskflow, 0, sizeof( struct app_taskflow ));
 
     // engine init and module register
-    taskflow_engine_module_init();
+    taskflow_engine_module_init(p_taskflow);
 
-    // __task_flow_restore(); //TODO 
+    __task_flow_restore(p_taskflow);
 
     p_taskflow->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_taskflow->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
