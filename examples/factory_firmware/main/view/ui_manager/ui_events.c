@@ -297,7 +297,7 @@ void arr2c_cb(lv_event_t *e)
 
 void arr2f_cb(lv_event_t * e)
 {
-    
+
 }
 
 void wifichange_cb(lv_event_t *e)
@@ -1038,6 +1038,7 @@ static void waitForWifi()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    lv_img_set_src(ui_wifilogo, &ui_img_wifi_4_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ui_wifitext3, "Waiting for Wi-Fi Setup...");
@@ -1052,6 +1053,21 @@ static void waitForBinding()
     lv_label_set_text(ui_wifitext3, "Waiting for binding...");
 }
 
-static void waitForAddDev() { }
+static void waitForAddDev() 
+{
+    lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(ui_wifitext3, "Binding device to your account");
+}
 
-static void bindFinish() { }
+static void bindFinish() 
+{
+    lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
+    lv_img_set_src(ui_wifilogo, &ui_img_wifiok_png);
+    lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(ui_wifitext3, "Watcher is ready");
+}
