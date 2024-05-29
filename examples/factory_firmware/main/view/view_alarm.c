@@ -1,5 +1,6 @@
 #include "view_alarm.h"
 #include "ui/ui.h"
+#include "ui_manager/pm.h"
 #include "esp_timer.h"
 #include "data_defs.h"
 
@@ -71,7 +72,6 @@ int view_alarm_init(lv_obj_t *ui_screen)
 
     ui_image = lv_img_create(ui_viewlivp2);
     lv_obj_set_align(ui_image, LV_ALIGN_CENTER);
-    // lv_img_set_src(ui_image, &ui_img_arrow_png);
 
     ESP_ERROR_CHECK(esp_timer_create(&alarm_timer_args, &alarm_timer));
 
@@ -134,10 +134,11 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     // send focused event to call function
     lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
     alarm_timer_start(alarm_st->duration);
+
     // the alarm_indicator will not display within the ViewLive Page
     if (lv_scr_act() != ui_Page_ViewLive){
         task_view_current = 0;
-        _ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
     }else
     {
         task_view_current = 1;

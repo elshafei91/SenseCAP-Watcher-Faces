@@ -21,13 +21,18 @@ static int PNG_LOADING_COUNT = 0;
 extern uint8_t task_down;
 
 
-static void update_ota_progress(int percentage)
+static void update_ai_ota_progress(int percentage)
 {
     lv_arc_set_value(ui_waitarc, percentage);
     char percentage_str[4];
     sprintf(percentage_str, "%d", percentage);
     lv_label_set_text(ui_otatper, percentage_str);
     ESP_LOGI(TAG, "OTA progress updated: %d%%", percentage);
+}
+
+static void update_ota_progress(int percentage)
+{
+    lv_arc_set_value(ui_otaarc, percentage);
 }
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
@@ -181,23 +186,23 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 // event_post_to
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &task_down, sizeof(uint8_t), portMAX_DELAY);
                 lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
+                break;
             }
 
             case VIEW_EVENT_OTA_STATUS:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
-                // _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
-                // struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
-                // if(ota_st->status == 0)
-                // {
-                //     ESP_LOGI(TAG, "OTA download succeeded");
-                //     // _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-                // }else if (ota_st->status == 1)
-                // {
-                //     update_ota_progress(ota_st->percentage);
-                // }else{
-                //     ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
-                // }
-                // break;
+                _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
+                struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
+                if(ota_st->status == 0)
+                {
+                    ESP_LOGI(TAG, "OTA download succeeded");
+                }else if (ota_st->status == 1)
+                {
+                    update_ota_progress(ota_st->percentage);
+                }else{
+                    ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
+                }
+                break;
             }
 
             default:
@@ -211,14 +216,20 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: CTRL_EVENT_OTA_AI_MODEL");
                 _ui_screen_change(&ui_Page_CurTask2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask2_screen_init);
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
+                lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                 if(ota_st->status == 0)
                 {
                     ESP_LOGI(TAG, "OTA download succeeded");
                     _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
                 }else if (ota_st->status == 1)
                 {
-                    update_ota_progress(ota_st->percentage);
+                    lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                    update_ai_ota_progress(ota_st->percentage);
                 }else{
+                    lv_label_set_text(ui_otatext, "Update Failed");
+                    lv_img_set_src(ui_otaicon, &ui_img_error_png);
+                    lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
                 }
                 break;
