@@ -88,6 +88,8 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), portMAX_DELAY);
     }
     __data_unlock(p_module_ins);
+
+    tf_data_free(p_event_data);
 }
 /*************************************************************************
  * Interface implementation

@@ -568,7 +568,7 @@ esp_err_t tf_module_register(const char *p_name,
         }
     }
 
-    tf_module_node_t *p_node = (tf_module_node_t *)malloc(sizeof(tf_module_node_t));
+    tf_module_node_t *p_node = (tf_module_node_t *)tf_malloc(sizeof(tf_module_node_t));
     if (p_node == NULL)
     {
         __data_unlock(gp_engine);
