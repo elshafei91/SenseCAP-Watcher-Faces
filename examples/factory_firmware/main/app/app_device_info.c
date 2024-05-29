@@ -19,15 +19,15 @@
 #include <string.h>
 #include "mqtt_client.h"
 
-#define SN_TAG                        "SN_TAG"
-#define APP_DEVICE_INFO_MAX_STACK     4096
-#define BRIGHTNESS_STORAGE_KEY        "brightness"
-#define SOUND_STORAGE_KEY             "sound"
-#define RGB_SWITCH_STORAGE_KEY        "rgbswitch"
-#define CLOUD_SERVICE_STORAGE_KEY       "cloudserviceswitch"
-#define AI_SERVICE_STORAGE_KEY          "aiservice"
+#define SN_TAG                    "SN_TAG"
+#define APP_DEVICE_INFO_MAX_STACK 4096
+#define BRIGHTNESS_STORAGE_KEY    "brightness"
+#define SOUND_STORAGE_KEY         "sound"
+#define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
+#define CLOUD_SERVICE_STORAGE_KEY "cloudserviceswitch"
+#define AI_SERVICE_STORAGE_KEY    "aiservice"
 
-uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x50};
+uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x50 };
 uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0xC2, 0x44, 0x81, 0x00, 0x47, 0xB0, 0x47, 0xD1, 0xD5, 0x8B, 0xC7, 0xF8, 0xFB };
 char software_version[] = "1.0.0";
 char himax_software_version[] = "1.0.0";
@@ -43,10 +43,8 @@ int sound_value_past = 50;
 int rgb_switch = 0;
 int rgb_switch_past = 0;
 
-
-int cloud_service_switch =0;
-int cloud_service_switch_past =0;
-
+int cloud_service_switch = 0;
+int cloud_service_switch_past = 0;
 
 // ai service ip for mqtt
 ai_service_pack ai_service;
@@ -96,7 +94,7 @@ void app_device_info_init()
 void init_ai_service_param_from_nvs()
 {
     size_t size = sizeof(ai_service);
-    esp_err_t ret = storage_read(AI_SERVICE_VISION_STORAGE_KEY, &ai_service, &size);
+    esp_err_t ret = storage_read(AI_SERVICE_STORAGE_KEY, &ai_service, &size);
     if (ret == ESP_OK)
     {
         ai_service_past = ai_service;
@@ -150,6 +148,11 @@ void init_brightness_from_nvs()
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
         ESP_LOGI("NVS", "No brightness value found in NVS. Using default: %d", brightness);
+        ret = bsp_lcd_brightness_set(brightness);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE("BRIGHTNESS_TAG", "LCD brightness set err:%d", ret);
+        }
     }
     else
     {
@@ -313,7 +316,6 @@ static int __set_brightness()
     return 0;
 }
 
-
 /*---------------------------------------------version module--------------------------------------------------------------*/
 
 char *get_software_version(int caller)
@@ -375,8 +377,6 @@ char *get_himax_software_version(int caller)
     }
     return result;
 }
-
-
 
 /*--------------------------------------------rgb switch  module----------------------------------------------------------------*/
 
@@ -516,7 +516,7 @@ static int __set_sound()
             return ret;
         }
     }
-    xSemaphoreGive(MUTEX_brightness);
+    xSemaphoreGive(MUTEX_sound);
     return 0;
 }
 
@@ -529,7 +529,7 @@ uint8_t *get_cloud_service_switch(int caller)
         return NULL;
     }
     uint8_t *result = NULL;
-    result =cloud_service_switch;
+    result = cloud_service_switch;
     switch (caller)
     {
         case AT_CMD_CALLER:
@@ -543,7 +543,6 @@ uint8_t *get_cloud_service_switch(int caller)
     return result;
 }
 
-
 uint8_t *set_cloud_service_switch(int caller, int value)
 {
     ESP_LOGI("Claud_service_switch_TAG", "set_cloud_service_switch");
@@ -554,11 +553,10 @@ uint8_t *set_cloud_service_switch(int caller, int value)
     }
     cloud_service_switch_past = cloud_service_switch;
     cloud_service_switch = value;
-    
+
     xSemaphoreGive(MUTEX_cloud_service_switch);
     return NULL;
 }
-
 
 static int __set_cloud_service_switch()
 {
@@ -581,7 +579,7 @@ static int __set_cloud_service_switch()
     return 0;
 }
 /*----------------------------------------------------AI_service_package----------------------------------------------*/
-ai_service_pack* get_ai_service(int caller)
+ai_service_pack *get_ai_service(int caller)
 {
     if (xSemaphoreTake(MUTEX_ai_service, portMAX_DELAY) != pdTRUE)
     {
@@ -598,13 +596,12 @@ ai_service_pack* get_ai_service(int caller)
         case UI_CALLER:
             ESP_LOGI("ai_service_TAG", "UI get ai_service");
             result = &ai_service;
-            //esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AI_SERVICE, result, sizeof(ai_service_pack), portMAX_DELAY);
+            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AI_SERVICE, result, sizeof(ai_service_pack), portMAX_DELAY);
             break;
     }
     xSemaphoreGive(MUTEX_ai_service);
     return result;
 }
-
 
 void set_ai_service(int caller, ai_service_pack value)
 {
@@ -619,7 +616,6 @@ void set_ai_service(int caller, ai_service_pack value)
 
     xSemaphoreGive(MUTEX_ai_service);
 }
-
 
 static int __set_ai_service()
 {
@@ -642,7 +638,6 @@ static int __set_ai_service()
     return 0;
 }
 
-
 /*-----------------------------------------------------TASK----------------------------------------------------------*/
 void app_device_info_task(void *pvParameter)
 {
@@ -653,6 +648,7 @@ void app_device_info_task(void *pvParameter)
     MUTEX_rgb_switch = xSemaphoreCreateMutex();
     MUTEX_sound = xSemaphoreCreateMutex();
     MUTEX_cloud_service_switch = xSemaphoreCreateMutex();
+    MUTEX_ai_service = xSemaphoreCreateMutex();
     init_ai_service_param_from_nvs();
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
@@ -660,11 +656,11 @@ void app_device_info_task(void *pvParameter)
     init_ai_service_param_from_nvs();
     while (1)
     {
-        __set_cloud_service_switch();
+        //__set_cloud_service_switch();
         __set_brightness();
         __set_rgb_switch();
         __set_sound();
-        __set_ai_service();
+        //__set_ai_service();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
