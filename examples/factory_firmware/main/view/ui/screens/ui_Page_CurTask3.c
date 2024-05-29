@@ -13,14 +13,15 @@ void ui_Page_CurTask3_screen_init(void)
     lv_obj_set_style_bg_opa(ui_Page_CurTask3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_revtext = lv_label_create(ui_Page_CurTask3);
-    lv_obj_set_width(ui_revtext, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_revtext, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_width(ui_revtext, 360);
+    lv_obj_set_height(ui_revtext, 100);
     lv_obj_set_x(ui_revtext, 0);
     lv_obj_set_y(ui_revtext, -20);
     lv_obj_set_align(ui_revtext, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_revtext, "Receiving task\n     from app");
+    lv_label_set_text(ui_revtext, "Task received, opening...");
     lv_obj_set_style_text_color(ui_revtext, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_revtext, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_revtext, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_revtext, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_revsec3 = lv_label_create(ui_Page_CurTask3);

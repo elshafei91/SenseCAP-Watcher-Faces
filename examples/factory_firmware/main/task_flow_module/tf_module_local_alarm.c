@@ -10,10 +10,16 @@
 #include "esp_crt_bundle.h"
 #include "audio_player.h"
 #include "app_audio.h"
+#include "data_defs.h"
+#include "event_loops.h"
 #include "tf_module_img_analyzer.h"
+#include "app_rgb.h"
+
 
 
 static const char *TAG = "tfm.local_alarm";
+static tf_module_t *g_handle = NULL;
+
 static void __data_lock( tf_module_local_alarm_t *p_module)
 {
 }
@@ -26,6 +32,8 @@ static void __parmas_default(struct tf_module_local_alarm_params *p_params)
     p_params->duration = 10;
     p_params->rgb      = true;
     p_params->sound    = true;
+    p_params->img      = true;
+    p_params->text     = true;
 }
 static int __params_parse(struct tf_module_local_alarm_params *p_params, cJSON *p_json)
 {
@@ -38,7 +46,14 @@ static int __params_parse(struct tf_module_local_alarm_params *p_params, cJSON *
     if (json_rgb != NULL  && cJSON_IsNumber(json_rgb)) {
         p_params->rgb = json_rgb->valueint;
     }
-
+    cJSON *json_img = cJSON_GetObjectItem(p_json, "img");
+    if (json_img != NULL  && cJSON_IsNumber(json_img)) {
+        p_params->img = json_img->valueint;
+    }
+    cJSON *json_text = cJSON_GetObjectItem(p_json, "text");
+    if (json_text != NULL  && cJSON_IsNumber(json_text)) {
+        p_params->text = json_text->valueint;
+    }
     cJSON *json_duration = cJSON_GetObjectItem(p_json, "duration");
     if (json_duration != NULL  && cJSON_IsNumber(json_duration)) {
         p_params->duration = json_duration->valueint;
@@ -53,6 +68,7 @@ static void __timer_callback(void* p_arg)
     if( p_params->rgb) {
         // TODO RGB OFF
         ESP_LOGI(TAG, "RGB OFF");
+        set_rgb_with_priority(ALARM, off);
     }
     if( p_params->sound) {
         // TODO SOUND OFF
@@ -60,65 +76,137 @@ static void __timer_callback(void* p_arg)
     }
 }
 
-//TODO
-static void __audio_player_cb(audio_player_cb_ctx_t *p_arg)
+
+ static void __audio_play_finish_cb(void)
+ {  
+    ESP_LOGI(TAG, "audio play finish");
+    if( g_handle != NULL) {
+        tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)g_handle->p_module;
+        tf_data_image_free(&p_module_ins->audio);
+        p_module_ins->is_audio_playing = false;
+    }
+ }
+
+static void __alarm_off_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
-    ESP_LOGI(TAG, "audio play end");
-    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_arg;
-    tf_data_image_free(&p_module_ins->audio);
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)handler_args;
+    struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
+    
+    //TODO 
+    // RGB OFF
+    // SOUND OFF
+    if( p_params->rgb) {
+        // TODO RGB OFF
+        ESP_LOGI(TAG, "RGB OFF");
+        set_rgb_with_priority(ALARM, off);
+    }
+    if( p_params->sound) {
+        // TODO SOUND OFF
+        ESP_LOGI(TAG, "SOUND OFF");
+    }
 }
 
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)handler_args;
     struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
-
+   
     uint8_t type = ((uint8_t *)p_event_data)[0];
-
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT) {
         ESP_LOGW(TAG, "unsupport type %d", type);
         tf_data_free(p_event_data);
         return;
     }
 
-    if(p_params->rgb) {
-        // TODO RGB ON
-        ESP_LOGI(TAG, "RGB ON");
+    struct tf_module_local_alarm_info info;
+    tf_data_dualimage_with_audio_text_t *p_data = (tf_data_dualimage_with_audio_text_t*)p_event_data;
+
+    bool img_small_used = false;
+    bool img_large_used = false;
+    bool text_used      = false;
+    bool audio_used     = false;
+
+    //notify screen
+    memset(&info, 0, sizeof(info));
+    info.duration = p_params->duration;
+    info.is_show_img = p_params->img;
+    info.is_show_text = p_params->text;
+    if( info.is_show_img ) {
+        info.img.p_buf = p_data->img_small.p_buf;
+        info.img.time = p_data->img_small.time;
+        info.img.len = p_data->img_small.len;
+        img_small_used = true;
+    }
+    if( info.is_show_text ) {
+        info.text.p_buf = p_data->text.p_buf;
+        info.text.len = p_data->text.len;
+        text_used = true;
     }
 
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                    VIEW_EVENT_ALARM_ON, &info, sizeof(info), portMAX_DELAY);
+
     if(p_params->sound) {
-        // TODO SOUND ON
         ESP_LOGI(TAG, "SOUND ON");
         FILE *fp = NULL;
         esp_err_t status = ESP_FAIL;
-        tf_data_dualimage_with_audio_text_t *p_data = (tf_data_dualimage_with_audio_text_t*)p_event_data;
 
         if( p_data->audio.p_buf != NULL && p_data->audio.len > 0 ) {
             ESP_LOGI(TAG,"play audio buf");
+
+            if( !p_module_ins->is_audio_playing ) {
+                p_module_ins->is_audio_playing = true;
+                fp = fmemopen((void *)p_data->audio.p_buf, p_data->audio.len, "rb");
+                if (fp) {
+                    status = audio_player_play(fp);
+                }
+                if (status == ESP_OK) {
+                    p_module_ins->audio.p_buf = p_data->audio.p_buf;
+                    p_module_ins->audio.len = p_data->audio.len;
+                    audio_used = true;
+                }
+            } else {
+                ESP_LOGE(TAG, "audio is playing");
+            }
             fp = fmemopen((void *)p_data->audio.p_buf, p_data->audio.len, "rb");
             if (fp) {
                 status = audio_player_play(fp);
             }
-            if (status != ESP_OK) { 
-                tf_data_free(p_event_data); 
-            } else {
-                tf_data_image_free(&p_data->img_small);
-                tf_data_image_free(&p_data->img_large);
-                tf_data_image_free(&p_data->text);
+            if (status == ESP_OK) {
                 p_module_ins->audio.p_buf = p_data->audio.p_buf;
                 p_module_ins->audio.len = p_data->audio.len;
+                audio_used = true;
             }
         } else {
             ESP_LOGI(TAG,"play audio file:%s" ,TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE);
             audio_play_task(TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE); //TODO , block??
         }
-
-    } else {
-        tf_data_free(p_event_data);
     }
 
-    // TODO notify screen
+    if(p_params->rgb) {
+        // TODO RGB ON
+        ESP_LOGI(TAG, "RGB ON");
+        set_rgb_with_priority(ALARM, glint_red);
+    }
+    
+    // free data
+    if( !img_small_used ) {
+        tf_data_image_free(&p_data->img_small);
+    }
+    if( !img_large_used ) {
+        tf_data_image_free(&p_data->img_large);
+    }
+    if( !text_used ) {
+        tf_data_buf_free(&p_data->text);
+    }
+    if( !audio_used ) {
+        tf_data_buf_free(&p_data->audio);
+    }
+
+#if TF_MODULE_LOCAL_ALARM_TIMER_ENABLE
     // esp_timer_start_once(p_module_ins->timer_handle, p_params->duration * 1000000);
+#endif
+
 }
 /*************************************************************************
  * Interface implementation
@@ -131,14 +219,18 @@ static int __start(void *p_module)
 static int __stop(void *p_module)
 {
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_module;
+#if TF_MODULE_LOCAL_ALARM_TIMER_ENABLE
     esp_timer_stop(p_module_ins->timer_handle);
     esp_timer_delete(p_module_ins->timer_handle);
     __timer_callback((void *)p_module_ins); // stop alarm
+#endif
     esp_err_t ret = tf_event_handler_unregister(p_module_ins->input_evt_id, __event_handler);
     return ret;
 }
 static int __cfg(void *p_module, cJSON *p_json)
 {
+    ESP_LOGI(TAG, "cfg");
+
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_module;
     __data_lock(p_module_ins);
     __parmas_default(&p_module_ins->params);
@@ -166,6 +258,11 @@ static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int n
 
 static tf_module_t * __module_instance(void)
 {
+    if (g_handle)
+    {
+        return g_handle;
+    }
+
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *) tf_malloc(sizeof(tf_module_local_alarm_t));
     if (p_module_ins == NULL)
     {
@@ -177,9 +274,7 @@ static tf_module_t * __module_instance(void)
 
 static  void __module_destroy(tf_module_t *handle)
 {
-    if( handle ) {
-        free(handle->p_module);
-    }
+    //Don't free handle
 }
 
 const static struct tf_module_ops  __g_module_ops = {
@@ -216,6 +311,7 @@ tf_module_t * tf_module_local_alarm_init(tf_module_local_alarm_t *p_module_ins)
 
     p_module_ins->input_evt_id = 0;
 
+#if TF_MODULE_LOCAL_ALARM_TIMER_ENABLE
     const esp_timer_create_args_t timer_args = {
             .callback = &__timer_callback,
             .arg = (void*) p_module_ins,
@@ -225,15 +321,27 @@ tf_module_t * tf_module_local_alarm_init(tf_module_local_alarm_t *p_module_ins)
     if(ret != ESP_OK) {
         return NULL;
     }
+#endif
 
-    //TODO
-    audio_player_callback_register(__audio_player_cb, p_module_ins);
+    ret = esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, \
+                                                    __alarm_off_event_handler, p_module_ins, NULL);
+    if( ret != ESP_OK ) {
+        ESP_LOGI(TAG, "Failed to register alarm off event: %d", ret);
+        return NULL;
+    }
+
+    audio_register_play_finish_cb(__audio_play_finish_cb);
 
     return &p_module_ins->module_serv;
 }
 
 esp_err_t tf_module_local_alarm_register(void)
 {
+    g_handle = __module_instance(); // Must be instantiated
+    if (g_handle == NULL)
+    {
+        return ESP_FAIL;
+    }
     return tf_module_register(TF_MODULE_LOCAL_ALARM_NAME,
                               TF_MODULE_LOCAL_ALARM_DESC,
                               TF_MODULE_LOCAL_ALARM_RVERSION,

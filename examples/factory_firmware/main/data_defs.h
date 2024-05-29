@@ -121,9 +121,10 @@ struct view_data_deviceinfo
 
 struct view_data_device_status
 {
-    char *fw_version;
+    char *fw_version;  //ESP32's firmware
     char *hw_version;
     uint8_t battery_per;
+    char *himax_fw_version;
 };
 
 struct view_data_setting_volbri
@@ -205,12 +206,12 @@ enum {
     VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL
 
-    VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status
+    VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status, this is the merged status reporting, e.g. both himax and esp32 ota
 
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
    
-    VIEW_EVENT_TASK_FLOW_EXIST, //uint32_t, 1 or 0, tell UI if there's already a tasklist running
+    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, //NULL
     VIEW_EVENT_TASK_FLOW_STOP, //NULL
     VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
     VIEW_EVENT_ALL,
