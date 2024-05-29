@@ -96,7 +96,7 @@ esp_err_t app_ota_init(void);
  * percentage progress will send as event to event loop, consumers like UI can then use them
  * to render progress UI element.
  * event:
- * - VIEW_EVENT_OTA_AI_MODEL
+ * - CTRL_EVENT_OTA_AI_MODEL
  * This function will block until AI model download done or failed, error code will be returned
  * if failed.
 */
@@ -106,12 +106,11 @@ esp_err_t app_ota_ai_model_download_abort();
 
 /**
  * caller should listen to event loop to get percentage progess, the progress event will be
- * sent on flash chunk written rhythm, consumers can then down speed to slower rhythm, e.g. 10%,
- * report to BLE on that slower rhythm.
+ * at a step size 10%.
  * caller should also listen to event loop to get failure state and failure reason.
  * events:
- * - VIEW_EVENT_OTA_ESP32_FW
- * - VIEW_EVENT_OTA_HIMAX_FW
+ * - CTRL_EVENT_OTA_ESP32_FW
+ * - CTRL_EVENT_OTA_HIMAX_FW
  * This function will not block, caller should asynchronously get result and progress via events above.
 */
 esp_err_t app_ota_esp32_fw_download(char *url);
