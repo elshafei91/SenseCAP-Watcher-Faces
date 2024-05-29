@@ -16,10 +16,10 @@ void ui_Page_loading_screen_init(void)
     lv_obj_set_width(ui_Arc1, 412);
     lv_obj_set_height(ui_Arc1, 412);
     lv_obj_set_align(ui_Arc1, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_Arc1, LV_OBJ_FLAG_CLICKABLE);      /// Flags
     lv_arc_set_value(ui_Arc1, 50);
     lv_arc_set_bg_angles(ui_Arc1, 0, 360);
     lv_arc_set_rotation(ui_Arc1, 270);
-    lv_obj_clear_flag(ui_Arc1, LV_OBJ_FLAG_CLICKABLE);      /// Flags
     lv_obj_set_style_arc_color(ui_Arc1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_opa(ui_Arc1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_width(ui_Arc1, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
