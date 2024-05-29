@@ -166,7 +166,7 @@ struct tf_module_ai_camera_preview_info
 
 typedef struct tf_data_dualimage_with_inference
 {
-    uint8_t type;
+    uint8_t type; //TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE
     struct  tf_data_image img_small;
     struct  tf_data_image img_large;
     struct tf_module_ai_camera_inference_info inference;

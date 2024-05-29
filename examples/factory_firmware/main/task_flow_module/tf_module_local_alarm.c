@@ -12,7 +12,6 @@
 #include "app_audio.h"
 #include "data_defs.h"
 #include "event_loops.h"
-#include "tf_module_img_analyzer.h"
 #include "app_rgb.h"
 
 
