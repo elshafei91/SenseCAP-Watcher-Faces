@@ -117,7 +117,7 @@ int view_image_preview_init(lv_obj_t *ui_screen)
     for (size_t i = 0; i < IMAGE_INVOKED_BOXES; i++)
     {
         ui_rectangle[i] = lv_obj_create(ui_screen);
-        lv_obj_add_flag(ui_rectangle[i], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_rectangle[i], LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_EVENT_BUBBLE);
 
         ui_class_name[i] = lv_label_create(ui_screen);
         lv_obj_set_width(ui_class_name[i], LV_SIZE_CONTENT);  /// 1
