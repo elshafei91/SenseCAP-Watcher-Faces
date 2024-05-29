@@ -987,6 +987,8 @@ static int __stop(void *p_module)
 {
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)p_module;
     
+    app_ota_ai_model_download_abort();
+
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP);
     xEventGroupWaitBits(p_module_ins->event_group, EVENT_STOP_DONE, 1, 1, portMAX_DELAY);
 

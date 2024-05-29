@@ -1161,7 +1161,7 @@ esp_err_t app_ota_init(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                                                     __app_event_handler, NULL));
 
-#if CONFIG_ENABLE_TEST_ENV
+#if  (CONFIG_ENABLE_TEST_ENV && CONFIG_OTA_TEST)
     StackType_t *task_stacktest = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
     StaticTask_t *task_tcbtest = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
     xTaskCreateStatic(__ota_test_task, "ota_test", stack_size, NULL, 1, task_stacktest, task_tcbtest);
