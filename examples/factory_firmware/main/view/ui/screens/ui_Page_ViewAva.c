@@ -74,17 +74,15 @@ void ui_Page_ViewAva_screen_init(void)
     lv_obj_set_style_border_color(ui_viewavap2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_viewavap2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_avat = lv_label_create(ui_viewavap2);
-    lv_obj_set_width(ui_avat, 350);
-    lv_obj_set_height(ui_avat, 120);
-    lv_obj_set_x(ui_avat, 0);
-    lv_obj_set_y(ui_avat, 20);
-    lv_obj_set_align(ui_avat, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_avat, "Detected object, sending to cloud to analysis");
-    lv_obj_set_style_text_color(ui_avat, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_avat, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_align(ui_avat, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_avat, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_guideimg1 = lv_img_create(ui_viewavap2);
+    lv_img_set_src(ui_guideimg1, &ui_img_switch_group_png);
+    lv_obj_set_width(ui_guideimg1, LV_SIZE_CONTENT);   /// 222
+    lv_obj_set_height(ui_guideimg1, LV_SIZE_CONTENT);    /// 234
+    lv_obj_set_x(ui_guideimg1, 43);
+    lv_obj_set_y(ui_guideimg1, -33);
+    lv_obj_set_align(ui_guideimg1, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_guideimg1, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
+    lv_obj_clear_flag(ui_guideimg1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
 
     lv_obj_add_event_cb(ui_avabtn1, ui_event_avabtn1, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_avabtn2, ui_event_avabtn2, LV_EVENT_ALL, NULL);

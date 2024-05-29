@@ -156,7 +156,7 @@ lv_obj_t * ui_avat1;
 void ui_event_avabtn2(lv_event_t * e);
 lv_obj_t * ui_avabtn2;
 lv_obj_t * ui_viewavap2;
-lv_obj_t * ui_avat;
+lv_obj_t * ui_guideimg1;
 
 
 // SCREEN: ui_Page_ViewLive
@@ -173,6 +173,8 @@ lv_obj_t * ui_viewlivp2;
 lv_obj_t * ui_viewtext;
 void ui_event_viewback(lv_event_t * e);
 lv_obj_t * ui_viewback;
+lv_obj_t * ui_viewlivp3;
+lv_obj_t * ui_guideimg2;
 
 
 // SCREEN: ui_Page_LocTask
@@ -333,6 +335,7 @@ lv_obj_t * ui_otapanel;
 lv_obj_t * ui_otatext;
 lv_obj_t * ui_otaspinner;
 lv_obj_t * ui_otaicon;
+lv_obj_t * ui_otaarc;
 void ui_event_otaback(lv_event_t * e);
 lv_obj_t * ui_otaback;
 
@@ -375,9 +378,9 @@ const lv_img_dsc_t * ui_imgset_590839094[1] = {&ui_img_335953020};
 const lv_img_dsc_t * ui_imgset_800621560[1] = {&ui_img_880045930};
 const lv_img_dsc_t * ui_imgset_1225629734[1] = {&ui_img_1870802764};
 const lv_img_dsc_t * ui_imgset_1798734462[1] = {&ui_img_487263452};
+const lv_img_dsc_t * ui_imgset_smile[1] = {&ui_img_smile1_png};
 const lv_img_dsc_t * ui_imgset_template[3] = {&ui_img_template1_png, &ui_img_template2_png, &ui_img_template3_png};
 const lv_img_dsc_t * ui_imgset_wifi_[5] = {&ui_img_wifi_0_png, &ui_img_wifi_1_png, &ui_img_wifi_2_png, &ui_img_wifi_3_png, &ui_img_wifi_4_png};
-const lv_img_dsc_t * ui_imgset_smile[1] = {&ui_img_smile1_png};
 
 ///////////////////// TEST LVGL SETTINGS ////////////////////
 #if LV_COLOR_DEPTH != 16
@@ -686,6 +689,9 @@ void ui_event_arrow1(lv_event_t * e)
     if(event_code == LV_EVENT_CLICKED) {
         arr1c_cb(e);
     }
+    if(event_code == LV_EVENT_FOCUSED) {
+        arr1f_cb(e);
+    }
 }
 void ui_event_arrow2(lv_event_t * e)
 {
@@ -693,6 +699,9 @@ void ui_event_arrow2(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
         arr2c_cb(e);
+    }
+    if(event_code == LV_EVENT_FOCUSED) {
+        arr2f_cb(e);
     }
 }
 void ui_event_wificancel(lv_event_t * e)
@@ -755,6 +764,9 @@ void ui_event_Page_ViewAva(lv_event_t * e)
     if(event_code == LV_EVENT_SCREEN_LOADED) {
         viewasl_cb(e);
     }
+    if(event_code == LV_EVENT_SCREEN_UNLOADED) {
+        viewasul_cb(e);
+    }
 }
 void ui_event_avabtn1(lv_event_t * e)
 {
@@ -781,6 +793,12 @@ void ui_event_Page_ViewLive(lv_event_t * e)
     }
     if(event_code == LV_EVENT_FOCUSED) {
         viewlf_cb(e);
+    }
+    if(event_code == LV_EVENT_SCREEN_LOADED) {
+        viewlsl_cb(e);
+    }
+    if(event_code == LV_EVENT_SCREEN_UNLOADED) {
+        viewlsul_cb(e);
     }
 }
 void ui_event_livbtn1(lv_event_t * e)
