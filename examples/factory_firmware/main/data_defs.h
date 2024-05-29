@@ -173,6 +173,7 @@ struct view_data_taskflow_status
 enum {
 
     VIEW_EVENT_SCREEN_START = 0,  // uint8_t, enum start_screen, which screen when start
+    VIEW_EVENT_PNG_LOADING,
 
     VIEW_EVENT_TIME,      // bool time_format_24
     VIEW_EVENT_TIME_ZONE,   // int8_t zone
@@ -236,24 +237,20 @@ typedef enum {
     
     MAX_CALLER // Add new callers before MAX_CALLER
 }caller;
-//RGB service type
-typedef enum {
-    breath_red,
-    breath_green,
-    breath_blue,
-    breath_white,
+typedef struct ai_service_param
+{
+    char host[20];
+    char port[20];
+} ai_service_param;
 
-    glint_red,
-    glint_green,
-    glint_blue,
-    glint_white,
+typedef struct ai_service_pack
+{
+    ai_service_param ai_text;
+    ai_service_param ai_vision;
+    int saved_flag;
+} ai_service_pack;
 
-    flare_red,
-    flare_green,
-    flare_white,
-    flare_blue,
-    off
-}rgb_service_t;
+
 /************************************************
  * Control Data Defines
 *************************************************/

@@ -1,5 +1,6 @@
 #include "view_alarm.h"
 #include "ui/ui.h"
+#include "ui_manager/pm.h"
 #include "esp_timer.h"
 #include "data_defs.h"
 
@@ -10,6 +11,7 @@
 uint8_t emoticon_disp_id = 0;
 lv_obj_t *ui_alarm_indicator;
 lv_anim_t a;
+
 static int16_t indicator_value = 0;
 static lv_obj_t * ui_image = NULL;
 static uint8_t task_view_current = 0;
@@ -67,6 +69,9 @@ int view_alarm_init(lv_obj_t *ui_screen)
     lv_obj_set_style_arc_img_src(ui_alarm_indicator, &ui_img_gradient_png, LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_alarm_indicator, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_alarm_indicator, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
+
+    ui_image = lv_img_create(ui_viewlivp2);
+    lv_obj_set_align(ui_image, LV_ALIGN_CENTER);
 
     ESP_ERROR_CHECK(esp_timer_create(&alarm_timer_args, &alarm_timer));
 
@@ -129,10 +134,11 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     // send focused event to call function
     lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
     alarm_timer_start(alarm_st->duration);
+
     // the alarm_indicator will not display within the ViewLive Page
     if (lv_scr_act() != ui_Page_ViewLive){
         task_view_current = 0;
-        _ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
     }else
     {
         task_view_current = 1;
@@ -154,6 +160,7 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     // image display 
     if (alarm_st->is_show_img)
     {
+        lv_obj_clear_flag(ui_image, LV_OBJ_FLAG_HIDDEN);
         struct tf_data_image *alarm_img = &alarm_st->img;
         if (alarm_img->p_buf != NULL){
             image_jpeg_buf = psram_malloc(IMG_JPEG_BUF_SIZE);
@@ -178,8 +185,8 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
                 return ret;
             }
 
-            img_dsc.data = alarm_img->p_buf;
-            lv_obj_set_style_bg_img_src(ui_Page_ViewLive, &img_dsc, LV_PART_MAIN | LV_STATE_DEFAULT);
+            img_dsc.data = image_ram_buf;
+            lv_img_set_src(ui_image, &img_dsc);
             tf_data_image_free(&alarm_st->img);
         }
     }
@@ -188,7 +195,9 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     lv_arc_set_value(ui_alarm_indicator, indicator_value);
     lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_background(ui_image);
     lv_obj_move_foreground(ui_viewlivp2);
+    // lv_obj_move_foreground(ui_image);
 
     // alarm indicator animation start
     lv_anim_init(&a);
@@ -204,6 +213,7 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 void view_alarm_off(uint8_t task_down)
 {    
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_image, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
     // for switch avatar emoticon
     emoticon_disp_id = 0;

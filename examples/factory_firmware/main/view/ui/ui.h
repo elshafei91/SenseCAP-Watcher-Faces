@@ -144,7 +144,7 @@ extern lv_obj_t * ui_avat1;
 void ui_event_avabtn2(lv_event_t * e);
 extern lv_obj_t * ui_avabtn2;
 extern lv_obj_t * ui_viewavap2;
-extern lv_obj_t * ui_avat;
+extern lv_obj_t * ui_guideimg1;
 // SCREEN: ui_Page_ViewLive
 void ui_Page_ViewLive_screen_init(void);
 void ui_event_Page_ViewLive(lv_event_t * e);
@@ -159,6 +159,8 @@ extern lv_obj_t * ui_viewlivp2;
 extern lv_obj_t * ui_viewtext;
 void ui_event_viewback(lv_event_t * e);
 extern lv_obj_t * ui_viewback;
+extern lv_obj_t * ui_viewlivp3;
+extern lv_obj_t * ui_guideimg2;
 // SCREEN: ui_Page_LocTask
 void ui_Page_LocTask_screen_init(void);
 void ui_event_Page_LocTask(lv_event_t * e);
@@ -305,6 +307,7 @@ extern lv_obj_t * ui_otapanel;
 extern lv_obj_t * ui_otatext;
 extern lv_obj_t * ui_otaspinner;
 extern lv_obj_t * ui_otaicon;
+extern lv_obj_t * ui_otaarc;
 void ui_event_otaback(lv_event_t * e);
 extern lv_obj_t * ui_otaback;
 // SCREEN: ui_Page_Slpt
@@ -354,12 +357,15 @@ LV_IMG_DECLARE(ui_img_brighticon_png);
 LV_IMG_DECLARE(ui_img_gesture_d_png);
 LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_gradient_png);
+LV_IMG_DECLARE(ui_img_onboardclick_png);
+LV_IMG_DECLARE(ui_img_error_png);
 LV_IMG_DECLARE(ui_img_battery_5_png);    // assets\battery_5.png
 LV_IMG_DECLARE(ui_img_ble_png);    // assets\ble.png
 LV_IMG_DECLARE(ui_img_button_cancel_png);    // assets\button_cancel.png
 LV_IMG_DECLARE(ui_img_arrow_png);    // assets\arrow.png
 LV_IMG_DECLARE(ui_img_wifi_4_png);    // assets\wifi_4.png
 LV_IMG_DECLARE(ui_img_190291343);    // assets\wifi-Instructions.png
+LV_IMG_DECLARE(ui_img_switch_group_png);    // assets\switch_group.png
 LV_IMG_DECLARE(ui_img_setback_png);    // assets\setback.png
 LV_IMG_DECLARE(ui_img_template1_png);    // assets\template1.png
 LV_IMG_DECLARE(ui_img_template1_f_png);    // assets\template1_f.png
@@ -379,17 +385,17 @@ LV_IMG_DECLARE(ui_img_human_d_png);    // assets\human_d.png
 LV_IMG_DECLARE(ui_img_volicon_png);    // assets\volicon.png
 LV_IMG_DECLARE(ui_img_swipe_png);    // assets\swipe.png
 LV_IMG_DECLARE(ui_img_wifiok_png);    // assets\wifiok.png
+LV_IMG_DECLARE(ui_img_smile1_png);    // assets\smile1.png
 LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets\wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets\wifi_1.png
 LV_IMG_DECLARE(ui_img_wifi_2_png);    // assets\wifi_2.png
 LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets\wifi_3.png
-LV_IMG_DECLARE(ui_img_smile1_png);    // assets\smile1.png
 
+LV_FONT_DECLARE(ui_font_fbold16);
+LV_FONT_DECLARE(ui_font_fbold24);
 LV_FONT_DECLARE(ui_font_Font1);
 LV_FONT_DECLARE(ui_font_fontbold26);
 LV_FONT_DECLARE(ui_font_font_bold);
-LV_FONT_DECLARE(ui_font_fbold16);
-LV_FONT_DECLARE(ui_font_fbold24);
 
 void ui_init(void);
 
