@@ -328,9 +328,6 @@ void release_rgb(int caller)
     xSemaphoreGive(rgb_semaphore);
 }
 
-
-
-
 /**
  * @brief Set breath color effect
  *
@@ -370,9 +367,6 @@ void __set_breath_color(rgb_status *status)
     vTaskDelay(pdMS_TO_TICKS(status->delay_time));
 }
 
-
-
-
 /**
  * @brief Blink effect
  *
@@ -381,7 +375,6 @@ void __set_breath_color(rgb_status *status)
  * @param interval The interval for the blink effect in seconds
  * @param start True to start the effect, false to stop
  */
-
 
 static void blink_timer_callback(void *arg)
 {
@@ -397,24 +390,19 @@ static void blink_timer_callback(void *arg)
     led_on = !led_on;
 }
 
-
 void __blink(double interval, bool start)
 {
     static bool is_blinking = false;
     static esp_timer_handle_t blink_timer_handle = NULL;
-
+    vTaskDelay(pdMS_TO_TICKS(5));
     if (start)
     {
         if (!is_blinking)
         {
             is_blinking = true;
-            esp_timer_create_args_t timer_args = {
-                .callback = &blink_timer_callback,
-                .arg = NULL,
-                .name = "blink_timer"
-            };
+            esp_timer_create_args_t timer_args = { .callback = &blink_timer_callback, .arg = NULL, .name = "blink_timer" };
             esp_timer_create(&timer_args, &blink_timer_handle);
-            esp_timer_start_periodic(blink_timer_handle, interval * 1000000*0.5);
+            esp_timer_start_periodic(blink_timer_handle, interval * 1000000 * 0.5);
         }
     }
     else
@@ -427,8 +415,8 @@ void __blink(double interval, bool start)
             blink_timer_handle = NULL;
         }
     }
+    vTaskDelay(pdMS_TO_TICKS(5));
 }
-
 
 /**
  * @brief Flare effect
@@ -439,37 +427,12 @@ void __flare()
 {
     // Take the semaphore to ensure thread safety
     xSemaphoreTake(__rgb_semaphore, portMAX_DELAY);
+    vTaskDelay(pdMS_TO_TICKS(5));
     bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
+    vTaskDelay(pdMS_TO_TICKS(5));
     // Release the semaphore after updating the RGB status
     xSemaphoreGive(__rgb_semaphore);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-// void system_verification_task(void *arg)
-// {
-//     while (true)
-//     {
-//         set_rgb_with_priority(UI_CALLER, breath_red);
-//         vTaskDelay(pdMS_TO_TICKS(5000)); // Log every 5 seconds
-//         set_rgb_with_priority(UI_CALLER, glint_green);
-//         vTaskDelay(pdMS_TO_TICKS(5000)); // Log every 5 seconds
-//         set_rgb_with_priority(UI_CALLER, flare_blue);
-//         vTaskDelay(pdMS_TO_TICKS(5000)); // Log every 5 seconds
-//         set_rgb_with_priority(UI_CALLER, off);
-//     }
-// }
-
 
 /**
  * @brief RGB breath effect task
@@ -487,22 +450,25 @@ void breath_effect_task(void *arg)
             case 1:
                 __set_breath_color(&rgb_status_instance);
                 break;
-            case 2: 
+            case 2:
                 __blink(1, true);
                 break;
-            case 3: 
+            case 3:
                 __flare();
                 break;
-            case 4: 
+            case 4:
+                vTaskDelay(pdMS_TO_TICKS(5));
                 bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
+                vTaskDelay(pdMS_TO_TICKS(5));
                 break;
             default:
+                vTaskDelay(pdMS_TO_TICKS(5));
                 bsp_rgb_set(0, 0, 0);
+                vTaskDelay(pdMS_TO_TICKS(5));
                 break;
         }
     }
 }
-
 
 /**
  * @brief Initialize the RGB application
@@ -516,7 +482,7 @@ int app_rgb_init(void)
     rgb_status_instance = (rgb_status) { .r = 255, .g = 255, .b = 255, .max_brightness_led = 255, .min_brightness_led = 0, .step = 50, .delay_time = 200 };
     // esp_timer_create_args_t timer_args = { .callback = &__timer_callback, .arg = (void *)rgb_timer_handle, .name = "rgb timer" };
     rgb_semaphore = xSemaphoreCreateMutex();
-    __rgb_semaphore=xSemaphoreCreateMutex();
+    __rgb_semaphore = xSemaphoreCreateMutex();
     if (rgb_semaphore == NULL)
     {
         ESP_LOGE(RGB_TAG, "Failed to create semaphore");
@@ -544,5 +510,3 @@ int app_rgb_init(void)
     // }
     return 0;
 }
-
-
