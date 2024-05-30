@@ -189,7 +189,11 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
                         y = 0;
                     }
 
-                    char *p_class_name = p_info->inference.classes[p_box[i].target];
+                    char *p_class_name = "unknown";
+                    if(  p_info->inference.classes[p_box[i].target] != NULL) {
+                        p_class_name = p_info->inference.classes[p_box[i].target];
+                    }
+
                     lv_color_t color = cls_color[p_box[i].target];
 
                     lv_obj_set_pos(ui_rectangle[i], x, y);

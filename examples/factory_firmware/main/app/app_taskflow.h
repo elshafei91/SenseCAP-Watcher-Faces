@@ -2,13 +2,14 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
+#include "data_defs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define TASKFLOW_TASK_STACK_SIZE  8*1024
+#define TASKFLOW_TASK_STACK_SIZE  5*1024
 #define TASKFLOW_TASK_PRIO        3
 
 struct app_taskflow_info {
@@ -23,6 +24,10 @@ struct app_taskflow
     StaticTask_t *p_task_buf;
     StackType_t *p_task_stack_buf;
     TaskHandle_t task_handle;
+    struct view_data_taskflow_status status;
+    bool status_need_report;
+    bool mqtt_connect_flag;
+    bool taskflow_need_report;
 };
 
 

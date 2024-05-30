@@ -46,6 +46,7 @@ typedef struct tf_module_local_alarm
 #endif
     struct tf_data_buf audio;
     bool is_audio_playing;
+    bool is_rgb_on;
 } tf_module_local_alarm_t;
 
 tf_module_t * tf_module_local_alarm_init(tf_module_local_alarm_t *p_module_ins);

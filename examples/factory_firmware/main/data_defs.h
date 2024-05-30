@@ -157,6 +157,13 @@ struct view_data_ota_status
     int     err_code;     //enum esp_err_t, refer to app_ota.h for detailed error code define
 };
 
+struct view_data_taskflow_status
+{
+    intmax_t tid;
+    int      engine_status;
+    char     module_name[32]; // error module
+    int      module_status;
+};
 
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
@@ -215,6 +222,8 @@ enum {
     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, //NULL
     VIEW_EVENT_TASK_FLOW_STOP, //NULL
     VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
+    VIEW_EVENT_TASK_FLOW_STATUS,  // struct view_data_taskflow_status
+
     VIEW_EVENT_ALL,
 };
 //config caller
@@ -245,12 +254,6 @@ typedef struct ai_service_pack
 /************************************************
  * Control Data Defines
 *************************************************/
-
-// struct ctrl_data_mqtt_tasklist_cjson
-// {
-//     SemaphoreHandle_t mutex;
-//     cJSON *tasklist_cjson;
-// };
 
 /**
  * Control Events are used for control logic within the app backend scope.

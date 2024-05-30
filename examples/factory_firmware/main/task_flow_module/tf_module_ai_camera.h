@@ -166,7 +166,7 @@ struct tf_module_ai_camera_preview_info
 
 typedef struct tf_data_dualimage_with_inference
 {
-    uint8_t type;
+    uint8_t type; //TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE
     struct  tf_data_image img_small;
     struct  tf_data_image img_large;
     struct tf_module_ai_camera_inference_info inference;
@@ -194,6 +194,7 @@ typedef struct tf_module_ai_camera
     int classes_num_cache[CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM];
     tf_data_dualimage_with_inference_t output_data;
     struct tf_module_ai_camera_preview_info preview_info_cache;
+    bool start_flag;
 } tf_module_ai_camera_t;
 
 tf_module_t * tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins);
