@@ -190,6 +190,7 @@ static void log_error_if_nonzero(const char *message, int error_code)
 static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
 {
     esp_err_t  ret = ESP_OK;
+    bool need_stop = false;
 
     ESP_LOGI(TAG, "start to parse tasklist from MQTT msg ...");
     ESP_LOGD(TAG, "MQTT msg: \r\n %.*s\r\nlen=%d", msg_buff_len, mqtt_msg_buff, msg_buff_len);
@@ -230,19 +231,29 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
         cJSON_Delete(json_root);
         return;
     }
+    cJSON *task_flow_json = cJSON_GetObjectItem(tl, "task_flow");
+    if( task_flow_json == NULL) {
+        need_stop = true;
+    } else {
+        need_stop = false;
+    }
 
     char *tl_str = cJSON_PrintUnformatted(tl);
-
     ret = app_sensecraft_mqtt_report_taskflow_ack( requestid->valuestring, tl_str, strlen(tl_str));
     if( ret != ESP_OK ) {
         ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
     }
 
-    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_MQTT, 
-                                &tl_str,
-                                sizeof(void *), /* ptr size */
-                                portMAX_DELAY);    
-
+    if( need_stop) {
+        ESP_LOGI(TAG, "STOP TASK FLOW");
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
+        free(tl_str);
+    } else {
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_MQTT, 
+                                    &tl_str,
+                                    sizeof(void *), /* ptr size */
+                                    portMAX_DELAY);   
+    }
     cJSON_Delete(json_root);
 }
 
