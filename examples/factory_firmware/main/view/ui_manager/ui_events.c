@@ -18,6 +18,7 @@
 #include "app_wifi.h"
 #include "storage.h"
 #include "app_png.h"
+#include "sensecap-watcher.h"
 
 #define VOLBRI_CFG "volbri-cfg"
 
@@ -25,6 +26,8 @@ static const char *TAG = "ui_event";
 
 wifi_ap_record_t wifi_record;
 uint8_t task_down = 0;
+uint8_t first_use = 0;
+uint8_t guide_step = 0;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
 static struct view_data_emoticon_display emo_disp;
@@ -35,7 +38,6 @@ static int file_idx = 0;
 static uint32_t local_task_id;
 static lv_timer_t * g_timer;
 static int current_img_index = 0;
-uint8_t guide_step = 0;
 
 extern char sn_data[66];
 extern uint8_t wifi_page_id;
@@ -216,6 +218,7 @@ void startload_cb(lv_event_t *e)
 void virtc_cb(lv_event_t *e)
 {
     create_timer(6);
+    // first_use = get_reset_factory(UI_CALLER);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
@@ -346,7 +349,7 @@ void viewasl_cb(lv_event_t * e)
 {
     if (emoticon_disp_id == 1) {
         create_timer(3);  // Load timer for the "detected" animation when emoticon_disp_id is 1
-        if(!wifi_page_id)
+        if(!first_use)
         {
             if(guide_step == 2)
             {
@@ -358,15 +361,16 @@ void viewasl_cb(lv_event_t * e)
             }else if(guide_step == 0){
                 guide_step = 1;
                 lv_group_set_wrap(g_main, false);
-                vTaskDelay(2000 / portTICK_PERIOD_MS);
+                // vTaskDelay(2000 / portTICK_PERIOD_MS);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(ui_viewavap2);
             }
         }else{
             lv_group_set_wrap(g_main, true);
         }
     } else {
         create_timer(5);  // Load timer for the "speak" animation when emoticon_disp_id is 0
-        if(!wifi_page_id)
+        if(!first_use)
         {
             if(guide_step == 2)
             {
@@ -378,8 +382,9 @@ void viewasl_cb(lv_event_t * e)
             }else if(guide_step == 0){
                 guide_step = 1;
                 lv_group_set_wrap(g_main, false);
-                vTaskDelay(2000 / portTICK_PERIOD_MS);
+                // vTaskDelay(2000 / portTICK_PERIOD_MS);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(ui_viewavap2);
             }
         }else{
             lv_group_set_wrap(g_main, true);
@@ -397,6 +402,7 @@ void ava1c_cb(lv_event_t *e)
     if(guide_step == 2)
     {
         guide_step = 3;
+        set_reset_factory(UI_CALLER, 1);
         //Todo nvs flash
     }
     Task_end();
@@ -409,9 +415,11 @@ void ava2c_cb(lv_event_t *e)
 
 void avagc_cb(lv_event_t * e)
 {
-    lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
-    lv_event_send(ui_Page_ViewAva, LV_EVENT_CLICKED, NULL);
+    if((!first_use) && (guide_step!=3)){
+        lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
+        lv_event_send(ui_Page_ViewAva, LV_EVENT_CLICKED, NULL);
+    }
 }
 
 void viewlc_cb(lv_event_t *e)
@@ -427,12 +435,12 @@ void viewlf_cb(lv_event_t *e)
 
 void viewlsl_cb(lv_event_t * e)
 {
-    if((!wifi_page_id)  && (guide_step!=3))
+    if((!first_use)  && (guide_step!=3))
     {
         guide_step = 2;
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-        lv_obj_move_foreground(ui_viewlivp3);
+        // vTaskDelay(2000 / portTICK_PERIOD_MS);
         lv_obj_clear_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(ui_viewlivp3);
     }
 }
 
@@ -803,7 +811,7 @@ void setwific_cb(lv_event_t *e)
     ssid_string[sizeof(ssid_string) - 1] = '\0';
     lv_label_set_text(ui_wifissid, ssid_string);
     // binded
-    if (wifi_page_id)
+    if (first_use)
     {
         lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
     }
@@ -937,11 +945,11 @@ void sliderr_cb(lv_event_t *e)
         switch (swipe_id)
         {
             case 0:
-                esp_restart();
+                bsp_system_shutdown();
                 break;
 
             case 1:
-                lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_main_screen_init);
+                set_reset_factory(UI_CALLER, 0);
                 break;
 
             default:

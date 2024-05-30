@@ -68,7 +68,7 @@ void ui_Page_ViewAva_screen_init(void)
     lv_obj_set_height(ui_viewavap2, 412);
     lv_obj_set_align(ui_viewavap2, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);     /// Flags
-    lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_viewavap2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_viewavap2, 200, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_viewavap2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
