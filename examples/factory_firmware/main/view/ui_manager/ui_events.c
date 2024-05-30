@@ -218,7 +218,7 @@ void startload_cb(lv_event_t *e)
 void virtc_cb(lv_event_t *e)
 {
     create_timer(6);
-    // first_use = get_reset_factory(UI_CALLER);
+    first_use = get_reset_factory(UI_CALLER);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 

@@ -767,10 +767,10 @@ uint8_t *__set_reset_factory()
         return NULL;
     }
    
-    if (reset_factory_switch_past != reset_factory_switch&&reset_factory_switch_past == 1)
+    if (reset_factory_switch_past != reset_factory_switch)
     {
         ESP_LOGI("set_reset_factory_TAG", "__set_reset_factory");
-        storage_erase();
+        if(reset_factory_switch_past == 1)storage_erase();
         esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
     }
     xSemaphoreGive(MUTEX_reset_factory);
