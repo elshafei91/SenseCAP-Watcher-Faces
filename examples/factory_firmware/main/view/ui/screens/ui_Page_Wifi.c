@@ -132,6 +132,7 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_height(ui_wifitext2, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_wifitext2, LV_ALIGN_CENTER);
     lv_label_set_text(ui_wifitext2, "Wi-Fi Connected");
+    lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_set_style_text_color(ui_wifitext2, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_wifitext2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_wifitext2, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);

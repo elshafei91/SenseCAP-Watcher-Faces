@@ -12,6 +12,9 @@ uint8_t emoticon_disp_id = 0;
 lv_obj_t *ui_alarm_indicator;
 lv_anim_t a;
 
+extern uint8_t wifi_page_id;
+extern uint8_t guide_step;
+
 static int16_t indicator_value = 0;
 static lv_obj_t * ui_image = NULL;
 static uint8_t task_view_current = 0;
@@ -129,6 +132,7 @@ _exit:
 
 int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 {
+    if(guide_step != 3){return 0;}
     // for switch avatar emoticon
     emoticon_disp_id = 1;
     // send focused event to call function

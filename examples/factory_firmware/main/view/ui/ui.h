@@ -143,6 +143,7 @@ extern lv_obj_t * ui_avabtn1;
 extern lv_obj_t * ui_avat1;
 void ui_event_avabtn2(lv_event_t * e);
 extern lv_obj_t * ui_avabtn2;
+void ui_event_viewavap2(lv_event_t * e);
 extern lv_obj_t * ui_viewavap2;
 extern lv_obj_t * ui_guideimg1;
 // SCREEN: ui_Page_ViewLive
@@ -159,6 +160,7 @@ extern lv_obj_t * ui_viewlivp2;
 extern lv_obj_t * ui_viewtext;
 void ui_event_viewback(lv_event_t * e);
 extern lv_obj_t * ui_viewback;
+void ui_event_viewlivp3(lv_event_t * e);
 extern lv_obj_t * ui_viewlivp3;
 extern lv_obj_t * ui_guideimg2;
 // SCREEN: ui_Page_LocTask

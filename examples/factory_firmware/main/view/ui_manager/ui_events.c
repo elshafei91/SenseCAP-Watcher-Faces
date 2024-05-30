@@ -35,6 +35,7 @@ static int file_idx = 0;
 static uint32_t local_task_id;
 static lv_timer_t * g_timer;
 static int current_img_index = 0;
+uint8_t guide_step = 0;
 
 extern char sn_data[66];
 extern uint8_t wifi_page_id;
@@ -47,6 +48,7 @@ extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 extern int g_detect_image_count;
 extern int g_speak_image_count;
@@ -54,6 +56,7 @@ extern int g_listen_image_count;
 extern int g_load_image_count;
 extern int g_sleep_image_count;
 extern int g_smile_image_count;
+extern int g_detected_image_count;
 
 extern GroupInfo group_page_main;
 extern GroupInfo group_page_template;
@@ -82,7 +85,6 @@ static void async_img_switch_viewava(void *arg)
 static void smile_timer_callback(lv_timer_t *timer) {
     current_img_index = (current_img_index + 1) % g_smile_image_count;
     lv_img_dsc_t *current_img = g_smile_img_dsc[current_img_index];
-    // ESP_LOGI(TAG, "Smile timer callback, img index: %d", current_img_index);
     if (emoticon_disp_id) {
         async_img_switch_vir(current_img);
     } else {
@@ -110,9 +112,9 @@ static void listen_timer_callback(lv_timer_t *timer) {
     }
 }
 
-static void load_timer_callback(lv_timer_t *timer) {
-    current_img_index = (current_img_index + 1) % g_load_image_count;
-    lv_img_dsc_t *current_img = g_load_img_dsc[current_img_index];
+static void detected_timer_callback(lv_timer_t *timer) {
+    current_img_index = (current_img_index + 1) % g_detected_image_count;
+    lv_img_dsc_t *current_img = g_detect_img_dsc[current_img_index];
     if (emoticon_disp_id) {
         async_img_switch_viewava(current_img);
     } else {
@@ -156,7 +158,7 @@ static void create_timer(uint8_t det_task) {
             g_timer = lv_timer_create(listen_timer_callback, 800, NULL);
             break;
         case 3:
-            g_timer = lv_timer_create(load_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(detected_timer_callback, 800, NULL);
             break;
         case 4:
             g_timer = lv_timer_create(sleep_timer_callback, 800, NULL);
@@ -227,11 +229,7 @@ void virtsl_cb(lv_event_t *e)
 
 void main1c_cb(lv_event_t *e)
 {
-    // if(wifi_page_id){
-        lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
-//     }else{
-//         _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-//     }
+    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
 }
 
 void main1f_cb(lv_event_t *e)
@@ -341,33 +339,74 @@ void viewaf_cb(lv_event_t *e)
 
 void viewasl_cb(lv_event_t * e)
 {
-    // if(wifi_page_id)
-    // {
-        if (emoticon_disp_id == 1) {
-            create_timer(3);  // Load timer for the "load" animation when emoticon_disp_id is 1
-        } else {
-            create_timer(5);  // Load timer for the "speak" animation when emoticon_disp_id is 0
+    if (emoticon_disp_id == 1) {
+        create_timer(3);  // Load timer for the "detected" animation when emoticon_disp_id is 1
+        if(!wifi_page_id)
+        {
+            if(guide_step == 2)
+            {
+                lv_img_set_src(ui_guideimg1, &ui_img_onboardclick_png);
+                lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
+                lv_group_remove_all_objs(g_main);
+                lv_group_add_obj(g_main, ui_viewavap2);
+                lv_group_set_wrap(g_main, true);
+            }else if(guide_step == 0){
+                guide_step = 1;
+                lv_group_set_wrap(g_main, false);
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+                lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
+            }
+        }else{
+            lv_group_set_wrap(g_main, true);
         }
-    // }
-    // else{
-    //     create_timer(5);
-    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // }
+    } else {
+        create_timer(5);  // Load timer for the "speak" animation when emoticon_disp_id is 0
+        if(!wifi_page_id)
+        {
+            if(guide_step == 2)
+            {
+                lv_img_set_src(ui_guideimg1, &ui_img_onboardclick_png);
+                lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
+                lv_group_remove_all_objs(g_main);
+                lv_group_add_obj(g_main, ui_viewavap2);
+                lv_group_set_wrap(g_main, true);
+            }else if(guide_step == 0){
+                guide_step = 1;
+                lv_group_set_wrap(g_main, false);
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+                lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
+            }
+        }else{
+            lv_group_set_wrap(g_main, true);
+        }
+    }
 }
 
 void viewasul_cb(lv_event_t * e)
 {
-
+    create_timer(6);
 }
 
 void ava1c_cb(lv_event_t *e)
 {
+    if(guide_step == 2)
+    {
+        guide_step = 3;
+        //Todo nvs flash
+    }
     Task_end();
 }
 
 void ava2c_cb(lv_event_t *e)
 {
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+}
+
+void avagc_cb(lv_event_t * e)
+{
+    lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
+    lv_event_send(ui_Page_ViewAva, LV_EVENT_CLICKED, NULL);
 }
 
 void viewlc_cb(lv_event_t *e)
@@ -383,12 +422,17 @@ void viewlf_cb(lv_event_t *e)
 
 void viewlsl_cb(lv_event_t * e)
 {
-
+    if((!wifi_page_id)  && (guide_step!=3))
+    {
+        guide_step = 2;
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+        lv_obj_move_foreground(ui_viewlivp3);
+        lv_obj_clear_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void viewlsul_cb(lv_event_t * e)
 {
-
 }
 
 void liv1c_cb(lv_event_t *e)
@@ -453,7 +497,7 @@ void loctask3f_cb(lv_event_t *e)
 void loctask4c_cb(lv_event_t *e)
 {
     local_task_id = 0;
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), portMAX_DELAY);      
     lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
 }
 
@@ -496,6 +540,12 @@ void mgesdown_cb(lv_event_t *e)
 void vieback_cb(lv_event_t *e) {
     lv_obj_add_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+}
+
+void livgc_cb(lv_event_t * e)
+{
+    // lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_add_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
 }
 
 void lgesleft_cb(lv_event_t *e)

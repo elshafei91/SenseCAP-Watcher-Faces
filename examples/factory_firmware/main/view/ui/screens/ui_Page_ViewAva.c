@@ -68,9 +68,9 @@ void ui_Page_ViewAva_screen_init(void)
     lv_obj_set_height(ui_viewavap2, 412);
     lv_obj_set_align(ui_viewavap2, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);     /// Flags
-    lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_viewavap2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_viewavap2, 180, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_viewavap2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_viewavap2, 200, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_viewavap2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_viewavap2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -86,6 +86,7 @@ void ui_Page_ViewAva_screen_init(void)
 
     lv_obj_add_event_cb(ui_avabtn1, ui_event_avabtn1, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_avabtn2, ui_event_avabtn2, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_viewavap2, ui_event_viewavap2, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_Page_ViewAva, ui_event_Page_ViewAva, LV_EVENT_ALL, NULL);
 
 }
