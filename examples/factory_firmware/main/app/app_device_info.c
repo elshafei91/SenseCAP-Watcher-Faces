@@ -494,7 +494,7 @@ uint8_t *get_sound(int caller)
         case UI_CALLER:
             ESP_LOGI("SOUND_TAG", "UI get sound");
             result = (uint8_t *)&sound_value;
-            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOUND, result, sizeof(uint8_t *), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOUND, result, sizeof(uint8_t *), portMAX_DELAY);
             break;
     }
     xSemaphoreGive(MUTEX_sound);
@@ -709,10 +709,10 @@ uint8_t *__set_reset_factory()
 {
     if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
     {
-        ESP_LOGE("set_reset_factory_TAG", "set_rgb_switch: MUTEX_rgb_switch take failed");
+        ESP_LOGE("set_reset_factory_TAG", "set_rgb_switch: MUTEX_reset_factory take failed");
         return NULL;
     }
-    if (cloud_service_switch_past != cloud_service_switch)
+    if (reset_factory_switch_past != reset_factory_switch)
     {
         esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
         nvs_flash_erase();
