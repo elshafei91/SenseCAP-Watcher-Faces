@@ -15,8 +15,8 @@
 #include "app_rgb.h"
 #include "app_audio.h"
 #include "audio_player.h"
+#include "nvs_flash.h"
 
-#include <string.h>
 #include "mqtt_client.h"
 
 #define SN_TAG                    "SN_TAG"
@@ -26,6 +26,7 @@
 #define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
 #define CLOUD_SERVICE_STORAGE_KEY "cloudserviceswitch"
 #define AI_SERVICE_STORAGE_KEY    "aiservice"
+#define RESET_FACTORY_SK          "resetfactory"
 
 uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x50 };
 uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0xC2, 0x44, 0x81, 0x00, 0x47, 0xB0, 0x47, 0xD1, 0xD5, 0x8B, 0xC7, 0xF8, 0xFB };
@@ -40,11 +41,14 @@ int brightness_past = 100;
 int sound_value = 50;
 int sound_value_past = 50;
 
-int rgb_switch = 0;
-int rgb_switch_past = 0;
+int rgb_switch = 1;
+int rgb_switch_past = 1;
 
 int cloud_service_switch = 0;
 int cloud_service_switch_past = 0;
+
+int reset_factory_switch = 0;
+int reset_factory_switch_past = 0;
 
 // ai service ip for mqtt
 ai_service_pack ai_service;
@@ -58,6 +62,7 @@ SemaphoreHandle_t MUTEX_rgb_switch;
 SemaphoreHandle_t MUTEX_sound;
 SemaphoreHandle_t MUTEX_ai_service;
 SemaphoreHandle_t MUTEX_cloud_service_switch;
+SemaphoreHandle_t MUTEX_reset_factory;
 
 static StackType_t *app_device_info_task_stack = NULL;
 static StaticTask_t app_device_info_task_buffer;
@@ -118,12 +123,14 @@ void init_rgb_switch_from_nvs()
     {
         ESP_LOGI("NVS", "rgb_switch value loaded from NVS: %d", rgb_switch);
         rgb_switch_past = rgb_switch;
-        if (rgb_switch == 1)
-            set_rgb_with_priority(UI_CALLER, off);
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
         ESP_LOGI("NVS", "No rgb_switch value found in NVS. Using default: %d", rgb_switch);
+        if (rgb_switch == 1)
+        {
+            // set_rgb_with_priority(UI_CALLER, off);
+        }
     }
     else
     {
@@ -202,6 +209,26 @@ void init_cloud_service_switch_from_nvs()
         ESP_LOGE("NVS", "Error reading rgb_switch from NVS: %s", esp_err_to_name(ret));
     }
 }
+
+void init_reset_factory_switch_from_nvs()
+{
+    size_t size = sizeof(reset_factory_switch);
+    esp_err_t ret = storage_read(RESET_FACTORY_SK, &reset_factory_switch, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI("NVS", "reset_factory_switch value loaded from NVS: %d", reset_factory_switch);
+        reset_factory_switch_past = reset_factory_switch;
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI("NVS", "No reset_factory_switch value found in NVS. Using default: %d", reset_factory_switch);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading reset_factory_switch from NVS: %s", esp_err_to_name(ret));
+    }
+}
+
 /*----------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
 
@@ -638,6 +665,67 @@ static int __set_ai_service()
     return 0;
 }
 
+/*----------------------------------------------------reset-factory--------------------------------------------------------*/
+
+uint8_t *get_reset_factory(int caller)
+{
+    if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("get_reset_factory_TAG", "get_reset_factory: MUTEX_reset_factory take failed");
+        return NULL;
+    }
+    uint8_t *result = NULL;
+    result = reset_factory_switch;
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI("get_reset_factory_TAG", "AT_CMD_CALLER  get_reset_factory_TAG");
+            break;
+        case UI_CALLER:
+            ESP_LOGI("get_reset_factory_TAG", "UI  get_reset_factory_TAG");
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_FACTORY_RESET_CODE, reset_factory_switch, sizeof(reset_factory_switch), portMAX_DELAY);
+            break;
+    }
+    xSemaphoreGive(MUTEX_reset_factory);
+    return result;
+}
+
+uint8_t *set_reset_factory(int caller, int value)
+{
+    ESP_LOGI("set_reset_factory_TAG", "set_reset_factory");
+    if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("set_reset_factory_TAG", "set_reset_factory: MUTEX_reset_factory take failed");
+        return NULL;
+    }
+    reset_factory_switch_past = reset_factory_switch;
+    reset_factory_switch = value;
+
+    xSemaphoreGive(MUTEX_reset_factory);
+    return NULL;
+}
+
+uint8_t *__set_reset_factory()
+{
+    if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("set_reset_factory_TAG", "set_rgb_switch: MUTEX_rgb_switch take failed");
+        return NULL;
+    }
+    if (cloud_service_switch_past != cloud_service_switch)
+    {
+        esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
+        nvs_flash_erase();
+        printf("set_reset_factory: %d\n", reset_factory_switch);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE("set_reset_factory_TAG", "cfg write err:%d", ret);
+            return ret;
+        }
+    }
+    xSemaphoreGive(MUTEX_reset_factory);
+    return 0;
+}
 /*-----------------------------------------------------TASK----------------------------------------------------------*/
 void app_device_info_task(void *pvParameter)
 {
@@ -649,17 +737,20 @@ void app_device_info_task(void *pvParameter)
     MUTEX_sound = xSemaphoreCreateMutex();
     MUTEX_cloud_service_switch = xSemaphoreCreateMutex();
     MUTEX_ai_service = xSemaphoreCreateMutex();
+    MUTEX_reset_factory = xSemaphoreCreateMutex();
     init_ai_service_param_from_nvs();
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
     init_soud_from_nvs();
     init_ai_service_param_from_nvs();
+    init_reset_factory_switch_from_nvs();
     while (1)
     {
         //__set_cloud_service_switch();
         __set_brightness();
         __set_rgb_switch();
         __set_sound();
+        __set_reset_factory();
         //__set_ai_service();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }

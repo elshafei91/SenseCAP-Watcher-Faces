@@ -7,7 +7,7 @@
 #include "data_defs.h"
 
 #define RGB_TAG     "RGB_TAG"
-#define MAX_CALLERS 5
+#define MAX_CALLERS 6
 #define STACK_SIZE  10
 
 typedef struct

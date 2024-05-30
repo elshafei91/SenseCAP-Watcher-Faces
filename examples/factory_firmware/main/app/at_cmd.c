@@ -175,8 +175,8 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
     {
         cJSON_AddItemToArray(scanned_array, create_wifi_entry_json(&stack_scnned_wifi->entries[i]));
     }
-    cJSON_AddItemToObject(root, "connected_Wifi", connected_array);
-    cJSON_AddItemToObject(root, "scanned_Wifi", scanned_array);
+    cJSON_AddItemToObject(root, "connected_wifi", connected_array);
+    cJSON_AddItemToObject(root, "scanned_wifi", scanned_array);
     return root;
 }
 

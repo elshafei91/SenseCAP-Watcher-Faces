@@ -856,7 +856,7 @@ void ble_config_entry(void)
                 ESP_LOGI("BLE_BUTTON", "start advertising succeeded");
             }
             ble_status = STATUS_WAITTING;
-            set_rgb_with_priority(AT_CMD_CALLER,breath_red);
+            //set_rgb_with_priority(AT_CMD_CALLER,breath_red);
         }
         else if (ble_status == BLE_CONNECTED)
         {
