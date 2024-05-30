@@ -43,19 +43,21 @@ enum {
 #define ESP_ERR_OTA_DOWNLOAD_FAIL           0x204
 #define ESP_ERR_OTA_SSCMA_START_FAIL        0x205
 #define ESP_ERR_OTA_SSCMA_WRITE_FAIL        0x206
+#define ESP_ERR_OTA_SSCMA_INTERNAL_ERR      0x207
 
 #define ESP_ERR_OTA_JSON_INVALID            0x300
 #define ESP_ERR_OTA_NO_HIMAX_VERSION        0x301
 #define ESP_ERR_OTA_TIMEOUT                 0x302
+#define ESP_ERR_OTA_USER_CANCELED           0x303
 
 
 // used to pass userdata to http client event handler
 typedef struct {
-    sscma_client_handle_t client;
-    sscma_client_flasher_handle_t flasher;
     int ota_type;
-    esp_err_t *err;
-} ota_http_userdata_t;
+    int content_len;
+    esp_err_t err;
+    esp_http_client_handle_t http_client;
+} ota_sscma_writer_userdata_t;
 
 //worker cmd
 enum {
@@ -94,20 +96,21 @@ esp_err_t app_ota_init(void);
  * percentage progress will send as event to event loop, consumers like UI can then use them
  * to render progress UI element.
  * event:
- * - VIEW_EVENT_OTA_AI_MODEL
+ * - CTRL_EVENT_OTA_AI_MODEL
  * This function will block until AI model download done or failed, error code will be returned
  * if failed.
 */
 esp_err_t app_ota_ai_model_download(char *url, int size_bytes);
 
+esp_err_t app_ota_ai_model_download_abort();
+
 /**
  * caller should listen to event loop to get percentage progess, the progress event will be
- * sent on flash chunk written rhythm, consumers can then down speed to slower rhythm, e.g. 10%,
- * report to BLE on that slower rhythm.
+ * at a step size 10%.
  * caller should also listen to event loop to get failure state and failure reason.
  * events:
- * - VIEW_EVENT_OTA_ESP32_FW
- * - VIEW_EVENT_OTA_HIMAX_FW
+ * - CTRL_EVENT_OTA_ESP32_FW
+ * - CTRL_EVENT_OTA_HIMAX_FW
  * This function will not block, caller should asynchronously get result and progress via events above.
 */
 esp_err_t app_ota_esp32_fw_download(char *url);

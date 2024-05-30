@@ -21,6 +21,8 @@
 #include "sdkconfig.h"
 #include "esp_heap_caps.h"
 
+
+#include "app_rgb.h"
 #include "at_cmd.h"
 #include "app_ble.h"
 #include "app_device_info.h"
@@ -232,7 +234,7 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
             }
             if (status == ESP_GATT_OK && prepare_write_env->prepare_buf == NULL)
             {
-                prepare_write_env->prepare_buf = heap_caps_calloc(1,PREPARE_BUF_MAX_SIZE * sizeof(uint8_t), MALLOC_CAP_SPIRAM);
+                prepare_write_env->prepare_buf = heap_caps_malloc(PREPARE_BUF_MAX_SIZE * sizeof(uint8_t), MALLOC_CAP_SPIRAM);
 
                 prepare_write_env->prepare_len = 0;
                 if (prepare_write_env->prepare_buf == NULL)
@@ -502,12 +504,13 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             break;
         }
         case ESP_GATTS_WRITE_EVT: {
-            ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %" PRIu32 ", handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
-
+            // ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %" PRIu32 ", handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
+            // ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT_TAG, value len %d, value :", param->write.len);
+                esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
             if (!param->write.is_prep)
             {
-                ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT_TAG, value len %d, value :", param->write.len);
-                esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
+                // ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT_TAG, value len %d, value :", param->write.len);
+                // esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
 
                 if (param->write.len == 2)
                 {
@@ -639,7 +642,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             /* For the IOS system, please reference the apple official documents about the ble connection parameters restrictions. */
             conn_params.latency = 0;
             conn_params.max_int = 0x20; // max_int = 0x20*1.25ms = 40ms
-            conn_params.min_int = 0x10; // min_int = 0x10*1.25ms = 20ms
+            conn_params.min_int = 0x20; // min_int = 0x10*1.25ms = 20ms
             conn_params.timeout = 400;  // timeout = 400*10ms = 4000ms
             ESP_LOGI(GATTS_TAG, "ESP_GATTS_CONNECT_EVT, conn_id %d, remote %02x:%02x:%02x:%02x:%02x:%02x:", param->connect.conn_id, param->connect.remote_bda[0], param->connect.remote_bda[1],
                 param->connect.remote_bda[2], param->connect.remote_bda[3], param->connect.remote_bda[4], param->connect.remote_bda[5]);
@@ -840,6 +843,7 @@ void ble_config_entry(void)
 
     while (1)
     {
+        
         if (ble_status == BLE_DISCONNECTED)
         {
             ret = esp_ble_gap_start_advertising(&adv_params);
@@ -852,6 +856,7 @@ void ble_config_entry(void)
                 ESP_LOGI("BLE_BUTTON", "start advertising succeeded");
             }
             ble_status = STATUS_WAITTING;
+            //set_rgb_with_priority(AT_CMD_CALLER,breath_red);
         }
         else if (ble_status == BLE_CONNECTED)
         {
@@ -865,11 +870,11 @@ void ble_config_entry(void)
                 ESP_LOGI("BLE_BUTTON", "stop advertising succeeded");
             }
             ble_status = STATUS_WAITTING;
+            release_rgb(AT_CMD_CALLER);
         }
         else
         {
             vTaskDelay(1000);
         }
     }
-    vTaskDelay(100);
 }

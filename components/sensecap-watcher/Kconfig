@@ -13,6 +13,13 @@ menu "SenseCAP Watcher BSP Configuration"
     help
         "Audio mic value gain"
 
+    config BSP_LCD_DEFAULT_BRIGHTNESS
+    int "LCD default brightness"
+    range 0 100
+    default 100
+    help
+        "LCD default brightness"
+
     config BSP_LCD_PANEL_SPI_TRANS_Q_DEPTH
         int "LCD panel SPI trans_queue_depth"
         range 1 2

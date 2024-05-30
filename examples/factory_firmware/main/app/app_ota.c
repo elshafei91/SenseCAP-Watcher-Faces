@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdatomic.h>
+#include <sys/param.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/ringbuf.h"
@@ -33,8 +35,9 @@ ESP_EVENT_DEFINE_BASE(OTA_EVENT_BASE);
 
 #define HTTPS_TIMEOUT_MS                30000
 #define HTTPS_DOWNLOAD_RETRY_TIMES      5
+#define HTTP_RX_CHUNK_SIZE              512
 #define SSCMA_FLASH_CHUNK_SIZE          128   //this value is copied from the `sscma_client_ota` example
-#define AI_MODEL_RINGBUFF_SIZE          256
+#define AI_MODEL_RINGBUFF_SIZE          102400
 
 enum {
     OTA_TYPE_ESP32 = 1,
@@ -46,13 +49,17 @@ enum {
 static const char *TAG = "ota";
 
 static TaskHandle_t g_task;
+static TaskHandle_t g_task_sscma_writer;
 static StaticTask_t g_task_tcb;
-static bool g_ota_running = false;
-static uint8_t network_connect_flag = 0;
+static volatile atomic_bool g_ota_running = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool g_ignore_version_check = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool g_sscma_writer_abort = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool network_connect_flag = ATOMIC_VAR_INIT(false);
 
 static SemaphoreHandle_t g_sem_network;
 static SemaphoreHandle_t g_sem_ai_model_downloaded;
 static SemaphoreHandle_t g_sem_worker_done;
+static SemaphoreHandle_t g_sem_sscma_writer_done;
 static esp_err_t g_result_err;
 static char *g_cur_ota_version_esp32;
 static char *g_cur_ota_version_himax;
@@ -62,7 +69,8 @@ static QueueHandle_t g_Q_ota_msg;
 static QueueHandle_t g_Q_ota_status;
 static RingbufHandle_t g_rb_ai_model;
 
-static bool g_ignore_version_check = false;
+
+static ota_sscma_writer_userdata_t g_sscma_writer_userdata;
 
 
 static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
@@ -105,7 +113,7 @@ static void worker_call(ota_worker_task_data_t *worker_data, int cmd)
 static int cmp_versions ( const char * version1, const char * version2 ) {
 	unsigned major1 = 0, minor1 = 0, bugfix1 = 0;
 	unsigned major2 = 0, minor2 = 0, bugfix2 = 0;
-    if (g_ignore_version_check) return 1;
+    if (atomic_load(&g_ignore_version_check)) return 1;
 	sscanf(version1, "%u.%u.%u", &major1, &minor1, &bugfix1);
 	sscanf(version2, "%u.%u.%u", &major2, &minor2, &bugfix2);
 	if (major1 < major2) return -1;
@@ -308,13 +316,172 @@ static const char *ota_type_str(int ota_type)
     else return "unknown ota";
 }
 
+static void __sscma_writer_task(void *p_arg)
+{
+    ota_sscma_writer_userdata_t *userdata = &g_sscma_writer_userdata;
+    int content_len, ota_type;
+    struct view_data_ota_status ota_status;
+
+    while (1) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        content_len = userdata->content_len;
+        ota_type = userdata->ota_type;
+        if (content_len <= 0) continue;
+
+        ESP_LOGI(TAG, "starting sscma writer, content_len=%d ...", content_len);
+
+        int32_t ota_eventid = ota_type == OTA_TYPE_HIMAX ? CTRL_EVENT_OTA_HIMAX_FW: CTRL_EVENT_OTA_AI_MODEL;
+
+        //himax interfaces
+        sscma_client_handle_t sscma_client = bsp_sscma_client_init();
+        assert(sscma_client != NULL);
+
+        sscma_client_flasher_handle_t sscma_flasher = bsp_sscma_flasher_init();
+        assert(sscma_flasher != NULL);
+
+        //sscma_client_init(sscma_client);
+
+        sscma_client_info_t *info;
+        if (sscma_client_get_info(sscma_client, &info, true) == ESP_OK)
+        {
+            ESP_LOGI(TAG, "--------------------------------------------");
+            ESP_LOGI(TAG, "           sscma client info");
+            ESP_LOGI(TAG, "ID: %s", (info->id != NULL) ? info->id : "NULL");
+            ESP_LOGI(TAG, "Name: %s", (info->name != NULL) ? info->name : "NULL");
+            ESP_LOGI(TAG, "Hardware Version: %s", (info->hw_ver != NULL) ? info->hw_ver : "NULL");
+            ESP_LOGI(TAG, "Software Version: %s", (info->sw_ver != NULL) ? info->sw_ver : "NULL");
+            ESP_LOGI(TAG, "Firmware Version: %s", (info->fw_ver != NULL) ? info->fw_ver : "NULL");
+            ESP_LOGI(TAG, "--------------------------------------------");
+        }
+        else
+        {
+            ESP_LOGW(TAG, "sscma client get info failed\n");
+            userdata->err = ESP_ERR_OTA_SSCMA_START_FAIL;
+            goto sscma_writer_end;
+        }
+
+        int64_t start = esp_timer_get_time();
+        uint32_t flash_addr = 0x0;
+        if (ota_type == OTA_TYPE_HIMAX) {
+            ESP_LOGI(TAG, "flash Himax firmware ...");
+        } else {
+            ESP_LOGI(TAG, "flash Himax 4th ai model ...");
+            flash_addr = 0xA00000;
+        }
+
+        if (sscma_client_ota_start(sscma_client, sscma_flasher, flash_addr) != ESP_OK)
+        {
+            ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
+            g_result_err = ESP_ERR_OTA_SSCMA_START_FAIL;
+            ota_status.status = OTA_STATUS_FAIL;
+            ota_status.err_code = g_result_err;
+            esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
+                                            &ota_status, sizeof(struct view_data_ota_status),
+                                            portMAX_DELAY);
+            userdata->err = ESP_ERR_OTA_SSCMA_START_FAIL;
+            goto sscma_writer_end;
+        }
+
+        // drain the ringbuffer and write to himax
+        int written_len = 0;
+        int remain_len = content_len - written_len;
+        int step_bytes = (int)(content_len / 10);
+        int last_report_bytes = step_bytes;
+        int target_bytes;
+        int retry_cnt = 0;
+        void *chunk = psram_calloc(1, SSCMA_FLASH_CHUNK_SIZE);
+        void *tmp;
+        UBaseType_t available_bytes = 0;
+        size_t rcvlen, rcvlen2;
+
+        while (remain_len > 0 && !atomic_load(&g_sscma_writer_abort)) {
+            target_bytes = MIN(SSCMA_FLASH_CHUNK_SIZE, remain_len);
+            vRingbufferGetInfo(g_rb_ai_model, NULL, NULL, NULL, NULL, &available_bytes);
+            if ((int)available_bytes < target_bytes) {
+                vTaskDelay(pdMS_TO_TICKS(1));
+                retry_cnt++;
+                if (retry_cnt > 60000) {
+                    ESP_LOGE(TAG, "sscma writer reach timeout on ringbuffer!!! want_bytes: %d", target_bytes);
+                    userdata->err = ESP_ERR_OTA_SSCMA_WRITE_FAIL;
+                    goto sscma_writer_end0;
+                }
+                continue;
+            }
+            retry_cnt = 0;
+
+            rcvlen = 0, rcvlen2 = 0;
+            tmp = xRingbufferReceiveUpTo(g_rb_ai_model, &rcvlen, 0, target_bytes);
+            if (!tmp) {
+                ESP_LOGW(TAG, "sscma writer, ringbuffer insufficient? this should never happen!");
+                userdata->err = ESP_ERR_OTA_SSCMA_INTERNAL_ERR;
+                goto sscma_writer_end0;
+            }
+            memset(chunk, 0, SSCMA_FLASH_CHUNK_SIZE);
+            memcpy(chunk, tmp, rcvlen);
+            target_bytes -= rcvlen;
+            vRingbufferReturnItem(g_rb_ai_model, tmp);
+            //rollover?
+            if (target_bytes > 0) {
+                tmp = xRingbufferReceiveUpTo(g_rb_ai_model, &rcvlen2, 0, target_bytes);  //receive the 2nd part
+                if (!tmp) {
+                    ESP_LOGW(TAG, "sscma writer, ringbuffer insufficient? this should never happen [2]!");
+                    userdata->err = ESP_ERR_OTA_SSCMA_INTERNAL_ERR;
+                    goto sscma_writer_end0;
+                }
+                memcpy(chunk + rcvlen, tmp, rcvlen2);
+                target_bytes -= rcvlen2;
+                vRingbufferReturnItem(g_rb_ai_model, tmp);
+            }
+
+            if (target_bytes != 0) {
+                ESP_LOGW(TAG, "sscma writer, this really should never happen!");
+                userdata->err = ESP_ERR_OTA_SSCMA_INTERNAL_ERR;
+                goto sscma_writer_end0;
+            }
+
+            //write to sscma client
+            // ESP_LOGD(TAG, "sscma writer, sscma_client_ota_write");
+            if (sscma_client_ota_write(sscma_client, chunk, SSCMA_FLASH_CHUNK_SIZE) != ESP_OK)
+            {
+                ESP_LOGW(TAG, "sscma writer, sscma_client_ota_write failed\n");
+                userdata->err = ESP_ERR_OTA_SSCMA_WRITE_FAIL;
+                goto sscma_writer_end0;
+            } else {
+                written_len += (rcvlen + rcvlen2);
+                if (written_len >= last_report_bytes) {
+                    ota_status.status = OTA_STATUS_DOWNLOADING;
+                    ota_status.percentage = (int)(100 * written_len / content_len);
+                    ota_status.err_code = ESP_OK;
+                    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid,
+                                        &ota_status, sizeof(struct view_data_ota_status),
+                                        portMAX_DELAY);
+                    last_report_bytes += step_bytes;
+                    ESP_LOGI(TAG, "%s ota, bytes written: %d, %d%%", ota_type_str(ota_type), written_len, ota_status.percentage);
+                }
+            }
+
+            remain_len -= (rcvlen + rcvlen2);
+        }  //while
+
+        if (atomic_load(&g_sscma_writer_abort)) {
+            sscma_client_ota_abort(sscma_client);
+            ESP_LOGW(TAG, "%s sscma writer, abort, take %lld us", ota_type_str(ota_type), esp_timer_get_time() - start);
+        } else {
+            ESP_LOGD(TAG, "%s sscma writer, write done, take %lld us", ota_type_str(ota_type), esp_timer_get_time() - start);
+            sscma_client_ota_finish(sscma_client);
+            ESP_LOGI(TAG, "%s sscma writer, finish, take %lld us", ota_type_str(ota_type), esp_timer_get_time() - start);
+        }
+sscma_writer_end0:
+        free(chunk);
+sscma_writer_end:
+        xSemaphoreGive(g_sem_sscma_writer_done);
+    }
+}
+
 static esp_err_t __http_event_handler(esp_http_client_event_t *evt)
 {
-    static int content_len, written_len, last_report_bytes, step_bytes;
-
-    ota_http_userdata_t *userdata = evt->user_data;
-    int ota_type = userdata->ota_type;
-    struct view_data_ota_status ota_status;
+    static int content_len, written_len, step_bytes, last_report_bytes;
+    ota_sscma_writer_userdata_t *userdata = evt->user_data;
 
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
@@ -324,13 +491,15 @@ static esp_err_t __http_event_handler(esp_http_client_event_t *evt)
             ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
             content_len = 0;
             written_len = 0;
-            last_report_bytes = 0;
             //clear the ringbuffer
             void *tmp;
             size_t len;
             while ((tmp = xRingbufferReceiveUpTo(g_rb_ai_model, &len, 0, AI_MODEL_RINGBUFF_SIZE))) {
                 vRingbufferReturnItem(g_rb_ai_model, tmp);
             }
+            atomic_store(&g_sscma_writer_abort, false);
+            xSemaphoreTake(g_sem_sscma_writer_done, 0);  //clear the semaphore if there's dirty one
+
             break;
         case HTTP_EVENT_HEADER_SENT:
             ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
@@ -344,120 +513,28 @@ static esp_err_t __http_event_handler(esp_http_client_event_t *evt)
             if (content_len == 0) {
                 content_len = esp_http_client_get_content_length(evt->client);
                 ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, content_len=%d", content_len);
+                userdata->content_len = content_len;
+                userdata->err = ESP_OK;
+                xTaskNotifyGive(g_task_sscma_writer);
+
                 step_bytes = (int)(content_len / 10);
                 last_report_bytes = step_bytes;
             }
 
             //push to ringbuffer
-            if (xRingbufferSend(g_rb_ai_model, evt->data, evt->data_len, 0) != pdTRUE) {
+            //himax will move the written bytes into flash every 1MB, it will take pretty long.
+            //we give it 1min?
+            if (xRingbufferSend(g_rb_ai_model, evt->data, evt->data_len, pdMS_TO_TICKS(60000)) != pdTRUE) {
                 ESP_LOGW(TAG, "HTTP_EVENT_ON_DATA, ringbuffer full? this should never happen!");
             }
-
-            UBaseType_t bytes_waiting = 0;
-            vRingbufferGetInfo(g_rb_ai_model, NULL, NULL, NULL, NULL, &bytes_waiting);
-
-            while (bytes_waiting >= SSCMA_FLASH_CHUNK_SIZE) {
-                //it's certain that we have a SSCMA_FLASH_CHUNK_SIZE bytes
-                int target = SSCMA_FLASH_CHUNK_SIZE;
-                void *chunk = psram_calloc(1, SSCMA_FLASH_CHUNK_SIZE);
-                size_t rcvlen = 0, rcvlen2 = 0;
-                void *item = xRingbufferReceiveUpTo(g_rb_ai_model, &rcvlen, 0, SSCMA_FLASH_CHUNK_SIZE);
-                if (!item) {
-                    ESP_LOGW(TAG, "HTTP_EVENT_ON_DATA, ringbuffer insufficient? this should never happen!");
-                    free(chunk);
-                    break;
-                }
-                memcpy(chunk, item, rcvlen);
-                target -= rcvlen;
-                vRingbufferReturnItem(g_rb_ai_model, item);
-
-                //rollover?
-                if (target > 0) {
-                    item = xRingbufferReceiveUpTo(g_rb_ai_model, &rcvlen2, 0, target);  //receive the 2nd part
-                    if (!item) {
-                        ESP_LOGW(TAG, "HTTP_EVENT_ON_DATA, ringbuffer insufficient? this should never happen [2]!");
-                        free(chunk);
-                        break;
-                    }
-                    memcpy(chunk + rcvlen, item, rcvlen2);
-                    target -= rcvlen2;
-                    vRingbufferReturnItem(g_rb_ai_model, item);
-                }
-
-                if (target != 0) ESP_LOGW(TAG, "HTTP_EVENT_ON_DATA, this really should never happen!");
-
-                //write to sscma client
-                ESP_LOGV(TAG, "HTTP_EVENT_ON_DATA, sscma_client_ota_write");
-                if (sscma_client_ota_write(userdata->client, chunk, SSCMA_FLASH_CHUNK_SIZE) != ESP_OK)
-                {
-                    ESP_LOGW(TAG, "sscma_client_ota_write failed\n");
-                    *(userdata->err) = ESP_ERR_OTA_SSCMA_WRITE_FAIL;
-                } else {
-                    written_len += SSCMA_FLASH_CHUNK_SIZE;
-                    if (written_len >= last_report_bytes) {
-                        ota_status.status = OTA_STATUS_DOWNLOADING;
-                        ota_status.percentage = (int)(100 * written_len / content_len);
-                        ota_status.err_code = ESP_OK;
-                        int32_t eventid = ota_type == OTA_TYPE_HIMAX ? CTRL_EVENT_OTA_HIMAX_FW: CTRL_EVENT_OTA_AI_MODEL;
-                        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, eventid,
-                                            &ota_status, sizeof(struct view_data_ota_status),
-                                            portMAX_DELAY);
-                        last_report_bytes += step_bytes;
-                        ESP_LOGI(TAG, "%s ota, bytes written: %d, %d%%", ota_type_str(ota_type), written_len, ota_status.percentage);
-                    }
-                }
-
-                free(chunk);
-
-                vRingbufferGetInfo(g_rb_ai_model, NULL, NULL, NULL, NULL, &bytes_waiting);
+            written_len += evt->data_len;
+            if (written_len >= last_report_bytes) {
+                ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, http get len: %d, %d%%", written_len, (int)(100 * written_len / content_len));
+                last_report_bytes += step_bytes;
             }
-
             break;
         case HTTP_EVENT_ON_FINISH:
             ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
-            //there might be some bytes left in the ringbuffer, copy them out
-            UBaseType_t bytes_left = 0;
-            vRingbufferGetInfo(g_rb_ai_model, NULL, NULL, NULL, NULL, &bytes_left);
-
-            if (bytes_left > 0) {
-                if (bytes_left >= SSCMA_FLASH_CHUNK_SIZE) ESP_LOGW(TAG, "HTTP_EVENT_ON_FINISH, amazing!");
-                ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH, byte left in ringbuffer: %d", (int)bytes_left);
-
-                void *chunk = psram_calloc(1, SSCMA_FLASH_CHUNK_SIZE);
-                void *tmp;
-                size_t len, copied = 0;
-                while ((tmp = xRingbufferReceiveUpTo(g_rb_ai_model, &len, 0, AI_MODEL_RINGBUFF_SIZE))) {
-                    memcpy(chunk + copied, tmp, len);
-                    copied += len;
-                    vRingbufferReturnItem(g_rb_ai_model, tmp);
-                    ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH, byte left in ringbuffer: %d, copied len: %d", (int)bytes_left, copied);
-                }
-                if (copied != bytes_left) ESP_LOGW(TAG, "HTTP_EVENT_ON_FINISH, amazing again!");
-
-                //write to sscma client
-                if (sscma_client_ota_write(userdata->client, chunk, SSCMA_FLASH_CHUNK_SIZE) != ESP_OK)
-                {
-                    ESP_LOGW(TAG, "sscma_client_ota_write failed\n");
-                    *(userdata->err) = ESP_ERR_OTA_SSCMA_WRITE_FAIL;
-                } else {
-                    written_len += SSCMA_FLASH_CHUNK_SIZE;
-                    if (written_len >= last_report_bytes) {
-                        ota_status.status = OTA_STATUS_DOWNLOADING;
-                        ota_status.percentage = (int)(100 * written_len / content_len);
-                        ota_status.err_code = ESP_OK;
-                        int32_t eventid = ota_type == OTA_TYPE_HIMAX ? CTRL_EVENT_OTA_HIMAX_FW: CTRL_EVENT_OTA_AI_MODEL;
-                        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, eventid,
-                                            &ota_status, sizeof(struct view_data_ota_status),
-                                            portMAX_DELAY);
-                        last_report_bytes += step_bytes;
-                        ESP_LOGI(TAG, "%s ota, bytes written: %d, %d%%", ota_type_str(ota_type), written_len, ota_status.percentage);
-                    }
-                }
-
-                free(chunk);
-            }
-
-            sscma_client_ota_finish(userdata->client);
             break;
         case HTTP_EVENT_DISCONNECTED:
             ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
@@ -477,64 +554,7 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
     struct view_data_ota_status ota_status;
     int32_t ota_eventid = ota_type == OTA_TYPE_HIMAX ? CTRL_EVENT_OTA_HIMAX_FW: CTRL_EVENT_OTA_AI_MODEL;
 
-    //himax interfaces
-    esp_io_expander_handle_t io_expander = bsp_io_expander_init();
-    assert(io_expander != NULL);
-
-    sscma_client_handle_t sscma_client = bsp_sscma_client_init();
-    assert(sscma_client != NULL);
-
-    sscma_client_flasher_handle_t sscma_flasher = bsp_sscma_flasher_init();
-    assert(sscma_flasher != NULL);
-
-    //sscma_client_init(sscma_client);
-
-    sscma_client_info_t *info;
-    if (sscma_client_get_info(sscma_client, &info, true) == ESP_OK)
-    {
-        ESP_LOGI(TAG, "--------------------------------------------");
-        ESP_LOGI(TAG, "           sscma client info");
-        ESP_LOGI(TAG, "ID: %s", (info->id != NULL) ? info->id : "NULL");
-        ESP_LOGI(TAG, "Name: %s", (info->name != NULL) ? info->name : "NULL");
-        ESP_LOGI(TAG, "Hardware Version: %s", (info->hw_ver != NULL) ? info->hw_ver : "NULL");
-        ESP_LOGI(TAG, "Software Version: %s", (info->sw_ver != NULL) ? info->sw_ver : "NULL");
-        ESP_LOGI(TAG, "Firmware Version: %s", (info->fw_ver != NULL) ? info->fw_ver : "NULL");
-        ESP_LOGI(TAG, "--------------------------------------------");
-    }
-    else
-    {
-        ESP_LOGW(TAG, "sscma client get info failed\n");
-    }
-
     int64_t start = esp_timer_get_time();
-    uint32_t flash_addr = 0x0;
-    if (ota_type == OTA_TYPE_HIMAX) {
-        ESP_LOGI(TAG, "flash Himax firmware ...");
-    } else {
-        ESP_LOGI(TAG, "flash Himax 4th ai model ...");
-        flash_addr = 0xA00000;
-    }
-
-    if (sscma_client_ota_start(sscma_client, sscma_flasher, flash_addr) != ESP_OK)
-    {
-        ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
-        g_result_err = ESP_ERR_OTA_SSCMA_START_FAIL;
-        ota_status.status = OTA_STATUS_FAIL;
-        ota_status.err_code = g_result_err;
-        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
-                                        &ota_status, sizeof(struct view_data_ota_status),
-                                        portMAX_DELAY);
-        return;
-    }
-
-    //build the bridge struct
-    esp_err_t err_in_http_events = ESP_OK;
-    ota_http_userdata_t ota_http_userdata = {
-        .client = sscma_client,
-        .flasher = sscma_flasher,
-        .ota_type = (int)ota_type,
-        .err = &err_in_http_events
-    };
 
     //https init
     esp_http_client_config_t *http_client_config = NULL;
@@ -547,8 +567,8 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
     http_client_config->method = HTTP_METHOD_GET;
     http_client_config->timeout_ms = HTTPS_TIMEOUT_MS;
     http_client_config->crt_bundle_attach = esp_crt_bundle_attach;
-    http_client_config->user_data = &ota_http_userdata;
-    http_client_config->buffer_size = SSCMA_FLASH_CHUNK_SIZE;
+    http_client_config->user_data = &g_sscma_writer_userdata;
+    http_client_config->buffer_size = HTTP_RX_CHUNK_SIZE;
     http_client_config->event_handler = __http_event_handler;
 #ifdef CONFIG_SKIP_COMMON_NAME_CHECK
     http_client_config->skip_cert_common_name_check = true;
@@ -558,27 +578,34 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
     ESP_GOTO_ON_FALSE(http_client != NULL, ESP_ERR_OTA_CONNECTION_FAIL, sscma_ota_end,
                       TAG, "sscma ota, http client init fail");
 
+    g_sscma_writer_userdata.ota_type = ota_type;
+    g_sscma_writer_userdata.http_client = http_client;
+
     esp_err_t err = esp_http_client_perform(http_client);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "sscma ota, HTTP GET Status = %d, content_length = %"PRId64,
+        ESP_LOGI(TAG, "sscma ota, HTTP GET Status = %d, content_length = %"PRId64", take %lld us",
                 esp_http_client_get_status_code(http_client),
-                esp_http_client_get_content_length(http_client));
-        if (err_in_http_events != ESP_OK) {
-            ret = err_in_http_events;
-        } else {
-            vTaskDelay(50 / portTICK_PERIOD_MS);
-            ESP_LOGI(TAG, "%s ota success, take %lld us\n", ota_type_str(ota_type), esp_timer_get_time() - start);
-        }
+                esp_http_client_get_content_length(http_client),
+                esp_timer_get_time() - start);
+        
+        xSemaphoreTake(g_sem_sscma_writer_done, portMAX_DELAY);
+
+        if (atomic_load(&g_sscma_writer_abort)) ret = ESP_ERR_OTA_USER_CANCELED;
+
     } else {
         ESP_LOGE(TAG, "sscma ota, HTTP GET request failed: %s", esp_err_to_name(err));
         //error defines:
         //https://docs.espressif.com/projects/esp-idf/zh_CN/v5.2.1/esp32s3/api-reference/protocols/esp_http_client.html#macros
         ret = ESP_ERR_OTA_DOWNLOAD_FAIL;  //we sum all these errors as download failure, easier for upper caller
+
+        atomic_store(&g_sscma_writer_abort, true);
+        xSemaphoreTake(g_sem_sscma_writer_done, pdMS_TO_TICKS(10));
     }
 
 sscma_ota_end:
     if (http_client_config) free(http_client_config);
     if (http_client) esp_http_client_cleanup(http_client);
+    g_sscma_writer_userdata.http_client = NULL;
 
     g_result_err = ret;
 
@@ -599,20 +626,20 @@ static void __app_ota_task(void *p_arg)
     while (1) {
         // wait for network connection
         xSemaphoreTake(g_sem_network, pdMS_TO_TICKS(10000));
-        if (!network_connect_flag)
+        if (!atomic_load(&network_connect_flag))
         {
             continue;
         }
-        //give the time to more important tasks right after the network is established
-        vTaskDelay(pdMS_TO_TICKS(3000));
 
         ESP_LOGI(TAG, "network established, waiting for OTA request ...");
+        //give the time to more important tasks right after the network is established
+        vTaskDelay(pdMS_TO_TICKS(3000));
 
         do {
             if (xQueuePeek(g_Q_ota_cmd, cmd, portMAX_DELAY)) {
                 ota_type = cmd->ota_type;
 
-                g_ota_running = true;
+                atomic_store(&g_ota_running, true);
                 if (ota_type == OTA_TYPE_ESP32) {
                     //xTaskNotifyGive(g_task_worker);  // wakeup the task
                     esp32_ota_process(cmd->url);
@@ -624,11 +651,11 @@ static void __app_ota_task(void *p_arg)
                 } else {
                     ESP_LOGW(TAG, "unknown ota type: %" PRIu32, ota_type);
                 }
-                g_ota_running = false;
+                atomic_store(&g_ota_running, false);
 
                 xQueueReceive(g_Q_ota_cmd, cmd, portMAX_DELAY);
             }
-        } while (network_connect_flag);
+        } while (atomic_load(&network_connect_flag));
     }
 }
 
@@ -746,7 +773,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
 {
     ESP_LOGI(TAG, "starting mqtt ota executor task ...");
 
-    while (!network_connect_flag) {
+    while (!atomic_load(&network_connect_flag)) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
@@ -758,7 +785,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
 
     while (1) {
         if (xQueuePeek(g_Q_ota_msg, &ota_msg_cjson, portMAX_DELAY)) {
-            if (g_ota_running) {
+            if (atomic_load(&g_ota_running)) {
                 goto cleanup;  // an ota is under going, might be issued manually by console command, just drop
             }
 
@@ -1006,7 +1033,7 @@ static void __app_event_handler(void *handler_args, esp_event_base_t event_base,
             {
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_ST");
                 struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
-                network_connect_flag = p_st->is_network ? 1 : 0;
+                atomic_store(&network_connect_flag, p_st->is_network);
                 xSemaphoreGive(g_sem_network);
                 break;
             }
@@ -1040,19 +1067,32 @@ static void __app_event_handler(void *handler_args, esp_event_base_t event_base,
     }
 }
 
-#if CONFIG_ENABLE_TEST_ENV
+#if (CONFIG_ENABLE_TEST_ENV && CONFIG_OTA_TEST)
+static void __ota_test_timer_cb(void *arg)
+{
+    app_ota_ai_model_download_abort();
+}
+
 static void __ota_test_task(void *p_arg)
 {
-    while (!network_connect_flag) {
+    while (!atomic_load(&network_connect_flag)) {
         vTaskDelay(pdMS_TO_TICKS(3000));
     }
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    // vTaskDelay(pdMS_TO_TICKS(3000));
 
     // esp_err_t res = app_ota_esp32_fw_download("https://new.pxspeed.site/factory_firmware.bin");
     // ESP_LOGI(TAG, "test app_ota_esp32_fw_download: 0x%x", res);
 
-    // esp_err_t res = app_ota_ai_model_download("https://new.pxspeed.site/human_pose.tflite", 0);
-    // ESP_LOGI(TAG, "test app_ota_ai_model_download: 0x%x", res);
+    esp_timer_create_args_t timer0args = {.callback = __ota_test_timer_cb};
+    esp_timer_handle_t timer0;
+    esp_timer_create(&timer0args, &timer0);
+    esp_timer_start_once(timer0, 10*1000000);
+
+
+    esp_err_t res = app_ota_ai_model_download("https://sensecraft-statics.oss-accelerate.aliyuncs.com/refer/model/1715757421743_aZ3WX5_epoch_50_int8.tflite", 0);
+    ESP_LOGI(TAG, "test app_ota_ai_model_download: 0x%x", res);
+
+    vTaskDelay(pdMS_TO_TICKS(30000));
 
     vTaskDelete(NULL);
 }
@@ -1067,6 +1107,9 @@ esp_err_t app_ota_init(void)
     g_sem_network = xSemaphoreCreateBinary();
     g_sem_ai_model_downloaded = xSemaphoreCreateBinary();
     g_sem_worker_done = xSemaphoreCreateBinary();
+    g_sem_sscma_writer_done = xSemaphoreCreateBinary();
+
+    memset(&g_sscma_writer_userdata, 0, sizeof(ota_sscma_writer_userdata_t));
 
     // Q init
     const int q_size = 2;
@@ -1092,12 +1135,17 @@ esp_err_t app_ota_init(void)
     // ota main task
     const uint32_t stack_size = 10 * 1024;
     StackType_t *task_stack = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
-    g_task = xTaskCreateStatic(__app_ota_task, "app_ota", stack_size, NULL, 1, task_stack, &g_task_tcb);
+    g_task = xTaskCreateStatic(__app_ota_task, "app_ota", stack_size, NULL, 9, task_stack, &g_task_tcb);
 
     // task for handling incoming mqtt
     StackType_t *task_stack1 = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
     StaticTask_t *task_tcb1 = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
     xTaskCreateStatic(__mqtt_ota_executor_task, "mqtt_ota", stack_size, NULL, 2, task_stack1, task_tcb1);
+
+    // task for sscma writer
+    StackType_t *task_stack2 = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
+    StaticTask_t *task_tcb2 = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+    g_task_sscma_writer = xTaskCreateStatic(__sscma_writer_task, "ota_sscma_writer", stack_size, NULL, 9, task_stack2, task_tcb2);
 
     ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, __sys_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTP_CLIENT_EVENT, ESP_EVENT_ANY_ID, __sys_event_handler, NULL));
@@ -1113,10 +1161,10 @@ esp_err_t app_ota_init(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                                                     __app_event_handler, NULL));
 
-#if CONFIG_ENABLE_TEST_ENV
-    StackType_t *task_stack2 = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
-    StaticTask_t *task_tcb2 = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
-    xTaskCreateStatic(__ota_test_task, "ota_test", stack_size, NULL, 1, task_stack2, task_tcb2);
+#if (CONFIG_ENABLE_TEST_ENV && CONFIG_OTA_TEST)
+    StackType_t *task_stacktest = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
+    StaticTask_t *task_tcbtest = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+    xTaskCreateStatic(__ota_test_task, "ota_test", stack_size, NULL, 1, task_stacktest, task_tcbtest);
 #endif
 
     return ESP_OK;
@@ -1140,6 +1188,17 @@ esp_err_t app_ota_ai_model_download(char *url, int size_bytes)
     xSemaphoreTake(g_sem_ai_model_downloaded, portMAX_DELAY);
 
     return g_result_err;
+}
+
+esp_err_t app_ota_ai_model_download_abort()
+{
+    esp_err_t ret = ESP_FAIL;
+    if (atomic_load(&g_ota_running) && g_sscma_writer_userdata.http_client) {
+        ESP_LOGD(TAG, "app_ota_ai_model_download_abort");
+        ret = esp_http_client_cancel_request(g_sscma_writer_userdata.http_client);
+        atomic_store(&g_sscma_writer_abort, true);
+    }
+    return ret;
 }
 
 esp_err_t app_ota_esp32_fw_download(char *url)
@@ -1176,5 +1235,5 @@ esp_err_t app_ota_himax_fw_download(char *url)
 
 void  app_ota_any_ignore_version_check(bool ignore)
 {
-    g_ignore_version_check = ignore;
+    atomic_store(&g_ignore_version_check, ignore);
 }

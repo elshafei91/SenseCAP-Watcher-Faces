@@ -108,6 +108,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
 int board_init(void)
 {
     storage_init();
+    bsp_spiffs_init(DRV_BASE_PATH_FLASH, 100);
     bsp_spiffs_init_default();
 
     bsp_io_expander_init();

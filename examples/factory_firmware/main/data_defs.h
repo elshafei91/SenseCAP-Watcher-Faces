@@ -113,10 +113,16 @@ struct view_data_audio_play_data
     uint32_t len;
 };
 
-struct view_data_deviceinfo
-{
+struct view_data_deviceinfo {
     char eui[17];
     char key[33];
+    int brightness;
+    int sound;
+    int rgb;
+    int cloud;
+    uint8_t sn[9];
+    int server_code;
+    int create_batch;
 };
 
 struct view_data_device_status
@@ -181,6 +187,8 @@ enum {
     VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE,
     VIEW_EVENT_BRIGHTNESS,
     VIEW_EVENT_RGB_SWITCH,
+    VIEW_EVENT_FACTORY_RESET_CODE,
+    VIEW_EVENT_SOUND,
     
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
@@ -219,7 +227,7 @@ enum {
 };
 //config caller
 typedef enum {
-    UI_CALLER,
+    UI_CALLER=1,
     AT_CMD_CALLER,
     BLE_CALLER,
     SR,
@@ -228,24 +236,20 @@ typedef enum {
     
     MAX_CALLER // Add new callers before MAX_CALLER
 }caller;
-//RGB service type
-typedef enum {
-    breath_red,
-    breath_green,
-    breath_blue,
-    breath_white,
+typedef struct ai_service_param
+{
+    char host[20];
+    char port[20];
+} ai_service_param;
 
-    glint_red,
-    glint_green,
-    glint_blue,
-    glint_white,
+typedef struct ai_service_pack
+{
+    ai_service_param ai_text;
+    ai_service_param ai_vision;
+    int saved_flag;
+} ai_service_pack;
 
-    flare_red,
-    flare_green,
-    flare_white,
-    flare_blue,
-    off
-}rgb_service_t;
+
 /************************************************
  * Control Data Defines
 *************************************************/

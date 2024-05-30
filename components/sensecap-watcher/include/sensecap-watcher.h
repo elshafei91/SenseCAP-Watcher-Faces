@@ -171,7 +171,7 @@
 #define DRV_BASE_PATH_SD    "/sdcard"
 #define DRV_BASE_PATH_FLASH "/spiffs"
 
-#define BSP_PWR_START_UP (BSP_PWR_SDCARD | BSP_PWR_SYSTEM | BSP_PWR_CODEC_PA | BSP_PWR_AUDIO | BSP_PWR_GROVE | BSP_PWR_BAT_ADC | BSP_PWR_LCD | BSP_PWR_AI_CHIP)
+#define BSP_PWR_START_UP (BSP_PWR_SDCARD | BSP_PWR_LCD | BSP_PWR_SYSTEM | BSP_PWR_AI_CHIP | BSP_PWR_CODEC_PA | BSP_PWR_AUDIO | BSP_PWR_GROVE | BSP_PWR_BAT_ADC)
 
 #define DEC2BCD(d) (((((d) / 10) & 0x0f) << 4) + (((d) % 10) & 0x0f))
 #define BCD2DEC(b) (((((b) >> 4) & 0x0F) * 10) + ((b) & 0x0F))
@@ -282,7 +282,7 @@ esp_err_t bsp_rgb_set(uint8_t r, uint8_t g, uint8_t b);
 uint16_t bsp_battery_get_voltage(void);
 uint8_t bsp_battery_get_percent(void);
 
-void bsp_i2c_detect(i2c_port_t i2c_num);
+esp_err_t bsp_i2c_detect(i2c_port_t i2c_num);
 
 void bsp_system_deep_sleep(uint32_t time_in_sec);
 void bsp_system_reboot(void);

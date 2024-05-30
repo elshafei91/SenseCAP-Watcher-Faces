@@ -23,9 +23,8 @@ In this guide, you will learn how to integrate your UI designs and related logic
 ## ui Component
 
 The `ui` subcomponent contains all user-designed UI elements. It includes definitions for various objects created within the UI.
-<div style="text-align:center;">
-  <img src="ui_.png" alt="ui_comp" />
-</div>
+
+![uidir](img/ui_.png)
 
 ## ui_manager Component
 The `ui_manager` subcomponent contains logic functions, page navigation, and group management related to the UI.
@@ -70,7 +69,6 @@ Due to the inclusion of both touchscreen and encoder input devices in SenseCAP-W
 ```c
 
 ```
-
 
 <!-- ## Example Usage
 
