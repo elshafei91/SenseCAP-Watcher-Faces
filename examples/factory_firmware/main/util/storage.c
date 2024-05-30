@@ -18,9 +18,11 @@ ESP_EVENT_DEFINE_BASE(STORAGE_EVENT_BASE);
 enum {
     EVENT_STG_WRITE,
     EVENT_STG_READ,
+    EVENT_STG_ERASE,
 };
 
-typedef struct {
+typedef struct
+{
     SemaphoreHandle_t sem;
     char *key;
     void *data;
@@ -28,21 +30,23 @@ typedef struct {
     esp_err_t err;
 } storage_event_data_t;
 
-
 static esp_err_t __storage_write(char *p_key, void *p_data, size_t len)
 {
     nvs_handle_t my_handle;
     esp_err_t err;
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-    if (err != ESP_OK) return err;
+    if (err != ESP_OK)
+        return err;
 
-    err = nvs_set_blob(my_handle,  p_key, p_data, len);
-    if (err != ESP_OK) {
+    err = nvs_set_blob(my_handle, p_key, p_data, len);
+    if (err != ESP_OK)
+    {
         nvs_close(my_handle);
         return err;
     }
     err = nvs_commit(my_handle);
-    if (err != ESP_OK) {
+    if (err != ESP_OK)
+    {
         nvs_close(my_handle);
         return err;
     }
@@ -56,10 +60,12 @@ static esp_err_t __storage_read(char *p_key, void *p_data, size_t *p_len)
     esp_err_t err;
 
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-    if (err != ESP_OK) return err;
+    if (err != ESP_OK)
+        return err;
 
     err = nvs_get_blob(my_handle, p_key, p_data, p_len);
-    if (err != ESP_OK) {
+    if (err != ESP_OK)
+    {
         nvs_close(my_handle);
         return err;
     }
@@ -71,7 +77,8 @@ static void __storage_event_handler(void *handler_args, esp_event_base_t base, i
 {
     storage_event_data_t *evtdata = *(storage_event_data_t **)event_data;
 
-    switch (id) {
+    switch (id)
+    {
         case EVENT_STG_WRITE:
             evtdata->err = __storage_write(evtdata->key, evtdata->data, evtdata->len);
             xSemaphoreGive(evtdata->sem);
@@ -80,6 +87,9 @@ static void __storage_event_handler(void *handler_args, esp_event_base_t base, i
             evtdata->err = __storage_read(evtdata->key, evtdata->data, &(evtdata->len));
             xSemaphoreGive(evtdata->sem);
             break;
+        case EVENT_STG_ERASE:
+            nvs_flash_erase();
+            esp_restart();
         default:
             break;
     }
@@ -87,15 +97,15 @@ static void __storage_event_handler(void *handler_args, esp_event_base_t base, i
 
 int storage_init(void)
 {
-    //ESP_ERROR_CHECK(nvs_flash_erase());
+    // ESP_ERROR_CHECK(nvs_flash_erase());
     esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
     }
 
-    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, STORAGE_EVENT_BASE, ESP_EVENT_ANY_ID,
-                                                    __storage_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, STORAGE_EVENT_BASE, ESP_EVENT_ANY_ID, __storage_event_handler, NULL));
 
     return ret;
 }
@@ -103,21 +113,15 @@ int storage_init(void)
 esp_err_t storage_write(char *p_key, void *p_data, size_t len)
 {
     TaskHandle_t h = xTaskGetCurrentTaskHandle();
-    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0) {
+    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0)
+    {
         return __storage_write(p_key, p_data, len);
     }
 
-    storage_event_data_t evtdata = {
-        .sem = xSemaphoreCreateBinary(),
-        .key = p_key,
-        .data = p_data,
-        .len = len,
-        .err = ESP_OK
-    };
+    storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = p_key, .data = p_data, .len = len, .err = ESP_OK };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_WRITE,
-                      &pevtdata, sizeof(storage_event_data_t *),  portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_WRITE, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
@@ -127,21 +131,15 @@ esp_err_t storage_write(char *p_key, void *p_data, size_t len)
 esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
 {
     TaskHandle_t h = xTaskGetCurrentTaskHandle();
-    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0) {
+    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0)
+    {
         return __storage_read(p_key, p_data, p_len);
     }
 
-    storage_event_data_t evtdata = {
-        .sem = xSemaphoreCreateBinary(),
-        .key = p_key,
-        .data = p_data,
-        .len = *p_len,
-        .err = ESP_OK
-    };
+    storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = p_key, .data = p_data, .len = *p_len, .err = ESP_OK };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_READ,
-                      &pevtdata, sizeof(storage_event_data_t *),  portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_READ, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
@@ -150,3 +148,18 @@ esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
     return evtdata.err;
 }
 
+esp_err_t storage_erase()
+{
+    TaskHandle_t h = xTaskGetCurrentTaskHandle();
+
+    storage_event_data_t evtdata = {
+        .sem = xSemaphoreCreateBinary(),
+    };
+    storage_event_data_t *pevtdata = &evtdata;
+
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_ERASE, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    xSemaphoreTake(evtdata.sem, portMAX_DELAY);
+    vSemaphoreDelete(evtdata.sem);
+
+    return evtdata.err;
+}

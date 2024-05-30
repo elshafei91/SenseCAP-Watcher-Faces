@@ -24,7 +24,7 @@
 
 #define SN_TAG                    "SN_TAG"
 #define APP_DEVICE_INFO_MAX_STACK 4096
-#define SN_STORAGE_SK               "sn"
+#define SN_STORAGE_SK             "sn"
 #define BRIGHTNESS_STORAGE_KEY    "brightness"
 #define SOUND_STORAGE_KEY         "sound"
 #define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
@@ -100,8 +100,9 @@ void app_device_info_init()
     }
 }
 
-void init_sn_from_nvs(){
-    size_t size =sizeof(SN);
+void init_sn_from_nvs()
+{
+    size_t size = sizeof(SN);
     esp_err_t ret = storage_read(SN_STORAGE_SK, &SN, &size);
     if (ret == ESP_OK)
     {
@@ -116,8 +117,9 @@ void init_sn_from_nvs(){
         ESP_LOGE("NVS", "Error reading SN from NVS: %s", esp_err_to_name(ret));
     }
 }
-void init_eui_from_nvs(){
-    size_t size =sizeof(EUI);
+void init_eui_from_nvs()
+{
+    size_t size = sizeof(EUI);
     esp_err_t ret = storage_read(SN_STORAGE_SK, &EUI, &size);
     if (ret == ESP_OK)
     {
@@ -750,9 +752,9 @@ uint8_t *set_reset_factory(int caller, int value)
         ESP_LOGE("set_reset_factory_TAG", "set_reset_factory: MUTEX_reset_factory take failed");
         return NULL;
     }
+
     reset_factory_switch_past = reset_factory_switch;
     reset_factory_switch = value;
-
     xSemaphoreGive(MUTEX_reset_factory);
     return NULL;
 }
@@ -761,19 +763,15 @@ uint8_t *__set_reset_factory()
 {
     if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
     {
-        ESP_LOGE("set_reset_factory_TAG", "set_rgb_switch: MUTEX_reset_factory take failed");
+        ESP_LOGE("set_reset_factory_TAG", "reset_factory_switch: MUTEX_reset_factory take failed");
         return NULL;
     }
-    if (reset_factory_switch_past != reset_factory_switch)
+   
+    if (reset_factory_switch_past != reset_factory_switch&&reset_factory_switch_past == 1)
     {
+        ESP_LOGI("set_reset_factory_TAG", "__set_reset_factory");
+        storage_erase();
         esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
-        nvs_flash_erase();
-        printf("set_reset_factory: %d\n", reset_factory_switch);
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE("set_reset_factory_TAG", "cfg write err:%d", ret);
-            return ret;
-        }
     }
     xSemaphoreGive(MUTEX_reset_factory);
     return 0;

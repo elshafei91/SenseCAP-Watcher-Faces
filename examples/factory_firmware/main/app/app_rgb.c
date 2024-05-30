@@ -502,11 +502,6 @@ int app_rgb_init(void)
         return -1;
     }
 
-    //     TaskHandle_t system_verification_task_handle;
-    // if (xTaskCreate(system_verification_task, "system_verification_task", 4096, NULL, 5, &system_verification_task_handle) != pdPASS)
-    // {
-    //     ESP_LOGE(RGB_TAG, "Failed to create system verification task");
-    //     return -1;
-    // }
+
     return 0;
 }
