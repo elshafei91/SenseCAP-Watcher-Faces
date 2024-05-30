@@ -521,6 +521,7 @@ static int __set_rgb_switch()
             ESP_LOGE("rgb_switch_TAG", "cfg write err:%d", ret);
             return ret;
         }
+        rgb_switch_past = rgb_switch;
     }
     xSemaphoreGive(MUTEX_rgb_switch);
     return 0;
@@ -587,7 +588,7 @@ static int __set_sound()
             ESP_LOGE("BRIGHTNESS_TAG", "cfg write err:%d", ret);
             return ret;
         }
-        ret = bsp_codec_volume_set(100, NULL);
+        ret = bsp_codec_volume_set(sound_value, NULL);
         if (ret != ESP_OK)
         {
             ESP_LOGE("SOUND_TAG", "sound set err:%d", ret);
