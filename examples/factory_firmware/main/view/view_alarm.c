@@ -54,6 +54,14 @@ static void alarm_timer_start(int s)
     ESP_ERROR_CHECK(esp_timer_start_once(alarm_timer, (uint64_t)s * 1000000));
 }
 
+static void alarm_timer_stop()
+{
+    if (esp_timer_is_active(alarm_timer))
+    {
+        esp_timer_stop(alarm_timer);
+    }
+}
+
 int view_alarm_init(lv_obj_t *ui_screen)
 {
     ui_alarm_indicator = lv_arc_create(ui_screen);
@@ -132,7 +140,7 @@ _exit:
 
 int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 {
-    if(guide_step != 3){return 0;}
+    if((!wifi_page_id) && (guide_step != 3)){return 0;}
     // for switch avatar emoticon
     emoticon_disp_id = 1;
     // send focused event to call function
@@ -216,6 +224,7 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 
 void view_alarm_off(uint8_t task_down)
 {    
+    alarm_timer_stop();
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_image, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);

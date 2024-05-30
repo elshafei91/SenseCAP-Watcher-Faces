@@ -28,8 +28,8 @@
 #define AI_SERVICE_STORAGE_KEY    "aiservice"
 #define RESET_FACTORY_SK          "resetfactory"
 
-uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x50 };
-uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0xC2, 0x44, 0x81, 0x00, 0x47, 0xB0, 0x47, 0xD1, 0xD5, 0x8B, 0xC7, 0xF8, 0xFB };
+uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x69 };
+uint8_t EUI[] = { 0x1C, 0xF7, 0xF1, 0xC8, 0x62, 0x20, 0x00, 0x09, 0x7A, 0x18, 0x7A, 0xA8, 0xEE, 0x8B, 0x97, 0xFF };
 char software_version[] = "1.0.0";
 char himax_software_version[] = "1.0.0";
 int server_code = 1;
@@ -525,11 +525,11 @@ static int __set_sound()
     }
     if (sound_value_past != sound_value)
     {
-        FILE *fp = fopen("/spiffs/waitPlease.mp3", "r");
-        if (fp)
-        {
-            audio_player_play(fp);
-        }
+        // FILE *fp = fopen("/spiffs/waitPlease.mp3", "r");
+        // if (fp)
+        // {
+        //     audio_player_play(fp);
+        // }
         esp_err_t ret = storage_write(SOUND_STORAGE_KEY, &sound_value, sizeof(sound_value));
         if (ret != ESP_OK)
         {

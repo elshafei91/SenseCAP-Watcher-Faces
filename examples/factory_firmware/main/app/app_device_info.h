@@ -16,6 +16,8 @@ ai_service_pack *get_ai_service(int caller);
 uint8_t *get_cloud_service_switch(int caller);
 uint8_t *get_brightness(int caller);
 uint8_t *set_brightness(int caller, int value);
+uint8_t *get_sound(int caller);
+uint8_t *set_sound(int caller, int value);
 uint8_t *set_rgb_switch(int caller, int value);
 uint8_t *get_rgb_switch(int caller);
 uint8_t *get_reset_factory(int caller);

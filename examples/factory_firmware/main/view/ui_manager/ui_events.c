@@ -263,7 +263,12 @@ void main3f_cb(lv_event_t *e)
 void main4c_cb(lv_event_t *e)
 {
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
-    get_sn(0);
+    lv_slider_set_range(ui_bslider, 1, 100);
+    lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+    get_sn(UI_CALLER);
+    get_brightness(UI_CALLER);
+    get_rgb_switch(UI_CALLER);
+    get_sound(UI_CALLER);
 }
 
 void main4f_cb(lv_event_t *e)
@@ -353,7 +358,7 @@ void viewasl_cb(lv_event_t * e)
             }else if(guide_step == 0){
                 guide_step = 1;
                 lv_group_set_wrap(g_main, false);
-                vTaskDelay(500 / portTICK_PERIOD_MS);
+                vTaskDelay(2000 / portTICK_PERIOD_MS);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
             }
         }else{
@@ -373,7 +378,7 @@ void viewasl_cb(lv_event_t * e)
             }else if(guide_step == 0){
                 guide_step = 1;
                 lv_group_set_wrap(g_main, false);
-                vTaskDelay(500 / portTICK_PERIOD_MS);
+                vTaskDelay(2000 / portTICK_PERIOD_MS);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
             }
         }else{
@@ -425,7 +430,7 @@ void viewlsl_cb(lv_event_t * e)
     if((!wifi_page_id)  && (guide_step!=3))
     {
         guide_step = 2;
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
         lv_obj_move_foreground(ui_viewlivp3);
         lv_obj_clear_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
     }
@@ -818,13 +823,13 @@ void setblec_cb(lv_event_t *e)
     {
         case 1:
             lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
-            ESP_LOGI(TAG, "ble_btn_status: off");
-            set_ble_status(0, 0);
+            // ESP_LOGI(TAG, "ble_btn_status: off");
+            set_ble_status(UI_CALLER, 0);
             break;
         case 0:
             lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
-            ESP_LOGI(TAG, "ble_btn_status: on");
-            set_ble_status(0, 1);
+            // ESP_LOGI(TAG, "ble_btn_status: on");
+            set_ble_status(UI_CALLER, 1);
             break;
 
         default:
@@ -840,10 +845,12 @@ void setrgbc_cb(lv_event_t *e)
     {
         case 0:
             lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
+            set_rgb_switch(UI_CALLER, 0);
 
             break;
         case 1:
             lv_obj_clear_state(ui_setrgbsw, LV_STATE_CHECKED);
+            set_rgb_switch(UI_CALLER, 1);
 
             break;
 
@@ -964,6 +971,7 @@ void volvc_cb(lv_event_t *e)
 void volre_cb(lv_event_t *e)
 {
     // write volume value into nvs and post event
+    set_sound(UI_CALLER, volbri.vs_value);
 }
 
 void brivc_cb(lv_event_t *e)
@@ -978,6 +986,7 @@ void brivc_cb(lv_event_t *e)
 void brire_cb(lv_event_t *e)
 {
     // write brightness value into nvs and post event
+    set_brightness(UI_CALLER, volbri.bs_value);
 }
 
 void hap_cb(lv_event_t *e)
