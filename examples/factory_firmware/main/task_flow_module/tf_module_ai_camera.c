@@ -37,6 +37,18 @@ static void __data_unlock( tf_module_ai_camera_t *p_module)
     xSemaphoreGive(p_module->sem_handle);  
 }
 
+static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
+{
+    tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)handler_args;
+    struct view_data_ota_status *p_status = ( struct view_data_ota_status *)p_event_data;
+
+    // if ota success,  will restart device. so don't  restart sscma.
+    if( p_status->status == OTA_STATUS_FAIL && p_module_ins->start_flag) {
+        ESP_LOGI(TAG, "Himax FW Download fail, start sscma client");
+        xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
+    }
+}
+
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)handler_args;
@@ -340,7 +352,7 @@ static int __get_camera_sensor_resolution(cJSON *payload)
         case (640+480):
             return TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_640_480;
         default:
-            ESP_LOGE(TAG, "unknown resolution: %d, %d", (width+height));
+            ESP_LOGW(TAG, "unknown resolution: %d, %d", (width+height));
             return -1;
     }
 }
@@ -519,7 +531,7 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
         }
         default:
             xEventGroupSetBits(p_module_ins->event_group, EVENT_PRVIEW_416_416);
-            ESP_LOGE(TAG, "Ignored this resolution: %d", resolution);
+            ESP_LOGW(TAG, "Ignored this resolution: %d", resolution);
             break;
     }
 }
@@ -914,6 +926,7 @@ static void ai_camera_task(void *p_arg)
                     ESP_LOGI(TAG, "Use local model: %d", p_params->model.model_type);
                     if(sscma_client_set_model(p_module_ins->sscma_client_handle, p_params->model.model_type) != ESP_OK) {
                         ESP_LOGI(TAG, "Failed to set model:%d\n", p_params->model.model_type);
+                        err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL;
                     }
                 }
 
@@ -940,6 +953,9 @@ static void ai_camera_task(void *p_arg)
                     } else {
                         ESP_LOGI(TAG, "  N/A");
                     }
+                } else {
+                    ESP_LOGE(TAG, "Failed to get model info\n");
+                    err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL;
                 }
             } else {
                 ESP_LOGI(TAG, "Do not use model");
@@ -963,7 +979,7 @@ static void ai_camera_task(void *p_arg)
         if( ( bits & EVENT_STOP ) != 0 ) {
             sscma_client_break(p_module_ins->sscma_client_handle);
             ESP_LOGI(TAG, "EVENT_STOP");
-            vTaskDelay(1000 / portTICK_PERIOD_MS); //TODO , wait sscma handle event done
+            vTaskDelay(1000 / portTICK_PERIOD_MS); //wait sscma handle event done
             run_flag = false;
 
             xEventGroupClearBits(p_module_ins->event_group, \
@@ -979,7 +995,10 @@ static void ai_camera_task(void *p_arg)
 static int __start(void *p_module)
 {
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)p_module;
+
+    p_module_ins->start_flag = true;
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
+
     return 0;
 }
 
@@ -991,6 +1010,7 @@ static int __stop(void *p_module)
 
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP);
     xEventGroupWaitBits(p_module_ins->event_group, EVENT_STOP_DONE, 1, 1, portMAX_DELAY);
+    p_module_ins->start_flag = false;
 
     __data_lock(p_module_ins);
     if( p_module_ins->p_output_evt_id ) {
@@ -1171,7 +1191,10 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
         ESP_LOGI(TAG,"Firmware Version: %s", (p_module_ins->himax_info->fw_ver != NULL) ? p_module_ins->himax_info->fw_ver : "NULL");
     }
 
-    // TODO event register
+    ret = esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_HIMAX_FW,
+                                                    __ota_event_handler, p_module_ins);
+    ESP_GOTO_ON_ERROR(ret, err, TAG, "ota esp_event_handler_register failed");
+
     return &p_module_ins->module_serv;
 
 err:
