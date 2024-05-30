@@ -19,6 +19,7 @@ uint8_t wifi_page_id;
 lv_obj_t * view_show_img;
 static int PNG_LOADING_COUNT = 0;
 extern uint8_t task_down;
+extern uint8_t first_use;
 
 
 static void update_ai_ota_progress(int percentage)
@@ -54,6 +55,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     sprintf(load_per, "%d%%", progress_percentage);
                     lv_label_set_text(ui_Label5, load_per);
                 }
+                break;
+            }
+
+            case VIEW_EVENT_FACTORY_RESET_CODE:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_FACTORY_RESET_CODE");
+                first_use = (uint8_t*)event_data;
+
                 break;
             }
 
@@ -290,6 +298,10 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, 
                                                             __view_event_handler, NULL, NULL)); 
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_FACTORY_RESET_CODE, 
+                                                            __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME, 
