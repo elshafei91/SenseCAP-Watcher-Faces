@@ -1,5 +1,7 @@
 #include "app_png.h"
 #include "esp_log.h"
+#include "data_defs.h"
+#include "event_loops.h"
 #include "esp_system.h"
 #include "esp_heap_caps.h"
 #include <stdio.h>
@@ -99,6 +101,7 @@ void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_ds
                     
                     create_img_dsc(&img_dsc_array[*image_count], data, size);
                     (*image_count)++;
+                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, portMAX_DELAY);
                 }
             }
         }
