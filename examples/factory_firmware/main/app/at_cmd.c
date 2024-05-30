@@ -262,22 +262,6 @@ void AT_command_reg()
     add_command(&commands, "emoji=", handle_emoji_command);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 static int emoji_index = 1;
 static char *emoji_name_prefix;
 static char *emoji_name_final;
@@ -452,15 +436,12 @@ void handle_emoji_command(char *params)
     cJSON_Delete(root);
 }
 
+static int cloud_service_switch;
 
-
-
-static int cloud_service_switch ;
-
-void handle_cloud_service_qurey_command(char *params){
+void handle_cloud_service_qurey_command(char *params)
+{
     printf("Handling handle_cloud_service_qurey_command \n");
 
-    
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
@@ -474,9 +455,6 @@ void handle_cloud_service_qurey_command(char *params){
     send_at_response(&response);
     cJSON_Delete(root);
 }
-
-
-
 
 void handle_cloud_service_command(char *params)
 {
@@ -574,6 +552,12 @@ void handle_deviceinfo_cfg_command(char *params)
             int rgbswitch_value = rgbswitch->valueint;
             set_rgb_switch(AT_CMD_CALLER, rgbswitch_value);
         }
+        cJSON *soundvolume = cJSON_GetObjectItemCaseSensitive(data, "volume");
+        if (cJSON_IsNumber(rgbswitch))
+        {
+            int volume = soundvolume ->valueint;
+            set_sound(AT_CMD_CALLER, volume);
+        }
     }
     else
     {
@@ -584,15 +568,15 @@ void handle_deviceinfo_cfg_command(char *params)
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     int brightness_value_resp = get_brightness(AT_CMD_CALLER);
-
+    int sound_value_resp = get_sound(AT_CMD_CALLER);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "timezone");
     cJSON_AddNumberToObject(root, "code", 0);
     cJSON_AddItemToObject(root, "data", data_rep);
-    cJSON_AddStringToObject(data_rep, "timezone", "");
-    cJSON_AddStringToObject(data_rep, "wakeword", "");
-    cJSON_AddStringToObject(data_rep, "volume", "");
+    //cJSON_AddStringToObject(data_rep, "timezone", "");
+    //cJSON_AddStringToObject(data_rep, "wakeword", "");
+    cJSON_AddStringToObject(data_rep, "volume", sound_value_resp);
     cJSON_AddNumberToObject(data_rep, "brightness", brightness_value_resp);
     char *json_string = cJSON_Print(root);
     printf("JSON String: %s\n", json_string);
@@ -636,11 +620,14 @@ void handle_deviceinfo_command(char *params)
     cJSON_AddNumberToObject(root, "code", 0);
 
     cJSON *data = cJSON_CreateObject();
+
+    char * eui_rsp =(char*)get_eui();
+    char * bt_mac_rsp =(char*)get_bt_mac();
     cJSON_AddItemToObject(root, "data", data);
 
-    cJSON_AddStringToObject(data, "eui", "1");
+    cJSON_AddStringToObject(data, "eui", (const char *)eui_rsp);
     cJSON_AddStringToObject(data, "token", "1");
-    cJSON_AddStringToObject(data, "blemac", "123");
+    cJSON_AddStringToObject(data, "blemac",(const char *) bt_mac_rsp);
     cJSON_AddStringToObject(data, "version", "1");
     cJSON_AddStringToObject(data, "timezone", "01");
 
@@ -845,10 +832,8 @@ void handle_eui_command(char *params)
     printf("Handling eui command\n");
 }
 
-
-
-
-void handle_taskflow_query_command(char *params){
+void handle_taskflow_query_command(char *params)
+{
     printf("Handling handle_taskflow_query_command \n");
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
@@ -861,12 +846,6 @@ void handle_taskflow_query_command(char *params){
     send_at_response(&response);
     cJSON_Delete(root);
 }
-
-
-
-
-
-
 
 /**
  * @brief Parses a JSON string and concatenates task information into an array of Task structures.
@@ -892,7 +871,7 @@ void handle_taskflow_query_command(char *params){
 static size_t total_size;
 void parse_json_and_concatenate(char *json_string)
 {
-    //printf("Params: %s\n", json_string);
+    // printf("Params: %s\n", json_string);
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL)
     {
@@ -1033,7 +1012,7 @@ void handle_taskflow_command(char *params)
 {
     esp_err_t code = ESP_OK;
     printf("Handling taskflow command\n");
-    //printf("Params: %s\n", params);
+    // printf("Params: %s\n", params);
     parse_json_and_concatenate(params);
 
     int all_received = 1;
@@ -1062,9 +1041,9 @@ void handle_taskflow_command(char *params)
         concatenate_data(result);
         unsigned char *base64_output;
         size_t output_len;
-        //printf("Final data: %s\n", result);
+        // printf("Final data: %s\n", result);
         base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
-        //printf("Decoded data: %s\n", base64_output);
+        // printf("Decoded data: %s\n", base64_output);
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &result, sizeof(char *), portMAX_DELAY);
     }
 
@@ -1095,7 +1074,7 @@ void handle_taskflow_command(char *params)
  */
 static void hex_to_string(uint8_t *hex, int hex_size, char *output)
 {
-    //esp_log_buffer_hex("HEX TAG1", hex, hex_size);
+    // esp_log_buffer_hex("HEX TAG1", hex, hex_size);
     for (int i = 0; i <= hex_size; i++)
     {
         output[i] = (char)hex[i];
@@ -1125,7 +1104,7 @@ void task_handle_AT_command()
         // xReceivedBytes = xStreamBufferReceive(xStreamBuffer, &msg_at, sizeof(msg_at), portMAX_DELAY);
         if (xQueueReceive(message_queue, &msg_at, portMAX_DELAY) == pdPASS)
         {
-            //printf("Received message: %s\n", msg_at.msg);
+            // printf("Received message: %s\n", msg_at.msg);
         }
         else
         {
@@ -1141,7 +1120,7 @@ void task_handle_AT_command()
             printf("Memory allocation failed\n");
         }
         printf("AT command received\n");
-        //esp_log_buffer_hex("HEX TAG1", test_strings, strlen(test_strings));
+        // esp_log_buffer_hex("HEX TAG1", test_strings, strlen(test_strings));
         regex_t regex;
         int ret;
         ret = regcomp(&regex, pattern, REG_EXTENDED);

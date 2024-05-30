@@ -19,5 +19,9 @@ uint8_t *set_brightness(int caller, int value);
 uint8_t *set_rgb_switch(int caller, int value);
 uint8_t *get_rgb_switch(int caller);
 uint8_t *get_reset_factory(int caller);
-
+uint8_t *get_sound(int caller);
+uint8_t *set_sound(int caller, int value);
+uint8_t *get_bt_mac();
+uint8_t *get_eui();
+uint8_t *get_sn_code();
 #endif

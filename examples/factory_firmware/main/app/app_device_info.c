@@ -5,6 +5,9 @@
 #include "event_loops.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_bt.h"
+#include "esp_bt_main.h"
+#include "esp_bt_device.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -21,6 +24,7 @@
 
 #define SN_TAG                    "SN_TAG"
 #define APP_DEVICE_INFO_MAX_STACK 4096
+#define SN_STORAGE_SK               "sn"
 #define BRIGHTNESS_STORAGE_KEY    "brightness"
 #define SOUND_STORAGE_KEY         "sound"
 #define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
@@ -96,6 +100,39 @@ void app_device_info_init()
     }
 }
 
+void init_sn_from_nvs(){
+    size_t size =sizeof(SN);
+    esp_err_t ret = storage_read(SN_STORAGE_SK, &SN, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI("NVS", "SN value loaded from NVS: %s", SN);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI("NVS", "No SN value found in NVS. Using default: %s", SN);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading SN from NVS: %s", esp_err_to_name(ret));
+    }
+}
+void init_eui_from_nvs(){
+    size_t size =sizeof(EUI);
+    esp_err_t ret = storage_read(SN_STORAGE_SK, &EUI, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI("NVS", "EUI value loaded from NVS: %s", EUI);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI("NVS", "No EUI value found in NVS. Using default: %s", EUI);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading SN from NVS: %s", esp_err_to_name(ret));
+    }
+}
+
 void init_ai_service_param_from_nvs()
 {
     size_t size = sizeof(ai_service);
@@ -127,10 +164,6 @@ void init_rgb_switch_from_nvs()
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
         ESP_LOGI("NVS", "No rgb_switch value found in NVS. Using default: %d", rgb_switch);
-        if (rgb_switch == 1)
-        {
-            // set_rgb_with_priority(UI_CALLER, off);
-        }
     }
     else
     {
@@ -270,6 +303,24 @@ uint8_t *get_sn(int caller)
         xSemaphoreGive(MUTEX_SN);
         return result;
     }
+}
+
+uint8_t *get_bt_mac()
+{
+    const uint8_t *bd_addr = esp_bt_dev_get_address();
+    if (bd_addr)
+    {
+        ESP_LOGI("BT", "Bluetooth MAC Address: %02X:%02X:%02X:%02X:%02X:%02X", bd_addr[0], bd_addr[1], bd_addr[2], bd_addr[3], bd_addr[4], bd_addr[5]);
+    }
+    else
+    {
+        ESP_LOGE("BT", "Failed to get Bluetooth MAC Address");
+    }
+    return bd_addr;
+}
+uint8_t *get_sn_code()
+{
+    return SN;
 }
 
 uint8_t *get_eui()
