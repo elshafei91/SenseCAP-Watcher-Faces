@@ -327,9 +327,11 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
     if( p_err_module != NULL ) {
         strncpy(status.module_name, p_err_module, sizeof(status.module_name) - 1);
         status.module_status = -1; // general error
+        p_module_name = p_err_module;
     } else {
         status.module_status = 0;  // no error
         strncpy(status.module_name, "unknown", sizeof(status.module_name) - 1);
+        p_module_name = "unknown";
     }
 
     //notify UI and ble
@@ -495,6 +497,8 @@ static void __view_event_handler(void* handler_args,
                 char uuid[37];
                 size_t len = strlen(p_task_flow);
                 UUIDGen(uuid);
+
+                tf_engine_flow_set(p_task_flow, len);
 
                 if( p_taskflow->mqtt_connect_flag ) {
                     ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
