@@ -357,6 +357,7 @@ void viewasl_cb(lv_event_t * e)
                 lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
                 lv_group_remove_all_objs(g_main);
                 lv_group_add_obj(g_main, ui_viewavap2);
+                // lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
                 lv_group_set_wrap(g_main, true);
             }else if(guide_step == 0){
                 guide_step = 1;
@@ -415,7 +416,7 @@ void ava2c_cb(lv_event_t *e)
 
 void avagc_cb(lv_event_t * e)
 {
-    if((!first_use) && (guide_step!=3)){
+    if(guide_step == 2){
         lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
         lv_event_send(ui_Page_ViewAva, LV_EVENT_CLICKED, NULL);
