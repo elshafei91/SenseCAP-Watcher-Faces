@@ -312,7 +312,7 @@ void bsp_system_shutdown(void)
 
 bool bsp_system_is_charging(void)
 {
-    return bsp_exp_io_get_level(BSP_PWR_CHRG_DET) == 0;
+    return !(bsp_exp_io_get_level(BSP_PWR_CHRG_DET) == 0);
 }
 
 bool bsp_system_is_standby(void)
