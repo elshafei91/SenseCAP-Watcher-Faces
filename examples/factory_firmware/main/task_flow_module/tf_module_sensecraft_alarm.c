@@ -5,7 +5,6 @@
 #include "tf_util.h"
 #include "esp_log.h"
 #include "esp_check.h"
-#include "tf_module_img_analyzer.h"
 #include "app_sensecraft.h"
 
 static const char *TAG = "tfm.sensecraft_alarm";

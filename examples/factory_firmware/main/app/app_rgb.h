@@ -20,7 +20,8 @@ typedef enum {
     flare_green,
     flare_white,
     flare_blue,
-    off
+    off,
+    on
 }rgb_service_t;
 int app_rgb_init(void);
 void set_rgb_with_priority(int caller, int service);

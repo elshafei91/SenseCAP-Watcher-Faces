@@ -6,7 +6,6 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include <mbedtls/base64.h>
-#include "tf_module_img_analyzer.h" // declaration tf_data_dualimage_with_audio_text_t
 
 static const char *TAG = "tfm.alarm_trigger";
 
@@ -88,6 +87,8 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), portMAX_DELAY);
     }
     __data_unlock(p_module_ins);
+
+    tf_data_free(p_event_data);
 }
 /*************************************************************************
  * Interface implementation
@@ -134,7 +135,7 @@ static int __msgs_sub_set(void *p_module, int evt_id)
 
 static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int num)
 {
-    tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)p_module;
+    tf_module_alarm_trigger_t *p_module_ins = (tf_module_alarm_trigger_t *)p_module;
     __data_lock(p_module_ins);
     if (output_index == 0 && num > 0)
     {

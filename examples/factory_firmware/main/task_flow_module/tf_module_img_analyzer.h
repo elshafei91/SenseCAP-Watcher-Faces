@@ -62,15 +62,6 @@ struct tf_module_img_analyzer_result
     struct tf_data_buf   audio;
 };
 
-typedef struct tf_data_dualimage_with_audio_text
-{
-    uint8_t type; //TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT
-    struct tf_data_image img_small;
-    struct tf_data_image img_large;
-    struct tf_data_buf   audio;
-    struct tf_data_buf   text;
-} tf_data_dualimage_with_audio_text_t;
-
 typedef struct tf_module_img_analyzer
 {
     tf_module_t module_serv;

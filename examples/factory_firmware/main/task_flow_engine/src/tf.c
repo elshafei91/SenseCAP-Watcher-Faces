@@ -26,7 +26,7 @@ static void __data_unlock( tf_engine_t *p_engine)
     xSemaphoreGive(p_engine->sem_handle);  
 }
 
-static void __status_cb( tf_engine_t *p_engine, int status)
+static void __status_cb( tf_engine_t *p_engine, int status, const char *p_err_module)
 {
     tf_engine_status_cb_t  status_cb = NULL;
     void * p_status_cb_arg = NULL;
@@ -39,7 +39,7 @@ static void __status_cb( tf_engine_t *p_engine, int status)
     __data_unlock(p_engine);
 
     if( status_cb ) {
-        status_cb(p_status_cb_arg, tid, status);
+        status_cb(p_status_cb_arg, tid, status, p_err_module);
     }
 }
 void __modules_item_print(tf_module_item_t *p_head, int num)
@@ -54,8 +54,9 @@ int __modules_index_compare(const void *a, const void *b)
 {
     return ((tf_module_item_t *)b)->index - ((tf_module_item_t *)a)->index;
 }
-static int __modules_init(tf_engine_t *p_engine, tf_module_item_t *p_head, int num)
-{   
+static int __modules_init(tf_engine_t *p_engine, tf_module_item_t *p_head, int num, const char **pp_err_module)
+{
+    *pp_err_module = NULL;   
     if( p_head == NULL || num <= 0 ) {
         return ESP_FAIL;
     }
@@ -81,13 +82,15 @@ static int __modules_init(tf_engine_t *p_engine, tf_module_item_t *p_head, int n
         __data_unlock(p_engine);
         if( p_head[i].mgmt_handle == NULL ) {
             ESP_LOGE(TAG, "Not find module: %s", p_head[i].p_name);
+            *pp_err_module = p_head[i].p_name;
             return ESP_FAIL;
         }
     }
     return ESP_OK;
 }
-static int __modules_instance(tf_module_item_t *p_head, int num)
+static int __modules_instance(tf_module_item_t *p_head, int num, const char **pp_err_module)
 {
+    *pp_err_module = NULL;
     if( p_head ==NULL || num <= 0 ) {
         return ESP_FAIL;
     }
@@ -95,6 +98,7 @@ static int __modules_instance(tf_module_item_t *p_head, int num)
         p_head[i].handle = p_head[i].mgmt_handle->tf_module_instance();
         if(p_head[i].handle == NULL) {
             ESP_LOGE(TAG, "module %s instance failed", p_head[i].p_name);
+            *pp_err_module = p_head[i].p_name;
             return ESP_FAIL;
         }
     }
@@ -112,9 +116,10 @@ static int __modules_destroy(tf_module_item_t *p_head, int num)
     }
    return ESP_OK;
 }
-static int __modules_start(tf_module_item_t *p_head, int num)
+static int __modules_start(tf_module_item_t *p_head, int num, const char **pp_err_module)
 {
     int ret = ESP_OK;
+    *pp_err_module = NULL;
     if( p_head ==NULL || num <= 0 ) {
         return ESP_FAIL;
     }
@@ -122,6 +127,7 @@ static int __modules_start(tf_module_item_t *p_head, int num)
         ret = tf_module_start(p_head[i].handle);
         if(ret != ESP_OK) {
             ESP_LOGE(TAG, "Module %s start failed", p_head[i].p_name);
+            *pp_err_module = p_head[i].p_name;
             return ret;
         }
     }
@@ -143,9 +149,10 @@ static int __modules_stop(tf_module_item_t *p_head, int num)
     }
    return ESP_OK;
 }
-static int __modules_cfg(tf_module_item_t *p_head, int num)
+static int __modules_cfg(tf_module_item_t *p_head, int num, const char **pp_err_module)
 {
     int ret = ESP_OK;
+    *pp_err_module = NULL;
     if( p_head ==NULL || num <= 0 ) {
         return ESP_FAIL;
     }
@@ -154,15 +161,17 @@ static int __modules_cfg(tf_module_item_t *p_head, int num)
         ret = tf_module_cfg(p_head[i].handle, p_head[i].p_params);
         if(ret != ESP_OK) {
             ESP_LOGE(TAG, "Module %s cfg failed", p_head[i].p_name);
+            *pp_err_module = p_head[i].p_name;
             return ret;
         }
     }
    return ESP_OK;
 }
 
-static int __modules_msgs_sub_set(tf_module_item_t *p_head, int num)
+static int __modules_msgs_sub_set(tf_module_item_t *p_head, int num, const char **pp_err_module)
 {
     int ret = ESP_OK;
+    *pp_err_module = NULL;
     if( p_head ==NULL || num <= 0 ) {
         return ESP_FAIL;
     }
@@ -170,14 +179,16 @@ static int __modules_msgs_sub_set(tf_module_item_t *p_head, int num)
         ret = tf_module_msgs_sub_set(p_head[i].handle, p_head[i].id);
         if(ret != ESP_OK) {
             ESP_LOGE(TAG, "Module %s msgs sub set failed", p_head[i].p_name);
+            *pp_err_module = p_head[i].p_name;
             return ret;
         }
     }
    return ESP_OK;
 }
-static int __modules_msgs_pub_set(tf_module_item_t *p_head, int num)
+static int __modules_msgs_pub_set(tf_module_item_t *p_head, int num, const char **pp_err_module)
 {
     int ret = ESP_OK;
+    *pp_err_module = NULL;
     if( p_head ==NULL || num <= 0 ) {
         return ESP_FAIL;
     }
@@ -187,6 +198,7 @@ static int __modules_msgs_pub_set(tf_module_item_t *p_head, int num)
                                          p_head[i].p_wires->p_evt_id, p_head[i].p_wires->num);
             if(ret != ESP_OK) {
                 ESP_LOGE(TAG, "Module %s msgs pub set failed", p_head[i].p_name);
+                *pp_err_module = p_head[i].p_name;
                 return ret;
             }
         }
@@ -206,7 +218,7 @@ static int __stop(tf_engine_t *p_engine)
     memset(&p_engine->tf_info, 0, sizeof(tf_info_t));
     __data_unlock(p_engine);
 
-    __status_cb(p_engine, TF_STATUS_STOP);
+    __status_cb(p_engine, TF_STATUS_STOP, NULL);
     
     return ESP_OK;
 }
@@ -220,6 +232,7 @@ static void __tf_engine_task(void *p_arg)
     int ret =  0;
     ESP_LOGI(TAG, "tf engine task start");
     bool run_flag = false;
+    const char *p_err_module = NULL;
 
     while (1)
     { 
@@ -234,7 +247,7 @@ static void __tf_engine_task(void *p_arg)
         if( ( bits & EVENT_STOP ) != 0  &&  run_flag) {
             ESP_LOGI(TAG, "EVENT_STOP");
             __stop(p_engine);
-            __status_cb(p_engine, TF_STATUS_STOP);
+            __status_cb(p_engine, TF_STATUS_STOP, NULL);
             run_flag = false;
         }
 
@@ -252,7 +265,7 @@ static void __tf_engine_task(void *p_arg)
                 run_flag = false;
             }
 
-            __status_cb(p_engine, TF_STATUS_STARTING);
+            __status_cb(p_engine, TF_STATUS_STARTING, NULL);
 
             __data_lock(p_engine);
             ret = tf_parse_json_with_length( flow.p_data, flow.len, &p_engine->cur_flow_root, &p_engine->p_module_head, &p_engine->tf_info);
@@ -261,7 +274,7 @@ static void __tf_engine_task(void *p_arg)
 
             if( ret  <= 0) {
                 ESP_LOGE(TAG, "parse json failed");
-                __status_cb(p_engine, TF_STATUS_ERR_JSON_PARSE);
+                __status_cb(p_engine, TF_STATUS_ERR_JSON_PARSE, NULL);
                 continue;
             }
             tf_free(flow.p_data);
@@ -274,49 +287,48 @@ static void __tf_engine_task(void *p_arg)
             __modules_item_print(p_engine->p_module_head, p_engine->module_item_num);
             ESP_LOGI(TAG, "====================");
            
-
-            ret = __modules_init(p_engine, p_engine->p_module_head, p_engine->module_item_num);
+            ret = __modules_init(p_engine, p_engine->p_module_head, p_engine->module_item_num, &p_err_module);
             if( ret != ESP_OK ) {
-                __status_cb(p_engine, TF_STATUS_ERR_MODULE_NOT_FOUND);
+                __status_cb(p_engine, TF_STATUS_ERR_MODULE_NOT_FOUND, p_err_module);
                 continue;
             }
 
-            ret =  __modules_instance(p_engine->p_module_head, p_engine->module_item_num);
+            ret =  __modules_instance(p_engine->p_module_head, p_engine->module_item_num, &p_err_module);
             if( ret != ESP_OK ) {
-                __status_cb(p_engine, TF_STATUS_ERR_MODULES_INSTANCE);
+                __status_cb(p_engine, TF_STATUS_ERR_MODULES_INSTANCE, p_err_module);
                 xEventGroupSetBits(p_engine->event_group, EVENT_ERR_EXIT);
                 continue;
             }
 
-           ret =  __modules_cfg(p_engine->p_module_head, p_engine->module_item_num);
+            ret =  __modules_cfg(p_engine->p_module_head, p_engine->module_item_num, &p_err_module);
             if( ret != ESP_OK ) {
-                __status_cb(p_engine, TF_STATUS_ERR_MODULES_PARAMS);
+                __status_cb(p_engine, TF_STATUS_ERR_MODULES_PARAMS, p_err_module);
                 xEventGroupSetBits(p_engine->event_group, EVENT_ERR_EXIT);
                 continue;
             }
 
-            ret =  __modules_msgs_sub_set(p_engine->p_module_head, p_engine->module_item_num);
+            ret =  __modules_msgs_sub_set(p_engine->p_module_head, p_engine->module_item_num, &p_err_module);
             if( ret != ESP_OK ) {
-                __status_cb(p_engine, TF_STATUS_ERR_MODULES_WIRES);
+                __status_cb(p_engine, TF_STATUS_ERR_MODULES_WIRES, p_err_module);
                 xEventGroupSetBits(p_engine->event_group, EVENT_ERR_EXIT);
                 continue;
             }
 
-            ret = __modules_msgs_pub_set(p_engine->p_module_head, p_engine->module_item_num);
+            ret = __modules_msgs_pub_set(p_engine->p_module_head, p_engine->module_item_num, &p_err_module);
             if( ret != ESP_OK ) {
-                __status_cb(p_engine, TF_STATUS_ERR_MODULES_WIRES);
+                __status_cb(p_engine, TF_STATUS_ERR_MODULES_WIRES, p_err_module);
                 xEventGroupSetBits(p_engine->event_group, EVENT_ERR_EXIT);
                 continue;
             }
 
-            ret = __modules_start(p_engine->p_module_head, p_engine->module_item_num);
+            ret = __modules_start(p_engine->p_module_head, p_engine->module_item_num, &p_err_module);
             if( ret != ESP_OK ) {
-                __status_cb(p_engine, TF_STATUS_ERR_MODULES_START);
+                __status_cb(p_engine, TF_STATUS_ERR_MODULES_START, p_err_module);
                 xEventGroupSetBits(p_engine->event_group, EVENT_ERR_EXIT);
                 continue;
             }
 
-            __status_cb(p_engine, TF_STATUS_RUNNING);
+            __status_cb(p_engine, TF_STATUS_RUNNING, NULL);
             run_flag = true;
         }
         // vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -453,6 +465,18 @@ esp_err_t tf_engine_flow_set(const char *p_str, size_t len)
     return ESP_OK;
 }
 
+char* tf_engine_flow_get(void)
+{
+    assert(gp_engine);
+    char *p_json = NULL;
+    __data_lock(gp_engine);
+    if( gp_engine->cur_flow_root){
+        p_json = cJSON_PrintUnformatted(gp_engine->cur_flow_root);
+    }
+    __data_unlock(gp_engine);
+    return p_json;
+}
+
 esp_err_t tf_engine_tid_get(intmax_t *p_tid)
 {
     assert(gp_engine);
@@ -544,7 +568,7 @@ esp_err_t tf_module_register(const char *p_name,
         }
     }
 
-    tf_module_node_t *p_node = (tf_module_node_t *)malloc(sizeof(tf_module_node_t));
+    tf_module_node_t *p_node = (tf_module_node_t *)tf_malloc(sizeof(tf_module_node_t));
     if (p_node == NULL)
     {
         __data_unlock(gp_engine);

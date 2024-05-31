@@ -1,7 +1,7 @@
 #include "tf_module_util.h"
 #include "tf_module_data_type.h"
 #include "tf_util.h"
-#include "tf_module_img_analyzer.h"
+
 const char * tf_data_type_to_str(uint8_t type)
 {
     switch (type)

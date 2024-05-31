@@ -12,7 +12,6 @@
 #include "app_audio.h"
 #include "data_defs.h"
 #include "event_loops.h"
-#include "tf_module_img_analyzer.h"
 #include "app_rgb.h"
 
 
@@ -60,14 +59,15 @@ static int __params_parse(struct tf_module_local_alarm_params *p_params, cJSON *
     }
     return 0;
 }
-
-static void __timer_callback(void* p_arg)
+static void __alarm_off( tf_module_local_alarm_t *p_module_ins )
 {
-    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_arg;
     struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
-    if( p_params->rgb) {
-        // TODO RGB OFF
+    //TODO 
+    // RGB OFF
+    // SOUND OFF
+    if( p_params->rgb && p_module_ins->is_rgb_on) {
         ESP_LOGI(TAG, "RGB OFF");
+        p_module_ins->is_rgb_on = false;
         set_rgb_with_priority(ALARM, off);
     }
     if( p_params->sound) {
@@ -76,6 +76,14 @@ static void __timer_callback(void* p_arg)
     }
 }
 
+#if TF_MODULE_LOCAL_ALARM_TIMER_ENABLE
+static void __timer_callback(void* p_arg)
+{
+    tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_arg;
+    struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
+    __alarm_off(p_module_ins);
+}
+#endif
 
  static void __audio_play_finish_cb(void)
  {  
@@ -90,20 +98,7 @@ static void __timer_callback(void* p_arg)
 static void __alarm_off_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)handler_args;
-    struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
-    
-    //TODO 
-    // RGB OFF
-    // SOUND OFF
-    if( p_params->rgb) {
-        // TODO RGB OFF
-        ESP_LOGI(TAG, "RGB OFF");
-        set_rgb_with_priority(ALARM, off);
-    }
-    if( p_params->sound) {
-        // TODO SOUND OFF
-        ESP_LOGI(TAG, "SOUND OFF");
-    }
+    __alarm_off(p_module_ins);
 }
 
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
@@ -146,6 +141,13 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_ALARM_ON, &info, sizeof(info), portMAX_DELAY);
 
+    if(p_params->rgb) {
+        // TODO RGB ON
+        ESP_LOGI(TAG, "RGB ON");
+        p_module_ins->is_rgb_on = true;
+        set_rgb_with_priority(ALARM, glint_red);
+    }
+
     if(p_params->sound) {
         ESP_LOGI(TAG, "SOUND ON");
         FILE *fp = NULL;
@@ -182,12 +184,6 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
             audio_play_task(TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE); //TODO , block??
         }
     }
-
-    if(p_params->rgb) {
-        // TODO RGB ON
-        ESP_LOGI(TAG, "RGB ON");
-        set_rgb_with_priority(ALARM, glint_red);
-    }
     
     // free data
     if( !img_small_used ) {
@@ -222,8 +218,8 @@ static int __stop(void *p_module)
 #if TF_MODULE_LOCAL_ALARM_TIMER_ENABLE
     esp_timer_stop(p_module_ins->timer_handle);
     esp_timer_delete(p_module_ins->timer_handle);
-    __timer_callback((void *)p_module_ins); // stop alarm
 #endif
+    __alarm_off(p_module_ins);
     esp_err_t ret = tf_event_handler_unregister(p_module_ins->input_evt_id, __event_handler);
     return ret;
 }
