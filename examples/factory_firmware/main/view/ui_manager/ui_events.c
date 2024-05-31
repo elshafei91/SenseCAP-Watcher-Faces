@@ -26,7 +26,7 @@ static const char *TAG = "ui_event";
 
 wifi_ap_record_t wifi_record;
 uint8_t task_down = 0;
-uint8_t first_use = 0;
+int first_use = 0;
 uint8_t guide_step = 0;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
@@ -218,6 +218,7 @@ void startload_cb(lv_event_t *e)
 void virtc_cb(lv_event_t *e)
 {
     create_timer(6);
+    get_reset_factory(UI_CALLER);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
@@ -945,7 +946,7 @@ void sliderr_cb(lv_event_t *e)
         switch (swipe_id)
         {
             case 0:
-                bsp_system_shutdown();
+                esp_restart();
                 break;
 
             case 1:
@@ -1082,11 +1083,11 @@ static void Page_ConnAPP_BLE()
 static void Task_end()
 {
     task_down = 1;
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &task_down, sizeof(uint8_t), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
     lv_obj_add_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN); /// Flags
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
     // event_post_to
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &task_down, sizeof(uint8_t), portMAX_DELAY);
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
     lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
 }
 

@@ -460,24 +460,24 @@ char *get_himax_software_version(int caller)
 
 /*--------------------------------------------rgb switch  module----------------------------------------------------------------*/
 
-uint8_t *get_rgb_switch(int caller)
+int *get_rgb_switch(int caller)
 {
     if (xSemaphoreTake(MUTEX_rgb_switch, portMAX_DELAY) != pdTRUE)
     {
         ESP_LOGE("rgb_switch_TAG", "get_brightness: MUTEX_rgb_switch take failed");
         return NULL;
     }
-    uint8_t *result = NULL;
+    int *result = NULL;
     switch (caller)
     {
         case AT_CMD_CALLER:
             ESP_LOGI("rgb_switch_TAG", "BLE get rgb_switch");
-            result = (uint8_t *)&rgb_switch;
+            result = &rgb_switch;
             break;
         case UI_CALLER:
             ESP_LOGI("rgb_switch_TAG", "UI get rgb_switch");
-            result = (uint8_t *)&rgb_switch;
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, result, sizeof(uint8_t *), portMAX_DELAY);
+            result = &rgb_switch;
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, result, sizeof(int), portMAX_DELAY);
             break;
     }
     xSemaphoreGive(MUTEX_rgb_switch);
@@ -721,15 +721,14 @@ static int __set_ai_service()
 
 /*----------------------------------------------------reset-factory--------------------------------------------------------*/
 
-uint8_t *get_reset_factory(int caller)
+int *get_reset_factory(int caller)
 {
     if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
     {
         ESP_LOGE("get_reset_factory_TAG", "get_reset_factory: MUTEX_reset_factory take failed");
         return NULL;
     }
-    uint8_t *result = NULL;
-    result = reset_factory_switch;
+    int *result = NULL;
     switch (caller)
     {
         case AT_CMD_CALLER:
@@ -737,7 +736,8 @@ uint8_t *get_reset_factory(int caller)
             break;
         case UI_CALLER:
             ESP_LOGI("get_reset_factory_TAG", "UI  get_reset_factory_TAG");
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_FACTORY_RESET_CODE, reset_factory_switch, sizeof(reset_factory_switch), portMAX_DELAY);
+            result =&reset_factory_switch;
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_FACTORY_RESET_CODE, result, sizeof(int), portMAX_DELAY);
             break;
     }
     xSemaphoreGive(MUTEX_reset_factory);
@@ -772,6 +772,7 @@ uint8_t *__set_reset_factory()
         ESP_LOGI("set_reset_factory_TAG", "__set_reset_factory");
         if(reset_factory_switch_past == 1)storage_erase();
         esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
+        reset_factory_switch_past=reset_factory_switch;
     }
     xSemaphoreGive(MUTEX_reset_factory);
     return 0;

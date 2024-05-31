@@ -19,7 +19,7 @@ uint8_t wifi_page_id;
 lv_obj_t * view_show_img;
 static int PNG_LOADING_COUNT = 0;
 extern uint8_t task_down;
-extern uint8_t first_use;
+extern int first_use;
 
 
 static void update_ai_ota_progress(int percentage)
@@ -58,12 +58,15 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            case VIEW_EVENT_FACTORY_RESET_CODE:{
+            case VIEW_EVENT_FACTORY_RESET_CODE:
+            {
                 ESP_LOGI(TAG, "event: VIEW_EVENT_FACTORY_RESET_CODE");
-                first_use = (uint8_t*)event_data;
-
+                int *reset_st = (int *)event_data;
+                first_use = (*reset_st);
+                // ESP_LOGI(TAG, "first_use_value : %d", first_use);
                 break;
             }
+
 
             case VIEW_EVENT_BATTERY_ST:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BATTERY_ST");
@@ -168,8 +171,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_RGB_SWITCH:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_RGB_SWITCH");
-                uint8_t * rgb_st = (uint8_t *)event_data;
-                if(!rgb_st)
+                int * rgb_st = (int *)event_data;
+                if(!(*rgb_st))
                 {
                     lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
                 }else{

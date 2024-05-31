@@ -13,7 +13,7 @@ lv_obj_t *ui_alarm_indicator;
 lv_anim_t a;
 
 extern uint8_t wifi_page_id;
-extern uint8_t first_use;
+extern int first_use;
 extern uint8_t guide_step;
 
 static int16_t indicator_value = 0;
