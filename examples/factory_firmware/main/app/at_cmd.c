@@ -36,7 +36,7 @@ const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=(\\{.*\\}))?\r\n$";
 command_entry *commands = NULL; // Global variable to store the commands
 static StaticTask_t at_task_buffer;
 static StackType_t *at_task_stack = NULL;
-
+static void hex_to_string(uint8_t *hex, int hex_size, char *output);
 /*------------------network DS----------------------------------------------------------*/
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
@@ -553,9 +553,9 @@ void handle_deviceinfo_cfg_command(char *params)
             set_rgb_switch(AT_CMD_CALLER, rgbswitch_value);
         }
         cJSON *soundvolume = cJSON_GetObjectItemCaseSensitive(data, "volume");
-        if (cJSON_IsNumber(rgbswitch))
+        if (cJSON_IsNumber(soundvolume))
         {
-            int volume = soundvolume ->valueint;
+            int volume = soundvolume->valueint;
             set_sound(AT_CMD_CALLER, volume);
         }
     }
@@ -571,13 +571,8 @@ void handle_deviceinfo_cfg_command(char *params)
     int sound_value_resp = get_sound(AT_CMD_CALLER);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "name", "timezone");
+    cJSON_AddStringToObject(root, "name", "deviceinfo=");
     cJSON_AddNumberToObject(root, "code", 0);
-    cJSON_AddItemToObject(root, "data", data_rep);
-    //cJSON_AddStringToObject(data_rep, "timezone", "");
-    //cJSON_AddStringToObject(data_rep, "wakeword", "");
-    cJSON_AddStringToObject(data_rep, "volume", sound_value_resp);
-    cJSON_AddNumberToObject(data_rep, "brightness", brightness_value_resp);
     char *json_string = cJSON_Print(root);
     printf("JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
@@ -621,15 +616,15 @@ void handle_deviceinfo_command(char *params)
 
     cJSON *data = cJSON_CreateObject();
 
-    char * eui_rsp =(char*)get_eui();
-    char * bt_mac_rsp =(char*)get_bt_mac();
+    char eui_rsp[17] = { 0 };
+    hex_to_string(get_eui(), 8, (const char *)eui_rsp);
+    char bt_mac_rsp[13] = { 0 };
+    hex_to_string(get_bt_mac(), 6, (const char *)bt_mac_rsp);
     cJSON_AddItemToObject(root, "data", data);
-
+    printf("eui_at here %s",eui_rsp);
+    printf("blemac_at here %s",bt_mac_rsp);
     cJSON_AddStringToObject(data, "eui", (const char *)eui_rsp);
-    cJSON_AddStringToObject(data, "token", "1");
-    cJSON_AddStringToObject(data, "blemac",(const char *) bt_mac_rsp);
-    cJSON_AddStringToObject(data, "version", "1");
-    cJSON_AddStringToObject(data, "timezone", "01");
+    cJSON_AddStringToObject(data, "blemac", (const char *)bt_mac_rsp);
 
     // add Himax_Software_Versionfield
     cJSON_AddStringToObject(data, "himaxsoftwareversion", (const char *)himax_version);
@@ -1008,6 +1003,22 @@ void base64_decode(const unsigned char *input, size_t input_len, unsigned char *
     }
 }
 
+
+
+
+static  task_flow_resp; 
+static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data){
+    switch(id){
+    case VIEW_EVENT_WIFI_CONNECT: {
+            ESP_LOGI("", "event: VIEW_EVENT_WIFI_CONNECT");
+            struct view_data_wifi_config *p_cfg = (struct view_data_wifi_config *)event_data;
+        }
+    }
+}
+
+
+
+
 void handle_taskflow_command(char *params)
 {
     esp_err_t code = ESP_OK;
@@ -1044,8 +1055,9 @@ void handle_taskflow_command(char *params)
         // printf("Final data: %s\n", result);
         base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
         // printf("Decoded data: %s\n", base64_output);
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &result, sizeof(char *), portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, output_len, portMAX_DELAY);
     }
+
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
@@ -1072,16 +1084,29 @@ void handle_taskflow_command(char *params)
  * @param output A pointer to the output buffer where the resulting string will be stored.
  *               The buffer should be large enough to hold the converted string and a null terminator.
  */
-static void hex_to_string(uint8_t *hex, int hex_size, char *output)
+static void hex_to_string(uint8_t *in_data, int Size, char *out_data)
 {
-    // esp_log_buffer_hex("HEX TAG1", hex, hex_size);
-    for (int i = 0; i <= hex_size; i++)
+    for (unsigned char i = 0; i < Size; i++)
     {
-        output[i] = (char)hex[i];
+        out_data[2 * i] = (in_data[i] >> 4);
+        out_data[2 * i + 1] = (in_data[i] & 0x0F);
     }
-    output[hex_size] = '\0';
+    for (unsigned char i = 0; i < 2 * Size; i++)
+    {
+        if ((out_data[i] >= 0) && (out_data[i] <= 9))
+        {
+            out_data[i] = '0' + out_data[i];
+        }
+        else if ((out_data[i] >= 0x0A) && (out_data[i] <= 0x0F))
+        {
+            out_data[i] = 'A' - 10 + out_data[i];
+        }
+        else
+        {
+            return;
+        }
+    }
 }
-
 /**
  * @brief A static task that handles incoming AT commands, parses them, and executes the corresponding actions.
  *
