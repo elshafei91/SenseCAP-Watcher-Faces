@@ -55,6 +55,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 
     //big image
     if (p_module_ins->include_big_image) {
+        ESP_LOGI(TAG, "include_big_image: %d", (int)p_module_ins->include_big_image);
         if (p_module_ins->output_format == 0) {
             //binary output
             uint16_t big_image_len = p_data->img_large.len;
@@ -70,6 +71,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 
     //small image
     if (p_module_ins->include_small_image) {
+        ESP_LOGI(TAG, "include_small_image: %d", (int)p_module_ins->include_small_image);
         if (p_module_ins->output_format == 0) {
             //binary output
             uint16_t small_image_len = p_data->img_small.len;
@@ -140,7 +142,6 @@ static int __cfg(void *p_module, cJSON *p_json)
     {
         ESP_LOGE(TAG, "params output_format err, default 0 (binary output)");
         p_module_ins->output_format = 0;
-        return ESP_FAIL;
     } else {
         ESP_LOGI(TAG, "params output_format=%d", output_format->valueint);
         p_module_ins->output_format = output_format->valueint;
@@ -151,7 +152,6 @@ static int __cfg(void *p_module, cJSON *p_json)
     {
         ESP_LOGE(TAG, "params include_big_image err, default false");
         p_module_ins->include_big_image = false;
-        return ESP_FAIL;
     } else {
         ESP_LOGI(TAG, "params include_big_image=%s", cJSON_IsTrue(include_big_image)?"true":"false");
         p_module_ins->include_big_image = cJSON_IsTrue(include_big_image);
@@ -162,7 +162,6 @@ static int __cfg(void *p_module, cJSON *p_json)
     {
         ESP_LOGE(TAG, "params include_small_image err, default false");
         p_module_ins->include_small_image = false;
-        return ESP_FAIL;
     } else {
         ESP_LOGI(TAG, "params include_small_image=%s", cJSON_IsTrue(include_small_image)?"true":"false");
         p_module_ins->include_small_image = cJSON_IsTrue(include_small_image);
@@ -173,7 +172,6 @@ static int __cfg(void *p_module, cJSON *p_json)
     {
         ESP_LOGE(TAG, "params include_boxes err, default false");
         p_module_ins->include_boxes = false;
-        return ESP_FAIL;
     } else {
         ESP_LOGI(TAG, "params include_boxes=%s", cJSON_IsTrue(include_boxes)?"true":"false");
         p_module_ins->include_boxes = cJSON_IsTrue(include_boxes);

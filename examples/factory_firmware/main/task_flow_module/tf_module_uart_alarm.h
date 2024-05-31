@@ -53,6 +53,8 @@ extern "C"
  * - Small Image: 240 * 240 image, base64 encoded JPG image, with boxes drawn for detected objects.
  * - Box: A area which holds the detected object, with its coordinates and score.
  * 
+ * Please note, Big Image and Small Image buffer has no string terminator '\0'.
+ * 
  * Some of the fields can be controlled by configuration of the function module, see the comments for 
  * `tf_module_uart_alarm_t` below. 
  * 
