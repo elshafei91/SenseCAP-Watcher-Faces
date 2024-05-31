@@ -13,7 +13,7 @@
 
 #include "event_loops.h"
 #include "data_defs.h"
-#include "deviceinfo.h"
+#include "app_device_info.h"
 #include "util.h"
 #include "uuid.h"
 

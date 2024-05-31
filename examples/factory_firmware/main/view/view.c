@@ -87,7 +87,20 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_BATTERY_ST:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BATTERY_ST");
                 struct view_data_device_status * bat_st = (struct view_data_device_status *)event_data;
-                ESP_LOGI(TAG, "battery_voltage: %d", bat_st->battery_per);
+                ESP_LOGI(TAG, "battery_percentage: %d", bat_st->battery_per);
+                break;
+            }
+
+            case VIEW_EVENT_BAT_DRAIN_SHUTDOWN:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_BAT_DRAIN_SHUTDOWN");
+                //TODO: render the 0 battery level UI page, and after the animate fire the VIEW_EVENT_SHUTDOWN event
+                break;
+            }
+
+            case VIEW_EVENT_CHARGE_ST:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_CHARGE_ST");
+                uint8_t is_charging = *(uint8_t *)event_data;
+                ESP_LOGI(TAG, "charging state changed: %d", is_charging);
                 break;
             } 
 
@@ -373,6 +386,14 @@ int view_init(void)
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, 
                                                             __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 

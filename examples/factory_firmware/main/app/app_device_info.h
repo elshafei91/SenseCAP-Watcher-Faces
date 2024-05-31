@@ -1,13 +1,19 @@
-#ifndef APP_DEVICEINFO_H
-#define APP_DEVICEINFO_H
-#include "stdint.h"
+#pragma once
+#include <stdint.h>
 #include "data_defs.h"
+
+
+#define DEVICEINFO_STORAGE  "deviceinfo"
 
 enum { BLE_CONNECTED, BLE_DISCONNECTED, STATUS_WAITTING };
 
-uint8_t *get_sn(int caller);
+
+int deviceinfo_get(struct view_data_deviceinfo *p_info);
+int deviceinfo_set(struct view_data_deviceinfo *p_info);
+
 void app_device_info_init();
 
+uint8_t *get_sn(int caller);
 char *get_software_version(int caller);
 char *get_himax_software_version(int caller);
 
@@ -25,4 +31,3 @@ uint8_t *set_reset_factory(int caller, int value);
 uint8_t *get_bt_mac();
 uint8_t *get_eui();
 uint8_t *get_sn_code();
-#endif

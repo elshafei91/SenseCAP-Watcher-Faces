@@ -25,7 +25,6 @@
 #include "app_cmd.h"
 #include "app_sensecraft.h"
 #include "app_rgb.h"
-#include "deviceinfo.h"
 #include "app_device_info.h"
 #include "util.h"
 #include "app_ota.h"
@@ -78,7 +77,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     case VIEW_EVENT_SHUTDOWN:
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
-        vTaskDelay(pdMS_TO_TICKS(1000));
         fflush(stdout);
         esp_restart();
         break;
@@ -119,7 +117,6 @@ int app_init(void)
     app_rgb_init();
     app_cmd_init();
     app_sensecraft_init();
-    app_device_status_monitor_init();
  
     audio_player_init();
     //app_sr_start(false);
