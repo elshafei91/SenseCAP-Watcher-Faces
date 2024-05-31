@@ -869,7 +869,7 @@ void ble_config_entry(void)
                 ESP_LOGI("BLE_BUTTON", "stop advertising succeeded");
             }
             ble_status = STATUS_WAITTING;
-            release_rgb(AT_CMD_CALLER);
+
         }
         else
         {

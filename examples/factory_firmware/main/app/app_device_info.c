@@ -512,7 +512,7 @@ static int __set_rgb_switch()
         printf("rgb_switch: %d\n", rgb_switch);
         if (rgb_switch == 1)
         {
-            release_rgb(UI_CALLER);
+            set_rgb_with_priority(UI_CALLER, on);
         }
         else
         {
