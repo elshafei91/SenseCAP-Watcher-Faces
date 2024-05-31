@@ -591,9 +591,9 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
 
     p_module_ins->task_handle = xTaskCreateStatic(img_analyzer_task,
                                                 "img_analyzer_task",
-                                                TF_MODULE_AI_CAMERA_TASK_STACK_SIZE,
+                                                TF_MODULE_IMG_ANALYZER_TASK_STACK_SIZE,
                                                 (void *)p_module_ins,
-                                                TF_MODULE_AI_CAMERA_TASK_PRIO,
+                                                TF_MODULE_IMG_ANALYZER_TASK_PRIO,
                                                 p_module_ins->p_task_stack_buf,
                                                 p_module_ins->p_task_buf);
     ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "Failed to create task");

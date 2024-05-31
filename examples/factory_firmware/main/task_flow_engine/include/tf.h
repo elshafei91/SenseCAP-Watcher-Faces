@@ -47,7 +47,7 @@ typedef struct tf_module_node
 
 typedef SLIST_HEAD(tf_module_nodes, tf_module_node) tf_module_nodes_t;
 
-typedef void (*tf_engine_status_cb_t)(void * p_arg, intmax_t tid, int status);
+typedef void (*tf_engine_status_cb_t)(void * p_arg, intmax_t tid, int status, const char *p_err_module);
 
 typedef void (*tf_module_status_cb_t)(void * p_arg, const char *p_name, int status);
 
@@ -79,6 +79,9 @@ esp_err_t tf_engine_stop(void);
 
 esp_err_t tf_engine_flow_set(const char *p_str, size_t len);
 
+// need free return data
+char* tf_engine_flow_get(void);
+
 esp_err_t tf_engine_tid_get(intmax_t *p_tid);
 
 esp_err_t tf_engine_type_get(int *p_type);
@@ -87,6 +90,7 @@ esp_err_t tf_engine_type_get(int *p_type);
 esp_err_t tf_engine_info_get(tf_info_t *p_info);
 
 esp_err_t tf_engine_status_cb_register(tf_engine_status_cb_t engine_status_cb, void *p_arg);
+
 
 esp_err_t tf_module_status_set(const char *p_module_name, int status);
 
