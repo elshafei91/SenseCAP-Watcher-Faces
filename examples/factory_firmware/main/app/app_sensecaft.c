@@ -604,8 +604,9 @@ err:
     }
     if (p_sensecraft) {
         free(p_sensecraft);
-        p_sensecraft = NULL;
+        gp_sensecraft = NULL;
     }
+    ESP_LOGE(TAG, "app_sensecraft_init fail %d!", ret);
     return ret;
 }
 

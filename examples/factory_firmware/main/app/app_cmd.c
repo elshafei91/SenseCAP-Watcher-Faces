@@ -16,6 +16,9 @@
 #include "deviceinfo.h"
 #include "util.h"
 
+#include "tf.h"
+#include "sensecap-watcher.h"
+
 static const char *TAG = "cmd";
 
 #define PROMPT_STR "SenseCAP"
@@ -264,6 +267,144 @@ static void register_cmd_force_ota(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+
+/************* taskflow import and export **************/
+static struct {
+    struct arg_lit *import;
+    struct arg_lit *export;
+    struct arg_str *file;
+    struct arg_str *json;
+    struct arg_end *end;
+} taskflow_cfg_args;
+
+static int taskflow_cmd(int argc, char **argv)
+{
+    bool import = false;
+    bool export = false;
+    bool use_sd = false;
+    char file[128] = {0};
+    char *p_json = NULL;
+    bool used_json = false;
+
+    memset(file, 0, sizeof(file));
+
+    int nerrors = arg_parse(argc, argv, (void **) &taskflow_cfg_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, taskflow_cfg_args.end, argv[0]);
+        return 1;
+    }
+
+    if (taskflow_cfg_args.export->count) {
+        export = true;
+    }
+
+    if (taskflow_cfg_args.import->count) {
+        import = true;
+    }
+
+    if ( taskflow_cfg_args.file->count ) {
+        int len = strlen(taskflow_cfg_args.file->sval[0]);
+        if( len > 0 ){
+            use_sd = true;
+            snprintf(file, sizeof(file), "/sdcard/%s", taskflow_cfg_args.file->sval[0]);
+        }
+    } else if( taskflow_cfg_args.json->count ) {
+        int len = strlen(taskflow_cfg_args.json->sval[0]);
+        if( len > 0 ){
+            p_json = psram_malloc(len+1); 
+            strncpy( p_json, taskflow_cfg_args.json->sval[0], len);
+            p_json[len] = 0;
+        }
+    }
+
+    if( import ) {
+        if( use_sd ) {
+            FILE *fp = fopen(file, "r");
+            if( fp != NULL ) {
+                fseek(fp, 0, SEEK_END);
+                int len = ftell(fp);
+                fseek(fp, 0, SEEK_SET);
+                char *p_taskflow = psram_malloc(len+1);
+                fread(p_taskflow, len, 1, fp);
+                fclose(fp);
+                ESP_LOGI(TAG, "taskflow import from SD success! %s", file);
+
+                esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_CMD, 
+                                            &p_taskflow,
+                                            sizeof(void *), /* ptr size */
+                                            portMAX_DELAY); 
+                // tf_engine_flow_set(p_taskflow, len);
+                // free(p_taskflow);
+            } else {
+                ESP_LOGE(TAG, "taskflow import from SD fail:%s!", file);
+            }
+        } else if( p_json != NULL ) {
+            ESP_LOGI(TAG, "taskflow import from json success!");
+            used_json = true;
+            esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_CMD, 
+                                        &p_json,
+                                        sizeof(void *), /* ptr size */
+                                        portMAX_DELAY); 
+        } else {
+            ESP_LOGE(TAG, "taskflow import fail!, SD file path or json source must be provided");
+        }  
+    }
+
+    if( export ) {
+        char *p_taskflow = NULL;
+        p_taskflow = tf_engine_flow_get();
+        if( p_taskflow != NULL ) {
+            if( use_sd ) {
+                FILE *fp = fopen(file, "w");
+                if( fp != NULL ) {
+                    fwrite(p_taskflow, strlen(p_taskflow), 1, fp);
+                    fclose(fp);
+                    ESP_LOGI(TAG, "taskflow export to SD success! %s", file);
+                } else {
+                    ESP_LOGE(TAG, "taskflow export to SD fail:%s!", file);
+                }
+            } else {
+                ESP_LOGI(TAG, "taskflow:");
+                printf("%s\r\n", p_taskflow);
+            }
+            free(p_taskflow);
+        } else {
+            ESP_LOGE(TAG, "taskflow is not running, export fail!");
+        }
+    }
+
+    if( p_json && !used_json ) {
+        free(p_json);
+    }
+    return 0;
+}
+
+static void register_cmd_taskflow(void)
+{
+    if( bsp_sdcard_is_inserted()) {
+        bsp_sdcard_init_default(); //TODO 
+        ESP_LOGI(TAG, "SD card inserted! init SD card");
+    } else {
+        ESP_LOGI(TAG, "SD card not inserted!");
+    }
+
+    taskflow_cfg_args.import =  arg_lit0("i", "import", "import taskflow");
+    taskflow_cfg_args.export = arg_lit0("e", "export", "export taskflow");
+    taskflow_cfg_args.file =  arg_str0("f", "file", "<string>", "File path, import or export taskflow json string by SD, eg: test.json");
+    taskflow_cfg_args.json =  arg_str0("j", "json", "<string>", "import taskflow json string by stdio, json string needs to be escaped");
+    taskflow_cfg_args.end = arg_end(4);
+
+    const esp_console_cmd_t cmd = {
+        .command = "taskflow",
+        .help = "import taskflow by json string or SD file, eg:taskflow -i -f \"test.json\".\n export taskflow to stdout or SD file, eg: taskflow -e -f \"test.json\"",
+        .hint = NULL,
+        .func = &taskflow_cmd,
+        .argtable = &taskflow_cfg_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+
 int app_cmd_init(void)
 {
     esp_console_repl_t *repl = NULL;
@@ -277,6 +418,7 @@ int app_cmd_init(void)
     register_cmd_wifi_sta();
     register_cmd_deviceinfo();
     register_cmd_force_ota();
+    register_cmd_taskflow();
     register_cmd_reboot();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
