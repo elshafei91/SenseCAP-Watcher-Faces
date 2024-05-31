@@ -77,7 +77,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     case VIEW_EVENT_SHUTDOWN:
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
-        vTaskDelay(pdMS_TO_TICKS(1000));
         fflush(stdout);
         esp_restart();
         break;

@@ -891,6 +891,11 @@ void app_device_info_task(void *pvParameter)
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                                   &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
             }
+            if (batnow == 0) {
+                ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, 
+                                  NULL, 0, portMAX_DELAY);
+            }
         }
 
         if ((cnt % 10) == 0) {

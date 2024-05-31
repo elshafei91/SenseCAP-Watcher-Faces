@@ -91,6 +91,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
+            case VIEW_EVENT_BAT_DRAIN_SHUTDOWN:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_BAT_DRAIN_SHUTDOWN");
+                //TODO: render the 0 battery level UI page, and after the animate fire the VIEW_EVENT_SHUTDOWN event
+                break;
+            }
+
             case VIEW_EVENT_CHARGE_ST:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_CHARGE_ST");
                 uint8_t is_charging = *(uint8_t *)event_data;
@@ -380,6 +386,10 @@ int view_init(void)
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, 
                                                             __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
