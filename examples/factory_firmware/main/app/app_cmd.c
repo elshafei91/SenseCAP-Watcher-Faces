@@ -13,7 +13,7 @@
 #include "app_ota.h"
 #include "event_loops.h"
 #include "storage.h"
-#include "deviceinfo.h"
+#include "app_device_info.h"
 #include "util.h"
 
 #include "tf.h"

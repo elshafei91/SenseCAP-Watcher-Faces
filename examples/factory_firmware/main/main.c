@@ -25,7 +25,6 @@
 #include "app_cmd.h"
 #include "app_sensecraft.h"
 #include "app_rgb.h"
-#include "deviceinfo.h"
 #include "app_device_info.h"
 #include "util.h"
 #include "app_ota.h"
@@ -119,7 +118,6 @@ int app_init(void)
     app_rgb_init();
     app_cmd_init();
     app_sensecraft_init();
-    app_device_status_monitor_init();
  
     audio_player_init();
     //app_sr_start(false);
