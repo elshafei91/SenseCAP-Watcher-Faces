@@ -15,6 +15,7 @@
 #include "tf_module_local_alarm.h"
 #include "tf_module_alarm_trigger.h"
 #include "tf_module_sensecraft_alarm.h"
+#include "tf_module_uart_alarm.h"
 
 static const char *TAG = "taskflow";
 
@@ -607,6 +608,7 @@ static  void taskflow_engine_module_init( struct app_taskflow * p_taskflow)
     ESP_ERROR_CHECK(tf_module_local_alarm_register());
     ESP_ERROR_CHECK(tf_module_alarm_trigger_register());
     ESP_ERROR_CHECK(tf_module_sensecraft_alarm_register());
+    ESP_ERROR_CHECK(tf_module_uart_alarm_register());
     //add more module
 
     ESP_ERROR_CHECK(tf_engine_status_cb_register(__task_flow_status_cb, p_taskflow));
