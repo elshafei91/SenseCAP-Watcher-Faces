@@ -233,6 +233,7 @@ void virtsl_cb(lv_event_t *e)
 void main1c_cb(lv_event_t *e)
 {
     lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
+    lv_group_focus_obj(ui_menubtn2);
 }
 
 void main1f_cb(lv_event_t *e)
