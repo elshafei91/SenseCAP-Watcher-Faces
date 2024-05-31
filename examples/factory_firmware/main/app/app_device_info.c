@@ -843,6 +843,7 @@ void app_device_info_task(void *pvParameter)
     uint8_t batnow = 0;
     uint32_t cnt = 0;
     bool firstboot_reported = false;
+    static uint8_t last_charge_st = 0x66;
 
     MUTEX_brightness = xSemaphoreCreateMutex();
     MUTEX_SN = xSemaphoreCreateMutex();
@@ -860,6 +861,8 @@ void app_device_info_task(void *pvParameter)
     init_ai_service_param_from_nvs();
     init_reset_factory_switch_from_nvs();
 
+    g_device_status.battery_per = bsp_battery_get_percent();
+    g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
 
     while (1)
     {
@@ -873,20 +876,29 @@ void app_device_info_task(void *pvParameter)
         cnt++;
 
         if (!firstboot_reported && atomic_load(&g_mqttconn)) {
-            g_device_status.battery_per = bsp_battery_get_percent();
-            g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
             app_sensecraft_mqtt_report_device_status(&g_device_status);
             firstboot_reported = true;
         }
 
-        if (firstboot_reported &&  (cnt % 30000) == 0 && atomic_load(&g_mqttconn)) {
+        if ((cnt % 300) == 0) {
             batnow = bsp_battery_get_percent();
             if (abs(g_device_status.battery_per - batnow) > 10 || batnow == 0) {
                 g_device_status.battery_per = batnow;
                 //mqtt pub
-                app_sensecraft_mqtt_report_device_status(&g_device_status);
+                if (atomic_load(&g_mqttconn)) {
+                    app_sensecraft_mqtt_report_device_status(&g_device_status);
+                }
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                                   &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
+            }
+        }
+
+        if ((cnt % 10) == 0) {
+            uint8_t chg = (uint8_t)bsp_system_is_charging();
+            if (chg != last_charge_st) {
+                last_charge_st = chg;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, 
+                                  &last_charge_st, 1, portMAX_DELAY);
             }
         }
     }

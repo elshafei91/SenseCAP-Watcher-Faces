@@ -183,7 +183,8 @@ enum {
 
     VIEW_EVENT_TIME,      // bool time_format_24
     VIEW_EVENT_TIME_ZONE,   // int8_t zone
-    VIEW_EVENT_BATTERY_ST,// battery changed event
+    VIEW_EVENT_BATTERY_ST,// battery changed event, struct view_data_device_status
+    VIEW_EVENT_CHARGE_ST, // charge status change, uint8_t
 
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
