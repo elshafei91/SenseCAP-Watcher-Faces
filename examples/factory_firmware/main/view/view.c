@@ -172,7 +172,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_RGB_SWITCH:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_RGB_SWITCH");
                 int * rgb_st = (int *)event_data;
-                if(!(*rgb_st))
+                if((*rgb_st))
                 {
                     lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
                 }else{

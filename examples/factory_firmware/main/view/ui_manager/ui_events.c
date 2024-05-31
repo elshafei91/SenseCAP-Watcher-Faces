@@ -277,9 +277,12 @@ void main4c_cb(lv_event_t *e)
     static char about_sn[20];
     static char about_eui[40];
     static char about_btmac[20];
+    static char about_sw_version[20];
+
     const uint8_t *sn_code = get_sn_code();
     const uint8_t *eui_code = get_eui();
     const uint8_t *bt_mac = get_bt_mac();
+    const char *sw_version = get_software_version(UI_CALLER);
 
     snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
              sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
@@ -291,6 +294,9 @@ void main4c_cb(lv_event_t *e)
     snprintf(about_btmac, sizeof(about_btmac), "%02X:%02X:%02X:%02X:%02X:%02X",
              bt_mac[0], bt_mac[1], bt_mac[2], bt_mac[3], bt_mac[4], bt_mac[5]);
 
+    snprintf(about_sw_version, sizeof(about_sw_version), "%s", sw_version);
+
+    lv_label_set_text(ui_svt2, about_sw_version);
     lv_label_set_text(ui_snt2, (char *)about_sn);
     lv_label_set_text(ui_euit2, (char *)about_eui);
     lv_label_set_text(ui_blet2, (char *)about_btmac); 

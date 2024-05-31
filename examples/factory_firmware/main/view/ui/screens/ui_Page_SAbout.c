@@ -138,7 +138,7 @@ void ui_Page_SAbout_screen_init(void)
 
     ui_abouteui = lv_obj_create(ui_AboutP);
     lv_obj_set_width(ui_abouteui, 300);
-    lv_obj_set_height(ui_abouteui, 80);
+    lv_obj_set_height(ui_abouteui, 110);
     lv_obj_set_align(ui_abouteui, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_abouteui, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(ui_abouteui, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
@@ -159,8 +159,8 @@ void ui_Page_SAbout_screen_init(void)
     lv_obj_set_style_text_font(ui_euit1, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_euit2 = lv_label_create(ui_abouteui);
-    lv_obj_set_width(ui_euit2, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_euit2, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_width(ui_euit2, 260);
+    lv_obj_set_height(ui_euit2, 50);
     lv_obj_set_align(ui_euit2, LV_ALIGN_LEFT_MID);
     lv_label_set_text(ui_euit2, "114992872233500085");
     lv_obj_add_flag(ui_euit2, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
