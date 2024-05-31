@@ -97,7 +97,7 @@ void lv_pm_open_page(lv_group_t * group, GroupInfo *groupInfo, pm_operation_t op
             break;
     }
     lv_group_focus_obj(g_page_record.g_prefocused_obj);
-    lv_scr_load_anim(*target, fademode, spd, 50, false);
+    lv_scr_load_anim(*target, fademode, spd, delay, false);
 }
 
 static void lv_pm_obj_group(lv_group_t * group, GroupInfo *groupInfo)
