@@ -10,6 +10,7 @@
 #include "esp_app_desc.h"
 #include "cJSON.h"
 #include "esp_heap_task_info.h"
+#include "factory_info.h"
 
 #include "sensecap-watcher.h"
 
@@ -104,6 +105,8 @@ int board_init(void)
     bsp_codec_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
+
+    factory_info_init();
 
     return ESP_OK;
 }
