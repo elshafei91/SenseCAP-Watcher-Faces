@@ -43,8 +43,6 @@ static const char *TAG = "deviceinfo";
 
 uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x69 };
 uint8_t EUI[] = { 0x1C, 0xF7, 0xF1, 0xC8, 0x62, 0x20, 0x00, 0x09, 0x7A, 0x18, 0x7A, 0xA8, 0xEE, 0x8B, 0x97, 0xFF };
-char software_version[] = "1.0.0";
-char himax_software_version[] = "1.0.0";
 int server_code = 1;
 int create_batch = 1000205;
 
@@ -472,15 +470,15 @@ char *get_software_version(int caller)
         {
             case AT_CMD_CALLER:
                 ESP_LOGI(SN_TAG, "BLE get software version");
-                result = strdup(software_version);
+                result = g_device_status.fw_version;
                 break;
             case UI_CALLER:
                 ESP_LOGI(SN_TAG, "UI get software version");
                 char final_string[150];
-                snprintf(final_string, sizeof(final_string), "v%s", software_version);
+                snprintf(final_string, sizeof(final_string), "v%s", g_device_status.fw_version);
                 printf("Software Version: %s\n", final_string);
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
-                result = strdup(software_version);
+                result = g_device_status.fw_version;
                 break;
         }
         xSemaphoreGive(MUTEX_software_version);
@@ -502,15 +500,15 @@ char *get_himax_software_version(int caller)
         {
             case AT_CMD_CALLER:
                 ESP_LOGI(SN_TAG, "BLE get himax software version");
-                result = strdup(himax_software_version);
+                result = g_device_status.himax_fw_version;
                 break;
             case UI_CALLER:
                 ESP_LOGI(SN_TAG, "UI get himax software version");
                 char final_string[150];
-                snprintf(final_string, sizeof(final_string), "v%s", himax_software_version);
+                snprintf(final_string, sizeof(final_string), "v%s", g_device_status.himax_fw_version);
                 printf("Himax Software Version: %s\n", final_string);
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
-                result = strdup(himax_software_version);
+                result = g_device_status.himax_fw_version;
                 break;
         }
         xSemaphoreGive(MUTEX_himax_software_version);
