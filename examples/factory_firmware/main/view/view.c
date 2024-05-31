@@ -7,6 +7,7 @@
 #include "ui/ui_helpers.h"
 #include <time.h>
 #include "app_device_info.h"
+#include "app_png.h"
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
 
@@ -21,6 +22,21 @@ static int PNG_LOADING_COUNT = 0;
 extern uint8_t task_down;
 extern int first_use;
 
+extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
+
+extern int g_detect_image_count;
+extern int g_speak_image_count;
+extern int g_listen_image_count;
+extern int g_load_image_count;
+extern int g_sleep_image_count;
+extern int g_smile_image_count;
+extern int g_detected_image_count;
 
 static void update_ai_ota_progress(int percentage)
 {
@@ -172,7 +188,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_RGB_SWITCH:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_RGB_SWITCH");
                 int * rgb_st = (int *)event_data;
-                if((*rgb_st))
+                if(!(*rgb_st))
                 {
                     lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
                 }else{
@@ -241,8 +257,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }else if (ota_st->status == 1)
                 {
                     update_ota_progress(ota_st->percentage);
+                    lv_label_set_text(ui_otatext, "Updating\nFirmware");
                 }else{
                     ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
+                    lv_label_set_text(ui_otatext, "Update Failed");
+
                 }
                 break;
             }
@@ -293,6 +312,8 @@ int view_init(void)
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
     lvgl_port_unlock();
+
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, 
@@ -369,6 +390,17 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_OTA_STATUS, 
                                                             __view_event_handler, NULL, NULL)); 
+
+    read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
+    read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
+    read_and_store_selected_pngs("detected", g_detected_img_dsc, &g_detected_image_count);
+    read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
+    read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
+    read_and_store_selected_pngs("loading", g_load_img_dsc, &g_load_image_count);
+    read_and_store_selected_pngs("sleeping", g_sleep_img_dsc, &g_sleep_image_count);
+
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
+                    
 
     return 0;
 }
