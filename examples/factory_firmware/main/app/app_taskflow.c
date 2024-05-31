@@ -70,7 +70,7 @@ const char local_taskflow_gesture[] = \
 			\"audio\": \"\"    \  
 		},    \  
 		\"wires\": [    \  
-			[3]    \  
+			[3, 4]    \ 
 		]    \  
 	}, {    \  
 		\"id\": 3,    \  
@@ -138,7 +138,7 @@ const char local_taskflow_pet[] = \
 			\"audio\": \"\"    \  
 		},    \  
 		\"wires\": [    \  
-			[3]    \  
+			[3, 4]    \ 
 		]    \  
 	}, {    \  
 		\"id\": 3,    \  
