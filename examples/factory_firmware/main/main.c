@@ -89,6 +89,29 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     }
 }
 
+static void battery_check(void)
+{
+    bool st = false;
+    uint8_t percent = bsp_battery_get_percent();
+
+    ESP_LOGI(TAG, "battery: %d", percent);
+
+    if( percent > 0) {
+        return;
+    }
+
+    ESP_LOGI(TAG, "battery too low, wait for charging");
+
+    while(1) {
+        st = bsp_system_is_charging();
+        if ( st ) {
+            ESP_LOGI(TAG, "charging");
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
 int board_init(void)
 {
     storage_init();
@@ -133,7 +156,8 @@ void task_app_init(void *p_arg)
 {
     // UI init
     view_init();
-    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
+    bsp_lcd_brightness_set(100);
+    // battery_check(); //TODO
     app_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
