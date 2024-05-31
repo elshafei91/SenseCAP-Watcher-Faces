@@ -5,6 +5,9 @@
 #include "event_loops.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_bt.h"
+#include "esp_bt_main.h"
+#include "esp_bt_device.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -15,20 +18,22 @@
 #include "app_rgb.h"
 #include "app_audio.h"
 #include "audio_player.h"
+#include "nvs_flash.h"
 
-#include <string.h>
 #include "mqtt_client.h"
 
 #define SN_TAG                    "SN_TAG"
 #define APP_DEVICE_INFO_MAX_STACK 4096
+#define SN_STORAGE_SK             "sn"
 #define BRIGHTNESS_STORAGE_KEY    "brightness"
 #define SOUND_STORAGE_KEY         "sound"
 #define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
 #define CLOUD_SERVICE_STORAGE_KEY "cloudserviceswitch"
 #define AI_SERVICE_STORAGE_KEY    "aiservice"
+#define RESET_FACTORY_SK          "resetfactory"
 
-uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x50 };
-uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0xC2, 0x44, 0x81, 0x00, 0x47, 0xB0, 0x47, 0xD1, 0xD5, 0x8B, 0xC7, 0xF8, 0xFB };
+uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x69 };
+uint8_t EUI[] = { 0x1C, 0xF7, 0xF1, 0xC8, 0x62, 0x20, 0x00, 0x09, 0x7A, 0x18, 0x7A, 0xA8, 0xEE, 0x8B, 0x97, 0xFF };
 char software_version[] = "1.0.0";
 char himax_software_version[] = "1.0.0";
 int server_code = 1;
@@ -40,11 +45,14 @@ int brightness_past = 100;
 int sound_value = 50;
 int sound_value_past = 50;
 
-int rgb_switch = 0;
-int rgb_switch_past = 0;
+int rgb_switch = 1;
+int rgb_switch_past = 1;
 
 int cloud_service_switch = 0;
 int cloud_service_switch_past = 0;
+
+int reset_factory_switch = 0;
+int reset_factory_switch_past = 0;
 
 // ai service ip for mqtt
 ai_service_pack ai_service;
@@ -58,6 +66,7 @@ SemaphoreHandle_t MUTEX_rgb_switch;
 SemaphoreHandle_t MUTEX_sound;
 SemaphoreHandle_t MUTEX_ai_service;
 SemaphoreHandle_t MUTEX_cloud_service_switch;
+SemaphoreHandle_t MUTEX_reset_factory;
 
 static StackType_t *app_device_info_task_stack = NULL;
 static StaticTask_t app_device_info_task_buffer;
@@ -91,6 +100,41 @@ void app_device_info_init()
     }
 }
 
+void init_sn_from_nvs()
+{
+    size_t size = sizeof(SN);
+    esp_err_t ret = storage_read(SN_STORAGE_SK, &SN, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI("NVS", "SN value loaded from NVS: %s", SN);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI("NVS", "No SN value found in NVS. Using default: %s", SN);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading SN from NVS: %s", esp_err_to_name(ret));
+    }
+}
+void init_eui_from_nvs()
+{
+    size_t size = sizeof(EUI);
+    esp_err_t ret = storage_read(SN_STORAGE_SK, &EUI, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI("NVS", "EUI value loaded from NVS: %s", EUI);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI("NVS", "No EUI value found in NVS. Using default: %s", EUI);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading SN from NVS: %s", esp_err_to_name(ret));
+    }
+}
+
 void init_ai_service_param_from_nvs()
 {
     size_t size = sizeof(ai_service);
@@ -118,8 +162,6 @@ void init_rgb_switch_from_nvs()
     {
         ESP_LOGI("NVS", "rgb_switch value loaded from NVS: %d", rgb_switch);
         rgb_switch_past = rgb_switch;
-        if (rgb_switch == 1)
-            set_rgb_with_priority(UI_CALLER, off);
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
@@ -202,6 +244,26 @@ void init_cloud_service_switch_from_nvs()
         ESP_LOGE("NVS", "Error reading rgb_switch from NVS: %s", esp_err_to_name(ret));
     }
 }
+
+void init_reset_factory_switch_from_nvs()
+{
+    size_t size = sizeof(reset_factory_switch);
+    esp_err_t ret = storage_read(RESET_FACTORY_SK, &reset_factory_switch, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI("NVS", "reset_factory_switch value loaded from NVS: %d", reset_factory_switch);
+        reset_factory_switch_past = reset_factory_switch;
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI("NVS", "No reset_factory_switch value found in NVS. Using default: %d", reset_factory_switch);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading reset_factory_switch from NVS: %s", esp_err_to_name(ret));
+    }
+}
+
 /*----------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
 
@@ -243,6 +305,24 @@ uint8_t *get_sn(int caller)
         xSemaphoreGive(MUTEX_SN);
         return result;
     }
+}
+
+uint8_t *get_bt_mac()
+{
+    const uint8_t *bd_addr = esp_bt_dev_get_address();
+    if (bd_addr)
+    {
+        ESP_LOGI("BT", "Bluetooth MAC Address: %02X:%02X:%02X:%02X:%02X:%02X", bd_addr[0], bd_addr[1], bd_addr[2], bd_addr[3], bd_addr[4], bd_addr[5]);
+    }
+    else
+    {
+        ESP_LOGE("BT", "Failed to get Bluetooth MAC Address");
+    }
+    return bd_addr;
+}
+uint8_t *get_sn_code()
+{
+    return SN;
 }
 
 uint8_t *get_eui()
@@ -380,24 +460,24 @@ char *get_himax_software_version(int caller)
 
 /*--------------------------------------------rgb switch  module----------------------------------------------------------------*/
 
-uint8_t *get_rgb_switch(int caller)
+int *get_rgb_switch(int caller)
 {
     if (xSemaphoreTake(MUTEX_rgb_switch, portMAX_DELAY) != pdTRUE)
     {
         ESP_LOGE("rgb_switch_TAG", "get_brightness: MUTEX_rgb_switch take failed");
         return NULL;
     }
-    uint8_t *result = NULL;
+    int *result = NULL;
     switch (caller)
     {
         case AT_CMD_CALLER:
             ESP_LOGI("rgb_switch_TAG", "BLE get rgb_switch");
-            result = (uint8_t *)&rgb_switch;
+            result = &rgb_switch;
             break;
         case UI_CALLER:
             ESP_LOGI("rgb_switch_TAG", "UI get rgb_switch");
-            result = (uint8_t *)&rgb_switch;
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, result, sizeof(uint8_t *), portMAX_DELAY);
+            result = &rgb_switch;
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, result, sizeof(int), portMAX_DELAY);
             break;
     }
     xSemaphoreGive(MUTEX_rgb_switch);
@@ -432,7 +512,7 @@ static int __set_rgb_switch()
         printf("rgb_switch: %d\n", rgb_switch);
         if (rgb_switch == 1)
         {
-            release_rgb(UI_CALLER);
+            set_rgb_with_priority(UI_CALLER, on);
         }
         else
         {
@@ -443,6 +523,7 @@ static int __set_rgb_switch()
             ESP_LOGE("rgb_switch_TAG", "cfg write err:%d", ret);
             return ret;
         }
+        rgb_switch_past = rgb_switch;
     }
     xSemaphoreGive(MUTEX_rgb_switch);
     return 0;
@@ -467,7 +548,7 @@ uint8_t *get_sound(int caller)
         case UI_CALLER:
             ESP_LOGI("SOUND_TAG", "UI get sound");
             result = (uint8_t *)&sound_value;
-            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOUND, result, sizeof(uint8_t *), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOUND, result, sizeof(uint8_t *), portMAX_DELAY);
             break;
     }
     xSemaphoreGive(MUTEX_sound);
@@ -498,18 +579,18 @@ static int __set_sound()
     }
     if (sound_value_past != sound_value)
     {
-        FILE *fp = fopen("/spiffs/waitPlease.mp3", "r");
-        if (fp)
-        {
-            audio_player_play(fp);
-        }
+        // FILE *fp = fopen("/spiffs/waitPlease.mp3", "r");
+        // if (fp)
+        // {
+        //     audio_player_play(fp);
+        // }
         esp_err_t ret = storage_write(SOUND_STORAGE_KEY, &sound_value, sizeof(sound_value));
         if (ret != ESP_OK)
         {
             ESP_LOGE("BRIGHTNESS_TAG", "cfg write err:%d", ret);
             return ret;
         }
-        ret = bsp_codec_volume_set(100, NULL);
+        ret = bsp_codec_volume_set(sound_value, NULL);
         if (ret != ESP_OK)
         {
             ESP_LOGE("SOUND_TAG", "sound set err:%d", ret);
@@ -638,6 +719,64 @@ static int __set_ai_service()
     return 0;
 }
 
+/*----------------------------------------------------reset-factory--------------------------------------------------------*/
+
+int *get_reset_factory(int caller)
+{
+    if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("get_reset_factory_TAG", "get_reset_factory: MUTEX_reset_factory take failed");
+        return NULL;
+    }
+    int *result = NULL;
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI("get_reset_factory_TAG", "AT_CMD_CALLER  get_reset_factory_TAG");
+            break;
+        case UI_CALLER:
+            ESP_LOGI("get_reset_factory_TAG", "UI  get_reset_factory_TAG");
+            result =&reset_factory_switch;
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_FACTORY_RESET_CODE, result, sizeof(int), portMAX_DELAY);
+            break;
+    }
+    xSemaphoreGive(MUTEX_reset_factory);
+    return result;
+}
+
+uint8_t *set_reset_factory(int caller, int value)
+{
+    ESP_LOGI("set_reset_factory_TAG", "set_reset_factory");
+    if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("set_reset_factory_TAG", "set_reset_factory: MUTEX_reset_factory take failed");
+        return NULL;
+    }
+
+    reset_factory_switch_past = reset_factory_switch;
+    reset_factory_switch = value;
+    xSemaphoreGive(MUTEX_reset_factory);
+    return NULL;
+}
+
+uint8_t *__set_reset_factory()
+{
+    if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE("set_reset_factory_TAG", "reset_factory_switch: MUTEX_reset_factory take failed");
+        return NULL;
+    }
+   
+    if (reset_factory_switch_past != reset_factory_switch)
+    {
+        ESP_LOGI("set_reset_factory_TAG", "__set_reset_factory");
+        if(reset_factory_switch_past == 1)storage_erase();
+        esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
+        reset_factory_switch_past=reset_factory_switch;
+    }
+    xSemaphoreGive(MUTEX_reset_factory);
+    return 0;
+}
 /*-----------------------------------------------------TASK----------------------------------------------------------*/
 void app_device_info_task(void *pvParameter)
 {
@@ -649,17 +788,20 @@ void app_device_info_task(void *pvParameter)
     MUTEX_sound = xSemaphoreCreateMutex();
     MUTEX_cloud_service_switch = xSemaphoreCreateMutex();
     MUTEX_ai_service = xSemaphoreCreateMutex();
+    MUTEX_reset_factory = xSemaphoreCreateMutex();
     init_ai_service_param_from_nvs();
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
     init_soud_from_nvs();
     init_ai_service_param_from_nvs();
+    init_reset_factory_switch_from_nvs();
     while (1)
     {
         //__set_cloud_service_switch();
         __set_brightness();
         __set_rgb_switch();
         __set_sound();
+        __set_reset_factory();
         //__set_ai_service();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }

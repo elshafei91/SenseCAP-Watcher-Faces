@@ -10,7 +10,7 @@
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
 
-#define PNG_IMG_NUMS 30
+#define PNG_IMG_NUMS 32
 
 static const char *TAG = "view";
 
@@ -19,6 +19,7 @@ uint8_t wifi_page_id;
 lv_obj_t * view_show_img;
 static int PNG_LOADING_COUNT = 0;
 extern uint8_t task_down;
+extern int first_use;
 
 
 static void update_ai_ota_progress(int percentage)
@@ -56,6 +57,16 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }
                 break;
             }
+
+            case VIEW_EVENT_FACTORY_RESET_CODE:
+            {
+                ESP_LOGI(TAG, "event: VIEW_EVENT_FACTORY_RESET_CODE");
+                int *reset_st = (int *)event_data;
+                first_use = (*reset_st);
+                // ESP_LOGI(TAG, "first_use_value : %d", first_use);
+                break;
+            }
+
 
             case VIEW_EVENT_BATTERY_ST:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BATTERY_ST");
@@ -146,6 +157,37 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 else{
                     lv_obj_set_style_img_recolor(ui_mainble, lv_color_hex(0x171515), LV_PART_MAIN | LV_STATE_DEFAULT);
                 }
+                break;
+            }
+
+            case VIEW_EVENT_BRIGHTNESS:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_BRIGHTNESS");
+                uint8_t *bri_st = (uint8_t *)event_data;
+                int32_t bri_value = (int32_t)(*bri_st);
+                lv_slider_set_value(ui_bslider, bri_value, LV_ANIM_OFF);
+                                
+                break;
+            }
+
+            case VIEW_EVENT_RGB_SWITCH:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_RGB_SWITCH");
+                int * rgb_st = (int *)event_data;
+                if(!(*rgb_st))
+                {
+                    lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
+                }else{
+                    lv_obj_clear_state(ui_setrgbsw, LV_STATE_CHECKED);
+                }
+
+                break;
+            }
+
+            case VIEW_EVENT_SOUND:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_SOUND");
+                uint8_t * vol_st = (uint8_t *)event_data;
+                int32_t vol_value = (int32_t)(*vol_st);
+                lv_slider_set_value(ui_vslider, (int32_t *)vol_value, LV_ANIM_OFF);
+                
                 break;
             }
 
@@ -261,12 +303,28 @@ int view_init(void)
                                                             __view_event_handler, NULL, NULL)); 
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_FACTORY_RESET_CODE, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME, 
                                                             __view_event_handler, NULL, NULL)); 
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
-                                                            __view_event_handler, NULL, NULL));   
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, 
+                                                            __view_event_handler, NULL, NULL));  
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SOUND, 
+                                                            __view_event_handler, NULL, NULL)); 
                                                             
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, 

@@ -68,7 +68,7 @@ static void __alarm_off( tf_module_local_alarm_t *p_module_ins )
     if( p_params->rgb && p_module_ins->is_rgb_on) {
         ESP_LOGI(TAG, "RGB OFF");
         p_module_ins->is_rgb_on = false;
-        release_rgb(ALARM);
+        set_rgb_with_priority(ALARM, off);
     }
     if( p_params->sound) {
         // TODO SOUND OFF

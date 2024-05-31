@@ -113,10 +113,16 @@ struct view_data_audio_play_data
     uint32_t len;
 };
 
-struct view_data_deviceinfo
-{
+struct view_data_deviceinfo {
     char eui[17];
     char key[33];
+    int brightness;
+    int sound;
+    int rgb;
+    int cloud;
+    uint8_t sn[9];
+    int server_code;
+    int create_batch;
 };
 
 struct view_data_device_status
@@ -188,6 +194,8 @@ enum {
     VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE,
     VIEW_EVENT_BRIGHTNESS,
     VIEW_EVENT_RGB_SWITCH,
+    VIEW_EVENT_FACTORY_RESET_CODE,
+    VIEW_EVENT_SOUND,
     
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
@@ -228,7 +236,7 @@ enum {
 };
 //config caller
 typedef enum {
-    UI_CALLER,
+    UI_CALLER=1,
     AT_CMD_CALLER,
     BLE_CALLER,
     SR,

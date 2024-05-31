@@ -66,6 +66,7 @@ extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 extern int g_detect_image_count;
 extern int g_speak_image_count;
@@ -73,6 +74,7 @@ extern int g_listen_image_count;
 extern int g_load_image_count;
 extern int g_sleep_image_count;
 extern int g_smile_image_count;
+extern int g_detected_image_count;
 
 static void *__cJSON_malloc(size_t sz)
 {
@@ -148,6 +150,7 @@ void task_app_init(void *p_arg)
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
     read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
     read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
+    read_and_store_selected_pngs("detected", g_detected_img_dsc, &g_detected_image_count);
     read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
     read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
     read_and_store_selected_pngs("loading", g_load_img_dsc, &g_load_image_count);

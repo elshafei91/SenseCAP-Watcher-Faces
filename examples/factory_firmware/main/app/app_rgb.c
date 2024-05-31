@@ -7,7 +7,7 @@
 #include "data_defs.h"
 
 #define RGB_TAG     "RGB_TAG"
-#define MAX_CALLERS 5
+#define MAX_CALLERS 6
 #define STACK_SIZE  10
 
 typedef struct
@@ -124,125 +124,88 @@ caller_context_t peek_caller_context()
  * @param caller The ID of the caller
  * @param service The RGB service requested
  */
-void __select_service_set_rgb(int caller, int service)
-{
-    ESP_LOGI(RGB_TAG, "Caller_inside: %d, Service_inside: %d", caller, service);
-
-    // Take the semaphore to ensure thread safety
-    xSemaphoreTake(__rgb_semaphore, portMAX_DELAY);
-    switch (service)
-    {
-        case breath_red:
-            rgb_status_instance.r = 255;
-            rgb_status_instance.g = 0;
-            rgb_status_instance.b = 0;
-            rgb_status_instance.type = 1;
-            break;
-        case breath_green:
-            rgb_status_instance.r = 0;
-            rgb_status_instance.g = 255;
-            rgb_status_instance.b = 0;
-            rgb_status_instance.type = 1;
-            break;
-        case breath_blue:
-            rgb_status_instance.r = 0;
-            rgb_status_instance.g = 0;
-            rgb_status_instance.b = 255;
-            rgb_status_instance.type = 1;
-            break;
-        case breath_white:
-            rgb_status_instance.r = 255;
-            rgb_status_instance.g = 255;
-            rgb_status_instance.b = 255;
-            rgb_status_instance.type = 1;
-            break;
-        case glint_red:
-            rgb_status_instance.r = 255;
-            rgb_status_instance.g = 0;
-            rgb_status_instance.b = 0;
-            rgb_status_instance.step = 10;
-            rgb_status_instance.delay_time = 50;
-            rgb_status_instance.type = 2;
-            break;
-        case glint_green:
-            rgb_status_instance.r = 0;
-            rgb_status_instance.g = 255;
-            rgb_status_instance.b = 0;
-            rgb_status_instance.step = 10;
-            rgb_status_instance.delay_time = 50;
-            rgb_status_instance.type = 2;
-            break;
-        case glint_blue:
-            rgb_status_instance.r = 0;
-            rgb_status_instance.g = 0;
-            rgb_status_instance.b = 255;
-            rgb_status_instance.step = 10;
-            rgb_status_instance.delay_time = 50;
-            rgb_status_instance.type = 2;
-            break;
-        case glint_white:
-            rgb_status_instance.r = 255;
-            rgb_status_instance.g = 255;
-            rgb_status_instance.b = 255;
-            rgb_status_instance.step = 10;
-            rgb_status_instance.delay_time = 50;
-            rgb_status_instance.type = 2;
-            break;
-        case flare_red:
-            rgb_status_instance.r = 255;
-            rgb_status_instance.g = 0;
-            rgb_status_instance.b = 0;
-            rgb_status_instance.step = 5;
-            rgb_status_instance.delay_time = 25;
-            rgb_status_instance.type = 3;
-            break;
-        case flare_green:
-            rgb_status_instance.r = 0;
-            rgb_status_instance.g = 255;
-            rgb_status_instance.b = 0;
-            rgb_status_instance.step = 5;
-            rgb_status_instance.delay_time = 25;
-            break;
-        case flare_blue:
-            rgb_status_instance.r = 0;
-            rgb_status_instance.g = 0;
-            rgb_status_instance.b = 255;
-            rgb_status_instance.step = 5;
-            rgb_status_instance.delay_time = 25;
-            rgb_status_instance.type = 3;
-            break;
-        case flare_white:
-            rgb_status_instance.r = 255;
-            rgb_status_instance.g = 255;
-            rgb_status_instance.b = 255;
-            rgb_status_instance.step = 5;
-            rgb_status_instance.delay_time = 25;
-            rgb_status_instance.type = 3;
-            break;
-        case off:
-            rgb_status_instance.r = 0;
-            rgb_status_instance.g = 0;
-            rgb_status_instance.b = 0;
-            rgb_status_instance.type = 4;
-            break;
-        default:
-            ESP_LOGW(RGB_TAG, "Unknown service: %d", service);
-            break;
-    }
-
+void set_rgb_status(int r, int g, int b, int type, int step, int delay_time) {
+    rgb_status_instance.r = r;
+    rgb_status_instance.g = g;
+    rgb_status_instance.b = b;
+    rgb_status_instance.type = type;
+    rgb_status_instance.step = step;
+    rgb_status_instance.delay_time = delay_time;
     rgb_status_instance.max_brightness_led = 255;
     rgb_status_instance.min_brightness_led = 0;
-    if (service == breath_red || service == breath_green || service == breath_blue || service == breath_white || service == off)
-    {
-        rgb_status_instance.step = 1;
-        rgb_status_instance.delay_time = 5;
-    }
+}
 
+void __select_service_set_rgb(int caller, int service) {
+    static int __rgb_switch = 0;
+    
+    if (caller == UI_CALLER && service == on) {
+        __rgb_switch = 1;
+    } else if(caller==UI_CALLER&&service ==off){
+        __rgb_switch = 0;
+    }
+    
+    ESP_LOGI(RGB_TAG, "Caller_inside: %d, Service_inside: %d", caller, service);
+    
+    // Take the semaphore to ensure thread safety
+    xSemaphoreTake(__rgb_semaphore, portMAX_DELAY);
+    
+    if (__rgb_switch == 1) {
+        switch (service) {
+            case breath_red:
+                set_rgb_status(255, 0, 0, 1, 1, 5);
+                break;
+            case breath_green:
+                set_rgb_status(0, 255, 0, 1, 1, 5);
+                break;
+            case breath_blue:
+                set_rgb_status(0, 0, 255, 1, 1, 5);
+                break;
+            case breath_white:
+                set_rgb_status(255, 255, 255, 1, 1, 5);
+                break;
+            case glint_red:
+                set_rgb_status(255, 0, 0, 2, 10, 50);
+                break;
+            case glint_green:
+                set_rgb_status(0, 255, 0, 2, 10, 50);
+                break;
+            case glint_blue:
+                set_rgb_status(0, 0, 255, 2, 10, 50);
+                break;
+            case glint_white:
+                set_rgb_status(255, 255, 255, 2, 10, 50);
+                break;
+            case flare_red:
+                set_rgb_status(255, 0, 0, 3, 5, 25);
+                break;
+            case flare_green:
+                set_rgb_status(0, 255, 0, 3, 5, 25);
+                break;
+            case flare_blue:
+                set_rgb_status(0, 0, 255, 3, 5, 25);
+                break;
+            case flare_white:
+                set_rgb_status(255, 255, 255, 3, 5, 25);
+                break;
+            case off:
+                set_rgb_status(0, 0, 0, 4, 0, 0);
+                break;
+            default:
+                ESP_LOGW(RGB_TAG, "Unknown service: %d", service);
+                set_rgb_status(0, 0, 0, 4, 0, 0);
+                break;
+        }
+    } else {
+        set_rgb_status(0, 0, 0, 4, 0, 0);
+    }
+    
     // Log the current RGB status
     ESP_LOGI(RGB_TAG, "RGB Status - R: %d, G: %d, B: %d", rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
+    
     // Release the semaphore after updating the RGB status
     xSemaphoreGive(__rgb_semaphore);
 }
+
 
 /**
  * @brief Set RGB status with priority
@@ -265,7 +228,7 @@ void set_rgb_with_priority(int caller, int service)
     xSemaphoreTake(rgb_semaphore, portMAX_DELAY);
 
     // Save current status before changing
-    push_caller_context(caller, service, rgb_status_instance);
+    //push_caller_context(caller, service, rgb_status_instance);
 
     // Set new status
     __select_service_set_rgb(caller, service);
@@ -273,60 +236,6 @@ void set_rgb_with_priority(int caller, int service)
     xSemaphoreGive(rgb_semaphore);
 }
 
-/**
- * @brief Release RGB control for a caller
- *
- * This function releases the RGB control for a caller, removing its context from the stack and restoring the next highest priority context.
- *
- * @param caller The ID of the caller
- */
-void release_rgb(int caller)
-{
-    if (caller < 0 || caller >= MAX_CALLERS)
-    {
-        ESP_LOGE(RGB_TAG, "Invalid caller: %d", caller);
-        return;
-    }
-
-    ESP_LOGI(RGB_TAG, "Releasing Caller: %d", caller);
-
-    xSemaphoreTake(rgb_semaphore, portMAX_DELAY);
-
-    // Remove the caller from the stack
-    bool found = false;
-    for (int i = stack_top; i >= 0; i--)
-    {
-        if (caller_contexts[i].caller == caller)
-        {
-            found = true;
-            for (int j = i; j < stack_top; j++)
-            {
-                caller_contexts[j] = caller_contexts[j + 1];
-            }
-            stack_top--;
-            break;
-        }
-    }
-    if (!found)
-    {
-        ESP_LOGE(RGB_TAG, "Caller %d not found in stack", caller);
-        xSemaphoreGive(rgb_semaphore);
-        return;
-    }
-
-    // Restore the highest priority caller context
-    caller_context_t context = peek_caller_context();
-    if (context.caller != -1)
-    {
-        __select_service_set_rgb(context.caller, context.service);
-    }
-    else
-    {
-        __select_service_set_rgb(caller, off);
-    }
-
-    xSemaphoreGive(rgb_semaphore);
-}
 
 /**
  * @brief Set breath color effect
@@ -457,12 +366,12 @@ void breath_effect_task(void *arg)
                 __flare();
                 break;
             case 4:
-                vTaskDelay(pdMS_TO_TICKS(5));
+                vTaskDelay(pdMS_TO_TICKS(10));
                 bsp_rgb_set(rgb_status_instance.r, rgb_status_instance.g, rgb_status_instance.b);
                 vTaskDelay(pdMS_TO_TICKS(5));
                 break;
             default:
-                vTaskDelay(pdMS_TO_TICKS(5));
+                vTaskDelay(pdMS_TO_TICKS(10));
                 bsp_rgb_set(0, 0, 0);
                 vTaskDelay(pdMS_TO_TICKS(5));
                 break;
@@ -502,11 +411,6 @@ int app_rgb_init(void)
         return -1;
     }
 
-    //     TaskHandle_t system_verification_task_handle;
-    // if (xTaskCreate(system_verification_task, "system_verification_task", 4096, NULL, 5, &system_verification_task_handle) != pdPASS)
-    // {
-    //     ESP_LOGE(RGB_TAG, "Failed to create system verification task");
-    //     return -1;
-    // }
+
     return 0;
 }
