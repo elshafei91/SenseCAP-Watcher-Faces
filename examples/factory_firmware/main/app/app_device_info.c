@@ -111,9 +111,7 @@ void string_to_byte_array(const char *str, uint8_t *byte_array, size_t length)
 void init_sn_from_nvs()
 {
     const char *sn_str = factory_info_sn_get();
-    ESP_LOGE(TAG, "%s", sn_str);
     string_to_byte_array(sn_str, SN, 9);
-    ESP_LOGE(TAG, "%s", SN);
 }
 
 void init_eui_from_nvs()
@@ -230,7 +228,7 @@ void init_soud_from_nvs()
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGI(TAG, "No sound value found in NVS. Using default: %d", sound_value);
+        ESP_LOGW(TAG, "No sound value found in NVS. Using default: %d", sound_value);
     }
     else
     {
