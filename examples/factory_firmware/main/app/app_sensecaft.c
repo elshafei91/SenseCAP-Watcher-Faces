@@ -325,6 +325,8 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
             break;
         case MQTT_EVENT_DATA:
 
+            if (get_cloud_service_switch(MAX_CALLER) == 0) break;
+
             if( event->total_data_len !=  event->data_len ) {
                 if( event->current_data_offset == 0 ) {
                     ESP_LOGI(TAG, "START RECV:%d", event->total_data_len);
