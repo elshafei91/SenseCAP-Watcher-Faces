@@ -73,8 +73,9 @@ void tf_data_image_copy(struct tf_data_image *p_dst, struct tf_data_image *p_src
     p_dst->len  = p_src->len;
     p_dst->time = p_src->time;
     if( p_src->p_buf != NULL &&  p_src->len > 0) {
-        p_dst->p_buf = tf_malloc(p_src->len);
+        p_dst->p_buf = tf_malloc(p_src->len + 1);
         memcpy(p_dst->p_buf, p_src->p_buf, p_src->len);
+        p_dst->p_buf[p_src->len] = 0; // image is base64 data, so add last char '\0'.
     } else {
         p_dst->p_buf = NULL;
         p_dst->len  = 0;

@@ -15,6 +15,7 @@
 #include "tf_module_local_alarm.h"
 #include "tf_module_alarm_trigger.h"
 #include "tf_module_sensecraft_alarm.h"
+#include "tf_module_uart_alarm.h"
 
 static const char *TAG = "taskflow";
 
@@ -70,7 +71,7 @@ const char local_taskflow_gesture[] = \
 			\"audio\": \"\"    \  
 		},    \  
 		\"wires\": [    \  
-			[3]    \  
+			[3, 4]    \ 
 		]    \  
 	}, {    \  
 		\"id\": 3,    \  
@@ -138,7 +139,7 @@ const char local_taskflow_pet[] = \
 			\"audio\": \"\"    \  
 		},    \  
 		\"wires\": [    \  
-			[3]    \  
+			[3, 4]    \ 
 		]    \  
 	}, {    \  
 		\"id\": 3,    \  
@@ -591,7 +592,32 @@ static void __ctrl_event_handler(void* handler_args,
                                     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
             break;
         }
+        case CTRL_EVENT_TASK_FLOW_START_BY_CMD: {
+            
+            ESP_LOGI(TAG, "event: CTRL_EVENT_TASK_FLOW_START_BY_CMD");
+            esp_err_t ret = ESP_OK;
+            char *p_task_flow = *(char **)event_data;
+            size_t len = strlen(p_task_flow);
+            char uuid[37];
+            UUIDGen(uuid);
 
+            tf_engine_flow_set(p_task_flow, len);
+            __task_flow_save(p_task_flow, len); 
+
+            if( p_taskflow->mqtt_connect_flag ) {
+                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
+                if( ret != ESP_OK ) {
+                    ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+                }
+            }
+
+            free(p_task_flow);
+
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
+
+            break;
+        }
         default:
             break;
     }
@@ -607,6 +633,7 @@ static  void taskflow_engine_module_init( struct app_taskflow * p_taskflow)
     ESP_ERROR_CHECK(tf_module_local_alarm_register());
     ESP_ERROR_CHECK(tf_module_alarm_trigger_register());
     ESP_ERROR_CHECK(tf_module_sensecraft_alarm_register());
+    ESP_ERROR_CHECK(tf_module_uart_alarm_register());
     //add more module
 
     ESP_ERROR_CHECK(tf_engine_status_cb_register(__task_flow_status_cb, p_taskflow));
@@ -678,6 +705,12 @@ esp_err_t app_taskflow_init(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                         CTRL_EVENT_BASE, 
                                                         CTRL_EVENT_TASK_FLOW_START_BY_SR, 
+                                                        __ctrl_event_handler, 
+                                                        p_taskflow));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                        CTRL_EVENT_BASE, 
+                                                        CTRL_EVENT_TASK_FLOW_START_BY_CMD, 
                                                         __ctrl_event_handler, 
                                                         p_taskflow));
 

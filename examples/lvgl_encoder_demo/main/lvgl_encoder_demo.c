@@ -57,6 +57,16 @@ static void sceen2_event_cb(lv_event_t * e)
     }
 }
 
+static void long_press_event_cb(void)
+{
+    ESP_LOGI(TAG, "long_press_event_cb");
+}
+
+static void long_release_event_cb(void)
+{
+    ESP_LOGI(TAG, "long_release_event_cb");
+}
+
 void lv_demo_encoder(void)
 {
     g = lv_group_get_default();
@@ -156,6 +166,8 @@ void app_main(void)
     bsp_io_expander_init();
     lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
+    bsp_set_btn_long_press_cb(long_press_event_cb);
+    bsp_set_btn_long_release_cb(long_release_event_cb);
 
     // lv_demo_keypad_encoder();
     lv_demo_encoder();

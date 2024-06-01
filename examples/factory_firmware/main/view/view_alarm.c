@@ -148,8 +148,8 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
     alarm_timer_start(alarm_st->duration);
 
-    // the alarm_indicator will not display within the ViewLive Page
-    if (lv_scr_act() != ui_Page_ViewLive){
+    // turn the page to view live
+    if ((lv_scr_act() != ui_Page_ViewLive) && (lv_scr_act() != ui_Page_OTA)){
         task_view_current = 0;
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
     }else
@@ -204,21 +204,22 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
         }
     }
     // initial indicator and state
-    indicator_value = 0;
-    lv_arc_set_value(ui_alarm_indicator, indicator_value);
-    lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_background(ui_image);
-    lv_obj_move_foreground(ui_viewlivp2);
-    // lv_obj_move_foreground(ui_image);
+    if(lv_scr_act() == ui_Page_ViewLive){
+        indicator_value = 0;
+        lv_arc_set_value(ui_alarm_indicator, indicator_value);
+        lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_background(ui_image);
+        lv_obj_move_foreground(ui_viewlivp2);
 
-    // alarm indicator animation start
-    lv_anim_init(&a);
-    lv_anim_set_var(&a, ui_alarm_indicator);
-    lv_anim_set_exec_cb(&a, set_angle);
-    lv_anim_set_time(&a, (alarm_st->duration) * 1000);
-    lv_anim_set_values(&a, 10, 100);
-    lv_anim_start(&a);
+        // alarm indicator animation start
+        lv_anim_init(&a);
+        lv_anim_set_var(&a, ui_alarm_indicator);
+        lv_anim_set_exec_cb(&a, set_angle);
+        lv_anim_set_time(&a, (alarm_st->duration) * 1000);
+        lv_anim_set_values(&a, 10, 100);
+        lv_anim_start(&a);
+    }
 
     return ESP_OK;
 }

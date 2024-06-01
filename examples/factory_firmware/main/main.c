@@ -25,12 +25,10 @@
 #include "app_cmd.h"
 #include "app_sensecraft.h"
 #include "app_rgb.h"
-#include "deviceinfo.h"
 #include "app_device_info.h"
 #include "util.h"
 #include "app_ota.h"
 #include "app_taskflow.h"
-#include "app_png.h"
 
 #include "view.h"
 
@@ -60,22 +58,6 @@ static heap_task_totals_t s_totals_arr[MAX_TASK_NUM];
 static heap_task_block_t s_block_arr[MAX_BLOCK_NUM];
 #endif
 
-extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
-
-extern int g_detect_image_count;
-extern int g_speak_image_count;
-extern int g_listen_image_count;
-extern int g_load_image_count;
-extern int g_sleep_image_count;
-extern int g_smile_image_count;
-extern int g_detected_image_count;
-
 static void *__cJSON_malloc(size_t sz)
 {
     return heap_caps_malloc(sz, MALLOC_CAP_SPIRAM);
@@ -95,7 +77,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     case VIEW_EVENT_SHUTDOWN:
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
-        vTaskDelay(pdMS_TO_TICKS(1000));
         fflush(stdout);
         esp_restart();
         break;
@@ -136,7 +117,6 @@ int app_init(void)
     app_rgb_init();
     app_cmd_init();
     app_sensecraft_init();
-    app_device_status_monitor_init();
  
     audio_player_init();
     //app_sr_start(false);
@@ -148,20 +128,12 @@ void task_app_init(void *p_arg)
     // UI init
     view_init();
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
-    read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
-    read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
-    read_and_store_selected_pngs("detected", g_detected_img_dsc, &g_detected_image_count);
-    read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
-    read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
-    read_and_store_selected_pngs("loading", g_load_img_dsc, &g_load_image_count);
-    read_and_store_selected_pngs("sleeping", g_sleep_img_dsc, &g_sleep_image_count);
     app_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
                                                              VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
                                                              __view_event_handler, NULL, NULL));
 
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
     vTaskDelete(NULL);
 }
 
