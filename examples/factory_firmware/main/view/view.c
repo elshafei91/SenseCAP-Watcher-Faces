@@ -388,8 +388,6 @@ int view_init(void)
     view_image_preview_init(ui_Page_ViewLive);
     lvgl_port_unlock();
 
-    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
-
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, 
                                                             __view_event_handler, NULL, NULL)); 
@@ -481,6 +479,9 @@ int view_init(void)
     if((bat_per < 1) && (! is_charging))
     {
         lv_disp_load_scr(ui_Page_Battery);
+        vTaskDelay(pdMS_TO_TICKS(200));
+        BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
+
         ESP_LOGI(TAG, "Battery too low, wait for charging");
         while(1) {
             is_charging = (uint8_t)(bsp_exp_io_get_level(BSP_PWR_VBUS_IN_DET) == 0);
@@ -494,6 +495,9 @@ int view_init(void)
 
     lv_disp_load_scr(ui____initial_actions0);
     lv_disp_load_scr(ui_Page_Start);
+
+    vTaskDelay(pdMS_TO_TICKS(200));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
 
     read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
     read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
