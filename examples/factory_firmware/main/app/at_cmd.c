@@ -41,7 +41,7 @@ static void hex_to_string(uint8_t *hex, int hex_size, char *output);
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
 static wifi_ap_record_t current_connected_wifi;
-
+static int task_flow_resp;
 /*------------------critical DS for task_flow-------------------------------------------*/
 
 typedef struct
@@ -621,8 +621,8 @@ void handle_deviceinfo_command(char *params)
     char bt_mac_rsp[13] = { 0 };
     hex_to_string(get_bt_mac(), 6, (const char *)bt_mac_rsp);
     cJSON_AddItemToObject(root, "data", data);
-    printf("eui_at here %s",eui_rsp);
-    printf("blemac_at here %s",bt_mac_rsp);
+    printf("eui_at here %s", eui_rsp);
+    printf("blemac_at here %s", bt_mac_rsp);
     cJSON_AddStringToObject(data, "eui", (const char *)eui_rsp);
     cJSON_AddStringToObject(data, "blemac", (const char *)bt_mac_rsp);
 
@@ -987,7 +987,7 @@ void base64_decode(const unsigned char *input, size_t input_len, unsigned char *
     size_t olen = 0;
     mbedtls_base64_decode(NULL, 0, &olen, input, input_len);
 
-    *output = (unsigned char *)malloc(olen);
+    *output = (unsigned char *)heap_caps_malloc(olen, MALLOC_CAP_SPIRAM);;
     if (*output == NULL)
     {
         fprintf(stderr, "Memory allocation failed\n");
@@ -1002,22 +1002,6 @@ void base64_decode(const unsigned char *input, size_t input_len, unsigned char *
         *output = NULL;
     }
 }
-
-
-
-
-static  task_flow_resp; 
-static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data){
-    switch(id){
-    case VIEW_EVENT_WIFI_CONNECT: {
-            ESP_LOGI("", "event: VIEW_EVENT_WIFI_CONNECT");
-            struct view_data_wifi_config *p_cfg = (struct view_data_wifi_config *)event_data;
-        }
-    }
-}
-
-
-
 
 void handle_taskflow_command(char *params)
 {
@@ -1054,10 +1038,10 @@ void handle_taskflow_command(char *params)
         size_t output_len;
         // printf("Final data: %s\n", result);
         base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
+        free(result);
         // printf("Decoded data: %s\n", base64_output);
         esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, output_len, portMAX_DELAY);
     }
-
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
@@ -1138,6 +1122,8 @@ void task_handle_AT_command()
 
         char *test_strings = (char *)heap_caps_malloc(msg_at.size + 1, MALLOC_CAP_SPIRAM);
         memcpy(test_strings, msg_at.msg, msg_at.size);
+        free(msg_at.msg);
+        msg_at.msg =NULL;
         test_strings[msg_at.size] = '\0';
 
         if (test_strings == NULL)
@@ -1391,7 +1377,11 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
                 network_connect_flag = 0;
             }
             break;
-
+        case VIEW_EVENT_WIFI_CONNECT: {
+            ESP_LOGI("", "event: VIEW_EVENT_WIFI_CONNECT");
+            struct view_data_wifi_config *p_cfg = (struct view_data_wifi_config *)event_data;
+            break;
+        }
         default:
             break;
     }
