@@ -1058,7 +1058,7 @@ void sliderr_cb(lv_event_t *e)
         switch (swipe_id)
         {
             case 0:
-                esp_restart();
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, portMAX_DELAY);
                 break;
 
             case 1:

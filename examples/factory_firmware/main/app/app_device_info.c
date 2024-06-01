@@ -1,26 +1,33 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdatomic.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "esp_event.h"
-#include "event_loops.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "data_defs.h"
-#include "app_device_info.h"
-#include "storage.h"
+#include "esp_app_desc.h"
+#include "nvs_flash.h"
+
 #include "sensecap-watcher.h"
+
+#include "app_device_info.h"
+#include "event_loops.h"
+#include "data_defs.h"
+#include "storage.h"
 #include "app_rgb.h"
 #include "app_audio.h"
 #include "audio_player.h"
-#include "nvs_flash.h"
+#include "app_sensecraft.h"
+#include "tf_module_ai_camera.h"
 
-#include "mqtt_client.h"
 
 #define SN_TAG                    "SN_TAG"
 #define APP_DEVICE_INFO_MAX_STACK 4096
@@ -32,10 +39,10 @@
 #define AI_SERVICE_STORAGE_KEY    "aiservice"
 #define RESET_FACTORY_SK          "resetfactory"
 
+static const char *TAG = "deviceinfo";
+
 uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x69 };
 uint8_t EUI[] = { 0x1C, 0xF7, 0xF1, 0xC8, 0x62, 0x20, 0x00, 0x09, 0x7A, 0x18, 0x7A, 0xA8, 0xEE, 0x8B, 0x97, 0xFF };
-char software_version[] = "1.0.0";
-char himax_software_version[] = "1.0.0";
 int server_code = 1;
 int create_batch = 1000205;
 
@@ -71,6 +78,9 @@ SemaphoreHandle_t MUTEX_reset_factory;
 static StackType_t *app_device_info_task_stack = NULL;
 static StaticTask_t app_device_info_task_buffer;
 
+static struct view_data_device_status g_device_status;
+static volatile atomic_bool g_mqttconn = ATOMIC_VAR_INIT(false);
+
 void app_device_info_task(void *pvParameter);
 
 /*----------------------------------------------------tool function---------------------------------------------*/
@@ -82,10 +92,55 @@ void byteArrayToHexString(const uint8_t *byteArray, size_t byteArraySize, char *
     }
 }
 /*-------------------------------------------------------------------------------------------------------------*/
+int deviceinfo_get(struct view_data_deviceinfo *p_info)
+{
+    size_t len=sizeof(struct view_data_deviceinfo);
+    memset(p_info, 0, len);
+    esp_err_t ret = storage_read(DEVICEINFO_STORAGE, (void *)p_info, &len);
+    if (ret != ESP_OK) {
+        return ret;
+	}
+    return ESP_OK;
+}
+
+int deviceinfo_set(struct view_data_deviceinfo *p_info)
+{
+    esp_err_t ret = 0;
+    ret = storage_write(DEVICEINFO_STORAGE, (void *)p_info, sizeof(struct view_data_deviceinfo));
+    if( ret != ESP_OK ) {
+        ESP_LOGE("", "cfg write err:%d", ret);
+        return ret;
+    }
+    return ESP_OK;
+}
+
+static void __event_loop_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+{
+    switch (id)
+    {
+    case CTRL_EVENT_MQTT_CONNECTED:
+    {
+        ESP_LOGI(TAG, "received event: CTRL_EVENT_MQTT_CONNECTED");
+        atomic_store(&g_mqttconn, true);
+        break;
+    }
+    default:
+        break;
+    }
+}
 
 /*----------------------------------------------------------init function--------------------------------------*/
 void app_device_info_init()
 {
+    const esp_app_desc_t *app_desc = esp_app_get_description();
+
+    //if newer hw_version come up in the future, we can tell it from the EUI
+    //for this version firmware, we hard code hw_version as 1.0
+    g_device_status.hw_version = "1.0";
+    g_device_status.fw_version = app_desc->version;
+    g_device_status.battery_per = 100;
+
+
     app_device_info_task_stack = (StackType_t *)heap_caps_malloc(4096 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     if (app_device_info_task_stack == NULL)
     {
@@ -98,6 +153,9 @@ void app_device_info_init()
     {
         ESP_LOGE(SN_TAG, "Failed to create task");
     }
+
+    esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED,
+                                    __event_loop_handler, NULL);
 }
 
 void init_sn_from_nvs()
@@ -412,15 +470,15 @@ char *get_software_version(int caller)
         {
             case AT_CMD_CALLER:
                 ESP_LOGI(SN_TAG, "BLE get software version");
-                result = strdup(software_version);
+                result = g_device_status.fw_version;
                 break;
             case UI_CALLER:
                 ESP_LOGI(SN_TAG, "UI get software version");
                 char final_string[150];
-                snprintf(final_string, sizeof(final_string), "v%s", software_version);
+                snprintf(final_string, sizeof(final_string), "v%s", g_device_status.fw_version);
                 printf("Software Version: %s\n", final_string);
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
-                result = strdup(software_version);
+                result = g_device_status.fw_version;
                 break;
         }
         xSemaphoreGive(MUTEX_software_version);
@@ -442,15 +500,15 @@ char *get_himax_software_version(int caller)
         {
             case AT_CMD_CALLER:
                 ESP_LOGI(SN_TAG, "BLE get himax software version");
-                result = strdup(himax_software_version);
+                result = g_device_status.himax_fw_version;
                 break;
             case UI_CALLER:
                 ESP_LOGI(SN_TAG, "UI get himax software version");
                 char final_string[150];
-                snprintf(final_string, sizeof(final_string), "v%s", himax_software_version);
+                snprintf(final_string, sizeof(final_string), "v%s", g_device_status.himax_fw_version);
                 printf("Himax Software Version: %s\n", final_string);
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_HIMAX_SOFTWARE_VERSION_CODE, final_string, strlen(final_string) + 1, portMAX_DELAY);
-                result = strdup(himax_software_version);
+                result = g_device_status.himax_fw_version;
                 break;
         }
         xSemaphoreGive(MUTEX_himax_software_version);
@@ -780,6 +838,11 @@ uint8_t *__set_reset_factory()
 /*-----------------------------------------------------TASK----------------------------------------------------------*/
 void app_device_info_task(void *pvParameter)
 {
+    uint8_t batnow = 0;
+    uint32_t cnt = 0;
+    bool firstboot_reported = false;
+    static uint8_t last_charge_st = 0x66;
+
     MUTEX_brightness = xSemaphoreCreateMutex();
     MUTEX_SN = xSemaphoreCreateMutex();
     MUTEX_software_version = xSemaphoreCreateMutex();
@@ -795,6 +858,10 @@ void app_device_info_task(void *pvParameter)
     init_soud_from_nvs();
     init_ai_service_param_from_nvs();
     init_reset_factory_switch_from_nvs();
+
+    g_device_status.battery_per = bsp_battery_get_percent();
+    g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
+
     while (1)
     {
         //__set_cloud_service_switch();
@@ -804,6 +871,39 @@ void app_device_info_task(void *pvParameter)
         __set_reset_factory();
         //__set_ai_service();
         vTaskDelay(100 / portTICK_PERIOD_MS);
+        cnt++;
+
+        if (!firstboot_reported && atomic_load(&g_mqttconn)) {
+            app_sensecraft_mqtt_report_device_status(&g_device_status);
+            firstboot_reported = true;
+        }
+
+        if ((cnt % 300) == 0) {
+            batnow = bsp_battery_get_percent();
+            if (abs(g_device_status.battery_per - batnow) > 10 || batnow == 0) {
+                g_device_status.battery_per = batnow;
+                //mqtt pub
+                if (atomic_load(&g_mqttconn)) {
+                    app_sensecraft_mqtt_report_device_status(&g_device_status);
+                }
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
+                                  &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
+            }
+            if (batnow == 0) {
+                ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, 
+                                  NULL, 0, portMAX_DELAY);
+            }
+        }
+
+        if ((cnt % 10) == 0) {
+            uint8_t chg = (uint8_t)bsp_system_is_charging();
+            if (chg != last_charge_st) {
+                last_charge_st = chg;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, 
+                                  &last_charge_st, 1, portMAX_DELAY);
+            }
+        }
     }
 }
 

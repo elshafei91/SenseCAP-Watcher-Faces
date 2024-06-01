@@ -13,7 +13,7 @@
 
 #include "event_loops.h"
 #include "data_defs.h"
-#include "deviceinfo.h"
+#include "app_device_info.h"
 #include "util.h"
 #include "uuid.h"
 
@@ -604,8 +604,9 @@ err:
     }
     if (p_sensecraft) {
         free(p_sensecraft);
-        p_sensecraft = NULL;
+        gp_sensecraft = NULL;
     }
+    ESP_LOGE(TAG, "app_sensecraft_init fail %d!", ret);
     return ret;
 }
 

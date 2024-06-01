@@ -183,7 +183,8 @@ enum {
 
     VIEW_EVENT_TIME,      // bool time_format_24
     VIEW_EVENT_TIME_ZONE,   // int8_t zone
-    VIEW_EVENT_BATTERY_ST,// battery changed event
+    VIEW_EVENT_BATTERY_ST,// battery changed event, struct view_data_device_status
+    VIEW_EVENT_CHARGE_ST, // charge status change, uint8_t
 
     VIEW_EVENT_WIFI_ST,   // view_data_wifi_st changed event
     VIEW_EVENT_CITY,      // char city[32], max display 24 char
@@ -211,6 +212,7 @@ enum {
     VIEW_EVENT_DISPLAY_CFG_APPLY,   // struct view_data_display. will save
 
 
+    VIEW_EVENT_BAT_DRAIN_SHUTDOWN,  //NULL, pre-shutdown event, to render a warn UI for system going to shutdown
     VIEW_EVENT_SHUTDOWN,      //NULL
     VIEW_EVENT_FACTORY_RESET, //NULL
     VIEW_EVENT_SCREEN_CTRL,   // bool  0:disable , 1:enable
@@ -277,6 +279,7 @@ enum {
     CTRL_EVENT_TASK_FLOW_START_BY_MQTT, // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_BLE,  // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_SR,   // char * , taskflow json, There can only be one listener
+    CTRL_EVENT_TASK_FLOW_START_BY_CMD,   // char * , taskflow json, There can only be one listener
 
     CTRL_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
     CTRL_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status

@@ -206,23 +206,14 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
     cJSON *json = NULL;
     char *json_str = NULL;
     char *p_resp = NULL;
-    char *p_img = NULL;
 
     json = cJSON_CreateObject();
 
     p_str = "";
     if(p_data->img_large.p_buf != NULL) {
-        p_img = tf_malloc(p_data->img_large.len + 1); // To be optimized
-        if( p_img != NULL ) {
-            memcpy(p_img, p_data->img_large.p_buf, p_data->img_large.len);
-            p_img[p_data->img_large.len] = 0;
-            p_str = p_img;
-        }
+        p_str = (char *)p_data->img_large.p_buf;
     }
     cJSON_AddItemToObject(json, "img", cJSON_CreateString(p_str));
-    if( p_img ) {
-        tf_free(p_img);
-    }
 
     __data_lock(p_module_ins);
     p_str = "";
@@ -354,7 +345,7 @@ static void img_analyzer_task(void *p_arg)
     while(1) {
         
         bits = xEventGroupWaitBits(p_module_ins->event_group, \
-                EVENT_NEED_DELETE | EVENT_STOP , pdTRUE, pdFALSE, portMAX_DELAY);
+                EVENT_NEED_DELETE | EVENT_STOP , pdTRUE, pdFALSE, ( TickType_t ) 10 );
 
         if (( bits & EVENT_NEED_DELETE ) != 0)  {
             ESP_LOGI(TAG, "EVENT_NEED_DELETE");
