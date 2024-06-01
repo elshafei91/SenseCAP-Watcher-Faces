@@ -18,7 +18,6 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_x(ui_wifip1, 0);
     lv_obj_set_y(ui_wifip1, -50);
     lv_obj_set_align(ui_wifip1, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_wifip1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_wifip1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -26,6 +25,7 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_style_border_opa(ui_wifip1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_wifiicon = lv_img_create(ui_wifip1);
+    lv_img_set_src(ui_wifiicon, &ui_img_wifi_3_png);
     lv_obj_set_width(ui_wifiicon, LV_SIZE_CONTENT);   /// 18
     lv_obj_set_height(ui_wifiicon, LV_SIZE_CONTENT);    /// 18
     lv_obj_set_x(ui_wifiicon, 0);
@@ -97,6 +97,7 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_x(ui_wifip3, 0);
     lv_obj_set_y(ui_wifip3, -50);
     lv_obj_set_align(ui_wifip3, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_wifip3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_wifip3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -109,7 +110,7 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_x(ui_wifitext3, 0);
     lv_obj_set_y(ui_wifitext3, 80);
     lv_obj_set_align(ui_wifitext3, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_wifitext3, "Waiting for Wi-Fi Setup...");
+    lv_label_set_text(ui_wifitext3, "Wi-Fi Connection Failed");
     lv_obj_set_style_text_color(ui_wifitext3, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_wifitext3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_wifitext3, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -124,8 +125,6 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_align(ui_wifilogo, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_wifilogo, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
     lv_obj_clear_flag(ui_wifilogo, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    // lv_obj_set_style_img_recolor(ui_wifilogo, lv_color_hex(0x8FC31F), LV_PART_MAIN | LV_STATE_DEFAULT);
-    // lv_obj_set_style_img_recolor_opa(ui_wifilogo, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_wifitext2 = lv_label_create(ui_wifip3);
     lv_obj_set_width(ui_wifitext2, LV_SIZE_CONTENT);   /// 1

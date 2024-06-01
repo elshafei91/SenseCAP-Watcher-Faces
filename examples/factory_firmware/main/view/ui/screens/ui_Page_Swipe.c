@@ -18,7 +18,6 @@ void ui_Page_Swipe_screen_init(void)
     lv_obj_set_width(ui_spsilder, 250);
     lv_obj_set_height(ui_spsilder, 15);
     lv_obj_set_align(ui_spsilder, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_set_style_bg_color(ui_spsilder, lv_color_hex(0xD47C2A), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_spsilder, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_outline_color(ui_spsilder, lv_color_hex(0x0B0909), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -61,7 +60,6 @@ void ui_Page_Swipe_screen_init(void)
     lv_obj_set_y(ui_sptext, -100);
     lv_obj_set_align(ui_sptext, LV_ALIGN_CENTER);
     lv_label_set_text(ui_sptext, "Swipe to shut down");
-    lv_obj_add_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_set_style_text_color(ui_sptext, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_sptext, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_sptext, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);

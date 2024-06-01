@@ -82,7 +82,7 @@ void ui_Page_OTA_screen_init(void)
     lv_obj_set_x(ui_otaback, 0);
     lv_obj_set_y(ui_otaback, 120);
     lv_obj_set_align(ui_otaback, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_otaback, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_add_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_otaback, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_otaback, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_otaback, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);

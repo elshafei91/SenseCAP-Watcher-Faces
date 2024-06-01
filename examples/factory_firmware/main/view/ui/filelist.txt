@@ -26,6 +26,7 @@ components/ui_comp_hook.c
 ui_helpers.c
 images/ui_img_battery_warn_png.c
 images/ui_img_logo_png.c
+images/ui_img_start_smile_png.c
 images/ui_img_page_main_png.c
 images/ui_img_task_template_png.c
 images/ui_img_1415499115.c
@@ -40,8 +41,8 @@ images/ui_img_battery_frame_png.c
 images/ui_img_ble_png.c
 images/ui_img_button_cancel_png.c
 images/ui_img_arrow_png.c
-images/ui_img_1067503588.c
 images/ui_img_wifi_3_png.c
+images/ui_img_1067503588.c
 images/ui_img_switch_group_png.c
 images/ui_img_setback_png.c
 images/ui_img_template1_png.c

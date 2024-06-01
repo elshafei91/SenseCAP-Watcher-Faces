@@ -21,6 +21,8 @@ lv_obj_t * view_show_img;
 uint8_t shutdown_state = 0;
 static int PNG_LOADING_COUNT = 0;
 static uint8_t battery_per = 0;
+static bool battery_timer_toggle = 0;
+static int battery_flash_count = 0;
 extern uint8_t task_down;
 extern uint8_t swipe_id; // 0 for shutdown, 1 for factoryreset
 extern int first_use;
@@ -53,6 +55,23 @@ static void update_ai_ota_progress(int percentage)
 static void update_ota_progress(int percentage)
 {
     lv_arc_set_value(ui_otaarc, percentage);
+}
+
+static void toggle_image_visibility(lv_timer_t *timer)
+{
+    if(battery_timer_toggle){
+        lv_obj_add_flag(ui_Image2, LV_OBJ_FLAG_HIDDEN);
+    }else{
+        lv_obj_clear_flag(ui_Image2, LV_OBJ_FLAG_HIDDEN);
+    }
+    battery_timer_toggle = !battery_timer_toggle;
+
+    battery_flash_count++;
+
+    if (battery_flash_count >= 4) {
+        lv_timer_del(timer);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, portMAX_DELAY);
+    }
 }
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
@@ -91,7 +110,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            //Todo
             case VIEW_EVENT_BATTERY_ST:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BATTERY_ST");
                 struct view_data_device_status * bat_st = (struct view_data_device_status *)event_data;
@@ -104,7 +122,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_BAT_DRAIN_SHUTDOWN:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BAT_DRAIN_SHUTDOWN");
-                //TODO: render the 0 battery level UI page, and after the animate fire the VIEW_EVENT_SHUTDOWN event
+                lv_timer_t *timer = lv_timer_create(toggle_image_visibility, 500, NULL);
+                
                 break;
             }
 
@@ -112,24 +131,21 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_CHARGE_ST");
                 uint8_t is_charging = *(uint8_t *)event_data;
                 ESP_LOGI(TAG, "charging state changed: %d", is_charging);
-                if(is_charging)
+                lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
+                if(is_charging == 0)
                 {
-                    shutdown_state = 1;
-                    if(swipe_id==0)
-                    {
-                        lv_obj_clear_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_add_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_add_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
-                    }
-                    lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
-                    lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
-                }else{
                     shutdown_state = 0;
                     if(swipe_id==0)
                     {
-                        lv_obj_add_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_clear_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_clear_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
+                        lv_label_set_text(ui_sptext, "Swipe to reboot");
+                    }
+                    lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
+                    lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
+                }else if(is_charging == 1){
+                    shutdown_state = 1;
+                    if(swipe_id==0)
+                    {
+                        lv_label_set_text(ui_sptext, "Swipe to shut down");
                     }
                     lv_obj_clear_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_frame_png);
