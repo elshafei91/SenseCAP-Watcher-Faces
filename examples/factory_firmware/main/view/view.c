@@ -110,7 +110,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            //Todo
             case VIEW_EVENT_BATTERY_ST:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BATTERY_ST");
                 struct view_data_device_status * bat_st = (struct view_data_device_status *)event_data;
@@ -133,22 +132,22 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 uint8_t is_charging = *(uint8_t *)event_data;
                 ESP_LOGI(TAG, "charging state changed: %d", is_charging);
                 lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
-                if(is_charging == 1)
+                if(is_charging == 0)
                 {
-                    // shutdown_state = 0;
-                    // if(swipe_id==0)
-                    // {
-                    //     lv_label_set_text(ui_sptext, "Swipe to reboot");
-                    // }
-                    // lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
+                    shutdown_state = 0;
+                    if(swipe_id==0)
+                    {
+                        lv_label_set_text(ui_sptext, "Swipe to reboot");
+                    }
+                    lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
-                }else if(is_charging == 0){
-                    // shutdown_state = 1;
-                    // if(swipe_id==0)
-                    // {
-                    //     lv_label_set_text(ui_sptext, "Swipe to shut down");
-                    // }
-                    // lv_obj_clear_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
+                }else if(is_charging == 1){
+                    shutdown_state = 1;
+                    if(swipe_id==0)
+                    {
+                        lv_label_set_text(ui_sptext, "Swipe to shut down");
+                    }
+                    lv_obj_clear_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_frame_png);
                 }
                 break;
