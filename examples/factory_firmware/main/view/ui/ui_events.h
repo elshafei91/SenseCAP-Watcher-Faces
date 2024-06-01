@@ -15,6 +15,8 @@ void startload_cb(lv_event_t * e);
 void loadsl_cb(lv_event_t * e);
 void virtc_cb(lv_event_t * e);
 void virtsl_cb(lv_event_t * e);
+void virb1c_cb(lv_event_t * e);
+void virb2c_cb(lv_event_t * e);
 void mgesup_cb(lv_event_t * e);
 void mgesdown_cb(lv_event_t * e);
 void mclick_cb(lv_event_t * e);
@@ -137,6 +139,7 @@ void slpt4c_cb(lv_event_t * e);
 void slpt5c_cb(lv_event_t * e);
 void slpt6c_cb(lv_event_t * e);
 void slpt7c_cb(lv_event_t * e);
+
 
 void waitForWifi();
 void waitForBinding();

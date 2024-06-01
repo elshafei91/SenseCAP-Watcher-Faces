@@ -226,6 +226,17 @@ void ui_Page_main_screen_init(void)
     lv_obj_set_style_img_recolor(ui_mainb, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_mainb, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    ui_btpert = lv_label_create(ui_mainb);
+    lv_obj_set_width(ui_btpert, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_btpert, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_x(ui_btpert, 9);
+    lv_obj_set_y(ui_btpert, -1);
+    lv_obj_set_align(ui_btpert, LV_ALIGN_LEFT_MID);
+    lv_label_set_text(ui_btpert, "96");
+    lv_obj_set_style_text_color(ui_btpert, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_btpert, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_btpert, &ui_font_Font12, LV_PART_MAIN | LV_STATE_DEFAULT);
+
     ui_mainble = lv_img_create(ui_Devicep);
     lv_img_set_src(ui_mainble, &ui_img_ble_png);
     lv_obj_set_width(ui_mainble, LV_SIZE_CONTENT);   /// 18
@@ -260,17 +271,6 @@ void ui_Page_main_screen_init(void)
     lv_obj_set_style_bg_opa(ui_mcontrolp, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_mcontrolp, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_mcontrolp, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_btpert = lv_label_create(ui_Page_main);
-    lv_obj_set_width(ui_btpert, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_btpert, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_x(ui_btpert, 188);
-    lv_obj_set_y(ui_btpert, -78);
-    lv_obj_set_align(ui_btpert, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_btpert, "96");
-    lv_obj_set_style_text_color(ui_btpert, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_btpert, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_btpert, &ui_font_Font12, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_mainbtn1, ui_event_mainbtn1, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_mainbtn2, ui_event_mainbtn2, LV_EVENT_ALL, NULL);
