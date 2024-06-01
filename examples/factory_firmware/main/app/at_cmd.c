@@ -25,6 +25,7 @@
 #include "cJSON.h"
 #include "app_device_info.h"
 
+#define TAG "AT_CMD"
 /*------------------system basic DS-----------------------------------------------------*/
 StreamBufferHandle_t xStreamBuffer;
 
@@ -236,7 +237,7 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     }
     else
     {
-        printf("Command not found\n");
+        ESP_LOGI(TAG, "Command not found\n");
     }
 }
 
@@ -260,18 +261,56 @@ void AT_command_reg()
     add_command(&commands, "cloudservice=", handle_cloud_service_command);
     add_command(&commands, "cloudservice?", handle_cloud_service_qurey_command);
     add_command(&commands, "emoji=", handle_emoji_command);
+    add_command(&commands, "bind=", handle_bind_command);
 }
+
+static int bind_index;
+void handle_bind_command(char *params)
+{
+    ESP_LOGI(TAG, "handle_bind_command\n");
+    cJSON *json = cJSON_Parse(params);
+    if (json == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+    }
+
+    cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "code");
+    bind_index = data->valueint;
+    ESP_LOGI(TAG, "bind_index: %d\n", bind_index);
+
+    cJSON_Delete(json);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data_rep = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "name", "bind");
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data_rep);
+    cJSON_AddStringToObject(data_rep, "bind", "");
+    char *json_string = cJSON_Print(root);
+    ESP_LOGI(TAG,"JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
+    send_at_response(&response);
+    cJSON_Delete(root);
+}
+
+
+
+
 
 static int emoji_index = 1;
 static char *emoji_name_prefix;
 static char *emoji_name_final;
 void parse_json_and_concatenate_emoji(char *json_string)
 {
-    printf("Params: %s\n", json_string);
+    // printf("Params: %s\n", json_string);
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL)
     {
-        printf("Error parsing JSON\n");
+        ESP_LOGI(TAG, "Error parsing emoji JSON\n");
     }
 
     cJSON *name = cJSON_GetObjectItem(json, "name");
@@ -282,7 +321,7 @@ void parse_json_and_concatenate_emoji(char *json_string)
     cJSON *emoji_index_cjson = cJSON_GetObjectItem(json, "emoji_index");
     if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data) || !cJSON_IsNumber(total_size))
     {
-        printf("Invalid JSON format\n");
+        ESP_LOGI(TAG, "Invalid JSON format in parse_json_and_concatenate_emoji\n");
         cJSON_Delete(json);
     }
 
@@ -290,7 +329,6 @@ void parse_json_and_concatenate_emoji(char *json_string)
     int prefix_size = 256;
     if (name && name->valuestring)
     {
-        // strncpy(emoji_name_prefix, name->valuestring, prefix_size - 1);
         emoji_name_prefix[prefix_size - 1] = '\0';
     }
     else
@@ -311,7 +349,7 @@ void parse_json_and_concatenate_emoji(char *json_string)
         emoji_tasks = (Task *)heap_caps_malloc(num_jsons * sizeof(Task), MALLOC_CAP_SPIRAM);
         if (emoji_tasks == NULL)
         {
-            printf("Failed to allocate memory for tasks\n");
+            ESP_LOGI(TAG, "Failed to allocate memory for tasks\n");
             cJSON_Delete(json);
         }
         for (int i = 0; i < num_jsons; i++)
@@ -322,7 +360,7 @@ void parse_json_and_concatenate_emoji(char *json_string)
 
     if (emoji_tasks == NULL || index < 0 || index >= num_jsons)
     {
-        printf("Tasks array is not properly allocated or index out of range\n");
+        ESP_LOGI(TAG, "emoji Tasks array is not properly allocated or index out of range\n");
         cJSON_Delete(json);
     }
 
@@ -331,7 +369,7 @@ void parse_json_and_concatenate_emoji(char *json_string)
     emoji_tasks[index].data = (char *)heap_caps_malloc(DATA_LENGTH + 1, MALLOC_CAP_SPIRAM);
     if (emoji_tasks[index].data == NULL)
     {
-        printf("Failed to allocate memory for data\n");
+        ESP_LOGI(TAG, "Failed to allocate memory for data\n");
         cJSON_Delete(json);
     }
     strncpy(emoji_tasks[index].data, data->valuestring, DATA_LENGTH);
@@ -387,9 +425,8 @@ void write_to_file(const char *file_path, const char *data)
 }
 void handle_emoji_command(char *params)
 {
-    printf("handle_emoji_command\n");
-
-    printf("Params: %s\n", params);
+    ESP_LOGI(TAG, "handle_emoji_command\n");
+    ESP_LOGI(TAG, "emoji Params: %s\n", params);
     parse_json_and_concatenate_emoji(params);
 
     int all_received = 1;
@@ -406,7 +443,7 @@ void handle_emoji_command(char *params)
         char *result = (char *)heap_caps_malloc(MEMORY_SIZE, MALLOC_CAP_SPIRAM);
         if (result == NULL)
         {
-            printf("Failed to allocate memory for result\n");
+            ESP_LOGE(TAG, "Failed to allocate memory for result in emoji handle\n");
             for (int k = 0; k < num_jsons; k++)
             {
                 free(emoji_tasks[k].data);
@@ -417,7 +454,8 @@ void handle_emoji_command(char *params)
         concatenate_data_emoji(result);
         char file_path[256];
         snprintf(file_path, sizeof(file_path), "/spiffs/%s", emoji_name_final);
-        printf("Final data: %s\n", result);
+        ESP_LOGI(TAG, "emoji Final data: %s\n", result);
+        // todo write to spiffs
         write_to_file(file_path, result);
     }
 
@@ -430,7 +468,7 @@ void handle_emoji_command(char *params)
     cJSON_AddItemToObject(root, "data", data_rep);
     cJSON_AddStringToObject(data_rep, "emoji", "");
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
@@ -440,8 +478,7 @@ static int cloud_service_switch;
 
 void handle_cloud_service_qurey_command(char *params)
 {
-    printf("Handling handle_cloud_service_qurey_command \n");
-
+    ESP_LOGI(TAG, "Handling handle_cloud_service_qurey_command \n");
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
@@ -450,7 +487,7 @@ void handle_cloud_service_qurey_command(char *params)
     cJSON_AddItemToObject(root, "data", data_rep);
     cJSON_AddNumberToObject(data_rep, "cloudservice", cloud_service_switch);
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String in cloud service qurey handle: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
@@ -458,7 +495,7 @@ void handle_cloud_service_qurey_command(char *params)
 
 void handle_cloud_service_command(char *params)
 {
-    printf("handle_cloud_service_command\n");
+    ESP_LOGI(TAG, "handle_cloud_service_command\n");
     cJSON *json = cJSON_Parse(params);
     if (json == NULL)
     {
@@ -476,13 +513,13 @@ void handle_cloud_service_command(char *params)
         if (cJSON_IsNumber(cloud_service))
         {
             cloud_service_switch = cloud_service->valueint;
-            printf("Cloud_Service: %d\n", cloud_service_switch);
-            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CLOUD_SERVICE, &cloud_service_cfg, sizeof(cloud_service_cfg), portMAX_DELAY);
+            ESP_LOGI(TAG, "Cloud_Service: %d\n", cloud_service_switch);
+            set_cloud_service_switch(AT_CMD_CALLER, cloud_service_switch);
         }
     }
     else
     {
-        printf("Cloud_Service not found or not a valid string in JSON\n");
+        ESP_LOGE(TAG, "Cloud_Service not found or not a valid string in JSON\n");
     }
 
     cJSON_Delete(json);
@@ -512,7 +549,7 @@ void handle_cloud_service_command(char *params)
  */
 void handle_deviceinfo_cfg_command(char *params)
 {
-    printf("handle_deviceinfo_cfg_command\n");
+    ESP_LOGI(TAG, "handle_deviceinfo_cfg_command\n");
 
     cJSON *json = cJSON_Parse(params);
     if (json == NULL)
@@ -561,7 +598,7 @@ void handle_deviceinfo_cfg_command(char *params)
     }
     else
     {
-        printf("failed at config json\n");
+        ESP_LOGE(TAG, "failed at config json\n");
     }
 
     cJSON_Delete(json);
@@ -987,7 +1024,8 @@ void base64_decode(const unsigned char *input, size_t input_len, unsigned char *
     size_t olen = 0;
     mbedtls_base64_decode(NULL, 0, &olen, input, input_len);
 
-    *output = (unsigned char *)heap_caps_malloc(olen, MALLOC_CAP_SPIRAM);;
+    *output = (unsigned char *)heap_caps_malloc(olen, MALLOC_CAP_SPIRAM);
+    ;
     if (*output == NULL)
     {
         fprintf(stderr, "Memory allocation failed\n");
@@ -1123,7 +1161,7 @@ void task_handle_AT_command()
         char *test_strings = (char *)heap_caps_malloc(msg_at.size + 1, MALLOC_CAP_SPIRAM);
         memcpy(test_strings, msg_at.msg, msg_at.size);
         free(msg_at.msg);
-        msg_at.msg =NULL;
+        msg_at.msg = NULL;
         test_strings[msg_at.size] = '\0';
 
         if (test_strings == NULL)

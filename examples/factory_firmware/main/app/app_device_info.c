@@ -27,9 +27,9 @@
 #include "audio_player.h"
 #include "app_sensecraft.h"
 #include "tf_module_ai_camera.h"
+#include "factory_info.h"
 
 #define APP_DEVICE_INFO_MAX_STACK 4096
-#define SN_STORAGE_SK             "sn"
 #define BRIGHTNESS_STORAGE_KEY    "brightness"
 #define SOUND_STORAGE_KEY         "sound"
 #define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
@@ -143,11 +143,13 @@ void init_eui_from_nvs()
     }
     uint8_t eui[8];
     uint8_t code[8];
+    ESP_LOGE(TAG,"eui in factory is %s",eui_str);
+    ESP_LOGE(TAG,"code_str in factory is %s",code_str);
     string_to_byte_array(eui_str, eui, 8);
     string_to_byte_array(code_str, code, 8);
-    uint8_t EUI[16];
     memcpy(EUI, eui, 8);
     memcpy(EUI + 8, code, 8);
+    ESP_LOGE(TAG,"code_str and EUI comb in factory is %s",EUI);
 }
 
 void init_batchid_from_nvs(){
@@ -325,7 +327,6 @@ uint8_t *get_sn(int caller)
                 hexString4[18] = '\0';
                 char final_string[150];
                 snprintf(final_string, sizeof(final_string), "w1:%s:%s:%s:%s", hexString1, storage_space_2, storage_space_3, hexString4);
-                // printf("SN: %s\n", final_string);
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, final_string, sizeof(final_string), portMAX_DELAY);
                 break;
         }
@@ -347,6 +348,7 @@ uint8_t *get_bt_mac()
     }
     return bd_addr;
 }
+
 uint8_t *get_sn_code()
 {
     return SN;
@@ -358,7 +360,7 @@ uint8_t *get_eui()
 }
 
 /*----------------------------------------------brightness module------------------------------------------------------*/
-uint8_t *get_brightness(int caller)
+int get_brightness(int caller)
 {
     if (xSemaphoreTake(MUTEX_brightness, portMAX_DELAY) != pdTRUE)
     {
@@ -604,11 +606,6 @@ static int __set_sound()
     }
     if (sound_value_past != sound_value)
     {
-        // FILE *fp = fopen("/spiffs/waitPlease.mp3", "r");
-        // if (fp)
-        // {
-        //     audio_player_play(fp);
-        // }
         esp_err_t ret = storage_write(SOUND_STORAGE_KEY, &sound_value, sizeof(sound_value));
         if (ret != ESP_OK)
         {
@@ -816,7 +813,8 @@ void app_device_info_task(void *pvParameter)
     MUTEX_cloud_service_switch = xSemaphoreCreateMutex();
     MUTEX_ai_service = xSemaphoreCreateMutex();
     MUTEX_reset_factory = xSemaphoreCreateMutex();
-
+    init_sn_from_nvs();
+    init_eui_from_nvs();
     init_ai_service_param_from_nvs();
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();

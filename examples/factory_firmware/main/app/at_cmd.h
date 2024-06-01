@@ -72,7 +72,7 @@ void handle_cloud_service_command(char *params);    // Cloud service command
 void handle_cloud_service_qurey_command(char *params);    // Cloud service query command
 void handle_emoji_command(char *params);    // Emoji command
 void handle_taskflow_query_command(char *params); // Taskflow qurey command
-
+void handle_bind_command(char *params); // Bind command
 
 void init_event_loop_and_task();
 void AT_cmd_init();
