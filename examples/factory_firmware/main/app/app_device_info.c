@@ -27,21 +27,21 @@
 #include "audio_player.h"
 #include "app_sensecraft.h"
 #include "tf_module_ai_camera.h"
-
+#include "factory_info.h"
 
 #define APP_DEVICE_INFO_MAX_STACK 4096
-#define SN_STORAGE_SK             "sn"
 #define BRIGHTNESS_STORAGE_KEY    "brightness"
 #define SOUND_STORAGE_KEY         "sound"
 #define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
 #define CLOUD_SERVICE_STORAGE_KEY "cloudserviceswitch"
 #define AI_SERVICE_STORAGE_KEY    "aiservice"
 #define RESET_FACTORY_SK          "resetfactory"
-
+#define TIME_AUTOMATIC_SK         "time_auto"
 static const char *TAG = "deviceinfo";
 
 uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
 uint8_t EUI[] = { 0x2C, 0xF7, 0xF1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
 int server_code = 1;
 int create_batch = 1000205;
 
@@ -60,6 +60,9 @@ int cloud_service_switch_past = 1;
 int reset_factory_switch = 0;
 int reset_factory_switch_past = 0;
 
+int time_automatic = 0;
+int time_automatic_past = 0;
+
 // ai service ip for mqtt
 ai_service_pack ai_service;
 ai_service_pack ai_service_past;
@@ -73,6 +76,7 @@ SemaphoreHandle_t MUTEX_sound;
 SemaphoreHandle_t MUTEX_ai_service;
 SemaphoreHandle_t MUTEX_cloud_service_switch;
 SemaphoreHandle_t MUTEX_reset_factory;
+SemaphoreHandle_t MUTEX_time_automatic;
 SemaphoreHandle_t MUTEX_sdcard_flash_status;
 
 static StackType_t *app_device_info_task_stack = NULL;
@@ -93,14 +97,23 @@ void byteArrayToHexString(const uint8_t *byteArray, size_t byteArraySize, char *
     }
 }
 
+void string_to_byte_array(const char *str, uint8_t *byte_array, size_t length)
+{
+    for (size_t i = 0; i < length; i++)
+    {
+        sscanf(str + 2 * i, "%2hhx", &byte_array[i]);
+    }
+}
+
 int deviceinfo_get(struct view_data_deviceinfo *p_info)
 {
-    size_t len=sizeof(struct view_data_deviceinfo);
+    size_t len = sizeof(struct view_data_deviceinfo);
     memset(p_info, 0, len);
     esp_err_t ret = storage_read(DEVICEINFO_STORAGE, (void *)p_info, &len);
-    if (ret != ESP_OK) {
+    if (ret != ESP_OK)
+    {
         return ret;
-	}
+    }
     return ESP_OK;
 }
 
@@ -108,7 +121,8 @@ int deviceinfo_set(struct view_data_deviceinfo *p_info)
 {
     esp_err_t ret = 0;
     ret = storage_write(DEVICEINFO_STORAGE, (void *)p_info, sizeof(struct view_data_deviceinfo));
-    if( ret != ESP_OK ) {
+    if (ret != ESP_OK)
+    {
         ESP_LOGE(TAG, "cfg write err:%d", ret);
         return ret;
     }
@@ -119,37 +133,44 @@ int deviceinfo_set(struct view_data_deviceinfo *p_info)
 
 void init_sn_from_nvs()
 {
-    size_t size = sizeof(SN);
-    esp_err_t ret = storage_read(SN_STORAGE_SK, &SN, &size);
-    if (ret == ESP_OK)
-    {
-        ESP_LOGI(TAG, "SN value loaded from NVS: %s", SN);
-    }
-    else if (ret == ESP_ERR_NVS_NOT_FOUND)
-    {
-        ESP_LOGW(TAG, "No SN value found in NVS. Using default: %s", SN);
-    }
-    else
-    {
-        ESP_LOGE(TAG, "Error reading SN from NVS: %s", esp_err_to_name(ret));
-    }
+    const char *sn_str = factory_info_sn_get();
+    ESP_LOGE(TAG, "%s", sn_str);
+    string_to_byte_array(sn_str, SN, 9);
+    ESP_LOGE(TAG, "%s", SN);
 }
+
 void init_eui_from_nvs()
 {
-    size_t size = sizeof(EUI);
-    esp_err_t ret = storage_read(SN_STORAGE_SK, &EUI, &size);
-    if (ret == ESP_OK)
+    const char *eui_str = factory_info_eui_get();
+    const char *code_str = factory_info_code_get();
+    if (eui_str == NULL || code_str == NULL)
     {
-        ESP_LOGI(TAG, "EUI value loaded from NVS: %s", EUI);
+        printf("Failed to get factory information of eui and code \n");
+        return;
     }
-    else if (ret == ESP_ERR_NVS_NOT_FOUND)
-    {
-        ESP_LOGW(TAG, "No EUI value found in NVS. Using default: %s", EUI);
-    }
-    else
-    {
-        ESP_LOGE(TAG, "Error reading SN from NVS: %s", esp_err_to_name(ret));
-    }
+    uint8_t eui[8];
+    uint8_t code[8];
+    ESP_LOGE(TAG, "eui in factory is %s", eui_str);
+    ESP_LOGE(TAG, "code_str in factory is %s", code_str);
+    string_to_byte_array(eui_str, eui, 8);
+    string_to_byte_array(code_str, code, 8);
+    memcpy(EUI, eui, 8);
+    memcpy(EUI + 8, code, 8);
+    ESP_LOGE(TAG, "code_str and EUI comb in factory is %s", EUI);
+}
+
+void init_batchid_from_nvs()
+{
+    const char *batchid = factory_info_batchid_get();
+    create_batch = atoi(batchid);
+    return;
+}
+
+void init_server_code_from_nvs()
+{
+    uint8_t platform = factory_info_platform_get();
+    server_code = (int)platform;
+    return;
 }
 
 void init_ai_service_param_from_nvs()
@@ -281,6 +302,24 @@ void init_reset_factory_switch_from_nvs()
     }
 }
 
+void init_time_automatic_switch_from_nvs()
+{
+    size_t size = sizeof(time_automatic);
+    esp_err_t ret = storage_read(TIME_AUTOMATIC_SK, &time_automatic, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI(TAG, "time_automatic value loaded from NVS: %d", time_automatic);
+        time_automatic_past = time_automatic;
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI(TAG, "No time_automatic value found in NVS. Using default: %d", time_automatic);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading time_automatic from NVS: %s", esp_err_to_name(ret));
+    }
+}
 /*----------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
 
@@ -315,7 +354,6 @@ uint8_t *get_sn(int caller)
                 hexString4[18] = '\0';
                 char final_string[150];
                 snprintf(final_string, sizeof(final_string), "w1:%s:%s:%s:%s", hexString1, storage_space_2, storage_space_3, hexString4);
-                // printf("SN: %s\n", final_string);
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, final_string, sizeof(final_string), portMAX_DELAY);
                 break;
         }
@@ -337,6 +375,7 @@ uint8_t *get_bt_mac()
     }
     return bd_addr;
 }
+
 uint8_t *get_sn_code()
 {
     return SN;
@@ -348,7 +387,7 @@ uint8_t *get_eui()
 }
 
 /*----------------------------------------------brightness module------------------------------------------------------*/
-uint8_t *get_brightness(int caller)
+int get_brightness(int caller)
 {
     if (xSemaphoreTake(MUTEX_brightness, portMAX_DELAY) != pdTRUE)
     {
@@ -594,11 +633,6 @@ static int __set_sound()
     }
     if (sound_value_past != sound_value)
     {
-        // FILE *fp = fopen("/spiffs/waitPlease.mp3", "r");
-        // if (fp)
-        // {
-        //     audio_player_play(fp);
-        // }
         esp_err_t ret = storage_write(SOUND_STORAGE_KEY, &sound_value, sizeof(sound_value));
         if (ret != ESP_OK)
         {
@@ -690,7 +724,6 @@ ai_service_pack *get_ai_service(int caller)
         case UI_CALLER:
             ESP_LOGI(TAG, "UI get ai_service");
             result = &ai_service;
-            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AI_SERVICE, result, sizeof(ai_service_pack), portMAX_DELAY);
             break;
     }
     xSemaphoreGive(MUTEX_ai_service);
@@ -748,7 +781,7 @@ int *get_reset_factory(int caller)
             break;
         case UI_CALLER:
             ESP_LOGI(TAG, "UI  get_reset_factory_TAG");
-            result =&reset_factory_switch;
+            result = &reset_factory_switch;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_FACTORY_RESET_CODE, result, sizeof(int), portMAX_DELAY);
             break;
     }
@@ -777,7 +810,7 @@ uint8_t *__set_reset_factory()
         ESP_LOGE(TAG, "reset_factory_switch: MUTEX_reset_factory take failed");
         return NULL;
     }
-   
+
     if (reset_factory_switch_past != reset_factory_switch)
     {
         ESP_LOGI(TAG, "start to erase nvs storage ...");
@@ -786,9 +819,61 @@ uint8_t *__set_reset_factory()
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
         }
         esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
-        reset_factory_switch_past=reset_factory_switch;
+        reset_factory_switch_past = reset_factory_switch;
     }
     xSemaphoreGive(MUTEX_reset_factory);
+    return 0;
+}
+/*-----------------------------------------------------time_auto_update-----------------------------------------------*/
+
+int get_time_automatic(int caller)
+{
+    if (xSemaphoreTake(MUTEX_time_automatic, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "set_time_automatic: MUTEX_time_automatic take failed");
+        return NULL;
+    }
+    int result = NULL;
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI(TAG, "AT_CMD_CALLER  get_time_automatic");
+            result =time_automatic;
+            break;
+        case UI_CALLER:
+            ESP_LOGI(TAG, "UI  get_time_automatic");
+            break;
+    }
+    xSemaphoreGive(MUTEX_time_automatic);
+    return result;
+}
+
+uint8_t *set_time_automatic(int caller, int value)
+{
+    if (xSemaphoreTake(MUTEX_time_automatic, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "set_time_automatic: MUTEX_time_automatic take failed");
+        return NULL;
+    }
+
+    time_automatic_past = time_automatic;
+    time_automatic = value;
+    xSemaphoreGive(MUTEX_time_automatic);
+    return NULL;
+}
+uint8_t *__set_time_automatic()
+{
+    if (xSemaphoreTake(MUTEX_time_automatic, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "time_automatic: MUTEX_time_automatic take failed");
+        return NULL;
+    }
+
+    if (time_automatic_past != time_automatic)
+    {
+        time_automatic_past = time_automatic;
+    }
+    xSemaphoreGive(MUTEX_time_automatic);
     return 0;
 }
 
@@ -879,8 +964,11 @@ void app_device_info_task(void *pvParameter)
     MUTEX_cloud_service_switch = xSemaphoreCreateMutex();
     MUTEX_ai_service = xSemaphoreCreateMutex();
     MUTEX_reset_factory = xSemaphoreCreateMutex();
+    MUTEX_time_automatic =xSemaphoreCreateMutex();
     MUTEX_sdcard_flash_status = xSemaphoreCreateMutex();
 
+    init_sn_from_nvs();
+    init_eui_from_nvs();
     init_ai_service_param_from_nvs();
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
@@ -888,6 +976,7 @@ void app_device_info_task(void *pvParameter)
     init_cloud_service_switch_from_nvs();
     init_ai_service_param_from_nvs();
     init_reset_factory_switch_from_nvs();
+    init_time_automatic_switch_from_nvs();
 
     g_device_status.battery_per = bsp_battery_get_percent();
     g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
@@ -897,44 +986,48 @@ void app_device_info_task(void *pvParameter)
 
     while (1)
     {
-        //__set_cloud_service_switch();
+        __set_cloud_service_switch();
         __set_brightness();
         __set_rgb_switch();
         __set_sound();
         __set_reset_factory();
+        __set_time_automatic();
         //__set_ai_service();
         vTaskDelay(100 / portTICK_PERIOD_MS);
         cnt++;
 
-        if (!firstboot_reported && atomic_load(&g_mqttconn)) {
+        if (!firstboot_reported && atomic_load(&g_mqttconn))
+        {
             app_sensecraft_mqtt_report_device_status(&g_device_status);
             firstboot_reported = true;
         }
 
-        if ((cnt % 300) == 0) {
+        if ((cnt % 300) == 0)
+        {
             batnow = bsp_battery_get_percent();
-            if (abs(g_device_status.battery_per - batnow) > 10 || batnow == 0) {
+            if (abs(g_device_status.battery_per - batnow) > 10 || batnow == 0)
+            {
                 g_device_status.battery_per = batnow;
-                //mqtt pub
-                if (atomic_load(&g_mqttconn)) {
+                // mqtt pub
+                if (atomic_load(&g_mqttconn))
+                {
                     app_sensecraft_mqtt_report_device_status(&g_device_status);
                 }
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
-                                  &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
             }
-            if (batnow == 0) {
+            if (batnow == 0)
+            {
                 ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, 
-                                  NULL, 0, portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, portMAX_DELAY);
             }
         }
 
         if ((cnt % 5) == 0) {
             uint8_t chg = (uint8_t)bsp_system_is_charging();
-            if (chg != last_charge_st) {
+            if (chg != last_charge_st)
+            {
                 last_charge_st = chg;
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, 
-                                  &last_charge_st, 1, portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, &last_charge_st, 1, portMAX_DELAY);
             }
         }
 
@@ -964,14 +1057,13 @@ static void __event_loop_handler(void *handler_args, esp_event_base_t base, int3
 {
     switch (id)
     {
-    case CTRL_EVENT_MQTT_CONNECTED:
-    {
-        ESP_LOGI(TAG, "rcv event: CTRL_EVENT_MQTT_CONNECTED");
-        atomic_store(&g_mqttconn, true);
-        break;
-    }
-    default:
-        break;
+        case CTRL_EVENT_MQTT_CONNECTED: {
+            ESP_LOGI(TAG, "rcv event: CTRL_EVENT_MQTT_CONNECTED");
+            atomic_store(&g_mqttconn, true);
+            break;
+        }
+        default:
+            break;
     }
 }
 
@@ -983,8 +1075,8 @@ void app_device_info_init()
 
     const esp_app_desc_t *app_desc = esp_app_get_description();
 
-    //if newer hw_version come up in the future, we can tell it from the EUI
-    //for this version firmware, we hard code hw_version as 1.0
+    // if newer hw_version come up in the future, we can tell it from the EUI
+    // for this version firmware, we hard code hw_version as 1.0
     g_device_status.hw_version = "1.0";
     g_device_status.fw_version = app_desc->version;
     g_device_status.battery_per = 100;
@@ -1005,6 +1097,5 @@ void app_device_info_init()
         ESP_LOGE(TAG, "Failed to create task");
     }
 
-    esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED,
-                                    __event_loop_handler, NULL);
+    esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, __event_loop_handler, NULL);
 }
