@@ -912,8 +912,8 @@ void handle_wifi_table(char *params)
     ESP_LOGI(TAG, "Handling wifi table command\n");
     initWiFiStack(&wifiStack_scanned, 6);
     xTaskNotifyGive(xTask_wifi_config_entry);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    //pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
     char *json_str = cJSON_Print(json);
 

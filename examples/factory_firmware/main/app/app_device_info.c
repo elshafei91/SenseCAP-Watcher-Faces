@@ -539,11 +539,11 @@ static int __set_rgb_switch()
         ESP_LOGD(TAG, "rgb_switch: %d\n", rgb_switch);
         if (rgb_switch == 1)
         {
-            set_rgb_with_priority(UI_CALLER, on);
+            set_rgb_with_priority(AT_CMD_CALLER, on);
         }
         else
         {
-            set_rgb_with_priority(UI_CALLER, off);
+            set_rgb_with_priority(AT_CMD_CALLER, off);
         }
         if (ret != ESP_OK)
         {

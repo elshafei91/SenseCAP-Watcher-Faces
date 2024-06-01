@@ -370,7 +370,9 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
 {
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC)
     {
+#ifdef BLE_DEBUG
         esp_log_buffer_hex(GATTS_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
+#endif
     }
     else
     {
@@ -382,7 +384,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
         msg_at.size = prepare_write_env->prepare_len;
         msg_at.msg = (uint8_t *)heap_caps_malloc(msg_at.size, MALLOC_CAP_SPIRAM);
         memcpy(msg_at.msg, prepare_write_env->prepare_buf, msg_at.size);
-        esp_log_buffer_hex("TEST", msg_at.msg, msg_at.size);
         if (xQueueSend(message_queue, &msg_at, portMAX_DELAY) != pdPASS)
         {
             printf("Failed to send message to queue\n");
