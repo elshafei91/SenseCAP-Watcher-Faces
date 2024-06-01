@@ -36,7 +36,7 @@
 #define CLOUD_SERVICE_STORAGE_KEY "cloudserviceswitch"
 #define AI_SERVICE_STORAGE_KEY    "aiservice"
 #define RESET_FACTORY_SK          "resetfactory"
-
+#define TIME_AUTOMATIC_SK         "time_auto"
 static const char *TAG = "deviceinfo";
 
 uint8_t SN[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
@@ -60,6 +60,8 @@ int cloud_service_switch_past = 1;
 int reset_factory_switch = 0;
 int reset_factory_switch_past = 0;
 
+int time_automatic = 0;
+int time_automatic_past = 0;
 // ai service ip for mqtt
 ai_service_pack ai_service;
 ai_service_pack ai_service_past;
@@ -73,6 +75,7 @@ SemaphoreHandle_t MUTEX_sound;
 SemaphoreHandle_t MUTEX_ai_service;
 SemaphoreHandle_t MUTEX_cloud_service_switch;
 SemaphoreHandle_t MUTEX_reset_factory;
+SemaphoreHandle_t MUTEX_time_automatic;
 
 static StackType_t *app_device_info_task_stack = NULL;
 static StaticTask_t app_device_info_task_buffer;
@@ -128,10 +131,10 @@ int deviceinfo_set(struct view_data_deviceinfo *p_info)
 void init_sn_from_nvs()
 {
     const char *sn_str = factory_info_sn_get();
-    ESP_LOGE(TAG,"%s",sn_str);
-    string_to_byte_array(sn_str, SN, 8);
+    ESP_LOGE(TAG, "%s", sn_str);
+    string_to_byte_array(sn_str, SN, 9);
+    ESP_LOGE(TAG, "%s", SN);
 }
-
 
 void init_eui_from_nvs()
 {
@@ -144,25 +147,27 @@ void init_eui_from_nvs()
     }
     uint8_t eui[8];
     uint8_t code[8];
-    ESP_LOGE(TAG,"eui in factory is %s",eui_str);
-    ESP_LOGE(TAG,"code_str in factory is %s",code_str);
+    ESP_LOGE(TAG, "eui in factory is %s", eui_str);
+    ESP_LOGE(TAG, "code_str in factory is %s", code_str);
     string_to_byte_array(eui_str, eui, 8);
     string_to_byte_array(code_str, code, 8);
     memcpy(EUI, eui, 8);
     memcpy(EUI + 8, code, 8);
-    ESP_LOGE(TAG,"code_str and EUI comb in factory is %s",EUI);
+    ESP_LOGE(TAG, "code_str and EUI comb in factory is %s", EUI);
 }
 
-void init_batchid_from_nvs(){
-    const char*batchid =factory_info_batchid_get();
-    create_batch =atoi(batchid);
+void init_batchid_from_nvs()
+{
+    const char *batchid = factory_info_batchid_get();
+    create_batch = atoi(batchid);
     return;
 }
 
-void init_server_code_from_nvs(){
-    uint8_t platform= factory_info_platform_get();
-    server_code =(int)platform;
-    return ;
+void init_server_code_from_nvs()
+{
+    uint8_t platform = factory_info_platform_get();
+    server_code = (int)platform;
+    return;
 }
 
 void init_ai_service_param_from_nvs()
@@ -294,6 +299,24 @@ void init_reset_factory_switch_from_nvs()
     }
 }
 
+void init_time_automatic_switch_from_nvs()
+{
+    size_t size = sizeof(time_automatic);
+    esp_err_t ret = storage_read(TIME_AUTOMATIC_SK, &time_automatic, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI(TAG, "time_automatic value loaded from NVS: %d", time_automatic);
+        time_automatic_past = time_automatic;
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI(TAG, "No time_automatic value found in NVS. Using default: %d", time_automatic);
+    }
+    else
+    {
+        ESP_LOGE("NVS", "Error reading time_automatic from NVS: %s", esp_err_to_name(ret));
+    }
+}
 /*----------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
 
@@ -797,6 +820,58 @@ uint8_t *__set_reset_factory()
     xSemaphoreGive(MUTEX_reset_factory);
     return 0;
 }
+/*-----------------------------------------------------time_auto_update-----------------------------------------------*/
+
+int get_time_automatic(int caller)
+{
+    if (xSemaphoreTake(MUTEX_time_automatic, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "set_time_automatic: MUTEX_time_automatic take failed");
+        return NULL;
+    }
+    int result = NULL;
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI(TAG, "AT_CMD_CALLER  get_time_automatic");
+            result =time_automatic;
+            break;
+        case UI_CALLER:
+            ESP_LOGI(TAG, "UI  get_time_automatic");
+            break;
+    }
+    xSemaphoreGive(MUTEX_time_automatic);
+    return result;
+}
+
+uint8_t *set_time_automatic(int caller, int value)
+{
+    if (xSemaphoreTake(MUTEX_time_automatic, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "set_time_automatic: MUTEX_time_automatic take failed");
+        return NULL;
+    }
+
+    time_automatic_past = time_automatic;
+    time_automatic = value;
+    xSemaphoreGive(MUTEX_time_automatic);
+    return NULL;
+}
+uint8_t *__set_time_automatic()
+{
+    if (xSemaphoreTake(MUTEX_time_automatic, portMAX_DELAY) != pdTRUE)
+    {
+        ESP_LOGE(TAG, "time_automatic: MUTEX_time_automatic take failed");
+        return NULL;
+    }
+
+    if (time_automatic_past != time_automatic)
+    {
+        time_automatic_past = time_automatic;
+    }
+    xSemaphoreGive(MUTEX_time_automatic);
+    return 0;
+}
 /*-----------------------------------------------------TASK----------------------------------------------------------*/
 void app_device_info_task(void *pvParameter)
 {
@@ -814,6 +889,7 @@ void app_device_info_task(void *pvParameter)
     MUTEX_cloud_service_switch = xSemaphoreCreateMutex();
     MUTEX_ai_service = xSemaphoreCreateMutex();
     MUTEX_reset_factory = xSemaphoreCreateMutex();
+    MUTEX_time_automatic =xSemaphoreCreateMutex();
     init_sn_from_nvs();
     init_eui_from_nvs();
     init_ai_service_param_from_nvs();
@@ -823,17 +899,19 @@ void app_device_info_task(void *pvParameter)
     init_cloud_service_switch_from_nvs();
     init_ai_service_param_from_nvs();
     init_reset_factory_switch_from_nvs();
+    init_time_automatic_switch_from_nvs();
 
     g_device_status.battery_per = bsp_battery_get_percent();
     g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
 
     while (1)
     {
-        //__set_cloud_service_switch();
+        __set_cloud_service_switch();
         __set_brightness();
         __set_rgb_switch();
         __set_sound();
         __set_reset_factory();
+        __set_time_automatic();
         //__set_ai_service();
         vTaskDelay(100 / portTICK_PERIOD_MS);
         cnt++;

@@ -17,7 +17,8 @@ char *get_software_version(int caller);
 char *get_himax_software_version(int caller);
 
 ai_service_pack *get_ai_service(int caller);
-
+int get_time_automatic(int caller);
+uint8_t *set_time_automatic(int caller, int value);
 int get_cloud_service_switch(int caller);
 esp_err_t set_cloud_service_switch(int caller, int value);
 int get_brightness(int caller);

@@ -200,8 +200,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_WIFI_CONFIG_SYNC:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONFIG_SYNC");
-                uint8_t wifi_config_sync = (uint8_t *)event_data;
-                lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+                int wifi_config_sync = (int*)event_data;
+                ESP_LOGE(TAG,"LOG VIEW_EVENT_WIFI_CONFIG_SYNC  wifi_config_sync is %d",wifi_config_sync);
+                if(lv_scr_act() != ui_Page_Wifi)_ui_screen_change(&ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+                // lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
                 if(wifi_config_sync == 0)
                 {
                     waitForWifi();
