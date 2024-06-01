@@ -110,30 +110,25 @@ static void battery_check(void)
     }
 }
 
-int board_init(void)
+void board_init(void)
 {
+    //nvs key-value storage
     storage_init();
     factory_info_init();
     bsp_spiffs_init(DRV_BASE_PATH_FLASH, 100);
-    bsp_spiffs_init_default();
-
     bsp_io_expander_init();
-
+    if (bsp_sdcard_is_inserted()) {
+        bsp_sdcard_init_default();
+    }
     lv_disp_t *lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
-
     bsp_rgb_init();
-
     bsp_codec_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
-
- 
-
-    return ESP_OK;
 }
 
-int app_init(void)
+void app_init(void)
 {
     app_device_info_init();
     app_wifi_init(); //TODO Network update events may be missed
@@ -147,12 +142,11 @@ int app_init(void)
  
     audio_player_init();
     //app_sr_start(false);
-    return ESP_OK;
 }
 
 void task_app_init(void *p_arg)
 {
-    // UI init
+    board_init();
     view_init();
     bsp_lcd_brightness_set(100);
     // battery_check(); //TODO
@@ -217,8 +211,6 @@ void app_main(void)
         .task_stack_size = 1024 * 4,
         .task_core_id = 0};
     ESP_ERROR_CHECK(esp_event_loop_create(&app_event_loop_args, &app_event_loop_handle));
-
-    ESP_ERROR_CHECK(board_init());
 
     // app modules init
     xTaskCreatePinnedToCore(task_app_init, "task_app_init", 4096, NULL, 5, NULL, 1);

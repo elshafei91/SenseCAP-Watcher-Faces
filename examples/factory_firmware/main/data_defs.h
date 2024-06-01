@@ -133,6 +133,14 @@ struct view_data_device_status
     char *himax_fw_version;
 };
 
+struct view_data_sdcard_flash_status
+{
+    uint16_t sdcard_free_MiB;
+    uint16_t sdcard_total_MiB;
+    uint16_t spiffs_free_KiB;
+    uint16_t spiffs_total_KiB;
+};
+
 struct view_data_setting_volbri
 {
     int32_t vs_value;		//volume value

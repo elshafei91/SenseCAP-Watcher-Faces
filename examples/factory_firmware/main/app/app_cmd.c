@@ -381,13 +381,6 @@ static int taskflow_cmd(int argc, char **argv)
 
 static void register_cmd_taskflow(void)
 {
-    if( bsp_sdcard_is_inserted()) {
-        bsp_sdcard_init_default(); //TODO 
-        ESP_LOGI(TAG, "SD card inserted! init SD card");
-    } else {
-        ESP_LOGI(TAG, "SD card not inserted!");
-    }
-
     taskflow_cfg_args.import =  arg_lit0("i", "import", "import taskflow");
     taskflow_cfg_args.export = arg_lit0("e", "export", "export taskflow");
     taskflow_cfg_args.file =  arg_str0("f", "file", "<string>", "File path, import or export taskflow json string by SD, eg: test.json");
