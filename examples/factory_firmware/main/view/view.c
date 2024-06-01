@@ -19,6 +19,7 @@ char sn_data[66];
 uint8_t wifi_page_id;
 lv_obj_t * view_show_img;
 static int PNG_LOADING_COUNT = 0;
+static uint8_t battery_per = 0;
 extern uint8_t task_down;
 extern int first_use;
 
@@ -69,7 +70,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_arc_set_value(ui_Arc1, progress_percentage);
                     static char load_per[5];
                     sprintf(load_per, "%d%%", progress_percentage);
-                    lv_label_set_text(ui_Label5, load_per);
+                    lv_label_set_text(ui_loadpert, load_per);
+                }
+                if(progress_percentage>=50)
+                {
+                    lv_event_send(ui_Page_loading, LV_EVENT_SCREEN_LOADED, NULL);
                 }
                 break;
             }
@@ -83,7 +88,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-
+            //Todo
             case VIEW_EVENT_BATTERY_ST:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BATTERY_ST");
                 struct view_data_device_status * bat_st = (struct view_data_device_status *)event_data;
@@ -129,24 +134,24 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 if ( p_st->is_network ) {
                     switch (wifi_rssi_level_get( p_st->rssi )) {
                         case 1:
-                            p_src = &ui_img_wifi_1_png;
+                            p_src = &ui_img_wifi_0_png;
                             break;
                         case 2:
-                            p_src = &ui_img_wifi_2_png;
+                            p_src = &ui_img_wifi_1_png;
                             break;
                         case 3:
-                            p_src = &ui_img_wifi_3_png;
+                            p_src = &ui_img_wifi_2_png;
                         case 4:
-                            p_src = &ui_img_wifi_4_png;
+                            p_src = &ui_img_wifi_3_png;
                             break;
                         default:
                             break;
                     }
         
                 } else if( p_st->is_connected ) {
-                    p_src = &ui_img_wifi_nonnet_png;
+                    p_src = &ui_img_no_wifi_png;
                 } else {
-                    p_src = &ui_img_wifi_disconnect_png;
+                    p_src = &ui_img_wifi_abnormal_png;
                 }
                 lv_img_set_src(ui_mainwifi , (void *)p_src);
                 break;
@@ -223,13 +228,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            // case VIEW_EVENT_AI_CAMERA_PREVIEW:{
-            //     struct tf_module_ai_camera_preview_info *p_info = ( struct tf_module_ai_camera_preview_info *)event_data;
-                // view_image_preview_flush(p_info);
-            //     tf_data_image_free(&p_info->img);
-                // tf_data_inference_free(&p_info->inference);
-            // }
-
             case VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK");
                 _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
@@ -239,8 +237,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_TASK_FLOW_STOP:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
                 task_down = 1;
-                lv_obj_add_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN); /// Flags
-                lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+                lv_obj_add_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 // event_post_to
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &task_down, sizeof(uint8_t), portMAX_DELAY);
                 lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
@@ -265,6 +263,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }
                 break;
             }
+
+            //Todo
+            // case VIEW_EVENT_BAT_DRAIN_SHUTDOWN:{
+
+            //     break;
+            // }
 
             default:
                 break;
@@ -390,6 +394,11 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_OTA_STATUS, 
                                                             __view_event_handler, NULL, NULL)); 
+
+    //Todo
+    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, 
+    //                                                         __view_event_handler, NULL, NULL)); 
 
     read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
     read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);

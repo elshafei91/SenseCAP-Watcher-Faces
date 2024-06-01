@@ -1,5 +1,6 @@
 SET(SOURCES components/ui_comp_menucomponent.c
     components/ui_comp.c
+    screens/ui_Page_Battery.c
     screens/ui_Page_Start.c
     screens/ui_Page_loading.c
     screens/ui_Page_Vir.c
@@ -23,23 +24,23 @@ SET(SOURCES components/ui_comp_menucomponent.c
     ui.c
     components/ui_comp_hook.c
     ui_helpers.c
+    images/ui_img_battery_warn_png.c
     images/ui_img_logo_png.c
     images/ui_img_page_main_png.c
     images/ui_img_task_template_png.c
-    images/ui_img_1798082340.c
+    images/ui_img_1415499115.c
     images/ui_img_currenttask_png.c
-    images/ui_img_476189949.c
+    images/ui_img_1158392298.c
     images/ui_img_extension_png.c
-    images/ui_img_335953020.c
+    images/ui_img_1722191473.c
     images/ui_img_setting_png.c
     images/ui_img_setting_f_png.c
-    images/ui_img_wifi_nonnet_png.c
-    images/ui_img_battery_5_png.c
+    images/ui_img_wifi_abnormal_png.c
+    images/ui_img_battery_charging_png.c
     images/ui_img_ble_png.c
     images/ui_img_button_cancel_png.c
     images/ui_img_arrow_png.c
-    images/ui_img_wifi_4_png.c
-    images/ui_img_190291343.c
+    images/ui_img_1067503588.c
     images/ui_img_switch_group_png.c
     images/ui_img_setback_png.c
     images/ui_img_template1_png.c
@@ -49,13 +50,13 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_template3_png.c
     images/ui_img_template3_f_png.c
     images/ui_img_back_png.c
-    images/ui_img_1822480148.c
+    images/ui_img_1195720223.c
     images/ui_img_human_png.c
-    images/ui_img_1870802764.c
-    images/ui_img_487263452.c
+    images/ui_img_631814683.c
+    images/ui_img_578579305.c
     images/ui_img_pet_png.c
     images/ui_img_gesture_png.c
-    images/ui_img_880045930.c
+    images/ui_img_30219097.c
     images/ui_img_human_d_png.c
     images/ui_img_volicon_png.c
     images/ui_img_swipe_png.c
@@ -65,13 +66,13 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c
     images/ui_img_wifi_3_png.c
-    images/ui_img_wifi_disconnect_png.c
+    images/ui_img_gradient_png.c
     images/ui_img_brighticon_png.c
     images/ui_img_gesture_d_png.c
     images/ui_img_dog_d_png.c
-    images/ui_img_gradient_png.c
     images/ui_img_onboardclick_png.c
     images/ui_img_error_png.c
+    images/ui_img_no_wifi_png.c
     fonts/ui_font_fbold16.c
     fonts/ui_font_fbold24.c
     fonts/ui_font_Font1.c

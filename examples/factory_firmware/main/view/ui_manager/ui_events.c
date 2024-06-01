@@ -25,24 +25,25 @@
 static const char *TAG = "ui_event";
 
 wifi_ap_record_t wifi_record;
-uint8_t task_down = 0;
 int first_use = 0;
+uint8_t task_down = 0;
 uint8_t guide_step = 0;
+static bool is_charging = 0;
+static uint8_t loading_flag = 0;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
 static struct view_data_emoticon_display emo_disp;
-extern lv_obj_t * ui_alarm_indicator;
 
-static uint8_t swipe_id = 0; // 0 for shutdown, 1 for factoryreset
 static int file_idx = 0;
+static int current_img_index = 0;
+static uint8_t swipe_id = 0; // 0 for shutdown, 1 for factoryreset
 static uint32_t local_task_id;
 static lv_timer_t * g_timer;
-static int current_img_index = 0;
 
 extern char sn_data[66];
 extern uint8_t wifi_page_id;
-// for lv_async switch and emoticon switch
-extern uint8_t emoticon_disp_id;
+extern uint8_t emoticon_disp_id;    // for lv_async switch and emoticon switch
+extern lv_obj_t * ui_alarm_indicator;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -176,7 +177,10 @@ static void create_timer(uint8_t det_task) {
     }    
 }
 
-
+void slbattery_cb(lv_event_t * e)
+{
+    
+}
 
 static void set_obj_style_defocused(lv_obj_t *obj, lv_obj_t *obj_text)
 {
@@ -213,6 +217,67 @@ static void set_obj_style_focused(lv_obj_t *obj, lv_obj_t *obj_text)
 void startload_cb(lv_event_t *e)
 {
     _ui_screen_change(&ui_Page_loading, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_loading_screen_init);
+}
+
+void loadsl_cb(lv_event_t * e)
+{ 
+    if(loading_flag == 0){
+        _ui_opacity_set( ui_Left1, 0);
+        _ui_opacity_set( ui_Left2, 0);
+        _ui_opacity_set( ui_Left3, 0);
+        _ui_opacity_set( ui_Left4, 0);
+        _ui_opacity_set( ui_Left5, 0);
+        _ui_opacity_set( ui_Left5, 0);
+        _ui_opacity_set( ui_Left6, 0);
+        _ui_opacity_set( ui_Left7, 0);
+        _ui_opacity_set( ui_Left8, 0);
+        _ui_opacity_set( ui_Right1, 0);
+        _ui_opacity_set( ui_Right8, 0);
+        _ui_opacity_set( ui_Right2, 0);
+        _ui_opacity_set( ui_Right3, 0);
+        _ui_opacity_set( ui_Right4, 0);
+        _ui_opacity_set( ui_Right5, 0);
+        _ui_opacity_set( ui_Right6, 0);
+        _ui_opacity_set( ui_Right7, 0);
+
+        lv_obj_clear_flag(ui_Left1, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Left2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Left3, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Left4, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Left5, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Left6, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Left7, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Left8, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Right1, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Right2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Right3, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Right4, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Right5, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Right6, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Right7, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_Right8, LV_OBJ_FLAG_HIDDEN);
+
+        sidelines_Animation(ui_Left1, 0);
+        secondline_Animation(ui_Left2, 1000);
+        shorttoptobottom_Animation(ui_Left3, 1500);
+        shorttoptobottom_Animation(ui_Left4, 2500);
+        secondline_Animation(ui_Left5, 5000);
+        sidelines_Animation(ui_Left6, 5500);
+        shortbottomtotop_Animation(ui_Left8, 3000);
+        shortbottomtotop_Animation(ui_Left7, 4000);
+        loading_flag++;
+    }else if(loading_flag == 1)
+    {
+        sidelines_Animation(ui_Right1, 0);
+        secondline_Animation(ui_Right2, 1000);
+        shorttoptobottom_Animation(ui_Right3, 1500);
+        shorttoptobottom_Animation(ui_Right4, 2500);
+        secondline_Animation(ui_Right5, 5000);
+        sidelines_Animation(ui_Right6, 5500);
+        shortbottomtotop_Animation(ui_Right8, 3000);
+        shortbottomtotop_Animation(ui_Right7, 4000);
+        loading_flag++;
+    }
 }
 
 void virtc_cb(lv_event_t *e)
@@ -301,6 +366,7 @@ void main4c_cb(lv_event_t *e)
     lv_label_set_text(ui_snt2, (char *)about_sn);
     lv_label_set_text(ui_euit2, (char *)about_eui);
     lv_label_set_text(ui_blet2, (char *)about_btmac); 
+
 }
 
 void main4f_cb(lv_event_t *e)
@@ -920,13 +986,30 @@ void setwwc_cb(lv_event_t *e)
 void setdownc_cb(lv_event_t *e)
 {
     swipe_id = 0;
+    //Todo
+    is_charging = bsp_system_is_charging();
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
-    Page_shutdown();
+    if(!is_charging)
+    {
+        lv_obj_clear_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
+        ESP_LOGI(TAG, "is charging");
+    }else{
+        lv_obj_add_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
+        Page_shutdown();
+        ESP_LOGI(TAG, "is not charging");
+    }
 }
 
 void setfac_cb(lv_event_t *e)
 {
     swipe_id = 1;
+    lv_obj_add_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
     Page_facreset();
 }
@@ -1137,7 +1220,7 @@ static void waitForWifi()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
-    lv_img_set_src(ui_wifilogo, &ui_img_wifi_4_png);
+    lv_img_set_src(ui_wifilogo, &ui_img_wifi_3_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ui_wifitext3, "Waiting for Wi-Fi Setup...");
