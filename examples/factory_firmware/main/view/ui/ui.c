@@ -1386,11 +1386,6 @@ void ui_event____initial_actions0(lv_event_t * e)
 
 void ui_init(void)
 {
-    static uint8_t bat_per;
-    static bool    is_charging;
-    bat_per = bsp_battery_get_percent();
-    is_charging = bsp_system_is_charging();
-
     LV_EVENT_GET_COMP_CHILD = lv_event_register_id();
 
     lv_disp_t * dispp = lv_disp_get_default();
@@ -1421,14 +1416,5 @@ void ui_init(void)
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_obj_add_event_cb(ui____initial_actions0, ui_event____initial_actions0, LV_EVENT_ALL, NULL);
 
-    // Todo
-    if((bat_per < 1) && (is_charging))
-    {
-        lv_disp_load_scr(ui_Page_Battery);
-    }
-    if((bat_per > 1))
-    {
-        lv_disp_load_scr(ui____initial_actions0);
-        lv_disp_load_scr(ui_Page_Start);
-    }
+
 }
