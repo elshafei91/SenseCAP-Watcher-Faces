@@ -781,7 +781,7 @@ void ui_event_Page_CurTask3(lv_event_t * e)
         rec_task_Animation(ui_revsec1, 3000);
     }
     if(animation_done){
-        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 4000, &ui_Page_ViewAva_screen_init);
+        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
         animation_count = 0;
         animation_done = false;
     }
