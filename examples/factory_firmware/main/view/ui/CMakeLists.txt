@@ -26,6 +26,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     ui_helpers.c
     images/ui_img_battery_warn_png.c
     images/ui_img_logo_png.c
+    images/ui_img_start_smile_png.c
     images/ui_img_page_main_png.c
     images/ui_img_task_template_png.c
     images/ui_img_1415499115.c
@@ -40,8 +41,8 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_ble_png.c
     images/ui_img_button_cancel_png.c
     images/ui_img_arrow_png.c
-    images/ui_img_1067503588.c
     images/ui_img_wifi_3_png.c
+    images/ui_img_1067503588.c
     images/ui_img_switch_group_png.c
     images/ui_img_setback_png.c
     images/ui_img_template1_png.c
@@ -74,6 +75,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_onboardclick_png.c
     images/ui_img_error_png.c
     images/ui_img_no_wifi_png.c
+    images/ui_img_battery_charging_png.c
     fonts/ui_font_fbold16.c
     fonts/ui_font_fbold24.c
     fonts/ui_font_Font1.c

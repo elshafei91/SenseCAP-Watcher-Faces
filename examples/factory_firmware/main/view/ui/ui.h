@@ -60,8 +60,12 @@ extern lv_obj_t *ui_Right8;
 void ui_Page_Vir_screen_init(void);
 void ui_event_Page_Vir(lv_event_t * e);
 extern lv_obj_t * ui_Page_Vir;
+extern lv_obj_t * ui_virp;
+extern lv_obj_t * ui_virsmile;
+void ui_event_virbtn1(lv_event_t * e);
 extern lv_obj_t * ui_virbtn1;
 extern lv_obj_t * ui_virtext1;
+void ui_event_virbtn2(lv_event_t * e);
 extern lv_obj_t * ui_virbtn2;
 extern lv_obj_t * ui_virtext2;
 // SCREEN: ui_Page_main
@@ -86,10 +90,10 @@ extern lv_obj_t * ui_Devicep;
 extern lv_obj_t * ui_maintime;
 extern lv_obj_t * ui_mainwifi;
 extern lv_obj_t * ui_mainb;
+extern lv_obj_t * ui_btpert;
 extern lv_obj_t * ui_mainble;
 extern lv_obj_t * ui_maintitle;
 extern lv_obj_t * ui_mcontrolp;
-extern lv_obj_t * ui_btpert;
 // SCREEN: ui_Page_Connect
 void ui_Page_Connect_screen_init(void);
 extern lv_obj_t * ui_Page_Connect;
@@ -372,6 +376,7 @@ extern lv_obj_t * ui____initial_actions0;
 
 LV_IMG_DECLARE(ui_img_battery_warn_png);    // assets/battery_warn.png
 LV_IMG_DECLARE(ui_img_logo_png);    // assets/logo.png
+LV_IMG_DECLARE(ui_img_start_smile_png);    // assets/start_smile.png
 LV_IMG_DECLARE(ui_img_page_main_png);    // assets/page_main.png
 LV_IMG_DECLARE(ui_img_task_template_png);    // assets/Task Template.png
 LV_IMG_DECLARE(ui_img_1415499115);    // assets/Task Template-.png
@@ -386,8 +391,8 @@ LV_IMG_DECLARE(ui_img_battery_frame_png);    // assets/battery frame.png
 LV_IMG_DECLARE(ui_img_ble_png);    // assets/ble.png
 LV_IMG_DECLARE(ui_img_button_cancel_png);    // assets/button_cancel.png
 LV_IMG_DECLARE(ui_img_arrow_png);    // assets/arrow.png
-LV_IMG_DECLARE(ui_img_1067503588);    // assets/wifi-Instructions.png
 LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets/wifi_3.png
+LV_IMG_DECLARE(ui_img_1067503588);    // assets/wifi-Instructions.png
 LV_IMG_DECLARE(ui_img_switch_group_png);    // assets/switch_group.png
 LV_IMG_DECLARE(ui_img_setback_png);    // assets/setback.png
 LV_IMG_DECLARE(ui_img_template1_png);    // assets/template1.png
@@ -419,8 +424,8 @@ LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_onboardclick_png);
 LV_IMG_DECLARE(ui_img_error_png);
 LV_IMG_DECLARE(ui_img_no_wifi_png);
-LV_IMG_DECLARE(ui_img_battery_frame_png);
 LV_IMG_DECLARE(ui_img_battery_charging_png);
+
 
 
 LV_FONT_DECLARE(ui_font_fbold16);

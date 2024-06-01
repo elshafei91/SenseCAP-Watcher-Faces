@@ -55,13 +55,16 @@ lv_obj_t *ui_Right6;
 lv_obj_t *ui_Right7;
 lv_obj_t *ui_Right8;
 
-
 // SCREEN: ui_Page_Vir
 void ui_Page_Vir_screen_init(void);
 void ui_event_Page_Vir(lv_event_t * e);
 lv_obj_t * ui_Page_Vir;
+lv_obj_t * ui_virp;
+lv_obj_t * ui_virsmile;
+void ui_event_virbtn1(lv_event_t * e);
 lv_obj_t * ui_virbtn1;
 lv_obj_t * ui_virtext1;
+void ui_event_virbtn2(lv_event_t * e);
 lv_obj_t * ui_virbtn2;
 lv_obj_t * ui_virtext2;
 
@@ -88,10 +91,10 @@ lv_obj_t * ui_Devicep;
 lv_obj_t * ui_maintime;
 lv_obj_t * ui_mainwifi;
 lv_obj_t * ui_mainb;
+lv_obj_t * ui_btpert;
 lv_obj_t * ui_mainble;
 lv_obj_t * ui_maintitle;
 lv_obj_t * ui_mcontrolp;
-lv_obj_t * ui_btpert;
 
 
 // SCREEN: ui_Page_Connect
@@ -657,6 +660,22 @@ void ui_event_Page_Vir(lv_event_t * e)
     }
     if(event_code == LV_EVENT_SCREEN_LOADED) {
         virtsl_cb(e);
+    }
+}
+void ui_event_virbtn1(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        virb1c_cb(e);
+    }
+}
+void ui_event_virbtn2(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        virb2c_cb(e);
     }
 }
 void ui_event_Page_main(lv_event_t * e)
@@ -1390,7 +1409,6 @@ void ui_init(void)
     static bool    is_charged;
     bat_per = bsp_battery_get_percent();
     is_charged = bsp_system_is_charging();
-
     LV_EVENT_GET_COMP_CHILD = lv_event_register_id();
 
     lv_disp_t * dispp = lv_disp_get_default();

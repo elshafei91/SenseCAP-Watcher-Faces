@@ -302,7 +302,7 @@ void ui_Page_Set_screen_init(void)
     lv_obj_set_width(ui_setww, 412);
     lv_obj_set_height(ui_setww, 50);
     lv_obj_set_align(ui_setww, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_setww, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_add_flag(ui_setww, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_setww, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_setww, 45, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_setww, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -330,7 +330,6 @@ void ui_Page_Set_screen_init(void)
     lv_obj_set_height(ui_setwwsw, 25);
     lv_obj_set_x(ui_setwwsw, 140);
     lv_obj_set_y(ui_setwwsw, 0);
-    lv_obj_add_flag(ui_setwwsw, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_align(ui_setwwsw, LV_ALIGN_CENTER);
     lv_obj_set_style_bg_color(ui_setwwsw, lv_color_hex(0x8FC31F), LV_PART_MAIN | LV_STATE_CHECKED);
     lv_obj_set_style_bg_opa(ui_setwwsw, 50, LV_PART_MAIN | LV_STATE_CHECKED);

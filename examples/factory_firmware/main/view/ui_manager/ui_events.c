@@ -86,6 +86,7 @@ static void async_img_switch_viewava(void *arg)
     lv_obj_set_style_bg_img_src(ui_Page_ViewAva, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
+static uint8_t vir_load_count = 0;
 static void smile_timer_callback(lv_timer_t *timer) {
     current_img_index = (current_img_index + 1) % g_smile_image_count;
     lv_img_dsc_t *current_img = g_smile_img_dsc[current_img_index];
@@ -93,6 +94,11 @@ static void smile_timer_callback(lv_timer_t *timer) {
         async_img_switch_vir(current_img);
     } else {
         lv_async_call(async_img_switch_vir, current_img);
+    }
+    vir_load_count ++;
+    if(vir_load_count>2)
+    {
+        lv_event_send(ui_Page_Vir, LV_EVENT_CLICKED, NULL);
     }
 }
 
@@ -283,17 +289,27 @@ void loadsl_cb(lv_event_t * e)
 
 void virtc_cb(lv_event_t *e)
 {
-    create_timer(6);
-    get_reset_factory(UI_CALLER);
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
 }
 
 void virtsl_cb(lv_event_t *e)
 {
 	lv_group_add_obj(g_main, ui_Page_Vir);
-    create_timer(0);
+    create_timer(0); 
 }
 
+void virb1c_cb(lv_event_t * e)
+{
+    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
+    Page_ConnAPP_Mate();
+}
+
+void virb2c_cb(lv_event_t * e)
+{
+    create_timer(6);
+    get_reset_factory(UI_CALLER);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+}
 
 void main1c_cb(lv_event_t *e)
 {
@@ -906,16 +922,14 @@ void setwific_cb(lv_event_t *e)
     strncpy(ssid_string, (const char *)wifi_record.ssid, sizeof(ssid_string) - 1);
     ssid_string[sizeof(ssid_string) - 1] = '\0';
     lv_label_set_text(ui_wifissid, ssid_string);
-    // if(strlen((const char *)wifi_record.ssid) > 0)
-    // {
-    lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
-
     // binded
     if (first_use)
     {
         lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+        lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(ui_wifiicon);
+        lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     }
     else
     {
