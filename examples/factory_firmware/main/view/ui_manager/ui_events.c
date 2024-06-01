@@ -300,12 +300,80 @@ void virtsl_cb(lv_event_t *e)
 
 void virb1c_cb(lv_event_t * e)
 {
+    lv_slider_set_range(ui_bslider, 1, 100);
+    lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+    get_sn(UI_CALLER);
+    get_brightness(UI_CALLER);
+    get_rgb_switch(UI_CALLER);
+    get_sound(UI_CALLER);
+
+    // Update SN、EUI、BT-MAC to about device page
+    static char about_sn[20];
+    static char about_eui[40];
+    static char about_btmac[20];
+    static char about_sw_version[20];
+
+    const uint8_t *sn_code = get_sn_code();
+    const uint8_t *eui_code = get_eui();
+    const uint8_t *bt_mac = get_bt_mac();
+    const char *sw_version = get_software_version(UI_CALLER);
+
+    snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+             sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
+
+    snprintf(about_eui, sizeof(about_eui), "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+             eui_code[0], eui_code[1], eui_code[2], eui_code[3], eui_code[4], eui_code[5], eui_code[6], eui_code[7],
+             eui_code[8], eui_code[9], eui_code[10], eui_code[11], eui_code[12], eui_code[13], eui_code[14], eui_code[15]);
+
+    snprintf(about_btmac, sizeof(about_btmac), "%02X:%02X:%02X:%02X:%02X:%02X",
+             bt_mac[0], bt_mac[1], bt_mac[2], bt_mac[3], bt_mac[4], bt_mac[5]);
+
+    snprintf(about_sw_version, sizeof(about_sw_version), "%s", sw_version);
+
+    lv_label_set_text(ui_svt2, about_sw_version);
+    lv_label_set_text(ui_snt2, (char *)about_sn);
+    lv_label_set_text(ui_euit2, (char *)about_eui);
+    lv_label_set_text(ui_blet2, (char *)about_btmac); 
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
 }
 
 void virb2c_cb(lv_event_t * e)
 {
+    lv_slider_set_range(ui_bslider, 1, 100);
+    lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+    get_sn(UI_CALLER);
+    get_brightness(UI_CALLER);
+    get_rgb_switch(UI_CALLER);
+    get_sound(UI_CALLER);
+
+    // Update SN、EUI、BT-MAC to about device page
+    static char about_sn[20];
+    static char about_eui[40];
+    static char about_btmac[20];
+    static char about_sw_version[20];
+
+    const uint8_t *sn_code = get_sn_code();
+    const uint8_t *eui_code = get_eui();
+    const uint8_t *bt_mac = get_bt_mac();
+    const char *sw_version = get_software_version(UI_CALLER);
+
+    snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+             sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
+
+    snprintf(about_eui, sizeof(about_eui), "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+             eui_code[0], eui_code[1], eui_code[2], eui_code[3], eui_code[4], eui_code[5], eui_code[6], eui_code[7],
+             eui_code[8], eui_code[9], eui_code[10], eui_code[11], eui_code[12], eui_code[13], eui_code[14], eui_code[15]);
+
+    snprintf(about_btmac, sizeof(about_btmac), "%02X:%02X:%02X:%02X:%02X:%02X",
+             bt_mac[0], bt_mac[1], bt_mac[2], bt_mac[3], bt_mac[4], bt_mac[5]);
+
+    snprintf(about_sw_version, sizeof(about_sw_version), "%s", sw_version);
+
+    lv_label_set_text(ui_svt2, about_sw_version);
+    lv_label_set_text(ui_snt2, (char *)about_sn);
+    lv_label_set_text(ui_euit2, (char *)about_eui);
+    lv_label_set_text(ui_blet2, (char *)about_btmac); 
     create_timer(6);
     get_reset_factory(UI_CALLER);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
@@ -348,41 +416,6 @@ void main3f_cb(lv_event_t *e)
 void main4c_cb(lv_event_t *e)
 {
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
-    lv_slider_set_range(ui_bslider, 1, 100);
-    lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
-    get_sn(UI_CALLER);
-    get_brightness(UI_CALLER);
-    get_rgb_switch(UI_CALLER);
-    get_sound(UI_CALLER);
-
-    // Update SN、EUI、BT-MAC to about device page
-    static char about_sn[20];
-    static char about_eui[40];
-    static char about_btmac[20];
-    static char about_sw_version[20];
-
-    const uint8_t *sn_code = get_sn_code();
-    const uint8_t *eui_code = get_eui();
-    const uint8_t *bt_mac = get_bt_mac();
-    const char *sw_version = get_software_version(UI_CALLER);
-
-    snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-             sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
-
-    snprintf(about_eui, sizeof(about_eui), "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-             eui_code[0], eui_code[1], eui_code[2], eui_code[3], eui_code[4], eui_code[5], eui_code[6], eui_code[7],
-             eui_code[8], eui_code[9], eui_code[10], eui_code[11], eui_code[12], eui_code[13], eui_code[14], eui_code[15]);
-
-    snprintf(about_btmac, sizeof(about_btmac), "%02X:%02X:%02X:%02X:%02X:%02X",
-             bt_mac[0], bt_mac[1], bt_mac[2], bt_mac[3], bt_mac[4], bt_mac[5]);
-
-    snprintf(about_sw_version, sizeof(about_sw_version), "%s", sw_version);
-
-    lv_label_set_text(ui_svt2, about_sw_version);
-    lv_label_set_text(ui_snt2, (char *)about_sn);
-    lv_label_set_text(ui_euit2, (char *)about_eui);
-    lv_label_set_text(ui_blet2, (char *)about_btmac); 
-
 }
 
 void main4f_cb(lv_event_t *e)
