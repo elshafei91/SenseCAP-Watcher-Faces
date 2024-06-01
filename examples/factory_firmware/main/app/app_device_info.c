@@ -62,6 +62,7 @@ int reset_factory_switch_past = 0;
 
 int time_automatic = 0;
 int time_automatic_past = 0;
+
 // ai service ip for mqtt
 ai_service_pack ai_service;
 ai_service_pack ai_service_past;
@@ -721,7 +722,6 @@ ai_service_pack *get_ai_service(int caller)
         case UI_CALLER:
             ESP_LOGI(TAG, "UI get ai_service");
             result = &ai_service;
-            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AI_SERVICE, result, sizeof(ai_service_pack), portMAX_DELAY);
             break;
     }
     xSemaphoreGive(MUTEX_ai_service);

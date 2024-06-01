@@ -59,6 +59,11 @@ static int num_jsons = 0;
 /*------------------------------------emoji DS---------------------------------------------*/
 Task *emoji_tasks = NULL;
 
+
+/*-----------------------------------bind index--------------------------------------------*/
+static int bind_index;
+
+
 /*----------------------------------------------------------------------------------------*/
 
 /**
@@ -263,7 +268,7 @@ void AT_command_reg()
     add_command(&commands, "bind=", handle_bind_command);
 }
 
-static int bind_index;
+
 void handle_bind_command(char *params)
 {
     ESP_LOGI(TAG, "handle_bind_command\n");
@@ -591,8 +596,9 @@ void handle_deviceinfo_cfg_command(char *params)
                 ESP_LOGI(TAG,"The converted value is %lld\n", value);
                 struct view_data_time_cfg time_cfg_mannual;
                 time_cfg_mannual.time=value;
+                time_cfg_mannual.set_time=true;
                 time_cfg_mannual.auto_update=false;
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg_mannual, sizeof(time_cfg_mannual), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg_mannual, sizeof(time_cfg_mannual), portMAX_DELAY);
             }
             
         }
