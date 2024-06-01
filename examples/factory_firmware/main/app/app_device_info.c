@@ -120,7 +120,7 @@ void init_eui_from_nvs()
     const char *code_str = factory_info_code_get();
     if (eui_str == NULL || code_str == NULL)
     {
-        printf("Failed to get factory information of eui and code \n");
+        EPS_LOGE(TAG,"Failed to get factory information of eui and code \n")
         return;
     }
     uint8_t eui[8];

@@ -269,7 +269,16 @@ void AT_command_reg()
     add_command(&commands, "bind=", handle_bind_command);
 }
 
-
+/**
+ * @brief Handle the bind command by parsing input parameters, extracting the bind index, 
+ *        posting an event to the app event loop, and creating a JSON response.
+ *
+ * This function takes a JSON string as input, parses it to extract a "code" value, and posts 
+ * an event with this value to the application event loop. It then creates a JSON response 
+ * indicating the success of the bind command and sends this response.
+ *
+ * @param params JSON string containing the "code" key with an integer value to bind.
+ */
 void handle_bind_command(char *params)
 {
     ESP_LOGI(TAG, "handle_bind_command\n");
@@ -303,6 +312,8 @@ void handle_bind_command(char *params)
     cJSON_Delete(root);
 }
 
+
+/*-----------------------------------------------------------------------------------------------------------*/
 static int emoji_index = 1;
 static char *emoji_name_prefix;
 static char *emoji_name_final;
@@ -424,6 +435,7 @@ void write_to_file(const char *file_path, const char *data)
     fclose(file);
     ESP_LOGI("write to file", "Successfully wrote data to file: %s", file_path);
 }
+
 void handle_emoji_command(char *params)
 {
     ESP_LOGI(TAG, "handle_emoji_command\n");
@@ -475,7 +487,20 @@ void handle_emoji_command(char *params)
     cJSON_Delete(root);
 }
 
+/*-----------------------------------------------------------------------------------------------------------*/
 
+
+
+
+/**
+ * @brief Handle the cloud service query command by retrieving the cloud service switch state 
+ *        and creating a JSON response.
+ *
+ * This function retrieves the state of the cloud service switch and creates a JSON response
+ * with the state information. The response is then sent to the requester.
+ *
+ * @param params Unused parameter in this function but kept for consistency in the command handler signature.
+ */
 void handle_cloud_service_qurey_command(char *params)
 {
     int cloud_service_switch;
@@ -495,6 +520,18 @@ void handle_cloud_service_qurey_command(char *params)
     cJSON_Delete(root);
 }
 
+
+
+/**
+ * @brief Handle the cloud service command by parsing input parameters, updating the cloud service switch state,
+ *        and creating a JSON response.
+ *
+ * This function takes a JSON string as input, parses it to extract the "remotecontrol" value, and updates
+ * the cloud service switch state. It then creates a JSON response indicating the success of the operation
+ * and sends this response.
+ *
+ * @param params JSON string containing the "data" key with a "remotecontrol" integer value.
+ */
 void handle_cloud_service_command(char *params)
 {
     int cloud_service_switch;
@@ -532,7 +569,7 @@ void handle_cloud_service_command(char *params)
     cJSON_AddStringToObject(root, "name", "cloudservice");
     cJSON_AddNumberToObject(root, "code", 0);
     cJSON_AddItemToObject(root, "data", data_rep);
-    cJSON_AddStringToObject(data_rep, "automatic", "");
+    cJSON_AddStringToObject(data_rep, "remotecontrol", "");
     char *json_string = cJSON_Print(root);
     ESP_LOGI(TAG, "JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
@@ -875,8 +912,8 @@ void handle_wifi_table(char *params)
     ESP_LOGI(TAG, "Handling wifi table command\n");
     initWiFiStack(&wifiStack_scanned, 6);
     xTaskNotifyGive(xTask_wifi_config_entry);
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-    pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    //pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
     char *json_str = cJSON_Print(json);
 
