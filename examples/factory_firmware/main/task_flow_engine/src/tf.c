@@ -16,6 +16,12 @@ static tf_engine_t *gp_engine = NULL;
 #define EVENT_STOP            BIT1
 #define EVENT_ERR_EXIT        BIT2
 
+#define MODULE_FLAG_INIT_DONE      BIT0
+#define MODULE_FLAG_INSTANCE_DONE  BIT1
+#define MODULE_FLAG_CFG_DONE       BIT2
+#define MODULE_FLAG_SUB_SET_DONE   BIT3
+#define MODULE_FLAG_PUB_SET_DONE   BIT4
+#define MODULE_FLAG_START_DONE     BIT5
 
 static void __data_lock( tf_engine_t *p_engine)
 {
@@ -85,6 +91,7 @@ static int __modules_init(tf_engine_t *p_engine, tf_module_item_t *p_head, int n
             *pp_err_module = p_head[i].p_name;
             return ESP_FAIL;
         }
+        p_head[i].flag |= MODULE_FLAG_INIT_DONE;
     }
     return ESP_OK;
 }
@@ -101,6 +108,7 @@ static int __modules_instance(tf_module_item_t *p_head, int num, const char **pp
             *pp_err_module = p_head[i].p_name;
             return ESP_FAIL;
         }
+        p_head[i].flag |= MODULE_FLAG_INSTANCE_DONE;
     }
    return ESP_OK;
 }
@@ -110,7 +118,8 @@ static int __modules_destroy(tf_module_item_t *p_head, int num)
         return ESP_FAIL;
     }
     for(int i = 0; i < num; i++) {
-        if(p_head[i].handle != NULL) {
+        if(p_head[i].handle != NULL && p_head[i].mgmt_handle != NULL &&
+            (p_head[i].flag & MODULE_FLAG_INSTANCE_DONE) && (p_head[i].flag & MODULE_FLAG_INIT_DONE)) {
             p_head[i].mgmt_handle->tf_module_destroy(p_head[i].handle);
         }
     }
@@ -130,6 +139,7 @@ static int __modules_start(tf_module_item_t *p_head, int num, const char **pp_er
             *pp_err_module = p_head[i].p_name;
             return ret;
         }
+        p_head[i].flag |= MODULE_FLAG_START_DONE;
     }
    return ESP_OK;
 }
@@ -141,10 +151,18 @@ static int __modules_stop(tf_module_item_t *p_head, int num)
     }
     // Reverse Order to STOP
     for(int i = (num-1); i >= 0; i--) {
-        ret = tf_module_stop(p_head[i].handle);
-        if(ret != ESP_OK) {
-            ESP_LOGE(TAG, "Module %s stop failed", p_head[i].p_name);
-            return ret;
+        if ( p_head[i].handle != NULL  && ( \
+            p_head[i].flag & MODULE_FLAG_START_DONE || 
+            p_head[i].flag & MODULE_FLAG_CFG_DONE   ||
+            p_head[i].flag & MODULE_FLAG_PUB_SET_DONE ||
+            p_head[i].flag & MODULE_FLAG_SUB_SET_DONE)) {
+
+            ret = tf_module_stop(p_head[i].handle);
+            if(ret != ESP_OK) {
+                ESP_LOGE(TAG, "Module %s stop failed", p_head[i].p_name);
+            }
+        } else {
+            ESP_LOGI(TAG, "Module %s no need to stop", p_head[i].p_name);
         }
     }
    return ESP_OK;
@@ -164,6 +182,7 @@ static int __modules_cfg(tf_module_item_t *p_head, int num, const char **pp_err_
             *pp_err_module = p_head[i].p_name;
             return ret;
         }
+        p_head[i].flag |= MODULE_FLAG_CFG_DONE;
     }
    return ESP_OK;
 }
@@ -182,9 +201,28 @@ static int __modules_msgs_sub_set(tf_module_item_t *p_head, int num, const char 
             *pp_err_module = p_head[i].p_name;
             return ret;
         }
+        p_head[i].flag |= MODULE_FLAG_SUB_SET_DONE;
     }
    return ESP_OK;
 }
+static int __modules_wires_check(tf_module_item_t *p_head, int num, struct tf_module_wires *p_wires)
+{
+    int i = 0;
+    int j = 0;
+    for( i = 0; i < p_wires->num; i++) {
+        for( j = 0; j < num; j++ ) {
+            if(p_head[j].id == p_wires->p_evt_id[i]) {
+                break;
+            }
+        }
+        if( j >= num ) {
+            ESP_LOGE(TAG, "Not find wire: %d", p_wires->p_evt_id[i]);
+            return ESP_FAIL;
+        }
+    }
+   return ESP_OK;
+}
+
 static int __modules_msgs_pub_set(tf_module_item_t *p_head, int num, const char **pp_err_module)
 {
     int ret = ESP_OK;
@@ -194,6 +232,12 @@ static int __modules_msgs_pub_set(tf_module_item_t *p_head, int num, const char 
     }
     for(int i = 0; i < num; i++) {
         for(int j = 0; j < p_head[i].output_port_num; j++) {
+
+            ret = __modules_wires_check(p_head, num, p_head[i].p_wires);
+            if(ret != ESP_OK) {
+                *pp_err_module = p_head[i].p_name;
+                return ret;
+            }
             ret = tf_module_msgs_pub_set(p_head[i].handle, j,  \
                                          p_head[i].p_wires->p_evt_id, p_head[i].p_wires->num);
             if(ret != ESP_OK) {
@@ -201,6 +245,7 @@ static int __modules_msgs_pub_set(tf_module_item_t *p_head, int num, const char 
                 *pp_err_module = p_head[i].p_name;
                 return ret;
             }
+            p_head[i].flag |= MODULE_FLAG_PUB_SET_DONE;
         }
     }
    return ESP_OK;

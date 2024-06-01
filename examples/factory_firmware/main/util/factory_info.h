@@ -33,6 +33,8 @@ const char *factory_info_access_key_get(void);
 const char *factory_info_device_control_key_get(void);
 uint8_t factory_info_platform_get(void);
 
+void factory_info_print(void);
+
 #ifdef __cplusplus
 }
 #endif
