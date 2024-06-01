@@ -204,6 +204,8 @@ enum {
     VIEW_EVENT_WIFI_CONNECT_RET,   // struct view_data_wifi_connet_ret_msg
     VIEW_EVENT_WIFI_CFG_DELETE,
 
+    VIEW_EVENT_WIFI_CONFIG_SYNC,
+
     VIEW_EVENT_TIME_CFG_UPDATE,  //  struct view_data_time_cfg
     VIEW_EVENT_TIME_CFG_APPLY,   //  struct view_data_time_cfg
 

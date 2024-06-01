@@ -330,6 +330,7 @@ void ui_Page_Set_screen_init(void)
     lv_obj_set_height(ui_setwwsw, 25);
     lv_obj_set_x(ui_setwwsw, 140);
     lv_obj_set_y(ui_setwwsw, 0);
+    lv_obj_add_flag(ui_setwwsw, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_align(ui_setwwsw, LV_ALIGN_CENTER);
     lv_obj_set_style_bg_color(ui_setwwsw, lv_color_hex(0x8FC31F), LV_PART_MAIN | LV_STATE_CHECKED);
     lv_obj_set_style_bg_opa(ui_setwwsw, 50, LV_PART_MAIN | LV_STATE_CHECKED);

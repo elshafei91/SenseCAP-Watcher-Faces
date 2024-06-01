@@ -17,7 +17,7 @@ void ui_Page_Battery_screen_init(void)
     lv_obj_set_width(ui_Image2, LV_SIZE_CONTENT);   /// 102
     lv_obj_set_height(ui_Image2, LV_SIZE_CONTENT);    /// 187
     lv_obj_set_align(ui_Image2, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_Image2, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
+    lv_obj_add_flag(ui_Image2,  LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
     lv_obj_clear_flag(ui_Image2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
 
     lv_obj_add_event_cb(ui_Page_Battery, ui_event_Page_Battery, LV_EVENT_ALL, NULL);

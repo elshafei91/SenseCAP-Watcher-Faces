@@ -36,11 +36,12 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_setting_png.c
     images/ui_img_setting_f_png.c
     images/ui_img_wifi_abnormal_png.c
-    images/ui_img_battery_charging_png.c
+    images/ui_img_battery_frame_png.c
     images/ui_img_ble_png.c
     images/ui_img_button_cancel_png.c
     images/ui_img_arrow_png.c
     images/ui_img_1067503588.c
+    images/ui_img_wifi_3_png.c
     images/ui_img_switch_group_png.c
     images/ui_img_setback_png.c
     images/ui_img_template1_png.c
@@ -76,6 +77,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     fonts/ui_font_fbold16.c
     fonts/ui_font_fbold24.c
     fonts/ui_font_Font1.c
+    fonts/ui_font_Font12.c
     fonts/ui_font_fontbold26.c
     fonts/ui_font_font_bold.c)
 

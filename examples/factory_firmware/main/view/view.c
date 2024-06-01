@@ -18,9 +18,11 @@ static const char *TAG = "view";
 char sn_data[66];
 uint8_t wifi_page_id;
 lv_obj_t * view_show_img;
+uint8_t shutdown_state = 0;
 static int PNG_LOADING_COUNT = 0;
 static uint8_t battery_per = 0;
 extern uint8_t task_down;
+extern uint8_t swipe_id; // 0 for shutdown, 1 for factoryreset
 extern int first_use;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
@@ -61,8 +63,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         {
             case VIEW_EVENT_SCREEN_START: {
                 _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Vir_screen_init);
-
+                break;
             }
+
             case VIEW_EVENT_PNG_LOADING:{
                 PNG_LOADING_COUNT++;
                 int progress_percentage = (PNG_LOADING_COUNT * 100) / PNG_IMG_NUMS;
@@ -93,6 +96,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BATTERY_ST");
                 struct view_data_device_status * bat_st = (struct view_data_device_status *)event_data;
                 ESP_LOGI(TAG, "battery_percentage: %d", bat_st->battery_per);
+                static char load_per[5];
+                sprintf(load_per, "%d", bat_st->battery_per);
+                lv_label_set_text(ui_btpert, load_per);
                 break;
             }
 
@@ -106,6 +112,28 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_CHARGE_ST");
                 uint8_t is_charging = *(uint8_t *)event_data;
                 ESP_LOGI(TAG, "charging state changed: %d", is_charging);
+                if(is_charging)
+                {
+                    shutdown_state = 1;
+                    if(swipe_id==0)
+                    {
+                        lv_obj_clear_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
+                        lv_obj_add_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
+                        lv_obj_add_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
+                    }
+                    lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
+                    lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
+                }else{
+                    shutdown_state = 0;
+                    if(swipe_id==0)
+                    {
+                        lv_obj_add_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
+                        lv_obj_clear_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
+                        lv_obj_clear_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
+                    }
+                    lv_obj_clear_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
+                    lv_img_set_src(ui_mainb, &ui_img_battery_frame_png);
+                }
                 break;
             } 
 
@@ -135,7 +163,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             }
 
             case VIEW_EVENT_WIFI_ST: {
-                ESP_LOGI("view", "event: VIEW_EVENT_WIFI_ST");
+                ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_ST");
                 struct view_data_wifi_st *p_st = ( struct view_data_wifi_st *)event_data;
                 uint8_t *p_src =NULL;
                 if ( p_st->past_connected)
@@ -169,6 +197,31 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_img_set_src(ui_mainwifi , (void *)p_src);
                 break;
             }
+
+            case VIEW_EVENT_WIFI_CONFIG_SYNC:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONFIG_SYNC");
+                uint8_t wifi_config_sync = (uint8_t *)event_data;
+                lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+                if(wifi_config_sync == 0)
+                {
+                    waitForWifi();
+                }else if(wifi_config_sync== 1)
+                {
+                    waitForBinding();
+                }else if(wifi_config_sync == 2)
+                {
+                    waitForAddDev();
+                }else if(wifi_config_sync == 3)
+                {
+                    bindFinish();
+                    _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 2000, &ui_Page_Vir_screen_init);
+                }else if(wifi_config_sync == 4)
+                {
+                    wifiConnectFailed();
+                }
+                break;
+            }
+
             case VIEW_EVENT_SN_CODE:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_SN_CODE");
                 const char* _sn_data = (const char*)event_data;
@@ -379,6 +432,10 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, 
                                                             __view_event_handler, NULL, NULL)); 
+                                                            
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONFIG_SYNC, 
+                                                            __view_event_handler, NULL, NULL)); 
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_ALARM_ON, 
@@ -415,11 +472,6 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_OTA_STATUS, 
                                                             __view_event_handler, NULL, NULL)); 
-
-    //Todo
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, 
-    //                                                         __view_event_handler, NULL, NULL)); 
 
     read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
     read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);

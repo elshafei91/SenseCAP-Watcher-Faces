@@ -6,6 +6,7 @@
 #include "ui.h"
 #include "ui_helpers.h"
 #include "ui_manager/pm.h"
+#include "sensecap-watcher.h"
 
 ///////////////////// VARIABLES ////////////////////
 void start_anim_Animation(lv_obj_t * TargetObject, int delay);
@@ -26,13 +27,13 @@ lv_obj_t * ui_Image2;
 // SCREEN: ui_Page_Start
 void ui_Page_Start_screen_init(void);
 void ui_event_Page_Start(lv_event_t * e);
-void ui_event_Page_loading(lv_event_t * e);
 lv_obj_t * ui_Page_Start;
 lv_obj_t * ui_startlogo;
 
 
 // SCREEN: ui_Page_loading
 void ui_Page_loading_screen_init(void);
+void ui_event_Page_loading(lv_event_t * e);
 lv_obj_t * ui_Page_loading;
 lv_obj_t * ui_Arc1;
 lv_obj_t * ui_loadpert;
@@ -90,6 +91,7 @@ lv_obj_t * ui_mainb;
 lv_obj_t * ui_mainble;
 lv_obj_t * ui_maintitle;
 lv_obj_t * ui_mcontrolp;
+lv_obj_t * ui_btpert;
 
 
 // SCREEN: ui_Page_Connect
@@ -1384,6 +1386,11 @@ void ui_event____initial_actions0(lv_event_t * e)
 
 void ui_init(void)
 {
+    static uint8_t bat_per;
+    static bool    is_charging;
+    bat_per = bsp_battery_get_percent();
+    is_charging = bsp_system_is_charging();
+
     LV_EVENT_GET_COMP_CHILD = lv_event_register_id();
 
     lv_disp_t * dispp = lv_disp_get_default();
@@ -1413,15 +1420,15 @@ void ui_init(void)
     ui_Page_Wakup_screen_init();
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_obj_add_event_cb(ui____initial_actions0, ui_event____initial_actions0, LV_EVENT_ALL, NULL);
-    
-    //Todo
-    // if((bt_per < 1) && (!is_charging))
-    // {
-    //     lv_disp_load_scr(ui_Page_Battery);
-    // }
-    // if((bt_per > 1) && (is_charging))
-    // {
+
+    // Todo
+    if((bat_per < 1) && (is_charging))
+    {
+        lv_disp_load_scr(ui_Page_Battery);
+    }
+    if((bat_per > 1))
+    {
         lv_disp_load_scr(ui____initial_actions0);
         lv_disp_load_scr(ui_Page_Start);
-    // }
+    }
 }

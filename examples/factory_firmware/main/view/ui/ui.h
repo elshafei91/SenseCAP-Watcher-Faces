@@ -89,6 +89,7 @@ extern lv_obj_t * ui_mainb;
 extern lv_obj_t * ui_mainble;
 extern lv_obj_t * ui_maintitle;
 extern lv_obj_t * ui_mcontrolp;
+extern lv_obj_t * ui_btpert;
 // SCREEN: ui_Page_Connect
 void ui_Page_Connect_screen_init(void);
 extern lv_obj_t * ui_Page_Connect;
@@ -381,11 +382,12 @@ LV_IMG_DECLARE(ui_img_1722191473);    // assets/extension-2.png
 LV_IMG_DECLARE(ui_img_setting_png);    // assets/setting.png
 LV_IMG_DECLARE(ui_img_setting_f_png);    // assets/setting_f.png
 LV_IMG_DECLARE(ui_img_wifi_abnormal_png);    // assets/wifi_abnormal.png
-LV_IMG_DECLARE(ui_img_battery_charging_png);    // assets/battery charging.png
+LV_IMG_DECLARE(ui_img_battery_frame_png);    // assets/battery frame.png
 LV_IMG_DECLARE(ui_img_ble_png);    // assets/ble.png
 LV_IMG_DECLARE(ui_img_button_cancel_png);    // assets/button_cancel.png
 LV_IMG_DECLARE(ui_img_arrow_png);    // assets/arrow.png
 LV_IMG_DECLARE(ui_img_1067503588);    // assets/wifi-Instructions.png
+LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets/wifi_3.png
 LV_IMG_DECLARE(ui_img_switch_group_png);    // assets/switch_group.png
 LV_IMG_DECLARE(ui_img_setback_png);    // assets/setback.png
 LV_IMG_DECLARE(ui_img_template1_png);    // assets/template1.png
@@ -410,7 +412,6 @@ LV_IMG_DECLARE(ui_img_smile1_png);    // assets/smile1.png
 LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets/wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets/wifi_1.png
 LV_IMG_DECLARE(ui_img_wifi_2_png);    // assets/wifi_2.png
-LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets/wifi_3.png
 LV_IMG_DECLARE(ui_img_gradient_png);
 LV_IMG_DECLARE(ui_img_brighticon_png);
 LV_IMG_DECLARE(ui_img_gesture_d_png);
@@ -418,12 +419,14 @@ LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_onboardclick_png);
 LV_IMG_DECLARE(ui_img_error_png);
 LV_IMG_DECLARE(ui_img_no_wifi_png);
-
+LV_IMG_DECLARE(ui_img_battery_frame_png);
+LV_IMG_DECLARE(ui_img_battery_charging_png);
 
 
 LV_FONT_DECLARE(ui_font_fbold16);
 LV_FONT_DECLARE(ui_font_fbold24);
 LV_FONT_DECLARE(ui_font_Font1);
+LV_FONT_DECLARE(ui_font_Font12);
 LV_FONT_DECLARE(ui_font_fontbold26);
 LV_FONT_DECLARE(ui_font_font_bold);
 

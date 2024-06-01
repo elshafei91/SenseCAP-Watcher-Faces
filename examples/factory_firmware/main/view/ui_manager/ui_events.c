@@ -28,6 +28,7 @@ wifi_ap_record_t wifi_record;
 int first_use = 0;
 uint8_t task_down = 0;
 uint8_t guide_step = 0;
+uint8_t swipe_id = 0; // 0 for shutdown, 1 for factoryreset
 static bool is_charging = 0;
 static uint8_t loading_flag = 0;
 static struct view_data_setting_volbri volbri;
@@ -36,12 +37,12 @@ static struct view_data_emoticon_display emo_disp;
 
 static int file_idx = 0;
 static int current_img_index = 0;
-static uint8_t swipe_id = 0; // 0 for shutdown, 1 for factoryreset
 static uint32_t local_task_id;
 static lv_timer_t * g_timer;
 
 extern char sn_data[66];
 extern uint8_t wifi_page_id;
+extern uint8_t shutdown_state;
 extern uint8_t emoticon_disp_id;    // for lv_async switch and emoticon switch
 extern lv_obj_t * ui_alarm_indicator;
 
@@ -290,7 +291,6 @@ void virtc_cb(lv_event_t *e)
 void virtsl_cb(lv_event_t *e)
 {
 	lv_group_add_obj(g_main, ui_Page_Vir);
-
     create_timer(0);
 }
 
@@ -906,6 +906,17 @@ void setwific_cb(lv_event_t *e)
     strncpy(ssid_string, (const char *)wifi_record.ssid, sizeof(ssid_string) - 1);
     ssid_string[sizeof(ssid_string) - 1] = '\0';
     lv_label_set_text(ui_wifissid, ssid_string);
+    // if(strlen((const char *)wifi_record.ssid) > 0)
+    // {
+    lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+
+    // }else{
+    //     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
+    //     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    //     lv_obj_clear_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    // }
     // binded
     if (first_use)
     {
@@ -986,22 +997,19 @@ void setwwc_cb(lv_event_t *e)
 void setdownc_cb(lv_event_t *e)
 {
     swipe_id = 0;
-    //Todo
-    is_charging = bsp_system_is_charging();
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
-    if(!is_charging)
+    if(shutdown_state)
     {
         lv_obj_clear_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
-        ESP_LOGI(TAG, "is charging");
-    }else{
+    }else
+    {
         lv_obj_add_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
-        Page_shutdown();
-        ESP_LOGI(TAG, "is not charging");
     }
+    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
+    Page_shutdown();
 }
 
 void setfac_cb(lv_event_t *e)
@@ -1216,7 +1224,7 @@ static void Page_facreset()
 }
 
 // device bind config status
-static void waitForWifi()
+void waitForWifi()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
@@ -1226,7 +1234,7 @@ static void waitForWifi()
     lv_label_set_text(ui_wifitext3, "Waiting for Wi-Fi Setup...");
 }
 
-static void waitForBinding()
+void waitForBinding()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
@@ -1235,7 +1243,7 @@ static void waitForBinding()
     lv_label_set_text(ui_wifitext3, "Waiting for binding...");
 }
 
-static void waitForAddDev() 
+void waitForAddDev() 
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
@@ -1244,7 +1252,7 @@ static void waitForAddDev()
     lv_label_set_text(ui_wifitext3, "Binding device to your account");
 }
 
-static void bindFinish() 
+void bindFinish() 
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
@@ -1252,4 +1260,14 @@ static void bindFinish()
     lv_img_set_src(ui_wifilogo, &ui_img_wifiok_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ui_wifitext3, "Watcher is ready");
+}
+
+void wifiConnectFailed()
+{
+    lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
+    lv_img_set_src(ui_wifilogo, &ui_img_error_png);
+    lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(ui_wifitext3, "Wi-Fi Connection Failed");
 }
