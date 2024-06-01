@@ -993,6 +993,7 @@ void setdownc_cb(lv_event_t *e)
 {
     swipe_id = 0;
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
+    lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_shutdown();
 }
 
@@ -1000,6 +1001,7 @@ void setfac_cb(lv_event_t *e)
 {
     swipe_id = 1;
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
+    lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_facreset();
 }
 
@@ -1047,7 +1049,14 @@ void sliderr_cb(lv_event_t *e)
         switch (swipe_id)
         {
             case 0:
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, portMAX_DELAY);
+                if(shutdown_state == 0)
+                {
+                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
+                }
+                if(shutdown_state == 1)
+                {
+                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, portMAX_DELAY);
+                }
                 break;
 
             case 1:
