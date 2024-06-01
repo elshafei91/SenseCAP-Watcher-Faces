@@ -409,9 +409,7 @@ static int __wifi_connect(const char *p_ssid, const char *p_password, int retry_
 
     esp_wifi_stop();
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_LOGE("CONNECT_TAG_die01","wifi_connect_failed_reason is %d",wifi_connect_failed_reason);
     wifi_connect_failed_reason = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-    ESP_LOGE("CONNECT_TAG_die02","wifi_connect_failed_reason is %d",wifi_connect_failed_reason);
 
 
     _g_wifi_cfg.is_cfg = true;
@@ -595,7 +593,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
 
             if (p_cfg->have_password)
             {
-                ESP_LOGE(TAG, "ssid: %s, password: %s", p_cfg->ssid, p_cfg->password);
                 __wifi_connect(p_cfg->ssid, (const char *)p_cfg->password, 3);
             }
             else
