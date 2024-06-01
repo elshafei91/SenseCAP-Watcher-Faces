@@ -128,6 +128,7 @@ int deviceinfo_set(struct view_data_deviceinfo *p_info)
 void init_sn_from_nvs()
 {
     const char *sn_str = factory_info_sn_get();
+    ESP_LOGE(TAG,"%s",sn_str);
     string_to_byte_array(sn_str, SN, 8);
 }
 
