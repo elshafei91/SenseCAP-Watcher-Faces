@@ -783,7 +783,7 @@ uint8_t *__set_reset_factory()
         ESP_LOGI(TAG, "start to erase nvs storage ...");
         if(reset_factory_switch_past == 1) {
             storage_erase();
-            bsp_system_reboot();
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
         }
         esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
         reset_factory_switch_past=reset_factory_switch;

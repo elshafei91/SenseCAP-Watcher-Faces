@@ -161,7 +161,7 @@ static void register_cmd_deviceinfo(void)
 /************* reboot **************/
 static int do_reboot(int argc, char **argv)
 {
-    bsp_system_reboot();
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
     return 0;
 }
 
