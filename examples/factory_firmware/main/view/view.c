@@ -114,22 +114,18 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "charging state changed: %d", is_charging);
                 if(is_charging)
                 {
-                    shutdown_state = 1;
+                    shutdown_state = 0;
                     if(swipe_id==0)
                     {
-                        lv_obj_clear_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_add_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_add_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
+                        lv_label_set_text(ui_sptext, "Swipe to reboot");
                     }
                     lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
                 }else{
-                    shutdown_state = 0;
+                    shutdown_state = 1;
                     if(swipe_id==0)
                     {
-                        lv_obj_add_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_clear_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_clear_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
+                        lv_label_set_text(ui_sptext, "Swipe to shut down");
                     }
                     lv_obj_clear_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_frame_png);

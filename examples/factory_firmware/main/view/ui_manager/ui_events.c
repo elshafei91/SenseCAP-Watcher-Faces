@@ -912,11 +912,6 @@ void setwific_cb(lv_event_t *e)
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
 
-    // }else{
-    //     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    //     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
-    //     lv_obj_clear_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
-    // }
     // binded
     if (first_use)
     {
@@ -997,17 +992,6 @@ void setwwc_cb(lv_event_t *e)
 void setdownc_cb(lv_event_t *e)
 {
     swipe_id = 0;
-    if(shutdown_state)
-    {
-        lv_obj_clear_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
-    }else
-    {
-        lv_obj_add_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
-    }
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
     Page_shutdown();
 }
@@ -1015,9 +999,6 @@ void setdownc_cb(lv_event_t *e)
 void setfac_cb(lv_event_t *e)
 {
     swipe_id = 1;
-    lv_obj_add_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(ui_spsilder, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(ui_sptext, LV_OBJ_FLAG_HIDDEN);
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
     Page_facreset();
 }
@@ -1077,10 +1058,6 @@ void sliderr_cb(lv_event_t *e)
                 break;
         }
     }
-    lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
-    lv_obj_set_style_bg_color(ui_spsilder, lv_color_hex(0xD47C2A), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_color(ui_spsilder, lv_color_hex(0xD47C2A), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_spsilder, lv_color_hex(0xD47C2A), LV_PART_INDICATOR | LV_STATE_DEFAULT);
 }
 
 void preset_cb(lv_event_t *e)
@@ -1214,7 +1191,12 @@ static void Task_end()
 static void Page_shutdown()
 {
     lv_label_set_text(ui_sptitle, "Shut down");
-    lv_label_set_text(ui_sptext, "Swipe to shut down");
+    if(shutdown_state == 1)
+    {
+        lv_label_set_text(ui_sptext, "Swipe to shut down");
+    }else if(shutdown_state == 0){
+        lv_label_set_text(ui_sptext, "Swipe to reboot");
+    }
 }
 
 static void Page_facreset()
