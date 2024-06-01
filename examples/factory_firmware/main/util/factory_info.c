@@ -40,8 +40,8 @@ esp_err_t factory_info_init(void)
         return ESP_ERR_NO_MEM;
     }
     memset(gp_info, 0, sizeof(factory_info_t));
-
-    ret = nvs_open(FACTORY_NVS_PART_NAME, NVS_READONLY, &handle);
+    
+    ret = nvs_open_from_partition(FACTORY_NVS_PART_NAME, "device_info", NVS_READONLY, &handle);
     if (ret != ESP_OK) {
         free(gp_info);
         ESP_LOGE(FACTORY_INFO_TAG, "nvs_open failed: %s", esp_err_to_name(ret));
