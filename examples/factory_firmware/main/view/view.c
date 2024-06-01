@@ -200,24 +200,23 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_WIFI_CONFIG_SYNC:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONFIG_SYNC");
-                int wifi_config_sync = (int*)event_data;
-                ESP_LOGE(TAG,"LOG VIEW_EVENT_WIFI_CONFIG_SYNC  wifi_config_sync is %d",wifi_config_sync);
+                int * wifi_config_sync = (int*)event_data;
                 if(lv_scr_act() != ui_Page_Wifi)_ui_screen_change(&ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
                 // lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
-                if(wifi_config_sync == 0)
+                if(* wifi_config_sync == 0)
                 {
                     waitForWifi();
-                }else if(wifi_config_sync== 1)
+                }else if(* wifi_config_sync== 1)
                 {
                     waitForBinding();
-                }else if(wifi_config_sync == 2)
+                }else if(*wifi_config_sync == 2)
                 {
                     waitForAddDev();
-                }else if(wifi_config_sync == 3)
+                }else if(* wifi_config_sync == 3)
                 {
                     bindFinish();
                     _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 2000, &ui_Page_Vir_screen_init);
-                }else if(wifi_config_sync == 4)
+                }else if(* wifi_config_sync == 4)
                 {
                     wifiConnectFailed();
                 }
