@@ -1023,7 +1023,8 @@ void app_device_info_task(void *pvParameter)
         }
 
         if ((cnt % 5) == 0) {
-            uint8_t chg = (uint8_t)bsp_system_is_charging();
+            uint8_t chg = (uint8_t)(bsp_exp_io_get_level(BSP_PWR_VBUS_IN_DET) == 0);
+            // ESP_LOGD(TAG, "charging: %d", chg);
             if (chg != last_charge_st)
             {
                 last_charge_st = chg;
