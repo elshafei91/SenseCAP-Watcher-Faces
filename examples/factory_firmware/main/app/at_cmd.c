@@ -1140,7 +1140,7 @@ void task_handle_AT_command()
 
         if (test_strings == NULL)
         {
-            ESP_LOGE(TAG,"Memory allocation failed\n")
+            ESP_LOGE(TAG,"Memory allocation failed\n");
         }
         ESP_LOGI(TAG,"AT command received\n");
         regex_t regex;
@@ -1148,13 +1148,13 @@ void task_handle_AT_command()
         ret = regcomp(&regex, pattern, REG_EXTENDED);
         if (ret)
         {
-            ESP_LOGI("Could not compile regex\n");
+            ESP_LOGI(TAG,"Could not compile regex\n");
         }
         regmatch_t matches[4];
         ret = regexec(&regex, test_strings, 4, matches, 0);
         if (!ret)
         {
-            ESP_LOGI("recv_in match: %.*s\n", 1024, test_strings);
+            //ESP_LOGI("recv_in match: %.*s\n", test_strings);
             char command_type[20];
             snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
 
@@ -1287,7 +1287,7 @@ AT_Response create_at_response(const char *message)
         }
         else
         {
-            printf("Failed to allocate memory for AT response\n");
+            ESP_LOGE(TAG,"Failed to allocate memory for AT response\n");
 
             response.response = NULL;
             response.length = 0;
