@@ -33,7 +33,7 @@
 #define BRIGHTNESS_STORAGE_KEY    "brightness"
 #define SOUND_STORAGE_KEY         "sound"
 #define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
-#define CLOUD_SERVICE_STORAGE_KEY "cloudserviceswitch"
+#define CLOUD_SERVICE_STORAGE_KEY "cssk"
 #define AI_SERVICE_STORAGE_KEY    "aiservice"
 #define RESET_FACTORY_SK          "resetfactory"
 #define TIME_AUTOMATIC_SK         "time_auto"
@@ -105,29 +105,6 @@ void string_to_byte_array(const char *str, uint8_t *byte_array, size_t length)
     }
 }
 
-int deviceinfo_get(struct view_data_deviceinfo *p_info)
-{
-    size_t len = sizeof(struct view_data_deviceinfo);
-    memset(p_info, 0, len);
-    esp_err_t ret = storage_read(DEVICEINFO_STORAGE, (void *)p_info, &len);
-    if (ret != ESP_OK)
-    {
-        return ret;
-    }
-    return ESP_OK;
-}
-
-int deviceinfo_set(struct view_data_deviceinfo *p_info)
-{
-    esp_err_t ret = 0;
-    ret = storage_write(DEVICEINFO_STORAGE, (void *)p_info, sizeof(struct view_data_deviceinfo));
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "cfg write err:%d", ret);
-        return ret;
-    }
-    return ESP_OK;
-}
 
 /*----------------------------------------------------------init function--------------------------------------*/
 
@@ -150,13 +127,10 @@ void init_eui_from_nvs()
     }
     uint8_t eui[8];
     uint8_t code[8];
-    ESP_LOGE(TAG, "eui in factory is %s", eui_str);
-    ESP_LOGE(TAG, "code_str in factory is %s", code_str);
     string_to_byte_array(eui_str, eui, 8);
     string_to_byte_array(code_str, code, 8);
     memcpy(EUI, eui, 8);
     memcpy(EUI + 8, code, 8);
-    ESP_LOGE(TAG, "code_str and EUI comb in factory is %s", EUI);
 }
 
 void init_batchid_from_nvs()
@@ -690,7 +664,7 @@ static int __set_cloud_service_switch()
 {
     if (xSemaphoreTake(MUTEX_cloud_service_switch, portMAX_DELAY) != pdTRUE)
     {
-        ESP_LOGE(TAG, "__set_cloud_service_switch: MUTEX_rgb_switch take failed");
+        ESP_LOGE(TAG, "__set_cloud_service_switch: MUTEX_cloud_service_switch take failed");
         return NULL;
     }
     if (cloud_service_switch_past != cloud_service_switch)

@@ -8,10 +8,6 @@
 
 enum { BLE_CONNECTED, BLE_DISCONNECTED, STATUS_WAITTING };
 
-
-int deviceinfo_get(struct view_data_deviceinfo *p_info);
-int deviceinfo_set(struct view_data_deviceinfo *p_info);
-
 uint8_t *get_sn(int caller);
 char *get_software_version(int caller);
 char *get_himax_software_version(int caller);

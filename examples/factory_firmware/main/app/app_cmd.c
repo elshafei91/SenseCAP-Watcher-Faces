@@ -89,76 +89,6 @@ static void register_cmd_wifi_sta(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
-/************* device info get and set **************/
-static struct {
-    struct arg_str *eui;
-    struct arg_str *key;
-    struct arg_end *end;
-} deviceinfo_cfg_args;
-
-static int deviceinfo_cmd(int argc, char **argv)
-{
-    struct view_data_deviceinfo cfg;
-    bool change = false;
-    esp_err_t ret;
-    memset(&cfg, 0, sizeof(cfg));
-
-    int nerrors = arg_parse(argc, argv, (void **) &deviceinfo_cfg_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, deviceinfo_cfg_args.end, argv[0]);
-        return 1;
-    }
-
-    if (deviceinfo_cfg_args.eui->count) {
-        int len = strlen( deviceinfo_cfg_args.eui->sval[0] );
-        if( len != 16 ) { 
-            ESP_LOGE(TAG,  "must be 16 bytes :%s", deviceinfo_cfg_args.eui->sval[0]);
-            return -1;
-        }
-        change = true;
-        strcpy( cfg.eui, deviceinfo_cfg_args.eui->sval[0] );
-    }
-
-    if (deviceinfo_cfg_args.key->count) {
-        int len = strlen(deviceinfo_cfg_args.key->sval[0]);
-        if( len != 32 ){ 
-            ESP_LOGE(TAG,  "must be 32 bytes :%s", deviceinfo_cfg_args.key->sval[0]);
-            return -1;
-        }
-        change = true;
-        strncpy( cfg.key, deviceinfo_cfg_args.key->sval[0], len );
-    }
-
-    if( change ) {
-        deviceinfo_set(&cfg);
-    }
-
-    ret = deviceinfo_get(&cfg);
-    if( ret == ESP_OK ) {
-        ESP_LOGI(TAG, "eui: %s", cfg.eui);
-        ESP_LOGI(TAG, "key: %s", cfg.key);
-    } else {
-        ESP_LOGE(TAG, "deviceinfo read fail %d!", ret);
-    }
-    return 0;
-}
-
-static void register_cmd_deviceinfo(void)
-{
-    deviceinfo_cfg_args.eui =  arg_str0("e", NULL, "<eui>", "EUI");
-    deviceinfo_cfg_args.key =  arg_str0("k", NULL, "<key>", "KEY");
-    deviceinfo_cfg_args.end = arg_end(2);
-
-    const esp_console_cmd_t cmd = {
-        .command = "deviceinfo",
-        .help = "deviceinfo get/set",
-        .hint = NULL,
-        .func = &deviceinfo_cmd,
-        .argtable = &deviceinfo_cfg_args
-    };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
-}
-
 /************* reboot **************/
 static int do_reboot(int argc, char **argv)
 {
@@ -429,7 +359,6 @@ int app_cmd_init(void)
     repl_config.max_cmdline_length = 1024;
 
     register_cmd_wifi_sta();
-    register_cmd_deviceinfo();
     register_cmd_force_ota();
     register_cmd_taskflow();
     register_cmd_factory_info();
