@@ -35,9 +35,15 @@ struct sensecraft_mqtt_connect_info
     int expiresIn;
 };
 
+struct sensecraft_deviceinfo
+{
+    char eui[17];
+    char key[33];
+};
+
 struct app_sensecraft
 {
-    struct view_data_deviceinfo deviceinfo;
+    struct sensecraft_deviceinfo deviceinfo;
     struct sensecraft_mqtt_connect_info mqtt_info;
     char https_token[HTTPS_TOKEN_LEN];
     SemaphoreHandle_t sem_handle;
@@ -66,9 +72,11 @@ struct app_sensecraft
 
 esp_err_t app_sensecraft_init(void);
 
+static esp_err_t sensecraft_deviceinfo_get(struct sensecraft_deviceinfo *p_info);
+
 esp_err_t app_sensecraft_https_token_get(char *p_token, size_t len);
 
-esp_err_t app_sensecraft_https_token_gen(struct view_data_deviceinfo *p_deviceinfo, char *p_token, size_t len);
+esp_err_t app_sensecraft_https_token_gen(struct sensecraft_deviceinfo *p_deviceinfo, char *p_token, size_t len);
 
 esp_err_t app_sensecraft_mqtt_report_taskflow(char *p_str, size_t len);
 
