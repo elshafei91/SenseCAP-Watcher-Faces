@@ -21,7 +21,6 @@
 #include "sdkconfig.h"
 #include "esp_heap_caps.h"
 
-
 #include "app_rgb.h"
 #include "at_cmd.h"
 #include "app_ble.h"
@@ -292,7 +291,6 @@ static void watcher_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *
  */
 static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param)
 {
-
     ESP_LOGI(GATTS_TAG, "watcher_exec_write_tiny_event_env");
     if (prepare_write_env->prepare_buf)
     {
@@ -311,6 +309,8 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
         {
             printf("Message sent to queue\n");
         }
+        free(prepare_write_env->prepare_buf);
+        prepare_write_env->prepare_buf = NULL;
         uint32_t ulNotificationValue;
         xTaskToNotify_AT = xTaskGetCurrentTaskHandle();
         ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));
@@ -328,6 +328,8 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
                 else
                 {
                     memcpy(response_data, msg_at_response.response, msg_at_response.length);
+                    free(msg_at_response.response);
+                    msg_at_response.response = NULL;
                 }
                 int segments = msg_at_response.length / 20;
                 int remaining_bytes = msg_at_response.length % 20;
@@ -343,12 +345,10 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
                     esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx,
                         remaining_bytes, response_data + (segments * 20), false);
                 }
-                free(prepare_write_env->prepare_buf);
-                prepare_write_env->prepare_buf = NULL;
                 free(response_data);
             }
         }
-        free(msg_at_response.response);
+        // free(msg_at_response.response);
         prepare_write_env->prepare_len = 0;
     }
 }
@@ -380,7 +380,7 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
     {
         message_event_t msg_at;
         msg_at.size = prepare_write_env->prepare_len;
-        msg_at.msg = (uint8_t *)heap_caps_malloc(msg_at.size , MALLOC_CAP_SPIRAM);
+        msg_at.msg = (uint8_t *)heap_caps_malloc(msg_at.size, MALLOC_CAP_SPIRAM);
         memcpy(msg_at.msg, prepare_write_env->prepare_buf, msg_at.size);
         esp_log_buffer_hex("TEST", msg_at.msg, msg_at.size);
         if (xQueueSend(message_queue, &msg_at, portMAX_DELAY) != pdPASS)
@@ -412,6 +412,8 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
                 else
                 {
                     memcpy(response_data, msg_at_response.response, msg_at_response.length);
+                    free(msg_at_response.response);
+                    msg_at_response.response = NULL;
                 }
                 int segments = msg_at_response.length / 20;
                 int remaining_bytes = msg_at_response.length % 20;
@@ -429,7 +431,7 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
                 free(response_data);
             }
         }
-        free(msg_at_response.response);
+
         prepare_write_env->prepare_len = 0;
     }
 }
@@ -506,7 +508,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         case ESP_GATTS_WRITE_EVT: {
             // ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %" PRIu32 ", handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
             // ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT_TAG, value len %d, value :", param->write.len);
-                esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
+            esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
             if (!param->write.is_prep)
             {
                 // ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT_TAG, value len %d, value :", param->write.len);
@@ -843,7 +845,6 @@ void ble_config_entry(void)
 
     while (1)
     {
-        
         if (ble_status == BLE_DISCONNECTED)
         {
             ret = esp_ble_gap_start_advertising(&adv_params);
@@ -869,7 +870,6 @@ void ble_config_entry(void)
                 ESP_LOGI("BLE_BUTTON", "stop advertising succeeded");
             }
             ble_status = STATUS_WAITTING;
-
         }
         else
         {

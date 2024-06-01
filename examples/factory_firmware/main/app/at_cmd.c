@@ -206,7 +206,8 @@ AT_Response create_at_response(const char *message);
  */
 void add_command(command_entry **commands, const char *name, void (*func)(char *params))
 {
-    command_entry *entry = (command_entry *)malloc(sizeof(command_entry)); // Allocate memory for the new entry
+    //command_entry *entry = (command_entry *)malloc(sizeof(command_entry)); // Allocate memory for the new entry
+    command_entry *entry = (command_entry *)heap_caps_malloc(sizeof(command_entry),MALLOC_CAP_SPIRAM);
     strcpy(entry->command_name, name);                                     // Copy the command name to the new entry
     entry->func = func;                                                    // Assign the function pointer to the new entry
     HASH_ADD_STR(*commands, command_name, entry);                          // Add the new entry to the hash table
@@ -799,6 +800,8 @@ void handle_wifi_set(char *params)
     config->caller = AT_CMD_CALLER;
 
     set_wifi_config(config);
+    free(config);
+    config =NULL;
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     cJSON_AddStringToObject(root, "name", config->ssid);
     cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
@@ -1043,7 +1046,6 @@ void base64_decode(const unsigned char *input, size_t input_len, unsigned char *
     mbedtls_base64_decode(NULL, 0, &olen, input, input_len);
 
     *output = (unsigned char *)heap_caps_malloc(olen, MALLOC_CAP_SPIRAM);
-    ;
     if (*output == NULL)
     {
         fprintf(stderr, "Memory allocation failed\n");
@@ -1085,6 +1087,7 @@ void handle_taskflow_command(char *params)
                 free(tasks[k].data);
             }
             free(tasks);
+            
         }
 
         // try to make base64 decode
@@ -1203,6 +1206,8 @@ void task_handle_AT_command()
             }
             char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
             exec_command(&commands, command_type, params, query_type);
+            free(params);
+            params=NULL;
         }
         else if (ret == REG_NOMATCH)
         {
