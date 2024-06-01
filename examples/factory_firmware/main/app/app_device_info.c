@@ -105,7 +105,6 @@ void string_to_byte_array(const char *str, uint8_t *byte_array, size_t length)
     }
 }
 
-
 /*----------------------------------------------------------init function--------------------------------------*/
 
 void init_sn_from_nvs()
@@ -114,16 +113,17 @@ void init_sn_from_nvs()
     string_to_byte_array(sn_str, SN, 9);
 }
 
+uint8_t eui[8]={0};
 void init_eui_from_nvs()
 {
     const char *eui_str = factory_info_eui_get();
     const char *code_str = factory_info_code_get();
     if (eui_str == NULL || code_str == NULL)
     {
-        ESP_LOGE(TAG,"Failed to get factory information of eui and code \n");
+        ESP_LOGE(TAG, "Failed to get factory information of eui and code \n");
         return;
     }
-    uint8_t eui[8];
+
     uint8_t code[8];
     string_to_byte_array(eui_str, eui, 8);
     string_to_byte_array(code_str, code, 8);
@@ -355,7 +355,7 @@ uint8_t *get_sn_code()
 
 uint8_t *get_eui()
 {
-    return EUI;
+    return eui;
 }
 
 /*----------------------------------------------brightness module------------------------------------------------------*/
@@ -786,7 +786,8 @@ uint8_t *__set_reset_factory()
     if (reset_factory_switch_past != reset_factory_switch)
     {
         ESP_LOGI(TAG, "start to erase nvs storage ...");
-        if(reset_factory_switch_past == 1) {
+        if (reset_factory_switch_past == 1)
+        {
             storage_erase();
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
         }
@@ -810,7 +811,7 @@ int get_time_automatic(int caller)
     {
         case AT_CMD_CALLER:
             ESP_LOGI(TAG, "AT_CMD_CALLER  get_time_automatic");
-            result =time_automatic;
+            result = time_automatic;
             break;
         case UI_CALLER:
             ESP_LOGI(TAG, "UI  get_time_automatic");
@@ -896,26 +897,28 @@ void __try_check_sdcard_flash()
     size_t total = 0, used = 0;
     uint64_t sdtotal = 0, sdfree = 0;
 
-    if (g_sdcard_flash_status.spiffs_total_KiB == 0) {
+    if (g_sdcard_flash_status.spiffs_total_KiB == 0)
+    {
         // the partition label is hard coded
         esp_spiffs_info("storage", &total, &used);
     }
-    if (g_sdcard_flash_status.sdcard_total_MiB == 0) {
+    if (g_sdcard_flash_status.sdcard_total_MiB == 0)
+    {
         esp_vfs_fat_info(DRV_BASE_PATH_SD, &sdtotal, &sdfree);
     }
 
     xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
-    if (g_sdcard_flash_status.spiffs_total_KiB == 0 && total > 0) {
+    if (g_sdcard_flash_status.spiffs_total_KiB == 0 && total > 0)
+    {
         g_sdcard_flash_status.spiffs_total_KiB = (uint16_t)(total / 1024);
         g_sdcard_flash_status.spiffs_free_KiB = (uint16_t)((total - used) / 1024);
-        ESP_LOGI(TAG, "spiffs total %d KiB, free %d KiB", (int)g_sdcard_flash_status.spiffs_total_KiB,
-                                                        (int)g_sdcard_flash_status.spiffs_free_KiB);
+        ESP_LOGI(TAG, "spiffs total %d KiB, free %d KiB", (int)g_sdcard_flash_status.spiffs_total_KiB, (int)g_sdcard_flash_status.spiffs_free_KiB);
     }
-    if (g_sdcard_flash_status.sdcard_total_MiB == 0 && sdtotal > 0) {
+    if (g_sdcard_flash_status.sdcard_total_MiB == 0 && sdtotal > 0)
+    {
         g_sdcard_flash_status.sdcard_total_MiB = (uint16_t)(sdtotal / 1024 / 1024);
         g_sdcard_flash_status.sdcard_free_MiB = (uint16_t)(sdfree / 1024 / 1024);
-        ESP_LOGI(TAG, "sdcard total %d MiB, free %d MiB", (int)g_sdcard_flash_status.sdcard_total_MiB,
-                                                        (int)g_sdcard_flash_status.sdcard_free_MiB);
+        ESP_LOGI(TAG, "sdcard total %d MiB, free %d MiB", (int)g_sdcard_flash_status.sdcard_total_MiB, (int)g_sdcard_flash_status.sdcard_free_MiB);
     }
     xSemaphoreGive(MUTEX_sdcard_flash_status);
 }
@@ -936,7 +939,7 @@ void app_device_info_task(void *pvParameter)
     MUTEX_cloud_service_switch = xSemaphoreCreateMutex();
     MUTEX_ai_service = xSemaphoreCreateMutex();
     MUTEX_reset_factory = xSemaphoreCreateMutex();
-    MUTEX_time_automatic =xSemaphoreCreateMutex();
+    MUTEX_time_automatic = xSemaphoreCreateMutex();
     MUTEX_sdcard_flash_status = xSemaphoreCreateMutex();
 
     init_sn_from_nvs();
@@ -953,7 +956,7 @@ void app_device_info_task(void *pvParameter)
     g_device_status.battery_per = bsp_battery_get_percent();
     g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
 
-    //get spiffs and sdcard status
+    // get spiffs and sdcard status
     __try_check_sdcard_flash();
 
     while (1)
@@ -994,7 +997,8 @@ void app_device_info_task(void *pvParameter)
             }
         }
 
-        if ((cnt % 5) == 0) {
+        if ((cnt % 5) == 0)
+        {
             uint8_t chg = (uint8_t)(bsp_exp_io_get_level(BSP_PWR_VBUS_IN_DET) == 0);
             // ESP_LOGD(TAG, "charging: %d", chg);
             if (chg != last_charge_st)
@@ -1004,14 +1008,20 @@ void app_device_info_task(void *pvParameter)
             }
         }
 
-        if ((cnt % 10) == 0) {
+        if ((cnt % 10) == 0)
+        {
             uint8_t sdcard_inserted = (uint8_t)bsp_sdcard_is_inserted();
-            if (sdcard_inserted == sdcard_debounce) {
-                if (sdcard_inserted != last_sdcard_inserted) {
-                    if (sdcard_inserted) {
-                        bsp_sdcard_init_default();  //sdcard might be initialized in board_init(), but it's ok
+            if (sdcard_inserted == sdcard_debounce)
+            {
+                if (sdcard_inserted != last_sdcard_inserted)
+                {
+                    if (sdcard_inserted)
+                    {
+                        bsp_sdcard_init_default(); // sdcard might be initialized in board_init(), but it's ok
                         __try_check_sdcard_flash();
-                    } else {
+                    }
+                    else
+                    {
                         bsp_sdcard_deinit_default();
                         ESP_LOGW(TAG, "SD card is umounted.");
                         xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
@@ -1055,7 +1065,6 @@ void app_device_info_init()
     g_device_status.battery_per = 100;
 
     memset(&g_sdcard_flash_status, 0, sizeof(struct view_data_sdcard_flash_status));
-
 
     app_device_info_task_stack = (StackType_t *)heap_caps_malloc(10 * 1024 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     if (app_device_info_task_stack == NULL)

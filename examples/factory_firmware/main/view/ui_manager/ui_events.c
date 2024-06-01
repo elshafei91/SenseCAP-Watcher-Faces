@@ -321,9 +321,9 @@ void virb1c_cb(lv_event_t * e)
     snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
              sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
 
-    snprintf(about_eui, sizeof(about_eui), "%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-             eui_code[0], eui_code[1], eui_code[2], eui_code[3], eui_code[4], eui_code[5], eui_code[6], eui_code[7],
-             eui_code[8], eui_code[9], eui_code[10], eui_code[11], eui_code[12], eui_code[13], eui_code[14], eui_code[15]);
+snprintf(about_eui, sizeof(about_eui), "%02X%02X%02X%02X%02X%02X%02X%02X",
+         eui_code[0], eui_code[1], eui_code[2], eui_code[3], eui_code[4], eui_code[5], eui_code[6], eui_code[7]);
+
 
     snprintf(about_btmac, sizeof(about_btmac), "%02X:%02X:%02X:%02X:%02X:%02X",
              bt_mac[0], bt_mac[1], bt_mac[2], bt_mac[3], bt_mac[4], bt_mac[5]);
