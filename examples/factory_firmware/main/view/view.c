@@ -132,7 +132,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 uint8_t is_charging = *(uint8_t *)event_data;
                 ESP_LOGI(TAG, "charging state changed: %d", is_charging);
                 lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
-                if(is_charging == 0)
+                if(is_charging == 1)
                 {
                     shutdown_state = 0;
                     if(swipe_id==0)
@@ -141,7 +141,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     }
                     lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
-                }else if(is_charging == 1){
+                }else if(is_charging == 0){
                     shutdown_state = 1;
                     if(swipe_id==0)
                     {
@@ -231,7 +231,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }else if(* wifi_config_sync == 3)
                 {
                     bindFinish();
-                    _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 2000, &ui_Page_Vir_screen_init);
+                    // lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
+                    // _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 2000, &ui_Page_Vir_screen_init);
+                    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
                 }else if(* wifi_config_sync == 4)
                 {
                     wifiConnectFailed();
