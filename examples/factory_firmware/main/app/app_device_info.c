@@ -781,7 +781,10 @@ uint8_t *__set_reset_factory()
     if (reset_factory_switch_past != reset_factory_switch)
     {
         ESP_LOGI(TAG, "start to erase nvs storage ...");
-        if(reset_factory_switch_past == 1)storage_erase();
+        if(reset_factory_switch_past == 1) {
+            storage_erase();
+            bsp_system_reboot();
+        }
         esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
         reset_factory_switch_past=reset_factory_switch;
     }

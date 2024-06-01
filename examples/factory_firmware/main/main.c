@@ -79,7 +79,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
         fflush(stdout);
-        esp_restart();
+        bsp_system_shutdown();
         break;
     }
     default:
