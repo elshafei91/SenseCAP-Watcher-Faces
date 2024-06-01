@@ -30,8 +30,10 @@
 #include "util.h"
 #include "app_ota.h"
 #include "app_taskflow.h"
-
 #include "view.h"
+#ifdef CONFIG_INTR_TRACKING
+#include "esp_intr_types.h"
+#endif
 
 static const char *TAG = "app_main";
 
@@ -259,6 +261,10 @@ void app_main(void)
                 heap_caps_get_total_size(MALLOC_CAP_DMA));
 
         ESP_LOGI("MEM", "%s\n", buffer);
+        
+#ifdef CONFIG_INTR_TRACKING
+        esp_intr_dump(stdout);
+#endif
 
     /**
      * requires configuration:
