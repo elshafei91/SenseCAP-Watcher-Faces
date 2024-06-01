@@ -385,7 +385,7 @@ int view_init(void)
     view_image_preview_init(ui_Page_ViewLive);
     lvgl_port_unlock();
 
-    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, 
@@ -487,4 +487,11 @@ int view_init(void)
                     
 
     return 0;
+}
+
+void view_render_black(void)
+{
+    lvgl_port_lock(0);
+    view_image_black_flush();
+    lvgl_port_unlock();
 }

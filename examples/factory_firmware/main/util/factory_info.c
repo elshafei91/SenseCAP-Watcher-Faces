@@ -213,3 +213,17 @@ uint8_t factory_info_platform_get(void)
     }
     return 0;
 }
+void factory_info_print(void)
+{
+    if (gp_info != NULL) {
+        printf( "# SN: %s\n",gp_info->sn ? gp_info->sn : "N/A");
+        printf( "# EUI: %s\n",gp_info->eui ? gp_info->eui : "N/A");
+        printf( "# CODE: %s\n",gp_info->code ? gp_info->code : "N/A");
+        printf( "# DEVICE_KEY: %s\n",gp_info->device_key ? gp_info->device_key : "N/A");
+        printf( "# AI_KEY: %s\n",gp_info->ai_key ? gp_info->ai_key : "N/A");
+        printf( "# BATCHID: %s\n",gp_info->batchid ? gp_info->batchid : "N/A");
+        printf( "# ACCESS_KEY: %s\n",gp_info->access_key ? gp_info->access_key : "N/A");
+        printf( "# DEV_CTL_KEY: %s\n",gp_info->device_control_key ? gp_info->device_control_key : "N/A");
+        printf( "# PLATFORM: %d\n",gp_info->platform);
+    } 
+}

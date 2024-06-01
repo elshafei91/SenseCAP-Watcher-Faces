@@ -77,11 +77,13 @@ SemaphoreHandle_t MUTEX_ai_service;
 SemaphoreHandle_t MUTEX_cloud_service_switch;
 SemaphoreHandle_t MUTEX_reset_factory;
 SemaphoreHandle_t MUTEX_time_automatic;
+SemaphoreHandle_t MUTEX_sdcard_flash_status;
 
 static StackType_t *app_device_info_task_stack = NULL;
 static StaticTask_t app_device_info_task_buffer;
 
 static struct view_data_device_status g_device_status;
+static struct view_data_sdcard_flash_status g_sdcard_flash_status;
 static volatile atomic_bool g_mqttconn = ATOMIC_VAR_INIT(false);
 
 void app_device_info_task(void *pvParameter);
@@ -812,8 +814,10 @@ uint8_t *__set_reset_factory()
     if (reset_factory_switch_past != reset_factory_switch)
     {
         ESP_LOGI(TAG, "start to erase nvs storage ...");
-        if (reset_factory_switch_past == 1)
+        if(reset_factory_switch_past == 1) {
             storage_erase();
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
+        }
         esp_err_t ret = storage_write(RESET_FACTORY_SK, &reset_factory_switch, sizeof(reset_factory_switch));
         reset_factory_switch_past = reset_factory_switch;
     }
@@ -872,13 +876,84 @@ uint8_t *__set_time_automatic()
     xSemaphoreGive(MUTEX_time_automatic);
     return 0;
 }
+
+/*------------------------------------------------------sdcard into------------------------------------------------------*/
+uint16_t get_spiffs_total_size(int caller)
+{
+    uint16_t size = 0;
+    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    size = g_sdcard_flash_status.spiffs_total_KiB;
+    xSemaphoreGive(MUTEX_sdcard_flash_status);
+
+    return size;
+}
+
+uint16_t get_spiffs_free_size(int caller)
+{
+    uint16_t size = 0;
+    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    size = g_sdcard_flash_status.spiffs_free_KiB;
+    xSemaphoreGive(MUTEX_sdcard_flash_status);
+
+    return size;
+}
+
+uint16_t get_sdcard_total_size(int caller)
+{
+    uint16_t size = 0;
+    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    size = g_sdcard_flash_status.sdcard_total_MiB;
+    xSemaphoreGive(MUTEX_sdcard_flash_status);
+
+    return size;
+}
+
+uint16_t get_sdcard_free_size(int caller)
+{
+    uint16_t size = 0;
+    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    size = g_sdcard_flash_status.sdcard_free_MiB;
+    xSemaphoreGive(MUTEX_sdcard_flash_status);
+
+    return size;
+}
+
 /*-----------------------------------------------------TASK----------------------------------------------------------*/
+void __try_check_sdcard_flash()
+{
+    size_t total = 0, used = 0;
+    uint64_t sdtotal = 0, sdfree = 0;
+
+    if (g_sdcard_flash_status.spiffs_total_KiB == 0) {
+        // the partition label is hard coded
+        esp_spiffs_info("storage", &total, &used);
+    }
+    if (g_sdcard_flash_status.sdcard_total_MiB == 0) {
+        esp_vfs_fat_info(DRV_BASE_PATH_SD, &sdtotal, &sdfree);
+    }
+
+    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    if (g_sdcard_flash_status.spiffs_total_KiB == 0 && total > 0) {
+        g_sdcard_flash_status.spiffs_total_KiB = (uint16_t)(total / 1024);
+        g_sdcard_flash_status.spiffs_free_KiB = (uint16_t)((total - used) / 1024);
+        ESP_LOGI(TAG, "spiffs total %d KiB, free %d KiB", (int)g_sdcard_flash_status.spiffs_total_KiB,
+                                                        (int)g_sdcard_flash_status.spiffs_free_KiB);
+    }
+    if (g_sdcard_flash_status.sdcard_total_MiB == 0 && sdtotal > 0) {
+        g_sdcard_flash_status.sdcard_total_MiB = (uint16_t)(sdtotal / 1024 / 1024);
+        g_sdcard_flash_status.sdcard_free_MiB = (uint16_t)(sdfree / 1024 / 1024);
+        ESP_LOGI(TAG, "sdcard total %d MiB, free %d MiB", (int)g_sdcard_flash_status.sdcard_total_MiB,
+                                                        (int)g_sdcard_flash_status.sdcard_free_MiB);
+    }
+    xSemaphoreGive(MUTEX_sdcard_flash_status);
+}
+
 void app_device_info_task(void *pvParameter)
 {
     uint8_t batnow = 0;
     uint32_t cnt = 0;
     bool firstboot_reported = false;
-    static uint8_t last_charge_st = 0x66;
+    static uint8_t last_charge_st = 0x66, last_sdcard_inserted = 0x88, sdcard_debounce = 0x99;
 
     MUTEX_brightness = xSemaphoreCreateMutex();
     MUTEX_SN = xSemaphoreCreateMutex();
@@ -890,6 +965,8 @@ void app_device_info_task(void *pvParameter)
     MUTEX_ai_service = xSemaphoreCreateMutex();
     MUTEX_reset_factory = xSemaphoreCreateMutex();
     MUTEX_time_automatic =xSemaphoreCreateMutex();
+    MUTEX_sdcard_flash_status = xSemaphoreCreateMutex();
+
     init_sn_from_nvs();
     init_eui_from_nvs();
     init_ai_service_param_from_nvs();
@@ -903,6 +980,9 @@ void app_device_info_task(void *pvParameter)
 
     g_device_status.battery_per = bsp_battery_get_percent();
     g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
+
+    //get spiffs and sdcard status
+    __try_check_sdcard_flash();
 
     while (1)
     {
@@ -942,14 +1022,33 @@ void app_device_info_task(void *pvParameter)
             }
         }
 
-        if ((cnt % 10) == 0)
-        {
+        if ((cnt % 5) == 0) {
             uint8_t chg = (uint8_t)bsp_system_is_charging();
             if (chg != last_charge_st)
             {
                 last_charge_st = chg;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, &last_charge_st, 1, portMAX_DELAY);
             }
+        }
+
+        if ((cnt % 10) == 0) {
+            uint8_t sdcard_inserted = (uint8_t)bsp_sdcard_is_inserted();
+            if (sdcard_inserted == sdcard_debounce) {
+                if (sdcard_inserted != last_sdcard_inserted) {
+                    if (sdcard_inserted) {
+                        bsp_sdcard_init_default();  //sdcard might be initialized in board_init(), but it's ok
+                        __try_check_sdcard_flash();
+                    } else {
+                        bsp_sdcard_deinit_default();
+                        ESP_LOGW(TAG, "SD card is umounted.");
+                        xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+                        g_sdcard_flash_status.sdcard_total_MiB = g_sdcard_flash_status.sdcard_free_MiB = 0;
+                        xSemaphoreGive(MUTEX_sdcard_flash_status);
+                    }
+                    last_sdcard_inserted = sdcard_inserted;
+                }
+            }
+            sdcard_debounce = sdcard_inserted;
         }
     }
 }
@@ -970,6 +1069,10 @@ static void __event_loop_handler(void *handler_args, esp_event_base_t base, int3
 
 void app_device_info_init()
 {
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
     const esp_app_desc_t *app_desc = esp_app_get_description();
 
     // if newer hw_version come up in the future, we can tell it from the EUI
@@ -977,6 +1080,9 @@ void app_device_info_init()
     g_device_status.hw_version = "1.0";
     g_device_status.fw_version = app_desc->version;
     g_device_status.battery_per = 100;
+
+    memset(&g_sdcard_flash_status, 0, sizeof(struct view_data_sdcard_flash_status));
+
 
     app_device_info_task_stack = (StackType_t *)heap_caps_malloc(10 * 1024 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     if (app_device_info_task_stack == NULL)
