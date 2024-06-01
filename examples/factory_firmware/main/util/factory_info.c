@@ -16,7 +16,9 @@
 #define DEVICE_KEY  "DEV_KEY_SK"
 #define AI_KEY      "AI_KEY_SK"
 #define DEV_CTL_KEY "DEV_CTL_KEY_SK"
-#define SERVER_CODE "SERVER_CODE_SK"
+#define ACCESS_KEY  "ACCESS_KEY_SK"
+#define BATCHID     "BATCHID_SK"
+#define PLATFORM    "PLATFORM_SK"
 
 
 static bool flag = false;
@@ -25,12 +27,11 @@ static factory_info_t *gp_info = NULL;
 esp_err_t factory_info_init(void)
 {
     esp_err_t ret =  nvs_flash_init_partition(FACTORY_NVS_PART_NAME);
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    if (ret != ESP_OK) {
         ESP_LOGE(FACTORY_INFO_TAG, "nvs_flash_init failed: %s", esp_err_to_name(ret));
-        return ESP_FAIL;
+        return ret;
     }
     nvs_handle_t handle;
-    esp_err_t err;
     size_t len = 0;
 
     gp_info = psram_malloc(sizeof(factory_info_t));
@@ -40,42 +41,40 @@ esp_err_t factory_info_init(void)
     }
     memset(gp_info, 0, sizeof(factory_info_t));
 
-    err = nvs_open(FACTORY_NVS_PART_NAME, NVS_READWRITE, &handle);
-    if (err != ESP_OK) {
+    ret = nvs_open(FACTORY_NVS_PART_NAME, NVS_READONLY, &handle);
+    if (ret != ESP_OK) {
         free(gp_info);
-        return err;
+        ESP_LOGE(FACTORY_INFO_TAG, "nvs_open failed: %s", esp_err_to_name(ret));
+        return ret;
     }
     
     flag = true;
 
     nvs_get_str(handle, SN, NULL, &len);
-    if (len > 0)
-    {
+    if (len > 0) {
         gp_info->sn = psram_malloc(len);
         nvs_get_str(handle, SN, gp_info->sn, &len);
-        printf("#SN: %s\n", gp_info->sn);
+        ESP_LOGI("", "# SN: %s",gp_info->sn ? gp_info->sn : "N/A");
     } else {
-        printf("No SN value found in NVS\n");
+        ESP_LOGI("", "# SN: N/A");
     }
 
     nvs_get_str(handle, EUI, NULL, &len);
-    if (len > 0)
-    {
+    if (len > 0) {
         gp_info->eui = psram_malloc(len);
         nvs_get_str(handle, EUI, gp_info->eui, &len);
-        printf("#EUI: %s\n", gp_info->eui);
+        ESP_LOGI("", "# EUI: %s",gp_info->eui ? gp_info->eui : "N/A");
     } else {
-        printf("No EUI value found in NVS\n");
+        ESP_LOGI("", "# EUI: N/A");
     }
 
     nvs_get_str(handle, CODE, NULL, &len);
-    if (len > 0)
-    {
+    if (len > 0) {
         gp_info->code = psram_malloc(len);
         nvs_get_str(handle, CODE, gp_info->code, &len);
-        printf("#CODE: %s\n", gp_info->code);
+        ESP_LOGI("", "# CODE: %s",gp_info->code ? gp_info->code : "N/A");
     } else {
-        printf("No CODE value found in NVS\n");
+        ESP_LOGI("", "# CODE: N/A");
     }
 
     nvs_get_str(handle, DEVICE_KEY, NULL, &len);
@@ -83,52 +82,65 @@ esp_err_t factory_info_init(void)
     {
         gp_info->device_key = psram_malloc(len);
         nvs_get_str(handle, DEVICE_KEY, gp_info->device_key, &len);
-        printf("#DEVICE_KEY: %s\n", gp_info->device_key);
+        ESP_LOGI("", "# DEVICE_KEY: %s",gp_info->device_key ? gp_info->device_key : "N/A");
     } else {
-        printf("No DEVICE_KEY value found in NVS\n");
+        ESP_LOGI("", "# DEVICE_KEY: N/A");
+    }
+
+    nvs_get_str(handle, BATCHID, NULL, &len);
+    if (len > 0) {
+        gp_info->batchid = psram_malloc(len);
+        nvs_get_str(handle, BATCHID, gp_info->batchid, &len);
+        ESP_LOGI("", "# BATCHID: %s",gp_info->batchid ? gp_info->batchid : "N/A");
+    } else {
+        ESP_LOGI("", "# BATCHID: N/A");
+    }
+
+    nvs_get_str(handle, ACCESS_KEY, NULL, &len);
+    if (len > 0) {
+        gp_info->access_key = psram_malloc(len);
+        nvs_get_str(handle, ACCESS_KEY, gp_info->access_key, &len);
+        ESP_LOGI("", "# ACCESS_KEY: %s",gp_info->access_key ? gp_info->access_key : "N/A");
+    } else {
+        ESP_LOGI("", "# ACCESS_KEY: N/A");
     }
 
     nvs_get_str(handle, AI_KEY, NULL, &len);
-    if (len > 0)
-    {
+    if (len > 0) {
         gp_info->ai_key = psram_malloc(len);
         nvs_get_str(handle, AI_KEY, gp_info->ai_key, &len);
-        printf("#AI_KEY: %s\n", gp_info->ai_key);
+        ESP_LOGI("", "# AI_KEY: %s",gp_info->ai_key ? gp_info->ai_key : "N/A");
     } else {
-        printf("No AI_KEY value found in NVS\n");
+        ESP_LOGI("", "# AI_KEY: N/A");
     }   
 
     nvs_get_str(handle, DEV_CTL_KEY, NULL, &len);
-    if (len > 0)
-    {
+    if (len > 0) {
         gp_info->device_control_key = psram_malloc(len);
         nvs_get_str(handle, DEV_CTL_KEY, gp_info->device_control_key, &len);
-        printf("#DEV_CTL_KEY: %s\n", gp_info->device_control_key);
+        ESP_LOGI("", "# DEV_CTL_KEY: %s",gp_info->device_control_key ? gp_info->device_control_key : "N/A");
     } else {
-        printf("No DEV_CTL_KEY value found in NVS\n");
+        ESP_LOGI("", "# DEV_CTL_KEY: N/A");
     }
 
-    nvs_get_str(handle, SERVER_CODE, NULL, &len);
-    if (len > 0)
-    {
-         char *value = psram_malloc(len);
+    nvs_get_str(handle, PLATFORM, NULL, &len);
+    if (len > 0) {
+        char *value = psram_malloc(len);
+        nvs_get_str(handle, PLATFORM, value, &len);
 
-        nvs_get_str(handle, SERVER_CODE, value, &len);
-
-        if (strcmp(value, "1") == 0) { // TODO
-            gp_info->server = true;
+        if (strcmp(value, "1") == 0) { 
+            gp_info->platform = 1;
         } else {
-            gp_info->server = false;  
+            gp_info->platform = 0;  
         }
         free(value);
-        printf("#SERVER: %d\n", gp_info->server);
+        ESP_LOGI("", "# PLATFORM: %d",gp_info->platform);
     } else {
-        gp_info->server = false;
-    } 
+        ESP_LOGI("", "# PLATFORM: 0 (default)");
+    }
     nvs_close(handle);
     return ESP_OK;
 }
-
 
 const factory_info_t *factory_info_get(void)
 {
@@ -138,11 +150,66 @@ const factory_info_t *factory_info_get(void)
     return ( const factory_info_t *)gp_info;
 }
 
-esp_err_t factory_info_get1(factory_info_t *p_info)
+const char *factory_info_eui_get(void)
 {
-    if( gp_info == NULL && !flag) {
-        return ESP_FAIL;
+    if (gp_info != NULL && gp_info->eui != NULL) {
+        return gp_info->eui;
     }
-    memcpy(p_info, gp_info, sizeof(factory_info_t));
-    return ESP_OK;
+    return NULL;
+}
+const char *factory_info_sn_get(void)
+{
+    if (gp_info != NULL && gp_info->sn != NULL) {
+        return gp_info->sn;
+    }
+    return NULL;
+}
+const char *factory_info_code_get(void)
+{
+    if (gp_info != NULL && gp_info->code != NULL) {
+        return gp_info->code;
+    }
+    return NULL;
+}
+const char *factory_info_device_key_get(void)
+{
+    if (gp_info != NULL && gp_info->device_key != NULL) {
+        return gp_info->device_key;
+    }
+    return NULL;
+}
+const char *factory_info_ai_key_get(void)
+{
+    if (gp_info != NULL && gp_info->ai_key != NULL) {
+        return gp_info->ai_key;
+    }
+    return NULL;
+}
+const char *factory_info_batchid_get(void)
+{
+    if (gp_info != NULL && gp_info->batchid != NULL) {
+        return gp_info->batchid;
+    }
+    return NULL;
+}
+const char *factory_info_access_key_get(void)
+{
+    if (gp_info != NULL && gp_info->access_key != NULL) {
+        return gp_info->access_key;
+    }
+    return NULL;
+}
+const char *factory_info_device_control_key_get(void)
+{
+    if (gp_info != NULL && gp_info->device_control_key != NULL) {
+        return gp_info->device_control_key;
+    }
+    return NULL;
+}
+uint8_t factory_info_platform_get(void)
+{
+    if (gp_info != NULL) {
+        return gp_info->platform;
+    }
+    return 0;
 }

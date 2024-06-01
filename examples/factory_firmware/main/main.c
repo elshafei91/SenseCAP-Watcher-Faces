@@ -115,6 +115,7 @@ static void battery_check(void)
 int board_init(void)
 {
     storage_init();
+    factory_info_init();
     bsp_spiffs_init(DRV_BASE_PATH_FLASH, 100);
     bsp_spiffs_init_default();
 
@@ -129,7 +130,7 @@ int board_init(void)
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
 
-    factory_info_init();
+ 
 
     return ESP_OK;
 }

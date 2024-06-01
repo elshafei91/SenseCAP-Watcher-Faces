@@ -9,20 +9,29 @@ extern "C" {
 #endif
 
 typedef struct factory_info{
-    char *sn;
-    char *eui;
-    char *code;
-    char *device_key;
-    char *ai_key; 
-    char *device_control_key;
-    bool server;
+    const char *sn;
+    const char *eui;
+    const char *code;
+    const char *device_key;
+    const char *batchid;
+    const char *access_key;
+    const char *ai_key; 
+    const char *device_control_key;
+    uint8_t platform;
 } factory_info_t;
 
 esp_err_t factory_info_init(void);
 
 const factory_info_t *factory_info_get(void);
-
-esp_err_t factory_info_get1(factory_info_t *p_info);
+const char *factory_info_eui_get(void);
+const char *factory_info_sn_get(void);
+const char *factory_info_code_get(void);
+const char *factory_info_device_key_get(void);
+const char *factory_info_ai_key_get(void);
+const char *factory_info_batchid_get(void);
+const char *factory_info_access_key_get(void);
+const char *factory_info_device_control_key_get(void);
+uint8_t factory_info_platform_get(void);
 
 #ifdef __cplusplus
 }
