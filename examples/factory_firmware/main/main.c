@@ -91,6 +91,8 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
     case VIEW_EVENT_REBOOT:
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_REBOOT");
+        bsp_lcd_brightness_set(0);
+        view_render_black();
         fflush(stdout);
         if (get_sdcard_total_size(MAX_CALLER) > 0) {
             bsp_sdcard_deinit_default();
@@ -98,7 +100,8 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
         if (get_spiffs_total_size(MAX_CALLER) > 0) {
             esp_vfs_spiffs_unregister("storage");
         }
-        bsp_system_reboot();
+        vTaskDelay(pdMS_TO_TICKS(500));
+        esp_restart();
         break;
     }
     default:
@@ -167,7 +170,7 @@ void task_app_init(void *p_arg)
 {
     board_init();
     view_init();
-    bsp_lcd_brightness_set(100);
+    
     // battery_check(); //TODO
     app_init();
 

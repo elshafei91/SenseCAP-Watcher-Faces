@@ -929,13 +929,16 @@ void app_device_info_task(void *pvParameter)
             }
         }
 
-        if ((cnt % 10) == 0) {
+        if ((cnt % 5) == 0) {
             uint8_t chg = (uint8_t)bsp_system_is_charging();
             if (chg != last_charge_st) {
                 last_charge_st = chg;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, 
                                   &last_charge_st, 1, portMAX_DELAY);
             }
+        }
+
+        if ((cnt % 10) == 0) {
             uint8_t sdcard_inserted = (uint8_t)bsp_sdcard_is_inserted();
             if (sdcard_inserted == sdcard_debounce) {
                 if (sdcard_inserted != last_sdcard_inserted) {

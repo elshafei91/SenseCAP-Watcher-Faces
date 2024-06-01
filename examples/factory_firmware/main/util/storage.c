@@ -11,7 +11,7 @@
 #include "storage.h"
 #include "event_loops.h"
 
-#define STORAGE_NAMESPACE "FACTORYCFG"
+#define STORAGE_NAMESPACE "UserCfg"
 
 ESP_EVENT_DEFINE_BASE(STORAGE_EVENT_BASE);
 
