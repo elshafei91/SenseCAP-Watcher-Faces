@@ -96,7 +96,7 @@ static void smile_timer_callback(lv_timer_t *timer) {
         lv_async_call(async_img_switch_vir, current_img);
     }
     vir_load_count ++;
-    if(vir_load_count>2)
+    if(vir_load_count>2 && (!first_use))
     {
         lv_event_send(ui_Page_Vir, LV_EVENT_CLICKED, NULL);
     }
@@ -289,7 +289,12 @@ void loadsl_cb(lv_event_t * e)
 
 void virtc_cb(lv_event_t *e)
 {
-    lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
+    if(!first_use)
+    {
+        lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
+    }else{
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    }
 }
 
 void virtsl_cb(lv_event_t *e)
@@ -978,12 +983,12 @@ void setblec_cb(lv_event_t *e)
     btn_state = lv_obj_get_state(ui_setblesw);
     switch (btn_state)
     {
-        case 1:
+        case 0:
             lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
             // ESP_LOGI(TAG, "ble_btn_status: off");
             set_ble_status(UI_CALLER, 0);
             break;
-        case 0:
+        case 1:
             lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
             // ESP_LOGI(TAG, "ble_btn_status: on");
             set_ble_status(UI_CALLER, 1);
