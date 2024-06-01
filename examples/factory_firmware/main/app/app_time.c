@@ -211,6 +211,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
                     __time_sync_enable();
                 }
             }
+            break;
         }
         case VIEW_EVENT_TIME_ZONE: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TIME_ZONE");
