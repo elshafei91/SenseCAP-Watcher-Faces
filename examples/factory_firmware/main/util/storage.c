@@ -150,8 +150,6 @@ esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
 
 esp_err_t storage_erase()
 {
-    TaskHandle_t h = xTaskGetCurrentTaskHandle();
-
     storage_event_data_t evtdata = {
         .sem = xSemaphoreCreateBinary(),
     };
