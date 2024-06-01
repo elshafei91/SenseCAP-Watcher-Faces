@@ -2,6 +2,7 @@
 #include "esp_log.h"
 #include <mbedtls/base64.h>
 #include "esp_jpeg_dec.h"
+#include "ui/ui_helpers.h"
 #include "util.h"
 
 #define IMAGE_INVOKED_BOXES 10
@@ -234,4 +235,22 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
     }
 
     return 0;
+}
+
+static lv_obj_t *black_screen = NULL;
+
+static void create_black_screen_obj()
+{
+    black_screen = lv_obj_create(lv_scr_act());
+
+    lv_obj_set_size(black_screen, 412, 412);
+    lv_obj_align(black_screen, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_bg_color(black_screen, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(black_screen, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(black_screen, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
+
+void view_image_black_flush()
+{
+    _ui_screen_change(&black_screen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &create_black_screen_obj);
 }

@@ -71,7 +71,7 @@ static void __cJSON_free(void *ptr)
 
 cJSON_Hooks cJSONHooks = {.malloc_fn = __cJSON_malloc, .free_fn = __cJSON_free};
 
-static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     switch (id)
     {
@@ -79,7 +79,29 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
         fflush(stdout);
+        if (get_sdcard_total_size(MAX_CALLER) > 0) {
+            bsp_sdcard_deinit_default();
+        }
+        if (get_spiffs_total_size(MAX_CALLER) > 0) {
+            esp_vfs_spiffs_unregister("storage");
+        }
         bsp_system_shutdown();
+        break;
+    }
+    case VIEW_EVENT_REBOOT:
+    {
+        ESP_LOGI(TAG, "event: VIEW_EVENT_REBOOT");
+        bsp_lcd_brightness_set(0);
+        view_render_black();
+        fflush(stdout);
+        if (get_sdcard_total_size(MAX_CALLER) > 0) {
+            bsp_sdcard_deinit_default();
+        }
+        if (get_spiffs_total_size(MAX_CALLER) > 0) {
+            esp_vfs_spiffs_unregister("storage");
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
+        esp_restart();
         break;
     }
     default:
@@ -148,13 +170,14 @@ void task_app_init(void *p_arg)
 {
     board_init();
     view_init();
-    bsp_lcd_brightness_set(100);
+    
     // battery_check(); //TODO
     app_init();
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
-                                                             VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
-                                                             __view_event_handler, NULL, NULL));
+    esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
+                                    __app_event_loop_handler, NULL);
+    esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT,
+                                    __app_event_loop_handler, NULL);
 
     vTaskDelete(NULL);
 }

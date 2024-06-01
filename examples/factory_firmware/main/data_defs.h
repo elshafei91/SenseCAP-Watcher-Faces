@@ -221,6 +221,7 @@ enum {
 
 
     VIEW_EVENT_BAT_DRAIN_SHUTDOWN,  //NULL, pre-shutdown event, to render a warn UI for system going to shutdown
+    VIEW_EVENT_REBOOT,        //NULL
     VIEW_EVENT_SHUTDOWN,      //NULL
     VIEW_EVENT_FACTORY_RESET, //NULL
     VIEW_EVENT_SCREEN_CTRL,   // bool  0:disable , 1:enable
