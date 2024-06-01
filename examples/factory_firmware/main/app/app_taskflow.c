@@ -313,6 +313,28 @@ static void  __task_flow_restore(struct app_taskflow * p_taskflow)
     }
 }
 
+static void __taskflow_reload_from_spiffs( struct app_taskflow * p_taskflow )
+{
+#define SPIFFS_TASKFLOW_FILE "/spiffs/taskflow.json"
+    FILE *fp = fopen( SPIFFS_TASKFLOW_FILE, "r");
+    if( fp != NULL ) {
+        fseek(fp, 0, SEEK_END);
+        int len = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        char *p_taskflow = psram_malloc(len+1);
+        fread(p_taskflow, len, 1, fp);
+        fclose(fp);
+        ESP_LOGI(TAG, "taskflow load from SPIFFS success! %s", SPIFFS_TASKFLOW_FILE);
+
+        tf_engine_flow_set(p_taskflow, len);
+        free(p_taskflow);
+
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                            VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
+    } else {
+        ESP_LOGE(TAG, "taskflow load from SPIFFS fail:%s!", SPIFFS_TASKFLOW_FILE);
+    }
+}
 
 static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, const char *p_err_module)
 {
@@ -720,8 +742,12 @@ esp_err_t app_taskflow_init(void)
                                                         __ctrl_event_handler, 
                                                         p_taskflow));
 
+#if CONFIG_ENABLE_TASKFLOW_FROM_SPIFFS
+    __taskflow_reload_from_spiffs(p_taskflow);
+#else
     __task_flow_restore(p_taskflow);
-    
+#endif
+
     return ESP_OK; 
 err:
     if(p_taskflow->task_handle ) {

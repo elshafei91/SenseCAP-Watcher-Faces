@@ -10,6 +10,7 @@
 #include "esp_app_desc.h"
 #include "cJSON.h"
 #include "esp_heap_task_info.h"
+#include "factory_info.h"
 
 #include "sensecap-watcher.h"
 
@@ -70,7 +71,7 @@ static void __cJSON_free(void *ptr)
 
 cJSON_Hooks cJSONHooks = {.malloc_fn = __cJSON_malloc, .free_fn = __cJSON_free};
 
-static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
+static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     switch (id)
     {
@@ -78,6 +79,28 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
         fflush(stdout);
+        if (get_sdcard_total_size(MAX_CALLER) > 0) {
+            bsp_sdcard_deinit_default();
+        }
+        if (get_spiffs_total_size(MAX_CALLER) > 0) {
+            esp_vfs_spiffs_unregister("storage");
+        }
+        bsp_system_shutdown();
+        break;
+    }
+    case VIEW_EVENT_REBOOT:
+    {
+        ESP_LOGI(TAG, "event: VIEW_EVENT_REBOOT");
+        bsp_lcd_brightness_set(0);
+        view_render_black();
+        fflush(stdout);
+        if (get_sdcard_total_size(MAX_CALLER) > 0) {
+            bsp_sdcard_deinit_default();
+        }
+        if (get_spiffs_total_size(MAX_CALLER) > 0) {
+            esp_vfs_spiffs_unregister("storage");
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
         esp_restart();
         break;
     }
@@ -86,27 +109,48 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     }
 }
 
-int board_init(void)
+static void battery_check(void)
 {
+    bool st = false;
+    uint8_t percent = bsp_battery_get_percent();
+
+    ESP_LOGI(TAG, "battery: %d", percent);
+
+    if( percent > 0) {
+        return;
+    }
+
+    ESP_LOGI(TAG, "battery too low, wait for charging");
+
+    while(1) {
+        st = bsp_system_is_charging();
+        if ( st ) {
+            ESP_LOGI(TAG, "charging");
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+void board_init(void)
+{
+    //nvs key-value storage
     storage_init();
+    factory_info_init();
     bsp_spiffs_init(DRV_BASE_PATH_FLASH, 100);
-    bsp_spiffs_init_default();
-
     bsp_io_expander_init();
-
+    if (bsp_sdcard_is_inserted()) {
+        bsp_sdcard_init_default();
+    }
     lv_disp_t *lvgl_disp = bsp_lvgl_init();
     assert(lvgl_disp != NULL);
-
     bsp_rgb_init();
-
     bsp_codec_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
-
-    return ESP_OK;
 }
 
-int app_init(void)
+void app_init(void)
 {
     app_device_info_init();
     app_wifi_init(); //TODO Network update events may be missed
@@ -120,19 +164,20 @@ int app_init(void)
  
     audio_player_init();
     //app_sr_start(false);
-    return ESP_OK;
 }
 
 void task_app_init(void *p_arg)
 {
-    // UI init
+    board_init();
     view_init();
     
+    // battery_check(); //TODO
     app_init();
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
-                                                             VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
-                                                             __view_event_handler, NULL, NULL));
+    esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
+                                    __app_event_loop_handler, NULL);
+    esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT,
+                                    __app_event_loop_handler, NULL);
 
     vTaskDelete(NULL);
 }
@@ -189,8 +234,6 @@ void app_main(void)
         .task_stack_size = 1024 * 4,
         .task_core_id = 0};
     ESP_ERROR_CHECK(esp_event_loop_create(&app_event_loop_args, &app_event_loop_handle));
-
-    ESP_ERROR_CHECK(board_init());
 
     // app modules init
     xTaskCreatePinnedToCore(task_app_init, "task_app_init", 4096, NULL, 5, NULL, 1);

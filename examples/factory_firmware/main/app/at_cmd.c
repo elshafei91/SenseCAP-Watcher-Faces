@@ -15,7 +15,8 @@
 #include "esp_log.h"
 #include "esp_event.h"
 #include "esp_wifi.h"
-
+#include "time.h"
+#include "app_time.h"
 #include "app_wifi.h"
 #include "event_loops.h"
 #include "data_defs.h"
@@ -25,6 +26,7 @@
 #include "cJSON.h"
 #include "app_device_info.h"
 
+#define TAG "AT_CMD"
 /*------------------system basic DS-----------------------------------------------------*/
 StreamBufferHandle_t xStreamBuffer;
 
@@ -36,12 +38,12 @@ const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=(\\{.*\\}))?\r\n$";
 command_entry *commands = NULL; // Global variable to store the commands
 static StaticTask_t at_task_buffer;
 static StackType_t *at_task_stack = NULL;
-
+static void hex_to_string(uint8_t *hex, int hex_size, char *output);
 /*------------------network DS----------------------------------------------------------*/
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
 static wifi_ap_record_t current_connected_wifi;
-
+static int task_flow_resp;
 /*------------------critical DS for task_flow-------------------------------------------*/
 
 typedef struct
@@ -56,6 +58,11 @@ static int num_jsons = 0;
 
 /*------------------------------------emoji DS---------------------------------------------*/
 Task *emoji_tasks = NULL;
+
+
+/*-----------------------------------bind index--------------------------------------------*/
+static int bind_index;
+
 
 /*----------------------------------------------------------------------------------------*/
 
@@ -236,7 +243,7 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     }
     else
     {
-        printf("Command not found\n");
+        ESP_LOGI(TAG, "Command not found\n");
     }
 }
 
@@ -251,8 +258,6 @@ void AT_command_reg()
     add_command(&commands, "deviceinfo?", handle_deviceinfo_command);
     add_command(&commands, "wifi=", handle_wifi_set);
     add_command(&commands, "wifi?", handle_wifi_query);
-    add_command(&commands, "eui=", handle_eui_command);
-    add_command(&commands, "token=", handle_token);
     add_command(&commands, "wifitable?", handle_wifi_table);
     add_command(&commands, "devicecfg=", handle_deviceinfo_cfg_command);
     add_command(&commands, "taskflow?", handle_taskflow_query_command);
@@ -260,6 +265,41 @@ void AT_command_reg()
     add_command(&commands, "cloudservice=", handle_cloud_service_command);
     add_command(&commands, "cloudservice?", handle_cloud_service_qurey_command);
     add_command(&commands, "emoji=", handle_emoji_command);
+    add_command(&commands, "bind=", handle_bind_command);
+}
+
+
+void handle_bind_command(char *params)
+{
+    ESP_LOGI(TAG, "handle_bind_command\n");
+    cJSON *json = cJSON_Parse(params);
+    if (json == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+    }
+
+    cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "code");
+    bind_index = data->valueint;
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONFIG_SYNC, &bind_index, sizeof(bind_index), portMAX_DELAY);
+    ESP_LOGI(TAG, "bind_index: %d\n", bind_index);
+
+    cJSON_Delete(json);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    cJSON *root = cJSON_CreateObject();
+    cJSON *data_rep = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "name", "bind");
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data_rep);
+    cJSON_AddStringToObject(data_rep, "bind", "");
+    char *json_string = cJSON_Print(root);
+    ESP_LOGI(TAG, "JSON String: %s\n", json_string);
+    AT_Response response = create_at_response(json_string);
+    send_at_response(&response);
+    cJSON_Delete(root);
 }
 
 static int emoji_index = 1;
@@ -267,11 +307,10 @@ static char *emoji_name_prefix;
 static char *emoji_name_final;
 void parse_json_and_concatenate_emoji(char *json_string)
 {
-    printf("Params: %s\n", json_string);
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL)
     {
-        printf("Error parsing JSON\n");
+        ESP_LOGI(TAG, "Error parsing emoji JSON\n");
     }
 
     cJSON *name = cJSON_GetObjectItem(json, "name");
@@ -282,7 +321,7 @@ void parse_json_and_concatenate_emoji(char *json_string)
     cJSON *emoji_index_cjson = cJSON_GetObjectItem(json, "emoji_index");
     if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data) || !cJSON_IsNumber(total_size))
     {
-        printf("Invalid JSON format\n");
+        ESP_LOGI(TAG, "Invalid JSON format in parse_json_and_concatenate_emoji\n");
         cJSON_Delete(json);
     }
 
@@ -290,7 +329,6 @@ void parse_json_and_concatenate_emoji(char *json_string)
     int prefix_size = 256;
     if (name && name->valuestring)
     {
-        // strncpy(emoji_name_prefix, name->valuestring, prefix_size - 1);
         emoji_name_prefix[prefix_size - 1] = '\0';
     }
     else
@@ -311,7 +349,7 @@ void parse_json_and_concatenate_emoji(char *json_string)
         emoji_tasks = (Task *)heap_caps_malloc(num_jsons * sizeof(Task), MALLOC_CAP_SPIRAM);
         if (emoji_tasks == NULL)
         {
-            printf("Failed to allocate memory for tasks\n");
+            ESP_LOGI(TAG, "Failed to allocate memory for tasks\n");
             cJSON_Delete(json);
         }
         for (int i = 0; i < num_jsons; i++)
@@ -322,7 +360,7 @@ void parse_json_and_concatenate_emoji(char *json_string)
 
     if (emoji_tasks == NULL || index < 0 || index >= num_jsons)
     {
-        printf("Tasks array is not properly allocated or index out of range\n");
+        ESP_LOGI(TAG, "emoji Tasks array is not properly allocated or index out of range\n");
         cJSON_Delete(json);
     }
 
@@ -331,7 +369,7 @@ void parse_json_and_concatenate_emoji(char *json_string)
     emoji_tasks[index].data = (char *)heap_caps_malloc(DATA_LENGTH + 1, MALLOC_CAP_SPIRAM);
     if (emoji_tasks[index].data == NULL)
     {
-        printf("Failed to allocate memory for data\n");
+        ESP_LOGI(TAG, "Failed to allocate memory for data\n");
         cJSON_Delete(json);
     }
     strncpy(emoji_tasks[index].data, data->valuestring, DATA_LENGTH);
@@ -387,9 +425,8 @@ void write_to_file(const char *file_path, const char *data)
 }
 void handle_emoji_command(char *params)
 {
-    printf("handle_emoji_command\n");
-
-    printf("Params: %s\n", params);
+    ESP_LOGI(TAG, "handle_emoji_command\n");
+    ESP_LOGI(TAG, "emoji Params: %s\n", params);
     parse_json_and_concatenate_emoji(params);
 
     int all_received = 1;
@@ -406,7 +443,7 @@ void handle_emoji_command(char *params)
         char *result = (char *)heap_caps_malloc(MEMORY_SIZE, MALLOC_CAP_SPIRAM);
         if (result == NULL)
         {
-            printf("Failed to allocate memory for result\n");
+            ESP_LOGE(TAG, "Failed to allocate memory for result in emoji handle\n");
             for (int k = 0; k < num_jsons; k++)
             {
                 free(emoji_tasks[k].data);
@@ -417,7 +454,8 @@ void handle_emoji_command(char *params)
         concatenate_data_emoji(result);
         char file_path[256];
         snprintf(file_path, sizeof(file_path), "/spiffs/%s", emoji_name_final);
-        printf("Final data: %s\n", result);
+        ESP_LOGI(TAG, "emoji Final data: %s\n", result);
+        // todo write to spiffs
         write_to_file(file_path, result);
     }
 
@@ -430,27 +468,27 @@ void handle_emoji_command(char *params)
     cJSON_AddItemToObject(root, "data", data_rep);
     cJSON_AddStringToObject(data_rep, "emoji", "");
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
 }
 
-static int cloud_service_switch;
 
 void handle_cloud_service_qurey_command(char *params)
 {
-    printf("Handling handle_cloud_service_qurey_command \n");
-
+    int cloud_service_switch;
+    cloud_service_switch= get_cloud_service_switch(AT_CMD_CALLER);
+    ESP_LOGI(TAG, "Handling handle_cloud_service_qurey_command \n");
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "cloudservice");
     cJSON_AddNumberToObject(root, "code", 0);
     cJSON_AddItemToObject(root, "data", data_rep);
-    cJSON_AddNumberToObject(data_rep, "cloudservice", cloud_service_switch);
+    cJSON_AddNumberToObject(data_rep, "remotecontrol", cloud_service_switch);
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String in cloud service qurey handle: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
@@ -458,7 +496,8 @@ void handle_cloud_service_qurey_command(char *params)
 
 void handle_cloud_service_command(char *params)
 {
-    printf("handle_cloud_service_command\n");
+    int cloud_service_switch;
+    ESP_LOGI(TAG, "handle_cloud_service_command\n");
     cJSON *json = cJSON_Parse(params);
     if (json == NULL)
     {
@@ -472,17 +511,17 @@ void handle_cloud_service_command(char *params)
     cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
     if (cJSON_IsObject(data))
     {
-        cJSON *cloud_service = cJSON_GetObjectItemCaseSensitive(data, "cloud_service");
+        cJSON *cloud_service = cJSON_GetObjectItemCaseSensitive(data, "remotecontrol");
         if (cJSON_IsNumber(cloud_service))
         {
             cloud_service_switch = cloud_service->valueint;
-            printf("Cloud_Service: %d\n", cloud_service_switch);
-            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CLOUD_SERVICE, &cloud_service_cfg, sizeof(cloud_service_cfg), portMAX_DELAY);
+            ESP_LOGI(TAG, "Cloud_Service: %d\n", cloud_service_switch);
+            set_cloud_service_switch(AT_CMD_CALLER, cloud_service_switch);
         }
     }
     else
     {
-        printf("Cloud_Service not found or not a valid string in JSON\n");
+        ESP_LOGE(TAG, "Cloud_Service not found or not a valid string in JSON\n");
     }
 
     cJSON_Delete(json);
@@ -492,9 +531,9 @@ void handle_cloud_service_command(char *params)
     cJSON_AddStringToObject(root, "name", "cloudservice");
     cJSON_AddNumberToObject(root, "code", 0);
     cJSON_AddItemToObject(root, "data", data_rep);
-    cJSON_AddStringToObject(data_rep, "cloudservice", "");
+    cJSON_AddStringToObject(data_rep, "automatic", "");
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
@@ -512,8 +551,8 @@ void handle_cloud_service_command(char *params)
  */
 void handle_deviceinfo_cfg_command(char *params)
 {
-    printf("handle_deviceinfo_cfg_command\n");
-
+    ESP_LOGI(TAG, "handle_deviceinfo_cfg_command\n");
+    int time_flag=0;
     cJSON *json = cJSON_Parse(params);
     if (json == NULL)
     {
@@ -534,9 +573,41 @@ void handle_deviceinfo_cfg_command(char *params)
             int timezone = time_zone->valueint;
             struct view_data_time_cfg time_cfg;
             time_cfg.zone = timezone;
+            time_cfg.auto_update=true;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
         }
-
+        cJSON *time = cJSON_GetObjectItemCaseSensitive(data, "timestamp");
+        if (cJSON_IsString(time))
+        {
+            long long int value;
+            char *time_str = time->valuestring;
+            char *endptr;
+            value = strtoll(time_str, &endptr, 10);
+            if (endptr == time_str)
+            {
+                ESP_LOGE(TAG,"No digits were found\n");
+            }
+            else if (*endptr != '\0')
+            {
+                ESP_LOGE(TAG,"Further characters after number: %s\n", endptr);
+            }
+            else
+            {
+                ESP_LOGI(TAG,"The converted value is %lld\n", value);
+                struct view_data_time_cfg time_cfg_mannual;
+                time_cfg_mannual.time=value;
+                time_cfg_mannual.set_time=true;
+                time_cfg_mannual.auto_update=false;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg_mannual, sizeof(time_cfg_mannual), portMAX_DELAY);
+            }
+            
+        }
+        cJSON *time_auto = cJSON_GetObjectItemCaseSensitive(data, "automatic");
+        if (cJSON_IsNumber(time_auto))
+        {
+            int time_automatic = time_auto->valueint;
+            set_time_automatic(AT_CMD_CALLER,time_automatic);
+        }
         // get brightness item
         cJSON *brightness = cJSON_GetObjectItemCaseSensitive(data, "brightness");
         if (cJSON_IsNumber(brightness))
@@ -553,15 +624,15 @@ void handle_deviceinfo_cfg_command(char *params)
             set_rgb_switch(AT_CMD_CALLER, rgbswitch_value);
         }
         cJSON *soundvolume = cJSON_GetObjectItemCaseSensitive(data, "volume");
-        if (cJSON_IsNumber(rgbswitch))
+        if (cJSON_IsNumber(soundvolume))
         {
-            int volume = soundvolume ->valueint;
+            int volume = soundvolume->valueint;
             set_sound(AT_CMD_CALLER, volume);
         }
     }
     else
     {
-        printf("failed at config json\n");
+        ESP_LOGE(TAG, "failed at config json\n");
     }
 
     cJSON_Delete(json);
@@ -571,15 +642,10 @@ void handle_deviceinfo_cfg_command(char *params)
     int sound_value_resp = get_sound(AT_CMD_CALLER);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "name", "timezone");
+    cJSON_AddStringToObject(root, "name", "deviceinfo=");
     cJSON_AddNumberToObject(root, "code", 0);
-    cJSON_AddItemToObject(root, "data", data_rep);
-    //cJSON_AddStringToObject(data_rep, "timezone", "");
-    //cJSON_AddStringToObject(data_rep, "wakeword", "");
-    cJSON_AddStringToObject(data_rep, "volume", sound_value_resp);
-    cJSON_AddNumberToObject(data_rep, "brightness", brightness_value_resp);
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String in device cfg command: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
@@ -609,10 +675,10 @@ void handle_deviceinfo_cfg_command(char *params)
  */
 void handle_deviceinfo_command(char *params)
 {
-    printf("handle_deviceinfo_command\n");
+    ESP_LOGI(TAG, "handle_deviceinfo_command\n");
     char *software_version = get_software_version(AT_CMD_CALLER);
     char *himax_version = get_himax_software_version(AT_CMD_CALLER);
-
+    int time_auto =get_time_automatic(AT_CMD_CALLER);
     cJSON *root = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, "name", "deviceinfo?");
@@ -621,16 +687,14 @@ void handle_deviceinfo_command(char *params)
 
     cJSON *data = cJSON_CreateObject();
 
-    char * eui_rsp =(char*)get_eui();
-    char * bt_mac_rsp =(char*)get_bt_mac();
+    char eui_rsp[17] = { 0 };
+    hex_to_string(get_eui(), 8, (const char *)eui_rsp);
+    char bt_mac_rsp[13] = { 0 };
+    hex_to_string(get_bt_mac(), 6, (const char *)bt_mac_rsp);
     cJSON_AddItemToObject(root, "data", data);
-
     cJSON_AddStringToObject(data, "eui", (const char *)eui_rsp);
-    cJSON_AddStringToObject(data, "token", "1");
-    cJSON_AddStringToObject(data, "blemac",(const char *) bt_mac_rsp);
-    cJSON_AddStringToObject(data, "version", "1");
-    cJSON_AddStringToObject(data, "timezone", "01");
-
+    cJSON_AddStringToObject(data, "blemac", (const char *)bt_mac_rsp);
+    cJSON_AddNumberToObject(data,"automatic",time_auto);
     // add Himax_Software_Versionfield
     cJSON_AddStringToObject(data, "himaxsoftwareversion", (const char *)himax_version);
 
@@ -638,11 +702,10 @@ void handle_deviceinfo_command(char *params)
 
     char *json_string = cJSON_Print(root);
 
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON Stringin handle_deviceinfo_command: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
-
-    printf("Handling device command\n");
+    cJSON_Delete(root);
 }
 
 /**
@@ -668,6 +731,7 @@ void handle_deviceinfo_command(char *params)
  */
 void handle_wifi_set(char *params)
 {
+    ESP_LOGI(TAG, "Handling wifi command\n");
     char ssid[100];
     char password[100];
     cJSON *json = cJSON_Parse(params);
@@ -684,23 +748,23 @@ void handle_wifi_set(char *params)
     if (cJSON_IsString(json_ssid) && (json_ssid->valuestring != NULL))
     {
         strncpy(ssid, json_ssid->valuestring, sizeof(ssid));
-        printf("SSID in json: %s\n", ssid);
+        ESP_LOGI(TAG, "SSID in json: %s\n", ssid);
     }
     else
     {
-        printf("SSID not found in JSON\n");
+        ESP_LOGE(TAG, "SSID not found in JSON\n");
     }
 
     if (cJSON_IsString(json_password) && (json_password->valuestring != NULL))
     {
         strncpy(password, json_password->valuestring, sizeof(password));
-        printf("Password in json : %s\n", password);
+        ESP_LOGI(TAG, "Password in json : %s\n", password);
     }
     else
     {
-        printf("Password not found in JSON\n");
+        ESP_LOGE(TAG, "Password not found in JSON\n");
     }
-    printf("Handling wifi command\n");
+
     cJSON *root = cJSON_CreateObject();
     cJSON *data = cJSON_CreateObject();
 
@@ -743,7 +807,7 @@ void handle_wifi_set(char *params)
     cJSON_AddStringToObject(data, "rssi", "2");
     cJSON_AddStringToObject(data, "encryption", "WPA");
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String: %s", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
@@ -766,8 +830,8 @@ void handle_wifi_set(char *params)
  */
 void handle_wifi_query(char *params)
 {
+    ESP_LOGI(TAG, "Handling wifi query command\n");
     current_wifi_get(&current_connected_wifi);
-
     static char ssid_string[34];
     strncpy(ssid_string, (const char *)current_connected_wifi.ssid, sizeof(ssid_string) - 1);
     ssid_string[sizeof(ssid_string) - 1] = '\0';
@@ -782,15 +846,14 @@ void handle_wifi_query(char *params)
     snprintf(rssi_str, sizeof(rssi_str), "%d", current_connected_wifi.rssi);
     cJSON_AddStringToObject(data, "rssi", rssi_str);
 
-    printf("current_connected_wifi.ssid: %s\n", current_connected_wifi.ssid);
-    printf("current_connected_wifi.rssi: %d\n", current_connected_wifi.rssi);
+    ESP_LOGI(TAG, "current_connected_wifi.ssid: %s", current_connected_wifi.ssid);
+    ESP_LOGI(TAG, "current_connected_wifi.rssi: %d", current_connected_wifi.rssi);
 
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String: %s", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
-    printf("Handling wifi query command\n");
 }
 
 /**
@@ -806,6 +869,7 @@ void handle_wifi_query(char *params)
  */
 void handle_wifi_table(char *params)
 {
+    ESP_LOGI(TAG, "Handling wifi table command\n");
     initWiFiStack(&wifiStack_scanned, 6);
     xTaskNotifyGive(xTask_wifi_config_entry);
     vTaskDelay(5000 / portTICK_PERIOD_MS);
@@ -814,34 +878,21 @@ void handle_wifi_table(char *params)
     char *json_str = cJSON_Print(json);
 
     AT_Response response = create_at_response(json_str);
-    printf("JSON String: %s\n", json_str);
+    ESP_LOGI(TAG, "JSON String: %s\n", json_str);
     send_at_response(&response);
-    printf("Handling wifi table command\n");
     freeWiFiStack(&wifiStack_scanned);
-}
-
-// WIP
-void handle_token(char *params)
-{
-    printf("Handling token command\n");
-}
-
-// WIP
-void handle_eui_command(char *params)
-{
-    printf("Handling eui command\n");
 }
 
 void handle_taskflow_query_command(char *params)
 {
-    printf("Handling handle_taskflow_query_command \n");
+    ESP_LOGI(TAG, "Handling handle_taskflow_query_command \n");
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "taskflow");
-    cJSON_AddNumberToObject(root, "code", 1);
+    cJSON_AddNumberToObject(root, "code", task_flow_resp);
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String: %s\n", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
@@ -871,11 +922,10 @@ void handle_taskflow_query_command(char *params)
 static size_t total_size;
 void parse_json_and_concatenate(char *json_string)
 {
-    // printf("Params: %s\n", json_string);
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL)
     {
-        printf("Error parsing JSON\n");
+        ESP_LOGE(TAG, "Error parsing JSON\n");
     }
 
     cJSON *name = cJSON_GetObjectItem(json, "name");
@@ -885,7 +935,7 @@ void parse_json_and_concatenate(char *json_string)
     cJSON *total_size = cJSON_GetObjectItem(json, "totalsize");
     if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data) || !cJSON_IsNumber(total_size))
     {
-        printf("Invalid JSON format\n");
+        ESP_LOGE(TAG, "Invalid JSON format\n");
         cJSON_Delete(json);
     }
     total_size = total_size->valueint;
@@ -897,7 +947,7 @@ void parse_json_and_concatenate(char *json_string)
         tasks = (Task *)heap_caps_malloc(num_jsons * sizeof(Task), MALLOC_CAP_SPIRAM);
         if (tasks == NULL)
         {
-            printf("Failed to allocate memory for tasks\n");
+            ESP_LOGE(TAG, "Failed to allocate memory for tasks\n");
             cJSON_Delete(json);
         }
         for (int i = 0; i < num_jsons; i++)
@@ -908,7 +958,7 @@ void parse_json_and_concatenate(char *json_string)
 
     if (tasks == NULL || index < 0 || index >= num_jsons)
     {
-        printf("Tasks array is not properly allocated or index out of range\n");
+        ESP_LOGE(TAG, "Tasks array is not properly allocated or index out of range\n");
         cJSON_Delete(json);
     }
 
@@ -917,7 +967,7 @@ void parse_json_and_concatenate(char *json_string)
     tasks[index].data = (char *)heap_caps_malloc(DATA_LENGTH + 1, MALLOC_CAP_SPIRAM);
     if (tasks[index].data == NULL)
     {
-        printf("Failed to allocate memory for data\n");
+        ESP_LOGI(TAG, "Failed to allocate memory for data\n");
         cJSON_Delete(json);
     }
     strncpy(tasks[index].data, data->valuestring, DATA_LENGTH);
@@ -992,7 +1042,8 @@ void base64_decode(const unsigned char *input, size_t input_len, unsigned char *
     size_t olen = 0;
     mbedtls_base64_decode(NULL, 0, &olen, input, input_len);
 
-    *output = (unsigned char *)malloc(olen);
+    *output = (unsigned char *)heap_caps_malloc(olen, MALLOC_CAP_SPIRAM);
+    ;
     if (*output == NULL)
     {
         fprintf(stderr, "Memory allocation failed\n");
@@ -1011,8 +1062,7 @@ void base64_decode(const unsigned char *input, size_t input_len, unsigned char *
 void handle_taskflow_command(char *params)
 {
     esp_err_t code = ESP_OK;
-    printf("Handling taskflow command\n");
-    // printf("Params: %s\n", params);
+    ESP_LOGI(TAG, "Handling taskflow command\n");
     parse_json_and_concatenate(params);
 
     int all_received = 1;
@@ -1029,7 +1079,7 @@ void handle_taskflow_command(char *params)
         char *result = (char *)heap_caps_malloc(MEMORY_SIZE, MALLOC_CAP_SPIRAM);
         if (result == NULL)
         {
-            printf("Failed to allocate memory for result\n");
+            ESP_LOGE(TAG, "Failed to allocate memory for result\n");
             for (int k = 0; k < num_jsons; k++)
             {
                 free(tasks[k].data);
@@ -1041,10 +1091,9 @@ void handle_taskflow_command(char *params)
         concatenate_data(result);
         unsigned char *base64_output;
         size_t output_len;
-        // printf("Final data: %s\n", result);
         base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
-        // printf("Decoded data: %s\n", base64_output);
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &result, sizeof(char *), portMAX_DELAY);
+        free(result);
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, output_len, portMAX_DELAY);
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1054,7 +1103,7 @@ void handle_taskflow_command(char *params)
     cJSON_AddNumberToObject(root, "code", code);
     cJSON_AddItemToObject(root, "data", data_rep);
     char *json_string = cJSON_Print(root);
-    printf("JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String: %s", json_string);
     AT_Response response = create_at_response(json_string);
     send_at_response(&response);
     cJSON_Delete(root);
@@ -1072,16 +1121,29 @@ void handle_taskflow_command(char *params)
  * @param output A pointer to the output buffer where the resulting string will be stored.
  *               The buffer should be large enough to hold the converted string and a null terminator.
  */
-static void hex_to_string(uint8_t *hex, int hex_size, char *output)
+static void hex_to_string(uint8_t *in_data, int Size, char *out_data)
 {
-    // esp_log_buffer_hex("HEX TAG1", hex, hex_size);
-    for (int i = 0; i <= hex_size; i++)
+    for (unsigned char i = 0; i < Size; i++)
     {
-        output[i] = (char)hex[i];
+        out_data[2 * i] = (in_data[i] >> 4);
+        out_data[2 * i + 1] = (in_data[i] & 0x0F);
     }
-    output[hex_size] = '\0';
+    for (unsigned char i = 0; i < 2 * Size; i++)
+    {
+        if ((out_data[i] >= 0) && (out_data[i] <= 9))
+        {
+            out_data[i] = '0' + out_data[i];
+        }
+        else if ((out_data[i] >= 0x0A) && (out_data[i] <= 0x0F))
+        {
+            out_data[i] = 'A' - 10 + out_data[i];
+        }
+        else
+        {
+            return;
+        }
+    }
 }
-
 /**
  * @brief A static task that handles incoming AT commands, parses them, and executes the corresponding actions.
  *
@@ -1098,41 +1160,36 @@ void task_handle_AT_command()
 {
     while (1)
     {
-        size_t memory_size = MEMORY_SIZE;
-        size_t xReceivedBytes;
         message_event_t msg_at;
-        // xReceivedBytes = xStreamBufferReceive(xStreamBuffer, &msg_at, sizeof(msg_at), portMAX_DELAY);
-        if (xQueueReceive(message_queue, &msg_at, portMAX_DELAY) == pdPASS)
-        {
-            // printf("Received message: %s\n", msg_at.msg);
-        }
+        if (xQueueReceive(message_queue, &msg_at, portMAX_DELAY) == pdPASS) { }
         else
         {
-            printf("Failed to receive message from queue\n");
+            ESP_LOGE(TAG, "Failed to receive message from queue\n");
         }
 
         char *test_strings = (char *)heap_caps_malloc(msg_at.size + 1, MALLOC_CAP_SPIRAM);
         memcpy(test_strings, msg_at.msg, msg_at.size);
+        free(msg_at.msg);
+        msg_at.msg = NULL;
         test_strings[msg_at.size] = '\0';
 
         if (test_strings == NULL)
         {
-            printf("Memory allocation failed\n");
+            ESP_LOGE(TAG, "Memory allocation failed\n");
         }
-        printf("AT command received\n");
-        // esp_log_buffer_hex("HEX TAG1", test_strings, strlen(test_strings));
+        ESP_LOGI(TAG, "AT command received\n");
         regex_t regex;
         int ret;
         ret = regcomp(&regex, pattern, REG_EXTENDED);
         if (ret)
         {
-            printf("Could not compile regex\n");
+            ESP_LOGI(TAG, "Could not compile regex\n");
         }
         regmatch_t matches[4];
         ret = regexec(&regex, test_strings, 4, matches, 0);
         if (!ret)
         {
-            printf("recv_in match: %.*s\n", 1024, test_strings);
+            // ESP_LOGI("recv_in match: %.*s\n", test_strings);
             char command_type[20];
             snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
 
@@ -1149,13 +1206,13 @@ void task_handle_AT_command()
         }
         else if (ret == REG_NOMATCH)
         {
-            printf("No match: %s\n", test_strings);
+            ESP_LOGE(TAG, "No match: %s\n", test_strings);
         }
         else
         {
             char errbuf[100];
             regerror(ret, &regex, errbuf, sizeof(errbuf));
-            printf("Regex match failed: %s\n", errbuf);
+            ESP_LOGE(TAG, "Regex match failed: %s\n", errbuf);
         }
         free(test_strings);
         regfree(&regex);
@@ -1173,25 +1230,23 @@ void task_handle_AT_command()
 
 void init_at_cmd_task(void)
 {
-    // xStreamBuffer = xStreamBufferCreate(10240, sizeof(message_event_t));
-    // xStreamBuffer = xStreamBufferCreateWithCaps(10240, sizeof(message_event_t), MALLOC_CAP_SPIRAM);
     message_queue = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(message_event_t));
     if (message_queue == NULL)
     {
-        printf("Failed to create queue\n");
+        ESP_LOGI(TAG, "Failed to create queue\n");
         return;
     }
     at_task_stack = (StackType_t *)heap_caps_malloc(10240 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     if (at_task_stack == NULL)
     {
-        printf("Failed to allocate memory for WiFi task stack\n");
+        ESP_LOGE(TAG, "Failed to allocate memory for WiFi task stack\n");
         return;
     }
     TaskHandle_t at_task_handle = xTaskCreateStatic(task_handle_AT_command, "wifi_config_entry", 10240, NULL, 9, at_task_stack, &at_task_buffer);
 
     if (at_task_handle == NULL)
     {
-        printf("Failed to create WiFi task\n");
+        ESP_LOGE(TAG, "Failed to create WiFi task\n");
         free(at_task_handle);
         at_task_handle = NULL;
     }
@@ -1234,7 +1289,7 @@ void send_at_response(AT_Response *AT_Response)
     {
         if (!xQueueSend(AT_response_queue, AT_Response, 0))
         {
-            printf("Failed to send AT response\n");
+            ESP_LOGI(TAG, "Failed to send AT response\n");
         }
         xSemaphoreGive(AT_response_semaphore);
     }
@@ -1267,7 +1322,7 @@ AT_Response create_at_response(const char *message)
         }
         else
         {
-            printf("Failed to allocate memory for AT response\n");
+            ESP_LOGE(TAG, "Failed to allocate memory for AT response\n");
 
             response.response = NULL;
             response.length = 0;
@@ -1366,7 +1421,17 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
                 network_connect_flag = 0;
             }
             break;
-
+        case VIEW_EVENT_WIFI_CONNECT: {
+            ESP_LOGI("", "event: VIEW_EVENT_WIFI_CONNECT");
+            struct view_data_wifi_config *p_cfg = (struct view_data_wifi_config *)event_data;
+            break;
+        }
+        case VIEW_EVENT_TASK_FLOW_STATUS: {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STATUS");
+            struct view_data_taskflow_status *p_cfg = (struct view_data_taskflow_status *)event_data;
+            task_flow_resp = p_cfg->engine_status;
+            break;
+        }
         default:
             break;
     }

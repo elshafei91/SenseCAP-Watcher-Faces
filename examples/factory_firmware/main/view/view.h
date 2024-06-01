@@ -11,6 +11,8 @@ extern "C" {
 
 int view_init(void);
 
+void view_render_black(void);
+
 #ifdef __cplusplus
 }
 #endif

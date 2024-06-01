@@ -22,6 +22,7 @@ typedef struct tf_module_item
     int output_port_num;
     tf_module_t *handle;
     tf_module_mgmt_t *mgmt_handle;
+    uint32_t flag;
 } tf_module_item_t;
 
 typedef struct tf_info

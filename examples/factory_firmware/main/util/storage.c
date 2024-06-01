@@ -11,7 +11,7 @@
 #include "storage.h"
 #include "event_loops.h"
 
-#define STORAGE_NAMESPACE "FACTORYCFG"
+#define STORAGE_NAMESPACE "UserCfg"
 
 ESP_EVENT_DEFINE_BASE(STORAGE_EVENT_BASE);
 
@@ -19,6 +19,9 @@ enum {
     EVENT_STG_WRITE,
     EVENT_STG_READ,
     EVENT_STG_ERASE,
+    EVENT_STG_FILE_WRITE,
+    EVENT_STG_FILE_READ,
+    EVENT_STG_FILE_SIZE_GET,
 };
 
 typedef struct
@@ -73,6 +76,51 @@ static esp_err_t __storage_read(char *p_key, void *p_data, size_t *p_len)
     return ESP_OK;
 }
 
+esp_err_t __storage_file_write(char *file, void *p_data, size_t len)
+{
+    FILE *fp = fopen(file, "w");
+    if( fp != NULL ) {
+        fwrite(p_data,len, 1, fp);
+        fclose(fp);
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
+
+esp_err_t __storage_file_read(char *file, void *p_data, size_t *p_len)
+{
+    FILE *fp = fopen(file, "r");
+    if( fp != NULL ) {
+        fseek(fp, 0, SEEK_END);
+        int len = ftell(fp);
+        len = len > *p_len ? *p_len : len; //check len
+        fseek(fp, 0, SEEK_SET);
+        fread(p_data, len, 1, fp);
+        *p_len = len;
+        fclose(fp);
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
+
+esp_err_t __storage_file_size_get(char *file, size_t *p_len)
+{
+    FILE *fp = fopen(file, "r");
+    if( fp != NULL ) {
+        fseek(fp, 0, SEEK_END);
+        int len = ftell(fp);
+        *p_len = len;
+        fclose(fp);
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
+
+
+
 static void __storage_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     storage_event_data_t *evtdata = *(storage_event_data_t **)event_data;
@@ -88,9 +136,23 @@ static void __storage_event_handler(void *handler_args, esp_event_base_t base, i
             xSemaphoreGive(evtdata->sem);
             break;
         case EVENT_STG_ERASE:
-            nvs_flash_erase();
-            esp_restart();
+             evtdata->err = nvs_flash_erase();
+            xSemaphoreGive(evtdata->sem);
+            break;
+        case EVENT_STG_FILE_WRITE:
+            evtdata->err = __storage_file_write(evtdata->key, evtdata->data, evtdata->len);
+            xSemaphoreGive(evtdata->sem);
+            break;
+        case EVENT_STG_FILE_READ:
+            evtdata->err = __storage_file_read(evtdata->key, evtdata->data, &(evtdata->len));
+            xSemaphoreGive(evtdata->sem);
+            break;
+        case EVENT_STG_FILE_SIZE_GET:
+            evtdata->err = __storage_file_size_get(evtdata->key, &(evtdata->len));
+            xSemaphoreGive(evtdata->sem);
+            break;
         default:
+        
             break;
     }
 }
@@ -150,6 +212,12 @@ esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
 
 esp_err_t storage_erase()
 {
+    TaskHandle_t h = xTaskGetCurrentTaskHandle();
+    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0)
+    {
+        return nvs_flash_erase();
+    }
+
     storage_event_data_t evtdata = {
         .sem = xSemaphoreCreateBinary(),
     };
@@ -158,6 +226,64 @@ esp_err_t storage_erase()
     esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_ERASE, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
+
+    return evtdata.err;
+}
+
+esp_err_t storage_file_write(char *file, void *p_data, size_t len)
+{
+    TaskHandle_t h = xTaskGetCurrentTaskHandle();
+    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0)
+    {
+        return __storage_file_write(file, p_data, len);
+    }
+
+    storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = file, .data = p_data, .len = len, .err = ESP_OK };
+    storage_event_data_t *pevtdata = &evtdata;
+
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_WRITE, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    xSemaphoreTake(evtdata.sem, portMAX_DELAY);
+    vSemaphoreDelete(evtdata.sem);
+
+    return evtdata.err;
+}
+
+esp_err_t storage_file_read(char *file, void *p_data, size_t *p_len)
+{
+    TaskHandle_t h = xTaskGetCurrentTaskHandle();
+    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0)
+    {
+        return __storage_file_read(file, p_data, p_len);
+    }
+
+    storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = file, .data = p_data, .len = *p_len, .err = ESP_OK };
+    storage_event_data_t *pevtdata = &evtdata;
+
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_READ, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    xSemaphoreTake(evtdata.sem, portMAX_DELAY);
+    vSemaphoreDelete(evtdata.sem);
+
+    *p_len = evtdata.len;
+
+    return evtdata.err;
+}
+
+esp_err_t storage_file_size_get(char *file, size_t *p_len)
+{
+    TaskHandle_t h = xTaskGetCurrentTaskHandle();
+    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0)
+    {
+        return __storage_file_size_get(file, p_len);
+    }
+
+    storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = file, .err = ESP_OK };
+    storage_event_data_t *pevtdata = &evtdata;
+
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_SIZE_GET, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    xSemaphoreTake(evtdata.sem, portMAX_DELAY);
+    vSemaphoreDelete(evtdata.sem);
+
+    *p_len = evtdata.len;
 
     return evtdata.err;
 }

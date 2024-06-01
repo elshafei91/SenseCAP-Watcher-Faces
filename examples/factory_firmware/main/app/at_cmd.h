@@ -63,8 +63,6 @@ void task_handle_AT_command();  // Function to handle the AT command and select 
 void handle_deviceinfo_command();  // Device info command
 void handle_wifi_set(char *params);  // WiFi command
 void handle_wifi_query(char *params);   //WiFi query command
-void handle_token(char *params);  // Token command
-void handle_eui_command(char *params);  // EUI command
 void handle_wifi_table(char *params);  // WiFi table command
 void handle_deviceinfo_cfg_command(char *params);  // Timezone command
 void handle_taskflow_command(char *params); // Taskflow command
@@ -72,7 +70,7 @@ void handle_cloud_service_command(char *params);    // Cloud service command
 void handle_cloud_service_qurey_command(char *params);    // Cloud service query command
 void handle_emoji_command(char *params);    // Emoji command
 void handle_taskflow_query_command(char *params); // Taskflow qurey command
-
+void handle_bind_command(char *params); // Bind command
 
 void init_event_loop_and_task();
 void AT_cmd_init();

@@ -18,6 +18,7 @@
 
 #include "tf.h"
 #include "sensecap-watcher.h"
+#include "factory_info.h"
 
 static const char *TAG = "cmd";
 
@@ -161,7 +162,8 @@ static void register_cmd_deviceinfo(void)
 /************* reboot **************/
 static int do_reboot(int argc, char **argv)
 {
-    esp_restart();
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
+    return 0;
 }
 
 static void register_cmd_reboot(void)
@@ -381,13 +383,6 @@ static int taskflow_cmd(int argc, char **argv)
 
 static void register_cmd_taskflow(void)
 {
-    if( bsp_sdcard_is_inserted()) {
-        bsp_sdcard_init_default(); //TODO 
-        ESP_LOGI(TAG, "SD card inserted! init SD card");
-    } else {
-        ESP_LOGI(TAG, "SD card not inserted!");
-    }
-
     taskflow_cfg_args.import =  arg_lit0("i", "import", "import taskflow");
     taskflow_cfg_args.export = arg_lit0("e", "export", "export taskflow");
     taskflow_cfg_args.file =  arg_str0("f", "file", "<string>", "File path, import or export taskflow json string by SD, eg: test.json");
@@ -404,6 +399,24 @@ static void register_cmd_taskflow(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* factory info get  **************/
+static int factory_info_get_cmd(int argc, char **argv)
+{
+    factory_info_print();
+    return 0;
+}
+
+static void register_cmd_factory_info(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "factory_info",
+        .help = "get factory infomation",
+        .hint = NULL,
+        .func = &factory_info_get_cmd,
+        .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
 
 int app_cmd_init(void)
 {
@@ -419,6 +432,7 @@ int app_cmd_init(void)
     register_cmd_deviceinfo();
     register_cmd_force_ota();
     register_cmd_taskflow();
+    register_cmd_factory_info();
     register_cmd_reboot();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)

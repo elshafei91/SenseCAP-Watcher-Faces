@@ -216,8 +216,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_WIFI_CONFIG_SYNC:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONFIG_SYNC");
-                uint8_t wifi_config_sync = (uint8_t *)event_data;
-                lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+                int wifi_config_sync = (int*)event_data;
+                ESP_LOGE(TAG,"LOG VIEW_EVENT_WIFI_CONFIG_SYNC  wifi_config_sync is %d",wifi_config_sync);
+                if(lv_scr_act() != ui_Page_Wifi)_ui_screen_change(&ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+                // lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
                 if(wifi_config_sync == 0)
                 {
                     waitForWifi();
@@ -399,7 +401,7 @@ int view_init(void)
     view_image_preview_init(ui_Page_ViewLive);
     lvgl_port_unlock();
 
-    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(100));
+    BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, 
@@ -501,4 +503,11 @@ int view_init(void)
                     
 
     return 0;
+}
+
+void view_render_black(void)
+{
+    lvgl_port_lock(0);
+    view_image_black_flush();
+    lvgl_port_unlock();
 }

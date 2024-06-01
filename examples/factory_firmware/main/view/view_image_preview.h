@@ -20,6 +20,7 @@ int view_image_preview_init(lv_obj_t *ui_screen);
 
 int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info);
 
+void view_image_black_flush();
 
 #ifdef __cplusplus
 }

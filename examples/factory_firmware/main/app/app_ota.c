@@ -967,7 +967,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
             if (need_reboot) {
                 ESP_LOGW(TAG, "!!! WILL REBOOT IN 3 SEC !!!");
                 vTaskDelay(pdMS_TO_TICKS(3000));  // let the last mqtt msg sent
-                esp_restart();
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
             }
 
             //the json is used up
