@@ -161,7 +161,8 @@ static void register_cmd_deviceinfo(void)
 /************* reboot **************/
 static int do_reboot(int argc, char **argv)
 {
-    esp_restart();
+    bsp_system_reboot();
+    return 0;
 }
 
 static void register_cmd_reboot(void)
