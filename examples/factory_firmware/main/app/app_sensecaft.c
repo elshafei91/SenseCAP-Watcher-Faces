@@ -14,6 +14,7 @@
 #include "event_loops.h"
 #include "data_defs.h"
 #include "app_device_info.h"
+#include "factory_info.h"
 #include "util.h"
 #include "uuid.h"
 
@@ -546,7 +547,7 @@ esp_err_t app_sensecraft_init(void)
     p_sensecraft = gp_sensecraft;
     memset(p_sensecraft, 0, sizeof( struct app_sensecraft ));
     
-    ret  = deviceinfo_get(&p_sensecraft->deviceinfo);
+    ret  = sensecraft_deviceinfo_get(&p_sensecraft->deviceinfo);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "deviceinfo read fail %d!", ret);
 
     ret = app_sensecraft_https_token_gen(&p_sensecraft->deviceinfo, (char *)p_sensecraft->https_token, sizeof(p_sensecraft->https_token));
@@ -612,6 +613,27 @@ err:
     return ret;
 }
 
+static esp_err_t sensecraft_deviceinfo_get(struct sensecraft_deviceinfo *p_info)
+{
+    esp_err_t ret = ESP_OK;
+    const char *eui = NULL;
+    const char *key = NULL;
+
+    eui = factory_info_eui_get();
+    key = factory_info_device_key_get();
+    if (eui == NULL || key == NULL ) {
+        ESP_LOGE(TAG, "Failed to get eui or key");
+        return ESP_FAIL;
+    }
+    if( strlen(eui) != 16 || strlen(key) != 32 ) {
+        ESP_LOGE(TAG, "Invalid eui or key");
+        return ESP_FAIL;
+    }
+    memcpy(p_info->key, key, 32);
+    memcpy(p_info->eui, eui, 16);
+    return ESP_OK;
+}
+
 esp_err_t app_sensecraft_https_token_get(char *p_token, size_t len)
 {
     struct app_sensecraft * p_sensecraft = gp_sensecraft;
@@ -622,7 +644,7 @@ esp_err_t app_sensecraft_https_token_get(char *p_token, size_t len)
     return ESP_OK;
 }
 
-esp_err_t app_sensecraft_https_token_gen(struct view_data_deviceinfo *p_deviceinfo, char *p_token, size_t len)
+esp_err_t app_sensecraft_https_token_gen(struct sensecraft_deviceinfo *p_deviceinfo, char *p_token, size_t len)
 {
     esp_err_t ret = ESP_OK;
     size_t str_len = 0;
