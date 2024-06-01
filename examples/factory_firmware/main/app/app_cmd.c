@@ -18,6 +18,7 @@
 
 #include "tf.h"
 #include "sensecap-watcher.h"
+#include "factory_info.h"
 
 static const char *TAG = "cmd";
 
@@ -398,6 +399,24 @@ static void register_cmd_taskflow(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* factory info get  **************/
+static int factory_info_get_cmd(int argc, char **argv)
+{
+    factory_info_print();
+    return 0;
+}
+
+static void register_cmd_factory_info(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "factory_info",
+        .help = "get factory infomation",
+        .hint = NULL,
+        .func = &factory_info_get_cmd,
+        .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
 
 int app_cmd_init(void)
 {
@@ -413,6 +432,7 @@ int app_cmd_init(void)
     register_cmd_deviceinfo();
     register_cmd_force_ota();
     register_cmd_taskflow();
+    register_cmd_factory_info();
     register_cmd_reboot();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
