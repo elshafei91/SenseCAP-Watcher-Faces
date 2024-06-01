@@ -944,6 +944,7 @@ void app_device_info_task(void *pvParameter)
 
     init_sn_from_nvs();
     init_eui_from_nvs();
+    init_server_code_from_nvs();
     init_ai_service_param_from_nvs();
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
