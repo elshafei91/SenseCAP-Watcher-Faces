@@ -94,7 +94,6 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_REBOOT");
         bsp_lcd_brightness_set(0);
-        view_render_black();
         fflush(stdout);
         if (get_sdcard_total_size(MAX_CALLER) > 0) {
             bsp_sdcard_deinit_default();
@@ -102,35 +101,11 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
         if (get_spiffs_total_size(MAX_CALLER) > 0) {
             esp_vfs_spiffs_unregister("storage");
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
         esp_restart();
         break;
     }
     default:
         break;
-    }
-}
-
-static void battery_check(void)
-{
-    bool st = false;
-    uint8_t percent = bsp_battery_get_percent();
-
-    ESP_LOGI(TAG, "battery: %d", percent);
-
-    if( percent > 0) {
-        return;
-    }
-
-    ESP_LOGI(TAG, "battery too low, wait for charging");
-
-    while(1) {
-        st = bsp_system_is_charging();
-        if ( st ) {
-            ESP_LOGI(TAG, "charging");
-            break;
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -173,7 +148,6 @@ void task_app_init(void *p_arg)
     board_init();
     view_init();
     
-    // battery_check(); //TODO
     app_init();
 
     esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
