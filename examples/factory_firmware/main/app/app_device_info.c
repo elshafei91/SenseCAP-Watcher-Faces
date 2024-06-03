@@ -15,6 +15,7 @@
 #include "esp_bt_device.h"
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
+#include "esp_timer.h"
 
 #include "sensecap-watcher.h"
 
@@ -27,6 +28,7 @@
 #include "audio_player.h"
 #include "app_sensecraft.h"
 #include "factory_info.h"
+#include "tf_module_ai_camera.h"
 
 #define APP_DEVICE_INFO_MAX_STACK 4096
 #define BRIGHTNESS_STORAGE_KEY    "brightness"
@@ -62,7 +64,7 @@ int reset_factory_switch_past = 0;
 int time_automatic = 0;
 int time_automatic_past = 0;
 
-static sscma_client_info_t *himax_info;
+static sscma_client_info_t *g_himax_info;
 
 // ai service ip for mqtt
 ai_service_pack ai_service;
@@ -86,6 +88,10 @@ static StaticTask_t app_device_info_task_buffer;
 static struct view_data_device_status g_device_status;
 static struct view_data_sdcard_flash_status g_sdcard_flash_status;
 static volatile atomic_bool g_mqttconn = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool g_timeout_firstreport = ATOMIC_VAR_INIT(false);
+
+static esp_timer_handle_t timer_firstreport;
+
 
 void app_device_info_task(void *pvParameter);
 
@@ -942,11 +948,16 @@ void __try_check_sdcard_flash()
     xSemaphoreGive(MUTEX_sdcard_flash_status);
 }
 
+static void __boot_send_deviceinfo_timer_cb(void *arg)
+{
+    atomic_store(&g_timeout_firstreport, true);
+}
+
 void app_device_info_task(void *pvParameter)
 {
     uint8_t batnow = 0;
     uint32_t cnt = 0;
-    bool firstboot_reported = false;
+    bool firstboot_reported = false, himax_version_got = false;
     static uint8_t last_charge_st = 0x66, last_sdcard_inserted = 0x88, sdcard_debounce = 0x99;
 
     rgb_semaphore = xSemaphoreCreateMutex();
@@ -976,20 +987,10 @@ void app_device_info_task(void *pvParameter)
     init_reset_factory_switch_from_nvs();
     init_time_automatic_switch_from_nvs();
 
-    g_device_status.battery_per = bsp_battery_get_percent();
-
-    if (sscma_client_get_info(bsp_sscma_client_init(), &himax_info, true) != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Failed to get info");
-    }
-    else
-    {
-        g_device_status.himax_fw_version = himax_info->fw_ver;
-    }
-    g_device_status.himax_fw_version = himax_info->fw_ver;
-
     // get spiffs and sdcard status
     __try_check_sdcard_flash();
+
+    g_device_status.battery_per = bsp_battery_get_percent();
 
     while (1)
     {
@@ -1003,7 +1004,19 @@ void app_device_info_task(void *pvParameter)
         vTaskDelay(100 / portTICK_PERIOD_MS);
         cnt++;
 
-        if (!firstboot_reported && atomic_load(&g_mqttconn))
+        if (!atomic_load(&g_timeout_firstreport) && !himax_version_got) {
+            char *himax_version = tf_module_ai_camera_himax_version_get();
+
+            if (himax_version && strlen(himax_version) > 0) {
+                g_device_status.himax_fw_version = himax_version;
+                ESP_LOGI(TAG, "Got Himax fw version: %s", g_device_status.himax_fw_version);
+                himax_version_got = true;
+            } else {
+                ESP_LOGW(TAG, "Failed to get himax info [%d] ...", cnt);
+            }
+        }
+
+        if (!firstboot_reported && atomic_load(&g_timeout_firstreport))
         {
             app_sensecraft_mqtt_report_device_status(&g_device_status);
             firstboot_reported = true;
@@ -1016,7 +1029,7 @@ void app_device_info_task(void *pvParameter)
             {
                 g_device_status.battery_per = batnow;
                 // mqtt pub
-                if (atomic_load(&g_mqttconn))
+                if (firstboot_reported)
                 {
                     app_sensecraft_mqtt_report_device_status(&g_device_status);
                 }
@@ -1075,6 +1088,8 @@ static void __event_loop_handler(void *handler_args, esp_event_base_t base, int3
         case CTRL_EVENT_MQTT_CONNECTED: {
             ESP_LOGI(TAG, "rcv event: CTRL_EVENT_MQTT_CONNECTED");
             atomic_store(&g_mqttconn, true);
+            //should report device info no matter himax version is ready or not
+            esp_timer_start_once(timer_firstreport, 2*1000000);
             break;
         }
         default:
@@ -1088,13 +1103,14 @@ void app_device_info_init()
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
+    memset(&g_device_status, 0, sizeof(struct view_data_device_status));
     const esp_app_desc_t *app_desc = esp_app_get_description();
-
     // if newer hw_version come up in the future, we can tell it from the EUI
     // for this version firmware, we hard code hw_version as 1.0
     g_device_status.hw_version = "1.0";
     g_device_status.fw_version = app_desc->version;
     g_device_status.battery_per = 100;
+    g_device_status.himax_fw_version = "0.0";
 
     memset(&g_sdcard_flash_status, 0, sizeof(struct view_data_sdcard_flash_status));
 
@@ -1112,4 +1128,9 @@ void app_device_info_init()
     }
 
     esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, __event_loop_handler, NULL);
+
+    // init a timer for sending deviceinfo finally, even if fail to get himax info
+    esp_timer_create_args_t timer0args = {.callback = __boot_send_deviceinfo_timer_cb};
+    esp_timer_create(&timer0args, &timer_firstreport);
+
 }
