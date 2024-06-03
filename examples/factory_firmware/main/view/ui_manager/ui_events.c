@@ -337,6 +337,7 @@ void virtsl_cb(lv_event_t *e)
     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
     lv_group_add_obj(g_main, ui_Page_Vir);
     create_timer(0);
+    lv_group_set_wrap(g_main, false);
 }
 
 void virb1c_cb(lv_event_t *e)
@@ -491,19 +492,13 @@ void viewasl_cb(lv_event_t *e)
                 lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
                 lv_group_remove_all_objs(g_main);
                 lv_group_add_obj(g_main, ui_viewavap2);
-                lv_group_set_wrap(g_main, true);
             }
             else if (guide_step == 0)
             {
                 guide_step = 1;
-                lv_group_set_wrap(g_main, false);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_viewavap2);
             }
-        }
-        else
-        {
-            lv_group_set_wrap(g_main, true);
         }
     }
     else
@@ -517,19 +512,13 @@ void viewasl_cb(lv_event_t *e)
                 lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
                 lv_group_remove_all_objs(g_main);
                 lv_group_add_obj(g_main, ui_viewavap2);
-                lv_group_set_wrap(g_main, true);
             }
             else if (guide_step == 0)
             {
                 guide_step = 1;
-                lv_group_set_wrap(g_main, false);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_viewavap2);
             }
-        }
-        else
-        {
-            lv_group_set_wrap(g_main, true);
         }
     }
 }
@@ -594,7 +583,9 @@ void viewlsl_cb(lv_event_t *e)
     }
 }
 
-void viewlsul_cb(lv_event_t *e) { }
+void viewlsul_cb(lv_event_t *e) 
+{
+}
 
 void liv1c_cb(lv_event_t *e)
 {
