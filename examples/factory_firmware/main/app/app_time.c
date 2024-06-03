@@ -261,6 +261,20 @@ static void __time_cfg_restore(void)
     }
 }
 
+
+
+void get_current_time_cfg(struct view_data_time_cfg *cfg)
+{
+    if (cfg != NULL)
+    {
+        xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+        memcpy(cfg, &__g_time_model.cfg, sizeof(struct view_data_time_cfg));
+        xSemaphoreGive(__g_data_mutex);
+    }
+}
+
+
+
 int app_time_init(void)
 {
     __g_data_mutex = xSemaphoreCreateMutex();
