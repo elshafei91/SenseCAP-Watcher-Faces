@@ -53,7 +53,7 @@ const char local_taskflow_gesture[] = \
 			}],    \  
 			\"conditions_combo\": 0,    \  
 			\"silent_period\": {    \  
-				\"silence_duration\": 2    \  
+				\"silence_duration\": 5    \  
 			},    \  
 			\"output_type\": 0,    \  
 			\"shutter\": 0    \  
@@ -126,7 +126,7 @@ const char local_taskflow_pet[] = \
 			}],    \  
 			\"conditions_combo\": 1,    \  
 			\"silent_period\": {    \  
-				\"silence_duration\": 2    \  
+				\"silence_duration\": 5    \  
 			},    \  
 			\"output_type\": 0,    \  
 			\"shutter\": 0    \  
@@ -193,7 +193,7 @@ const char local_taskflow_human[] = \
 			}],    \  
 			\"conditions_combo\": 0,    \  
 			\"silent_period\": {    \  
-				\"silence_duration\": 2    \  
+				\"silence_duration\": 5    \  
 			},    \  
 			\"output_type\": 0,    \  
 			\"shutter\": 0    \  
