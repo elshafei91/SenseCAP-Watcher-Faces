@@ -103,7 +103,7 @@ static void smile_timer_callback(lv_timer_t *timer)
     }
     vir_load_count ++;
     // if delay 2s and the device is not wifi-configed
-    if(vir_load_count>2 && (!wifi_page_id))
+    if(vir_load_count>4 && (!wifi_page_id))
     {
         lv_event_send(ui_Page_Vir, LV_EVENT_CLICKED, NULL);
     }
@@ -318,13 +318,15 @@ void loadsl_cb(lv_event_t *e)
 
 void virtc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "virtc_cb");
+    // ESP_LOGI(CLICK_TAG, "virtc_cb");
     if(!wifi_page_id)   // if the device is not wifi-configed, then appear Connect APP panel
     {
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
+        create_timer(6);    // stop timer
     }else{              // else the device is wifi-configed, then page jump to main page
         get_reset_factory(UI_CALLER);
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+        create_timer(6);    // stop timer
     }
 }
 
@@ -339,6 +341,7 @@ void virb1c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "virb1c_cb");
     settingInfoInit(); 
+    create_timer(6);
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
 }
