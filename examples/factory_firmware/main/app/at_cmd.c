@@ -39,6 +39,7 @@ command_entry *commands = NULL; // Global variable to store the commands
 static StaticTask_t at_task_buffer;
 static StackType_t *at_task_stack = NULL;
 static void hex_to_string(uint8_t *hex, int hex_size, char *output);
+static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data);
 /*------------------network DS----------------------------------------------------------*/
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
@@ -59,10 +60,8 @@ static int num_jsons = 0;
 /*------------------------------------emoji DS---------------------------------------------*/
 Task *emoji_tasks = NULL;
 
-
 /*-----------------------------------bind index--------------------------------------------*/
 static int bind_index;
-
 
 /*----------------------------------------------------------------------------------------*/
 
@@ -206,11 +205,11 @@ AT_Response create_at_response(const char *message);
  */
 void add_command(command_entry **commands, const char *name, void (*func)(char *params))
 {
-    //command_entry *entry = (command_entry *)malloc(sizeof(command_entry)); // Allocate memory for the new entry
-    command_entry *entry = (command_entry *)heap_caps_malloc(sizeof(command_entry),MALLOC_CAP_SPIRAM);
-    strcpy(entry->command_name, name);                                     // Copy the command name to the new entry
-    entry->func = func;                                                    // Assign the function pointer to the new entry
-    HASH_ADD_STR(*commands, command_name, entry);                          // Add the new entry to the hash table
+    // command_entry *entry = (command_entry *)malloc(sizeof(command_entry)); // Allocate memory for the new entry
+    command_entry *entry = (command_entry *)heap_caps_malloc(sizeof(command_entry), MALLOC_CAP_SPIRAM);
+    strcpy(entry->command_name, name);            // Copy the command name to the new entry
+    entry->func = func;                           // Assign the function pointer to the new entry
+    HASH_ADD_STR(*commands, command_name, entry); // Add the new entry to the hash table
 }
 
 /**
@@ -270,11 +269,11 @@ void AT_command_reg()
 }
 
 /**
- * @brief Handle the bind command by parsing input parameters, extracting the bind index, 
+ * @brief Handle the bind command by parsing input parameters, extracting the bind index,
  *        posting an event to the app event loop, and creating a JSON response.
  *
- * This function takes a JSON string as input, parses it to extract a "code" value, and posts 
- * an event with this value to the application event loop. It then creates a JSON response 
+ * This function takes a JSON string as input, parses it to extract a "code" value, and posts
+ * an event with this value to the application event loop. It then creates a JSON response
  * indicating the success of the bind command and sends this response.
  *
  * @param params JSON string containing the "code" key with an integer value to bind.
@@ -311,7 +310,6 @@ void handle_bind_command(char *params)
     send_at_response(&response);
     cJSON_Delete(root);
 }
-
 
 /*-----------------------------------------------------------------------------------------------------------*/
 static int emoji_index = 1;
@@ -489,11 +487,8 @@ void handle_emoji_command(char *params)
 
 /*-----------------------------------------------------------------------------------------------------------*/
 
-
-
-
 /**
- * @brief Handle the cloud service query command by retrieving the cloud service switch state 
+ * @brief Handle the cloud service query command by retrieving the cloud service switch state
  *        and creating a JSON response.
  *
  * This function retrieves the state of the cloud service switch and creates a JSON response
@@ -504,7 +499,7 @@ void handle_emoji_command(char *params)
 void handle_cloud_service_qurey_command(char *params)
 {
     int cloud_service_switch;
-    cloud_service_switch= get_cloud_service_switch(AT_CMD_CALLER);
+    cloud_service_switch = get_cloud_service_switch(AT_CMD_CALLER);
     ESP_LOGI(TAG, "Handling handle_cloud_service_qurey_command \n");
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
@@ -519,8 +514,6 @@ void handle_cloud_service_qurey_command(char *params)
     send_at_response(&response);
     cJSON_Delete(root);
 }
-
-
 
 /**
  * @brief Handle the cloud service command by parsing input parameters, updating the cloud service switch state,
@@ -590,7 +583,7 @@ void handle_cloud_service_command(char *params)
 void handle_deviceinfo_cfg_command(char *params)
 {
     ESP_LOGI(TAG, "handle_deviceinfo_cfg_command\n");
-    int time_flag=0;
+    int time_flag = 0;
     cJSON *json = cJSON_Parse(params);
     if (json == NULL)
     {
@@ -611,7 +604,7 @@ void handle_deviceinfo_cfg_command(char *params)
             int timezone = time_zone->valueint;
             struct view_data_time_cfg time_cfg;
             time_cfg.zone = timezone;
-            time_cfg.auto_update=true;
+            time_cfg.auto_update = true;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
         }
         cJSON *time = cJSON_GetObjectItemCaseSensitive(data, "timestamp");
@@ -623,28 +616,27 @@ void handle_deviceinfo_cfg_command(char *params)
             value = strtoll(time_str, &endptr, 10);
             if (endptr == time_str)
             {
-                ESP_LOGE(TAG,"No digits were found\n");
+                ESP_LOGE(TAG, "No digits were found\n");
             }
             else if (*endptr != '\0')
             {
-                ESP_LOGE(TAG,"Further characters after number: %s\n", endptr);
+                ESP_LOGE(TAG, "Further characters after number: %s\n", endptr);
             }
             else
             {
-                ESP_LOGI(TAG,"The converted value is %lld\n", value);
+                ESP_LOGI(TAG, "The converted value is %lld\n", value);
                 struct view_data_time_cfg time_cfg_mannual;
-                time_cfg_mannual.time=value;
-                time_cfg_mannual.set_time=true;
-                time_cfg_mannual.auto_update=false;
+                time_cfg_mannual.time = value;
+                time_cfg_mannual.set_time = true;
+                time_cfg_mannual.auto_update = false;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg_mannual, sizeof(time_cfg_mannual), portMAX_DELAY);
             }
-            
         }
         cJSON *time_auto = cJSON_GetObjectItemCaseSensitive(data, "automatic");
         if (cJSON_IsNumber(time_auto))
         {
             int time_automatic = time_auto->valueint;
-            set_time_automatic(AT_CMD_CALLER,time_automatic);
+            set_time_automatic(AT_CMD_CALLER, time_automatic);
         }
         // get brightness item
         cJSON *brightness = cJSON_GetObjectItemCaseSensitive(data, "brightness");
@@ -716,7 +708,18 @@ void handle_deviceinfo_command(char *params)
     ESP_LOGI(TAG, "handle_deviceinfo_command\n");
     char *software_version = get_software_version(AT_CMD_CALLER);
     char *himax_version = get_himax_software_version(AT_CMD_CALLER);
-    int time_auto =get_time_automatic(AT_CMD_CALLER);
+
+    int brightness_value_resp = get_brightness(AT_CMD_CALLER);
+    int sound_value_resp = get_sound(AT_CMD_CALLER);
+    int rgb_switch = get_rgb_switch(AT_CMD_CALLER);
+    struct view_data_time_cfg cfg;
+    get_current_time_cfg(&cfg);
+    char timestamp_str[20];
+    snprintf(timestamp_str, sizeof(timestamp_str), "%ld", cfg.time);
+    ESP_LOGI(TAG, "Current time configuration:\n");
+    ESP_LOGI(TAG, "zone: %d\n", cfg.zone);
+    // ESP_LOGE(TAG,"get himax version:%s",himax_version);
+    int time_auto = get_time_automatic(AT_CMD_CALLER);
     cJSON *root = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, "name", "deviceinfo?");
@@ -732,9 +735,14 @@ void handle_deviceinfo_command(char *params)
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "eui", (const char *)eui_rsp);
     cJSON_AddStringToObject(data, "blemac", (const char *)bt_mac_rsp);
-    cJSON_AddNumberToObject(data,"automatic",time_auto);
-    // add Himax_Software_Versionfield
     cJSON_AddStringToObject(data, "himaxsoftwareversion", (const char *)himax_version);
+    cJSON_AddNumberToObject(data, "automatic", time_auto);
+    cJSON_AddNumberToObject(data, "rgbswitch", rgb_switch);
+    cJSON_AddNumberToObject(data, "sound", sound_value_resp);
+    cJSON_AddNumberToObject(data, "brightness", brightness_value_resp);
+    cJSON_AddStringToObject(data, "timestamp", timestamp_str);
+    cJSON_AddNumberToObject(data, "timezone", cfg.zone);
+    // add Himax_Software_Versionfield
 
     cJSON_AddStringToObject(data, "esp32softwareversion", (const char *)software_version);
 
@@ -838,7 +846,7 @@ void handle_wifi_set(char *params)
 
     set_wifi_config(config);
     free(config);
-    config =NULL;
+    config = NULL;
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     cJSON_AddStringToObject(root, "name", config->ssid);
     cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
@@ -1124,7 +1132,6 @@ void handle_taskflow_command(char *params)
                 free(tasks[k].data);
             }
             free(tasks);
-            
         }
 
         // try to make base64 decode
@@ -1244,7 +1251,7 @@ void task_handle_AT_command()
             char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
             exec_command(&commands, command_type, params, query_type);
             free(params);
-            params=NULL;
+            params = NULL;
         }
         else if (ret == REG_NOMATCH)
         {
@@ -1384,7 +1391,7 @@ AT_Response create_at_response(const char *message)
  * This function sets up the necessary components for handling AT commands, including creating the response queue,
  * initializing semaphores, and initializing tasks and WiFi stacks.
  */
-void AT_cmd_init()
+void app_at_cmd_init()
 {
     create_AT_response_queue();
     init_AT_response_semaphore();
@@ -1392,6 +1399,19 @@ void AT_cmd_init()
     init_at_cmd_task();
     initWiFiStack(&wifiStack_scanned, 10);
     initWiFiStack(&wifiStack_connected, 10);
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    VIEW_EVENT_BASE, 
+                                                    VIEW_EVENT_WIFI_ST, 
+                                                    __view_event_handler, 
+                                                    NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    VIEW_EVENT_BASE, 
+                                                    VIEW_EVENT_TASK_FLOW_STATUS, 
+                                                    __view_event_handler, 
+                                                    NULL));
+
 }
 
 /**
@@ -1426,30 +1446,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     struct view_data_wifi_st *p_cfg;
     switch (id)
     {
-        case VIEW_EVENT_WIFI_LIST_REQ:
-            p_cfg = (struct view_data_wifi_config *)event_data;
-            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { p_cfg->ssid, "", "" });
-        case VIEW_EVENT_WIFI_LIST:
-            p_cfg = (struct view_data_wifi_config *)event_data;
-            char *authmode_s;
-            pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network6", "-120", "WPA2" });
-            if (p_cfg->authmode == WIFI_AUTH_WEP)
-            {
-                authmode_s = "WEP";
-            }
-            else if (p_cfg->authmode == WIFI_AUTH_WPA_PSK)
-            {
-                authmode_s = "WPA_PSK";
-            }
-            else if (p_cfg->authmode == WIFI_AUTH_WPA2_PSK)
-            {
-                authmode_s = "WPA2_PSK";
-            }
-            else
-            {
-                authmode_s = "NONE";
-            }
-            pushWiFiStack(&wifiStack_connected, (WiFiEntry) { p_cfg->ssid, p_cfg->rssi, authmode_s });
         case VIEW_EVENT_WIFI_ST:
             static bool fist = true;
             ESP_LOGI("AT_CMD_EVENT_READ:", "event: VIEW_EVENT_WIFI_ST");
@@ -1463,11 +1459,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
                 network_connect_flag = 0;
             }
             break;
-        case VIEW_EVENT_WIFI_CONNECT: {
-            ESP_LOGI("", "event: VIEW_EVENT_WIFI_CONNECT");
-            struct view_data_wifi_config *p_cfg = (struct view_data_wifi_config *)event_data;
-            break;
-        }
         case VIEW_EVENT_TASK_FLOW_STATUS: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STATUS");
             struct view_data_taskflow_status *p_cfg = (struct view_data_taskflow_status *)event_data;
