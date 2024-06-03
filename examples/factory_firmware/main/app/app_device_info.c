@@ -537,14 +537,14 @@ static int __set_rgb_switch()
     if (rgb_switch_past != rgb_switch)
     {
         esp_err_t ret = storage_write(RGB_SWITCH_STORAGE_KEY, &rgb_switch, sizeof(rgb_switch));
-        ESP_LOGD(TAG, "rgb_switch: %d\n", rgb_switch);
+        ESP_LOGI(TAG, "rgb_switch: %d\n", rgb_switch);
         if (rgb_switch == 1)
         {
-            set_rgb_with_priority(AT_CMD_CALLER, on);
+            set_rgb_with_priority(UI_CALLER, on);
         }
         else
         {
-            set_rgb_with_priority(AT_CMD_CALLER, off);
+            set_rgb_with_priority(UI_CALLER, off);
         }
         if (ret != ESP_OK)
         {

@@ -317,6 +317,7 @@ void loadsl_cb(lv_event_t *e)
 
 void virtc_cb(lv_event_t *e)
 {
+    // ESP_LOGI(TAG, "wifi_page_id:%d", wifi_page_id);
     if(!wifi_page_id)   // if the device is not wifi-configed, then appear Connect APP panel
     {
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
@@ -975,13 +976,15 @@ void setrgbc_cb(lv_event_t *e)
     switch (btn_state)
     {
         case 0:
+            ESP_LOGI(TAG, "rgb_switch: on");
             lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
-            set_rgb_switch(UI_CALLER, 0);
+            set_rgb_switch(UI_CALLER, 1);
 
             break;
         case 1:
+            ESP_LOGI(TAG, "rgb_switch: off");
             lv_obj_clear_state(ui_setrgbsw, LV_STATE_CHECKED);
-            set_rgb_switch(UI_CALLER, 1);
+            set_rgb_switch(UI_CALLER, 0);
 
             break;
 
@@ -1081,6 +1084,7 @@ void sliderr_cb(lv_event_t *e)
                 break;
 
             case 1:
+                ESP_LOGI(TAG, "slider set reset factory##");
                 set_reset_factory(UI_CALLER, 0);
                 break;
 
