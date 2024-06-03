@@ -112,6 +112,8 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
 
 void board_init(void)
 {
+    sscma_client_handle_t sscma_client;
+
     //nvs key-value storage
     storage_init();
     factory_info_init();
@@ -124,7 +126,12 @@ void board_init(void)
     assert(lvgl_disp != NULL);
     bsp_rgb_init();
     bsp_codec_init();
-    bsp_sscma_client_init();
+
+    sscma_client = bsp_sscma_client_init();
+    if (sscma_client) {
+        ESP_ERROR_CHECK_WITHOUT_ABORT(sscma_client_init(sscma_client));
+    }
+    
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
 }
