@@ -210,6 +210,7 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
         lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_move_background(ui_image);
+        lv_obj_move_foreground(ui_viewlivp);
         lv_obj_move_foreground(ui_viewlivp2);
 
         // alarm indicator animation start

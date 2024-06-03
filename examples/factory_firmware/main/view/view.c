@@ -206,9 +206,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     }
         
                 } else if( p_st->is_connected ) {
-                    p_src = &ui_img_no_wifi_png;
-                } else {
                     p_src = &ui_img_wifi_abnormal_png;
+                } else {
+                    p_src = &ui_img_no_wifi_png;
                 }
                 lv_img_set_src(ui_mainwifi , (void *)p_src);
                 break;
@@ -231,6 +231,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }else if(* wifi_config_sync == 3)
                 {
                     bindFinish();
+                    wifi_page_id = 1;
                     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
                     _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_Vir_screen_init);
                 }else if(* wifi_config_sync == 4)

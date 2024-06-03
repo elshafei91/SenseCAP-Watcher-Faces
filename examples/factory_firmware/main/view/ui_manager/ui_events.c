@@ -329,6 +329,7 @@ void virtc_cb(lv_event_t *e)
 
 void virtsl_cb(lv_event_t *e)
 {
+    lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
     lv_group_add_obj(g_main, ui_Page_Vir);
     create_timer(0);
 }
@@ -405,14 +406,20 @@ void arr1c_cb(lv_event_t *e)
     Page_ConnAPP_BLE();
 }
 
-void arr1f_cb(lv_event_t *e) { }
+void arr1f_cb(lv_event_t *e) 
+{
+    // Page_ConnAPP_BLE();
+}
 
 void arr2c_cb(lv_event_t *e)
 {
     Page_ConnAPP_Mate();
 }
 
-void arr2f_cb(lv_event_t *e) { }
+void arr2f_cb(lv_event_t *e) 
+{ 
+    // Page_ConnAPP_Mate();
+}
 
 void wifichange_cb(lv_event_t *e)
 {
@@ -931,19 +938,15 @@ void setwific_cb(lv_event_t *e)
     ssid_string[sizeof(ssid_string) - 1] = '\0';
     lv_label_set_text(ui_wifissid, ssid_string);
     // binded
-    if (wifi_page_id)
+    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+    lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ui_wifiicon);
+    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
+
+    if (!wifi_page_id)
     {
-        lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
-        lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(ui_wifiicon);
-        lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
-    }
-    else
-    {
-        // unbinded
-        lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
-        Page_ConnAPP_Mate();
+        lv_label_set_text(ui_wifissid, "None");
     }
 }
 
@@ -954,14 +957,14 @@ void setblec_cb(lv_event_t *e)
     switch (btn_state)
     {
         case 0:
-            lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
+            lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
             // ESP_LOGI(TAG, "ble_btn_status: off");
-            set_ble_status(UI_CALLER, 0);
+            set_ble_status(UI_CALLER, 1);
             break;
         case 1:
-            lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+            lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
             // ESP_LOGI(TAG, "ble_btn_status: on");
-            set_ble_status(UI_CALLER, 1);
+            set_ble_status(UI_CALLER, 0);
             break;
 
         default:
