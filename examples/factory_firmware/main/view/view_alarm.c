@@ -142,6 +142,7 @@ _exit:
 int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 {
     if((!first_use) && (guide_step != 3)){return 0;}
+    if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive)){return 0;}
     // for switch avatar emoticon
     emoticon_disp_id = 1;
     // send focused event to call function
