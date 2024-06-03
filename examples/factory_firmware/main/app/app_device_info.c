@@ -213,7 +213,7 @@ void init_brightness_from_nvs()
     }
 }
 
-void init_soud_from_nvs()
+void init_sound_from_nvs()
 {
     size_t size = sizeof(sound_value);
     esp_err_t ret = storage_read(SOUND_STORAGE_KEY, &sound_value, &size);
@@ -945,11 +945,11 @@ void app_device_info_task(void *pvParameter)
 
     init_sn_from_nvs();
     init_eui_from_nvs();
+    init_batchid_from_nvs();
     init_server_code_from_nvs();
-    init_ai_service_param_from_nvs();
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
-    init_soud_from_nvs();
+    init_sound_from_nvs();
     init_cloud_service_switch_from_nvs();
     init_ai_service_param_from_nvs();
     init_reset_factory_switch_from_nvs();

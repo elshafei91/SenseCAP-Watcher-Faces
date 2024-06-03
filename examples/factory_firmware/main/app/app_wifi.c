@@ -83,7 +83,7 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
         case WIFI_EVENT_STA_START: {
             ESP_LOGI(TAG, "wifi event: WIFI_EVENT_STA_START");
             struct view_data_wifi_st st;
-            memset(&st, 0, sizeof(st));
+            __wifi_st_get(&st);
             st.is_connected = false;
             st.is_network = false;
             st.is_connecting = true;
@@ -777,6 +777,7 @@ int app_wifi_init(void)
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_start());
         wifi_table_element_connected.past_connected=true;
+        __wifi_st_set(&wifi_table_element_connected);
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
     }
     else
