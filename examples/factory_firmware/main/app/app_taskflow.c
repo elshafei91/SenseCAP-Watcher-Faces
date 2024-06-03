@@ -46,14 +46,14 @@ const char local_taskflow_gesture[] = \
 			\"model_type\": 3,    \  
 			\"modes\": 0,    \  
 			\"conditions\": [{    \  
-				\"class\": \"scissors\",    \  
+				\"class\": \"paper\",    \  
 				\"mode\": 1,    \  
 				\"type\": 2,    \  
 				\"num\": 0    \  
 			}],    \  
 			\"conditions_combo\": 0,    \  
 			\"silent_period\": {    \  
-				\"silence_duration\": 5    \  
+				\"silence_duration\": 2    \  
 			},    \  
 			\"output_type\": 0,    \  
 			\"shutter\": 0    \  
@@ -83,7 +83,7 @@ const char local_taskflow_gesture[] = \
 			\"rgb\": 1,    \
 			\"img\": 0,    \  
 			\"text\": 0,    \    
-			\"duration\": 5    \  
+			\"duration\": 1    \  
 		},    \  
 		\"wires\": []    \  
 	}, {    \
@@ -118,10 +118,15 @@ const char local_taskflow_pet[] = \
 				\"mode\": 1,    \  
 				\"type\": 2,    \  
 				\"num\": 0    \  
+			},{    \  
+				\"class\": \"cat\",    \  
+				\"mode\": 1,    \  
+				\"type\": 2,    \  
+				\"num\": 0    \  
 			}],    \  
-			\"conditions_combo\": 0,    \  
+			\"conditions_combo\": 1,    \  
 			\"silent_period\": {    \  
-				\"silence_duration\": 5    \  
+				\"silence_duration\": 2    \  
 			},    \  
 			\"output_type\": 0,    \  
 			\"shutter\": 0    \  
@@ -151,7 +156,7 @@ const char local_taskflow_pet[] = \
 			\"rgb\": 1,    \
 			\"img\": 0,    \  
 			\"text\": 0,    \   
-			\"duration\": 5    \  
+			\"duration\": 1    \  
 		},    \  
 		\"wires\": []    \  
 	}, {    \
@@ -188,7 +193,7 @@ const char local_taskflow_human[] = \
 			}],    \  
 			\"conditions_combo\": 0,    \  
 			\"silent_period\": {    \  
-				\"silence_duration\": 5    \  
+				\"silence_duration\": 2    \  
 			},    \  
 			\"output_type\": 0,    \  
 			\"shutter\": 0    \  
@@ -218,7 +223,7 @@ const char local_taskflow_human[] = \
 			\"rgb\": 1,    \
 			\"img\": 0,    \  
 			\"text\": 0,    \  
-			\"duration\": 5    \  
+			\"duration\": 1    \  
 		},    \  
 		\"wires\": []    \  
 	}, {    \
