@@ -63,6 +63,8 @@ int reset_factory_switch_past = 0;
 int time_automatic = 0;
 int time_automatic_past = 0;
 
+static sscma_client_info_t *himax_info;
+
 // ai service ip for mqtt
 ai_service_pack ai_service;
 ai_service_pack ai_service_past;
@@ -955,7 +957,14 @@ void app_device_info_task(void *pvParameter)
     init_time_automatic_switch_from_nvs();
 
     g_device_status.battery_per = bsp_battery_get_percent();
-    g_device_status.himax_fw_version = tf_module_ai_camera_himax_version_get();
+
+
+    if (sscma_client_get_info( bsp_sscma_client_init(), &himax_info, true) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get info");
+    } else {
+        g_device_status.himax_fw_version = himax_info->fw_ver;
+    }
+    g_device_status.himax_fw_version = himax_info->fw_ver;
 
     // get spiffs and sdcard status
     __try_check_sdcard_flash();

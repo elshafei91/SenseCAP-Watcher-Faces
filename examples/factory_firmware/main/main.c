@@ -123,6 +123,7 @@ void board_init(void)
     assert(lvgl_disp != NULL);
     bsp_rgb_init();
     bsp_codec_init();
+    bsp_sscma_client_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
 }
