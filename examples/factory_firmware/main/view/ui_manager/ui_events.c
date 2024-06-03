@@ -329,6 +329,7 @@ void virtc_cb(lv_event_t *e)
 
 void virtsl_cb(lv_event_t *e)
 {
+    lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
     lv_group_add_obj(g_main, ui_Page_Vir);
     create_timer(0);
 }
