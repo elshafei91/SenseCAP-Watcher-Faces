@@ -241,5 +241,6 @@ void view_alarm_off(uint8_t task_down)
     if(task_view_current == 0 && task_down == 0)
     {
         _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        lv_group_focus_obj(ui_Page_ViewAva);
     }
 }
