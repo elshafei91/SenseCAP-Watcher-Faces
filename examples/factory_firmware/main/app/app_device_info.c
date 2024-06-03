@@ -478,7 +478,7 @@ static esp_err_t __set_rgb_switch()
     xSemaphoreTake(MUTEX_rgb_switch, portMAX_DELAY);
     if (rgb_switch_past != rgb_switch)
     {
-        ESP_RETURN_ON_ERROR(storage_write(BRIGHTNESS_STORAGE_KEY, &brightness, sizeof(brightness)), TAG, "set_brightness cfg write err");
+        ESP_RETURN_ON_ERROR(storage_write(RGB_SWITCH_STORAGE_KEY, &rgb_switch, sizeof(rgb_switch)), TAG, "set_brightness cfg write err");
         set_rgb_with_priority(AT_CMD_CALLER, rgb_switch == 1 ? on : off);
         rgb_switch_past = rgb_switch;
         ESP_LOGD(TAG, "set_rgb_switch done: %d", rgb_switch);
