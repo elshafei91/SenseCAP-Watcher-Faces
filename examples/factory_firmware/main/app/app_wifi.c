@@ -83,10 +83,10 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
         case WIFI_EVENT_STA_START: {
             ESP_LOGI(TAG, "wifi event: WIFI_EVENT_STA_START");
             struct view_data_wifi_st st;
+            memset(&st, 0, sizeof(st));
             st.is_connected = false;
             st.is_network = false;
             st.is_connecting = true;
-            memset(st.ssid, 0, sizeof(st.ssid));
             st.rssi = 0;
             __wifi_st_set(&st);
 
@@ -642,9 +642,6 @@ int set_wifi_config(wifi_config *config)
             strncpy(outer_config.ssid, config->ssid, sizeof(outer_config.ssid) - 1);
             outer_config.ssid[sizeof(outer_config.ssid) - 1] = '\0';
 
-            ESP_LOGE("AT_CMD_CALLER die 02", "base:%s, memcpy:%s", config->ssid, outer_config.ssid);
-
-
             if (config->password[0] != '\0')
             {
                 outer_config.have_password = 1;
@@ -660,7 +657,7 @@ int set_wifi_config(wifi_config *config)
                 memset(outer_config.password, 0, sizeof(outer_config.password));
             }
 
-            ESP_LOGE("AT_CMD_CALLER", "SSID: %s, Password: %s", outer_config.ssid, outer_config.have_password ? outer_config.password : "No Password");
+            ESP_LOGI("AT_CMD_CALLER", "SSID: %s, Password: %s", outer_config.ssid, outer_config.have_password ? outer_config.password : "No Password");
 
 
             result = esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &outer_config, sizeof(struct view_data_wifi_config), portMAX_DELAY);
@@ -728,7 +725,6 @@ int app_wifi_init(void)
     xTaskCreateStatic(__app_wifi_task, "app_wifi_task", stack_size, NULL, 10, task_stack, &task_tcb);
 
     ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     esp_netif_create_default_wifi_sta();
 
@@ -768,6 +764,7 @@ int app_wifi_init(void)
     wifi_config_t wifi_cfg;
     struct view_data_wifi_st wifi_table_element_connected;
 
+    memset(&wifi_table_element_connected, 0, sizeof(struct view_data_wifi_st));
     esp_wifi_get_config(WIFI_IF_STA, &wifi_cfg);
     // wifi_table_element_connected.= wifi_cfg.sta.password;
     strcpy(wifi_table_element_connected.ssid, (char *)wifi_cfg.sta.ssid);

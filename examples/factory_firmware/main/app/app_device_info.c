@@ -26,7 +26,6 @@
 #include "app_audio.h"
 #include "audio_player.h"
 #include "app_sensecraft.h"
-#include "tf_module_ai_camera.h"
 #include "factory_info.h"
 
 #define APP_DEVICE_INFO_MAX_STACK 4096

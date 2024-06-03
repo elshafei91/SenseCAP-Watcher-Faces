@@ -39,6 +39,7 @@ command_entry *commands = NULL; // Global variable to store the commands
 static StaticTask_t at_task_buffer;
 static StackType_t *at_task_stack = NULL;
 static void hex_to_string(uint8_t *hex, int hex_size, char *output);
+static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data);
 /*------------------network DS----------------------------------------------------------*/
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
@@ -1384,7 +1385,7 @@ AT_Response create_at_response(const char *message)
  * This function sets up the necessary components for handling AT commands, including creating the response queue,
  * initializing semaphores, and initializing tasks and WiFi stacks.
  */
-void AT_cmd_init()
+void app_at_cmd_init()
 {
     create_AT_response_queue();
     init_AT_response_semaphore();
@@ -1392,6 +1393,19 @@ void AT_cmd_init()
     init_at_cmd_task();
     initWiFiStack(&wifiStack_scanned, 10);
     initWiFiStack(&wifiStack_connected, 10);
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    VIEW_EVENT_BASE, 
+                                                    VIEW_EVENT_WIFI_ST, 
+                                                    __view_event_handler, 
+                                                    NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    VIEW_EVENT_BASE, 
+                                                    VIEW_EVENT_TASK_FLOW_STATUS, 
+                                                    __view_event_handler, 
+                                                    NULL));
+
 }
 
 /**
@@ -1426,30 +1440,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
     struct view_data_wifi_st *p_cfg;
     switch (id)
     {
-        case VIEW_EVENT_WIFI_LIST_REQ:
-            p_cfg = (struct view_data_wifi_config *)event_data;
-            pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { p_cfg->ssid, "", "" });
-        case VIEW_EVENT_WIFI_LIST:
-            p_cfg = (struct view_data_wifi_config *)event_data;
-            char *authmode_s;
-            pushWiFiStack(&wifiStack_connected, (WiFiEntry) { "Network6", "-120", "WPA2" });
-            if (p_cfg->authmode == WIFI_AUTH_WEP)
-            {
-                authmode_s = "WEP";
-            }
-            else if (p_cfg->authmode == WIFI_AUTH_WPA_PSK)
-            {
-                authmode_s = "WPA_PSK";
-            }
-            else if (p_cfg->authmode == WIFI_AUTH_WPA2_PSK)
-            {
-                authmode_s = "WPA2_PSK";
-            }
-            else
-            {
-                authmode_s = "NONE";
-            }
-            pushWiFiStack(&wifiStack_connected, (WiFiEntry) { p_cfg->ssid, p_cfg->rssi, authmode_s });
         case VIEW_EVENT_WIFI_ST:
             static bool fist = true;
             ESP_LOGI("AT_CMD_EVENT_READ:", "event: VIEW_EVENT_WIFI_ST");
@@ -1463,11 +1453,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
                 network_connect_flag = 0;
             }
             break;
-        case VIEW_EVENT_WIFI_CONNECT: {
-            ESP_LOGI("", "event: VIEW_EVENT_WIFI_CONNECT");
-            struct view_data_wifi_config *p_cfg = (struct view_data_wifi_config *)event_data;
-            break;
-        }
         case VIEW_EVENT_TASK_FLOW_STATUS: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STATUS");
             struct view_data_taskflow_status *p_cfg = (struct view_data_taskflow_status *)event_data;

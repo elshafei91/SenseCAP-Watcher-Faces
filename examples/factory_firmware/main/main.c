@@ -24,6 +24,7 @@
 #include "app_ble.h"
 #include "app_time.h"
 #include "app_cmd.h"
+#include "at_cmd.h"
 #include "app_sensecraft.h"
 #include "app_rgb.h"
 #include "app_device_info.h"
@@ -130,17 +131,19 @@ void board_init(void)
 
 void app_init(void)
 {
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    audio_player_init();
     app_device_info_init();
-    app_wifi_init(); //TODO Network update events may be missed
+    app_sensecraft_init();
+    app_rgb_init();
     app_ota_init();
     app_taskflow_init();
-    app_ble_init();
+    app_wifi_init();
     app_time_init();
-    app_rgb_init();
+    app_at_cmd_init();
+    app_ble_init();
     app_cmd_init();
-    app_sensecraft_init();
- 
-    audio_player_init();
     //app_sr_start(false);
 }
 

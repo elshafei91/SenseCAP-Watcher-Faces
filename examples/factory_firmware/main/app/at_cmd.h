@@ -73,7 +73,7 @@ void handle_taskflow_query_command(char *params); // Taskflow qurey command
 void handle_bind_command(char *params); // Bind command
 
 void init_event_loop_and_task();
-void AT_cmd_init();
+void app_at_cmd_init();
 
 void pushWiFiStack(WiFiStack *stack, WiFiEntry entry);
 void freeWiFiStack(WiFiStack *stack);
