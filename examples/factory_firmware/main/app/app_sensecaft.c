@@ -843,7 +843,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_module_status(intmax_t tasklist_id
                         "\"name\": \"%s\","
                         "\"status\": %d"
                     "}"
-                "],"
+                "]"
             "},"
             "\"timestamp\": %jd"
         "}]"
