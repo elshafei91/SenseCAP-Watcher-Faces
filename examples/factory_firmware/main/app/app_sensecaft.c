@@ -728,7 +728,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id, char *p_str,
             "{"
                 "\"name\": \"task-publish-ack\","
                 "\"value\": {"
-                    "\"code\":0,"
+                    "\"code\":1,"
                     "\"data\": {"
                         "\"tl\": %.*s"
                     "}"
