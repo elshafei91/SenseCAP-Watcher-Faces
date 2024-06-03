@@ -436,6 +436,7 @@ static int __set_brightness()
             ESP_LOGE(TAG, "LCD brightness set err:%d", ret);
             return ret;
         }
+        brightness_past = brightness;
     }
     xSemaphoreGive(MUTEX_brightness);
     return 0;
@@ -634,6 +635,7 @@ static int __set_sound()
             ESP_LOGE(TAG, "sound set err:%d", ret);
             return ret;
         }
+        sound_value_past = sound_value;
     }
     xSemaphoreGive(MUTEX_sound);
     return 0;
@@ -691,6 +693,7 @@ static int __set_cloud_service_switch()
             ESP_LOGE(TAG, "cloud_service_switch cfg write err:%d", ret);
             return ret;
         }
+        cloud_service_switch_past =cloud_service_switch;
     }
     xSemaphoreGive(MUTEX_cloud_service_switch);
     return 0;
@@ -1002,11 +1005,11 @@ void app_device_info_task(void *pvParameter)
         vTaskDelay(100 / portTICK_PERIOD_MS);
         cnt++;
 
-        if (!firstboot_reported && atomic_load(&g_mqttconn))
-        {
-            app_sensecraft_mqtt_report_device_status(&g_device_status);
-            firstboot_reported = true;
-        }
+        // if (!firstboot_reported && atomic_load(&g_mqttconn))
+        // {
+        //     app_sensecraft_mqtt_report_device_status(&g_device_status);
+        //     firstboot_reported = true;
+        // }
 
         if ((cnt % 300) == 0)
         {

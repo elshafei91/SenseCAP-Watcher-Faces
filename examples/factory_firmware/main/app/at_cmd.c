@@ -1140,7 +1140,7 @@ void handle_taskflow_command(char *params)
         size_t output_len;
         base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
         free(result);
-        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, output_len, portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, 4, portMAX_DELAY);
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
