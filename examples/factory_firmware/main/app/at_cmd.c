@@ -680,11 +680,16 @@ void handle_deviceinfo_cfg_command(char *params)
             int rgbswitch_value = rgbswitch->valueint;
             set_rgb_switch(AT_CMD_CALLER, rgbswitch_value);
         }
-        cJSON *soundvolume = cJSON_GetObjectItemCaseSensitive(data, "volume");
+        cJSON *soundvolume = cJSON_GetObjectItemCaseSensitive(data, "sound");
         if (cJSON_IsNumber(soundvolume))
         {
             int volume = soundvolume->valueint;
             set_sound(AT_CMD_CALLER, volume);
+        }
+        cJSON *reset_flag = cJSON_GetObjectItemCaseSensitive(data, "reset");
+        if(cJSON_IsNumber(reset_flag)){
+            int reset_factory_flag =reset_flag->valueint;
+            set_reset_factory(AT_CMD_CALLER, reset_factory_flag);
         }
     }
     else
