@@ -244,6 +244,14 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     else
     {
         ESP_LOGI(TAG, "Command not found\n");
+        cJSON *root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "name", "Command_not_found");
+        cJSON_AddNumberToObject(root, "code", 0);
+        char *json_string = cJSON_Print(root);
+        ESP_LOGI(TAG, "JSON String: %s\n", json_string);
+        AT_Response response = create_at_response(json_string);
+        send_at_response(&response);
+        cJSON_Delete(root);
     }
 }
 
