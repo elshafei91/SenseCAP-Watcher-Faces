@@ -90,7 +90,7 @@ static void __timer_callback(void* p_arg)
     ESP_LOGI(TAG, "audio play finish");
     if( g_handle != NULL) {
         tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)g_handle->p_module;
-        tf_data_image_free(&p_module_ins->audio);
+        tf_data_buf_free(&p_module_ins->audio);
         p_module_ins->is_audio_playing = false;
     }
  }
