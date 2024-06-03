@@ -326,7 +326,7 @@ void virtc_cb(lv_event_t *e)
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
         create_timer(6);    // stop timer
     }else{              // else the device is wifi-configed, then page jump to main page
-        get_reset_factory(UI_CALLER);
+        get_usage_guide(UI_CALLER);
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
         create_timer(6);    // stop timer
     }
@@ -354,7 +354,7 @@ void virb2c_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "virb2c_cb");
     settingInfoInit();
     create_timer(6);
-    get_reset_factory(UI_CALLER);
+    get_usage_guide(UI_CALLER);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
@@ -534,8 +534,8 @@ void ava1c_cb(lv_event_t *e)
     if (guide_step == 2)
     {
         guide_step = 3;
-        set_reset_factory(UI_CALLER, 1);
-        get_reset_factory(UI_CALLER);
+        set_usage_guide(UI_CALLER, 1);
+        get_usage_guide(UI_CALLER);
     }
     Task_end();
 }
@@ -1105,7 +1105,7 @@ void sliderr_cb(lv_event_t *e)
                 break;
 
             case 1:
-                set_reset_factory(UI_CALLER, 0);
+                set_reset_factory();
                 break;
 
             default:
