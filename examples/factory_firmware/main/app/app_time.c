@@ -218,7 +218,10 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             struct view_data_time_cfg *p_zone = (struct view_data_time_cfg *)event_data;
             p_zone->auto_update = 0;
             p_zone->auto_update_zone = 0;
+            __time_cfg_print(p_zone);
             __time_zone_set(p_zone);
+            __time_cfg_save(p_zone);
+            __time_cfg(p_zone, p_zone->set_time); // config;
             break;
         }
         default:

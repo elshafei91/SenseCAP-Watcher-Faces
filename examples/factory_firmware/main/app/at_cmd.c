@@ -244,6 +244,14 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     else
     {
         ESP_LOGI(TAG, "Command not found\n");
+        cJSON *root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "name", "Command_not_found");
+        cJSON_AddNumberToObject(root, "code", 0);
+        char *json_string = cJSON_Print(root);
+        ESP_LOGI(TAG, "JSON String: %s\n", json_string);
+        AT_Response response = create_at_response(json_string);
+        send_at_response(&response);
+        cJSON_Delete(root);
     }
 }
 
@@ -603,6 +611,8 @@ void handle_deviceinfo_cfg_command(char *params)
         {
             int timezone = time_zone->valueint;
             struct view_data_time_cfg time_cfg;
+            memset(&time_cfg, 0, sizeof(time_cfg));
+            get_current_time_cfg(&time_cfg);
             time_cfg.zone = timezone;
             time_cfg.auto_update = true;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
@@ -626,7 +636,10 @@ void handle_deviceinfo_cfg_command(char *params)
             {
                 ESP_LOGI(TAG, "The converted value is %lld\n", value);
                 struct view_data_time_cfg time_cfg_mannual;
+                memset(&time_cfg_mannual, 0, sizeof(time_cfg_mannual));
+                get_current_time_cfg(&time_cfg_mannual);
                 time_cfg_mannual.time = value;
+                time_cfg_mannual.zone = 0;
                 time_cfg_mannual.set_time = true;
                 time_cfg_mannual.auto_update = false;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg_mannual, sizeof(time_cfg_mannual), portMAX_DELAY);
@@ -635,8 +648,22 @@ void handle_deviceinfo_cfg_command(char *params)
         cJSON *time_auto = cJSON_GetObjectItemCaseSensitive(data, "automatic");
         if (cJSON_IsNumber(time_auto))
         {
-            int time_automatic = time_auto->valueint;
-            set_time_automatic(AT_CMD_CALLER, time_automatic);
+            struct view_data_time_cfg time_cfg_auto;
+            memset(&time_cfg_auto, 0, sizeof(time_cfg_auto));
+            get_current_time_cfg(&time_cfg_auto);
+            int time_auto_value = time_auto->valueint;
+            printf("time_auto check%d", time_auto_value);
+            if (time_auto_value == 1)
+            {
+                time_cfg_auto.auto_update = true;
+            }
+            else
+            {
+                time_cfg_auto.auto_update = false;
+                time_cfg_auto.zone = 0;
+            }
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg_auto, sizeof(time_cfg_auto), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg_auto, sizeof(time_cfg_auto), portMAX_DELAY);
         }
         // get brightness item
         cJSON *brightness = cJSON_GetObjectItemCaseSensitive(data, "brightness");
@@ -653,11 +680,16 @@ void handle_deviceinfo_cfg_command(char *params)
             int rgbswitch_value = rgbswitch->valueint;
             set_rgb_switch(AT_CMD_CALLER, rgbswitch_value);
         }
-        cJSON *soundvolume = cJSON_GetObjectItemCaseSensitive(data, "volume");
+        cJSON *soundvolume = cJSON_GetObjectItemCaseSensitive(data, "sound");
         if (cJSON_IsNumber(soundvolume))
         {
             int volume = soundvolume->valueint;
             set_sound(AT_CMD_CALLER, volume);
+        }
+        cJSON *reset_flag = cJSON_GetObjectItemCaseSensitive(data, "reset");
+        if(cJSON_IsNumber(reset_flag)){
+            int reset_factory_flag =reset_flag->valueint;
+            set_reset_factory(AT_CMD_CALLER, reset_factory_flag);
         }
     }
     else
@@ -668,8 +700,6 @@ void handle_deviceinfo_cfg_command(char *params)
     cJSON_Delete(json);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-    int brightness_value_resp = get_brightness(AT_CMD_CALLER);
-    int sound_value_resp = get_sound(AT_CMD_CALLER);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "deviceinfo=");
@@ -715,11 +745,10 @@ void handle_deviceinfo_command(char *params)
     struct view_data_time_cfg cfg;
     get_current_time_cfg(&cfg);
     char timestamp_str[20];
-    snprintf(timestamp_str, sizeof(timestamp_str), "%ld", cfg.time);
+    snprintf(timestamp_str, sizeof(timestamp_str), "%lld", cfg.time);
     ESP_LOGI(TAG, "Current time configuration:\n");
     ESP_LOGI(TAG, "zone: %d\n", cfg.zone);
-    // ESP_LOGE(TAG,"get himax version:%s",himax_version);
-    int time_auto = get_time_automatic(AT_CMD_CALLER);
+
     cJSON *root = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, "name", "deviceinfo?");
@@ -736,7 +765,7 @@ void handle_deviceinfo_command(char *params)
     cJSON_AddStringToObject(data, "eui", (const char *)eui_rsp);
     cJSON_AddStringToObject(data, "blemac", (const char *)bt_mac_rsp);
     cJSON_AddStringToObject(data, "himaxsoftwareversion", (const char *)himax_version);
-    cJSON_AddNumberToObject(data, "automatic", time_auto);
+    cJSON_AddNumberToObject(data, "automatic", cfg.auto_update);
     cJSON_AddNumberToObject(data, "rgbswitch", rgb_switch);
     cJSON_AddNumberToObject(data, "sound", sound_value_resp);
     cJSON_AddNumberToObject(data, "brightness", brightness_value_resp);
@@ -1140,7 +1169,8 @@ void handle_taskflow_command(char *params)
         size_t output_len;
         base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
         free(result);
-        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, output_len, portMAX_DELAY);
+        printf("send task flow is %s", base64_output);
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, 4, portMAX_DELAY);
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1400,18 +1430,9 @@ void app_at_cmd_init()
     initWiFiStack(&wifiStack_scanned, 10);
     initWiFiStack(&wifiStack_connected, 10);
 
-    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
-                                                    VIEW_EVENT_BASE, 
-                                                    VIEW_EVENT_WIFI_ST, 
-                                                    __view_event_handler, 
-                                                    NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL));
 
-    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
-                                                    VIEW_EVENT_BASE, 
-                                                    VIEW_EVENT_TASK_FLOW_STATUS, 
-                                                    __view_event_handler, 
-                                                    NULL));
-
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STATUS, __view_event_handler, NULL));
 }
 
 /**

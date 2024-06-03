@@ -24,8 +24,7 @@ typedef enum {
     on
 }rgb_service_t;
 
-extern SemaphoreHandle_t rgb_semaphore;
-extern SemaphoreHandle_t __rgb_semaphore;
+
 
 int app_rgb_init(void);
 void set_rgb_with_priority(int caller, int service);
