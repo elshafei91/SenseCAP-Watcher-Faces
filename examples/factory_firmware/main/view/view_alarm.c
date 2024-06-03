@@ -142,6 +142,7 @@ _exit:
 int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 {
     if((!first_use) && (guide_step != 3)){return 0;}
+    if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive)){return 0;}
     // for switch avatar emoticon
     emoticon_disp_id = 1;
     // send focused event to call function
@@ -149,9 +150,10 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     alarm_timer_start(alarm_st->duration);
 
     // turn the page to view live
-    if ((lv_scr_act() != ui_Page_ViewLive) && (lv_scr_act() != ui_Page_OTA)){
+    if ((lv_scr_act() != ui_Page_ViewLive)){
         task_view_current = 0;
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+        lv_group_focus_obj(ui_Page_ViewLive);
     }else
     {
         task_view_current = 1;
@@ -232,11 +234,13 @@ void view_alarm_off(uint8_t task_down)
     lv_obj_add_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
     // for switch avatar emoticon
     emoticon_disp_id = 0;
+    if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive)){return ;}
     lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
 
     // if the page is avatar when the alarm is triggered, turn the page back when the alarm is off
     if(task_view_current == 0 && task_down == 0)
     {
         _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        lv_group_focus_obj(ui_Page_ViewAva);
     }
 }

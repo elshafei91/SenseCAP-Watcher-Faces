@@ -52,8 +52,8 @@ int brightness_past = 100;
 int sound_value = 50;
 int sound_value_past = 50;
 
-int rgb_switch = 0;
-int rgb_switch_past = 0;
+int rgb_switch = 1;
+int rgb_switch_past = 1;
 
 int cloud_service_switch = 1;
 int cloud_service_switch_past = 1;
@@ -120,7 +120,7 @@ void init_sn_from_nvs()
     string_to_byte_array(sn_str, SN, 9);
 }
 
-uint8_t eui[8]={0};
+uint8_t eui[8] = { 0 };
 void init_eui_from_nvs()
 {
     const char *eui_str = factory_info_eui_get();
@@ -179,10 +179,26 @@ void init_rgb_switch_from_nvs()
     {
         ESP_LOGI(TAG, "rgb_switch value loaded from NVS: %d", rgb_switch);
         rgb_switch_past = rgb_switch;
+        if (rgb_switch == 1)
+        {
+            set_rgb_with_priority(UI_CALLER, on);
+        }
+        else
+        {
+            set_rgb_with_priority(UI_CALLER, off);
+        }
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
         ESP_LOGW(TAG, "No rgb_switch value found in NVS. Using default: %d", rgb_switch);
+        if (rgb_switch == 1)
+        {
+            set_rgb_with_priority(UI_CALLER, on);
+        }
+        else
+        {
+            set_rgb_with_priority(UI_CALLER, off);
+        }
     }
     else
     {
@@ -543,14 +559,14 @@ static int __set_rgb_switch()
     if (rgb_switch_past != rgb_switch)
     {
         esp_err_t ret = storage_write(RGB_SWITCH_STORAGE_KEY, &rgb_switch, sizeof(rgb_switch));
-        ESP_LOGD(TAG, "rgb_switch: %d\n", rgb_switch);
+        ESP_LOGI(TAG, "rgb_switch: %d\n", rgb_switch);
         if (rgb_switch == 1)
         {
-            set_rgb_with_priority(AT_CMD_CALLER, on);
+            set_rgb_with_priority(UI_CALLER, on);
         }
         else
         {
-            set_rgb_with_priority(AT_CMD_CALLER, off);
+            set_rgb_with_priority(UI_CALLER, off);
         }
         if (ret != ESP_OK)
         {
@@ -768,6 +784,7 @@ int *get_reset_factory(int caller)
     return result;
 }
 
+static int reset_factory_flag = 0;
 uint8_t *set_reset_factory(int caller, int value)
 {
     if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
@@ -778,6 +795,7 @@ uint8_t *set_reset_factory(int caller, int value)
 
     reset_factory_switch_past = reset_factory_switch;
     reset_factory_switch = value;
+    if((caller==UI_CALLER)&&(value ==0))reset_factory_flag = value;
     xSemaphoreGive(MUTEX_reset_factory);
     return NULL;
 }
@@ -790,10 +808,10 @@ uint8_t *__set_reset_factory()
         return NULL;
     }
 
-    if (reset_factory_switch_past != reset_factory_switch)
+    if ((reset_factory_switch_past != reset_factory_switch) || (reset_factory_flag == 1))
     {
         ESP_LOGI(TAG, "start to erase nvs storage ...");
-        if (reset_factory_switch_past == 1)
+        if ((reset_factory_switch_past == 1) || (reset_factory_flag == 1))
         {
             storage_erase();
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
@@ -941,6 +959,9 @@ void app_device_info_task(void *pvParameter)
     uint32_t cnt = 0;
     bool firstboot_reported = false, himax_version_got = false;
     static uint8_t last_charge_st = 0x66, last_sdcard_inserted = 0x88, sdcard_debounce = 0x99;
+
+    rgb_semaphore = xSemaphoreCreateMutex();
+    __rgb_semaphore = xSemaphoreCreateMutex();
 
     MUTEX_brightness = xSemaphoreCreateMutex();
     MUTEX_SN = xSemaphoreCreateMutex();
