@@ -960,9 +960,6 @@ void app_device_info_task(void *pvParameter)
     bool firstboot_reported = false, himax_version_got = false;
     static uint8_t last_charge_st = 0x66, last_sdcard_inserted = 0x88, sdcard_debounce = 0x99;
 
-    rgb_semaphore = xSemaphoreCreateMutex();
-    __rgb_semaphore = xSemaphoreCreateMutex();
-
     MUTEX_brightness = xSemaphoreCreateMutex();
     MUTEX_SN = xSemaphoreCreateMutex();
     MUTEX_software_version = xSemaphoreCreateMutex();

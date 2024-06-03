@@ -668,8 +668,6 @@ void handle_deviceinfo_cfg_command(char *params)
     cJSON_Delete(json);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-    int brightness_value_resp = get_brightness(AT_CMD_CALLER);
-    int sound_value_resp = get_sound(AT_CMD_CALLER);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "deviceinfo=");
@@ -715,7 +713,7 @@ void handle_deviceinfo_command(char *params)
     struct view_data_time_cfg cfg;
     get_current_time_cfg(&cfg);
     char timestamp_str[20];
-    snprintf(timestamp_str, sizeof(timestamp_str), "%ld", cfg.time);
+    snprintf(timestamp_str, sizeof(timestamp_str), "%lld", cfg.time);
     ESP_LOGI(TAG, "Current time configuration:\n");
     ESP_LOGI(TAG, "zone: %d\n", cfg.zone);
     // ESP_LOGE(TAG,"get himax version:%s",himax_version);
