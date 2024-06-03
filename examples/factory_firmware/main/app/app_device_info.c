@@ -769,6 +769,7 @@ int *get_reset_factory(int caller)
     return result;
 }
 
+static int reset_factory_flag =0;
 uint8_t *set_reset_factory(int caller, int value)
 {
     if (xSemaphoreTake(MUTEX_reset_factory, portMAX_DELAY) != pdTRUE)
@@ -779,6 +780,7 @@ uint8_t *set_reset_factory(int caller, int value)
 
     reset_factory_switch_past = reset_factory_switch;
     reset_factory_switch = value;
+    reset_factory_flag = value;
     xSemaphoreGive(MUTEX_reset_factory);
     return NULL;
 }
@@ -790,11 +792,11 @@ uint8_t *__set_reset_factory()
         ESP_LOGE(TAG, "reset_factory_switch: MUTEX_reset_factory take failed");
         return NULL;
     }
-
-    if (reset_factory_switch_past != reset_factory_switch)
+    
+    if ((reset_factory_switch_past != reset_factory_switch)||(reset_factory_flag ==1))
     {
         ESP_LOGI(TAG, "start to erase nvs storage ...");
-        if (reset_factory_switch_past == 1)
+        if ((reset_factory_switch_past == 1)||(reset_factory_flag==1))
         {
             storage_erase();
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
