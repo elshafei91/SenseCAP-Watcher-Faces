@@ -353,15 +353,16 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
     status.engine_status = engine_status;
     
     if( p_err_module != NULL ) {
+        ESP_LOGI(TAG, "engine_status:%d, module:%s", engine_status, p_err_module);
         strncpy(status.module_name, p_err_module, sizeof(status.module_name) - 1);
         status.module_status = -1; // general error
         p_module_name = p_err_module;
     } else {
+        ESP_LOGI(TAG, "engine_status:%d", engine_status);
         status.module_status = 0;  // no error
         strncpy(status.module_name, "unknown", sizeof(status.module_name) - 1);
         p_module_name = "unknown";
     }
-
 
     //notify UI and ble
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
@@ -549,6 +550,61 @@ static void __view_event_handler(void* handler_args,
 
 }
 
+static int __taskflow_stop_check(struct app_taskflow * p_taskflow, char *p_task_flow)
+{
+    bool need_stop = false;
+    cJSON *json_root = cJSON_Parse(p_task_flow);
+    if( json_root == NULL) {
+        ESP_LOGE(TAG, "Failed to parse cJSON");
+        free(p_task_flow);
+        return -1;
+    }
+
+    cJSON *task_flow_json = cJSON_GetObjectItem(json_root, "task_flow");
+    if( task_flow_json == NULL) {
+        need_stop = true;
+    } else {
+        need_stop = false;
+    }
+    if( need_stop) {
+        free(p_task_flow);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
+    }
+    cJSON_Delete(json_root);
+
+    if ( need_stop) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+static void __taskflow_start(struct app_taskflow * p_taskflow, char *p_task_flow)
+{
+
+    esp_err_t ret = ESP_OK;
+    size_t len = strlen(p_task_flow);
+    char uuid[37];
+    UUIDGen(uuid);
+
+    tf_engine_flow_set(p_task_flow, len);
+    __task_flow_save(p_task_flow, len); 
+
+    if( p_taskflow->mqtt_connect_flag ) {
+        ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
+        if( ret != ESP_OK ) {
+            ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+        }
+    } else {
+        p_taskflow->taskflow_need_report = true;
+    }
+
+    free(p_task_flow);
+
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                            VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
+}
+
 static void __ctrl_event_handler(void* handler_args, 
                                  esp_event_base_t base, 
                                  int32_t id, 
@@ -578,83 +634,60 @@ static void __ctrl_event_handler(void* handler_args,
         }
         case CTRL_EVENT_TASK_FLOW_START_BY_BLE: {
             ESP_LOGI(TAG, "event: CTRL_EVENT_TASK_FLOW_START_BY_BLE");
-            esp_err_t ret = ESP_OK;
-            char *p_task_flow = *(char **)event_data;
-            size_t len = strlen(p_task_flow);
-            char uuid[37];
-            UUIDGen(uuid);
-
-            tf_engine_flow_set(p_task_flow, len);
-            __task_flow_save(p_task_flow, len); 
-
-            if( p_taskflow->mqtt_connect_flag ) {
-                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
-                if( ret != ESP_OK ) {
-                    ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
-                }
-            } else {
-                p_taskflow->taskflow_need_report = true;
+            char *p_task_flow_str = *(char **)event_data;
+            int stop_flag = 0;
+            if(p_task_flow_str == NULL) {
+                ESP_LOGE(TAG, "BLE taskflow is NULL");
+                break;
             }
-
-            free(p_task_flow);
-
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
-                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
-
+            stop_flag = __taskflow_stop_check(p_taskflow, p_task_flow_str);
+            if( stop_flag == -1 ) {
+                ESP_LOGI(TAG, "BLE taskflow data error");
+                break;
+            } else if (stop_flag == 1) {
+                ESP_LOGI(TAG, "BLE taskflow stop");
+                break;
+            }
+            __taskflow_start(p_taskflow, p_task_flow_str);
             break;
         }
         case CTRL_EVENT_TASK_FLOW_START_BY_SR:
         {
-            ESP_LOGI(TAG, "event: CTRL_EVENT_TASK_FLOW_START_BY_SR");
-            esp_err_t ret = ESP_OK;
-            char *p_task_flow = *(char **)event_data;
-            size_t len = strlen(p_task_flow);
-            char uuid[37];
-            UUIDGen(uuid);
-
-            tf_engine_flow_set(p_task_flow, len);
-            __task_flow_save(p_task_flow, len); 
-
-            if( p_taskflow->mqtt_connect_flag ) {
-                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
-                if( ret != ESP_OK ) {
-                    ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
-                }
-            } else {
-                p_taskflow->taskflow_need_report = true;
+            ESP_LOGI(TAG, "event: CTRL_EVENT_TASK_FLOW_START_BY_SR");            
+            char *p_task_flow_str = *(char **)event_data;
+            int stop_flag = 0;
+            if(p_task_flow_str == NULL) {
+                ESP_LOGE(TAG, "SR taskflow is NULL");
+                break;
             }
-
-            free(p_task_flow);
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
-                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
+            stop_flag = __taskflow_stop_check(p_taskflow, p_task_flow_str);
+            if( stop_flag == -1 ) {
+                ESP_LOGI(TAG, "SR taskflow data error");
+                break;
+            } else if (stop_flag == 1) {
+                ESP_LOGI(TAG, "SR taskflow stop");
+                break;
+            }
+            __taskflow_start(p_taskflow, p_task_flow_str);
             break;
         }
         case CTRL_EVENT_TASK_FLOW_START_BY_CMD: {
-            
-            ESP_LOGI(TAG, "event: CTRL_EVENT_TASK_FLOW_START_BY_CMD");
-            esp_err_t ret = ESP_OK;
-            char *p_task_flow = *(char **)event_data;
-            size_t len = strlen(p_task_flow);
-            char uuid[37];
-            UUIDGen(uuid);
-
-            tf_engine_flow_set(p_task_flow, len);
-            __task_flow_save(p_task_flow, len); 
-
-            if( p_taskflow->mqtt_connect_flag ) {
-                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_task_flow, len);
-                if( ret != ESP_OK ) {
-                    ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
-                }
-            } else {
-                p_taskflow->taskflow_need_report = true;
+            ESP_LOGI(TAG, "event: CTRL_EVENT_TASK_FLOW_START_BY_CMD");            
+            char *p_task_flow_str = *(char **)event_data;
+            int stop_flag = 0;
+            if(p_task_flow_str == NULL) {
+                ESP_LOGE(TAG, "CMD taskflow is NULL");
+                break;
             }
-
-            free(p_task_flow);
-
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
-                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
-
+            stop_flag = __taskflow_stop_check(p_taskflow, p_task_flow_str);
+            if( stop_flag == -1 ) {
+                ESP_LOGI(TAG, "CMD taskflow data error");
+                break;
+            } else if (stop_flag == 1) {
+                ESP_LOGI(TAG, "CMD taskflow stop");
+                break;
+            }
+            __taskflow_start(p_taskflow, p_task_flow_str);
             break;
         }
         default:
