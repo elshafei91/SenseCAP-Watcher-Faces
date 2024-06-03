@@ -531,12 +531,6 @@ void viewasul_cb(lv_event_t *e)
 void ava1c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "ava1c_cb");
-    if (guide_step == 2)
-    {
-        guide_step = 3;
-        set_usage_guide(UI_CALLER, 1);
-        get_usage_guide(UI_CALLER);
-    }
     Task_end();
 }
 
@@ -554,6 +548,12 @@ void avagc_cb(lv_event_t *e)
         lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
         lv_event_send(ui_Page_ViewAva, LV_EVENT_CLICKED, NULL);
+        guide_step = 3;
+        set_usage_guide(UI_CALLER, 1);
+        get_usage_guide(UI_CALLER);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_Page_ViewAva);
+        lv_group_add_obj(g_main, ui_Page_ViewLive);
     }
 }
 
