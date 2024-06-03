@@ -114,7 +114,7 @@ void init_sn_from_nvs()
     string_to_byte_array(sn_str, SN, 9);
 }
 
-uint8_t eui[8]={0};
+uint8_t eui[8] = { 0 };
 void init_eui_from_nvs()
 {
     const char *eui_str = factory_info_eui_get();
@@ -173,6 +173,13 @@ void init_rgb_switch_from_nvs()
     {
         ESP_LOGI(TAG, "rgb_switch value loaded from NVS: %d", rgb_switch);
         rgb_switch_past = rgb_switch;
+        if (rgb_switch == 1)
+        {
+            set_rgb_with_priority(AT_CMD_CALLER, on);
+        }
+        else {
+            set_rgb_with_priority(AT_CMD_CALLER, off); 
+        }
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
@@ -957,10 +964,12 @@ void app_device_info_task(void *pvParameter)
 
     g_device_status.battery_per = bsp_battery_get_percent();
 
-
-    if (sscma_client_get_info( bsp_sscma_client_init(), &himax_info, true) != ESP_OK) {
+    if (sscma_client_get_info(bsp_sscma_client_init(), &himax_info, true) != ESP_OK)
+    {
         ESP_LOGE(TAG, "Failed to get info");
-    } else {
+    }
+    else
+    {
         g_device_status.himax_fw_version = himax_info->fw_ver;
     }
     g_device_status.himax_fw_version = himax_info->fw_ver;
