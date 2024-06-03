@@ -332,6 +332,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_OTA_STATUS:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
                 _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 if(ota_st->status == 0)
