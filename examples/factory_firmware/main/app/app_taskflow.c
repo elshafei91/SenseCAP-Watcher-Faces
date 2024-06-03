@@ -46,14 +46,14 @@ const char local_taskflow_gesture[] = \
 			\"model_type\": 3,    \  
 			\"modes\": 0,    \  
 			\"conditions\": [{    \  
-				\"class\": \"scissors\",    \  
+				\"class\": \"paper\",    \  
 				\"mode\": 1,    \  
 				\"type\": 2,    \  
 				\"num\": 0    \  
 			}],    \  
 			\"conditions_combo\": 0,    \  
 			\"silent_period\": {    \  
-				\"silence_duration\": 5    \  
+				\"silence_duration\": 2    \  
 			},    \  
 			\"output_type\": 0,    \  
 			\"shutter\": 0    \  
@@ -83,7 +83,7 @@ const char local_taskflow_gesture[] = \
 			\"rgb\": 1,    \
 			\"img\": 0,    \  
 			\"text\": 0,    \    
-			\"duration\": 5    \  
+			\"duration\": 1    \  
 		},    \  
 		\"wires\": []    \  
 	}, {    \
@@ -118,10 +118,15 @@ const char local_taskflow_pet[] = \
 				\"mode\": 1,    \  
 				\"type\": 2,    \  
 				\"num\": 0    \  
+			},{    \  
+				\"class\": \"cat\",    \  
+				\"mode\": 1,    \  
+				\"type\": 2,    \  
+				\"num\": 0    \  
 			}],    \  
-			\"conditions_combo\": 0,    \  
+			\"conditions_combo\": 1,    \  
 			\"silent_period\": {    \  
-				\"silence_duration\": 5    \  
+				\"silence_duration\": 2    \  
 			},    \  
 			\"output_type\": 0,    \  
 			\"shutter\": 0    \  
@@ -151,7 +156,7 @@ const char local_taskflow_pet[] = \
 			\"rgb\": 1,    \
 			\"img\": 0,    \  
 			\"text\": 0,    \   
-			\"duration\": 5    \  
+			\"duration\": 1    \  
 		},    \  
 		\"wires\": []    \  
 	}, {    \
@@ -188,7 +193,7 @@ const char local_taskflow_human[] = \
 			}],    \  
 			\"conditions_combo\": 0,    \  
 			\"silent_period\": {    \  
-				\"silence_duration\": 5    \  
+				\"silence_duration\": 2    \  
 			},    \  
 			\"output_type\": 0,    \  
 			\"shutter\": 0    \  
@@ -218,7 +223,7 @@ const char local_taskflow_human[] = \
 			\"rgb\": 1,    \
 			\"img\": 0,    \  
 			\"text\": 0,    \  
-			\"duration\": 5    \  
+			\"duration\": 1    \  
 		},    \  
 		\"wires\": []    \  
 	}, {    \
@@ -357,6 +362,7 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
         p_module_name = "unknown";
     }
 
+
     //notify UI and ble
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_TASK_FLOW_STATUS, &status, sizeof(status), portMAX_DELAY);
@@ -434,11 +440,12 @@ static void __task_flow_module_status_cb(void *p_arg, const char *p_name, int mo
 static void __taskflow_task(void *p_arg)
 {
     struct app_taskflow * p_taskflow = ( struct app_taskflow *)p_arg;
-
+    
+    esp_err_t ret = ESP_OK;
     struct view_data_taskflow_status status;
     bool status_need_report;
     bool taskflow_need_report;
-
+    
     while(1) {
         
         if( p_taskflow->mqtt_connect_flag ) {
@@ -452,7 +459,10 @@ static void __taskflow_task(void *p_arg)
                 if( p_json != NULL ) {
                     len = strlen(p_json);
                     UUIDGen(uuid);
-                    app_sensecraft_mqtt_report_taskflow_ack(uuid, p_json, len);
+                    ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, p_json, len);
+                    if( ret != ESP_OK ) {
+                        ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server"); //TODO retry
+                    }
                     free(p_json);
                 }
                 p_taskflow->taskflow_need_report = false;
@@ -582,6 +592,8 @@ static void __ctrl_event_handler(void* handler_args,
                 if( ret != ESP_OK ) {
                     ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
                 }
+            } else {
+                p_taskflow->taskflow_need_report = true;
             }
 
             free(p_task_flow);
@@ -608,7 +620,10 @@ static void __ctrl_event_handler(void* handler_args,
                 if( ret != ESP_OK ) {
                     ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
                 }
+            } else {
+                p_taskflow->taskflow_need_report = true;
             }
+
             free(p_task_flow);
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
@@ -631,6 +646,8 @@ static void __ctrl_event_handler(void* handler_args,
                 if( ret != ESP_OK ) {
                     ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
                 }
+            } else {
+                p_taskflow->taskflow_need_report = true;
             }
 
             free(p_task_flow);

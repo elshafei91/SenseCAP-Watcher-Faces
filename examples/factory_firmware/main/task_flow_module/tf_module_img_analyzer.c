@@ -16,8 +16,8 @@ static const char *TAG = "tfm.img_analyzer";
 
 #define EVENT_STOP          BIT0
 #define EVENT_STOP_DONE     BIT1 
-#define EVENT_NEED_DELETE   BIT0
-#define EVENT_TASK_DELETED  BIT1 
+#define EVENT_NEED_DELETE   BIT2
+#define EVENT_TASK_DELETED  BIT3 
 
 // #define IMG_ANALYZER_NET_CHECK_ENABLE 
 
@@ -409,6 +409,7 @@ static void img_analyzer_task_destroy( tf_module_img_analyzer_t *p_module_ins)
 {
     xEventGroupSetBits(p_module_ins->event_group, EVENT_NEED_DELETE);
     xEventGroupWaitBits(p_module_ins->event_group, EVENT_TASK_DELETED, 1, 1, portMAX_DELAY);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);  //wait task delete done
     if( p_module_ins->p_task_stack_buf ) {
         tf_free(p_module_ins->p_task_stack_buf);
         p_module_ins->p_task_stack_buf = NULL;
@@ -588,7 +589,7 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
                                                 p_module_ins->p_task_stack_buf,
                                                 p_module_ins->p_task_buf);
     ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
-
+    
     return &p_module_ins->module_serv;
 
 err:
