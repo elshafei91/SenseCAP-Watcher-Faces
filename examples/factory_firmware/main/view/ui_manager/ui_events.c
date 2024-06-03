@@ -954,14 +954,14 @@ void setblec_cb(lv_event_t *e)
     switch (btn_state)
     {
         case 0:
-            lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
+            lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
             // ESP_LOGI(TAG, "ble_btn_status: off");
-            set_ble_status(UI_CALLER, 0);
+            set_ble_status(UI_CALLER, 1);
             break;
         case 1:
-            lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+            lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
             // ESP_LOGI(TAG, "ble_btn_status: on");
-            set_ble_status(UI_CALLER, 1);
+            set_ble_status(UI_CALLER, 0);
             break;
 
         default:
