@@ -16,8 +16,6 @@ void ui_Page_ViewAva_screen_init(void)
     lv_obj_set_width(ui_viewavap, 412);
     lv_obj_set_height(ui_viewavap, 412);
     lv_obj_set_align(ui_viewavap, LV_ALIGN_CENTER);
-    lv_obj_set_flex_flow(ui_viewavap, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(ui_viewavap, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_viewavap, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -27,39 +25,44 @@ void ui_Page_ViewAva_screen_init(void)
     lv_obj_set_style_pad_row(ui_viewavap, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_column(ui_viewavap, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_avabtn1 = lv_btn_create(ui_viewavap);
-    lv_obj_set_width(ui_avabtn1, 150);
-    lv_obj_set_height(ui_avabtn1, 60);
-    lv_obj_set_x(ui_avabtn1, 0);
-    lv_obj_set_y(ui_avabtn1, 1);
-    lv_obj_set_align(ui_avabtn1, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_avabtn1, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
-    lv_obj_clear_flag(ui_avabtn1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_avabtn1, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_avabtn1, lv_color_hex(0x91BF25), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_avabtn1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_color(ui_avabtn1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_opa(ui_avabtn1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_avat1 = lv_label_create(ui_avabtn1);
+    ui_avat1 = lv_label_create(ui_viewavap);
     lv_obj_set_width(ui_avat1, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_avat1, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_avat1, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_avat1, "End");
-    lv_obj_set_style_text_font(ui_avat1, &lv_font_montserrat_28, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(ui_avat1, "End Task?");
+    lv_obj_set_style_text_color(ui_avat1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_avat1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_avat1, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_avabtn1 = lv_btn_create(ui_viewavap);
+    lv_obj_set_width(ui_avabtn1, 100);
+    lv_obj_set_height(ui_avabtn1, 100);
+    lv_obj_set_x(ui_avabtn1, 70);
+    lv_obj_set_y(ui_avabtn1, 110);
+    lv_obj_set_align(ui_avabtn1, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_avabtn1, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_clear_flag(ui_avabtn1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_radius(ui_avabtn1, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_avabtn1, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_avabtn1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_avabtn1, &ui_img_wifiok_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_recolor(ui_avabtn1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_recolor_opa(ui_avabtn1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_color(ui_avabtn1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(ui_avabtn1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_avabtn2 = lv_btn_create(ui_viewavap);
-    lv_obj_set_width(ui_avabtn2, 60);
-    lv_obj_set_height(ui_avabtn2, 60);
-    lv_obj_set_x(ui_avabtn2, -1);
-    lv_obj_set_y(ui_avabtn2, 26);
+    lv_obj_set_width(ui_avabtn2, 100);
+    lv_obj_set_height(ui_avabtn2, 100);
+    lv_obj_set_x(ui_avabtn2, -70);
+    lv_obj_set_y(ui_avabtn2, 110);
     lv_obj_set_align(ui_avabtn2, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_avabtn2, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_avabtn2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_avabtn2, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_avabtn2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_avabtn2, lv_color_hex(0x202124), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_avabtn2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_avabtn2, &ui_img_button_cancel_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_avabtn2, &ui_img_setback_png, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_color(ui_avabtn2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_avabtn2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -68,7 +71,7 @@ void ui_Page_ViewAva_screen_init(void)
     lv_obj_set_height(ui_viewavap2, 412);
     lv_obj_set_align(ui_viewavap2, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);     /// Flags
-    lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_viewavap2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_viewavap2, 200, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_viewavap2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
