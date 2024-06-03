@@ -36,13 +36,14 @@ void ui_Page_Wifi_screen_init(void)
     lv_img_set_zoom(ui_wifiicon, 300);
 
     ui_wifissid = lv_label_create(ui_wifip1);
-    lv_obj_set_width(ui_wifissid, 165);
+    lv_obj_set_width(ui_wifissid, 229);
     lv_obj_set_height(ui_wifissid, 27);
     lv_obj_set_align(ui_wifissid, LV_ALIGN_CENTER);
-    lv_label_set_long_mode(ui_wifissid, LV_LABEL_LONG_SCROLL);
+    lv_label_set_long_mode(ui_wifissid, LV_LABEL_LONG_DOT);
     lv_label_set_text(ui_wifissid, "None");
     lv_obj_set_style_text_color(ui_wifissid, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_wifissid, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_wifissid, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_wifissid, &lv_font_montserrat_26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_wifibtnt = lv_label_create(ui_wifip1);
