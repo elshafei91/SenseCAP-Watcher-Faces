@@ -175,10 +175,10 @@ void init_rgb_switch_from_nvs()
         rgb_switch_past = rgb_switch;
         if (rgb_switch == 1)
         {
-            set_rgb_with_priority(AT_CMD_CALLER, on);
+            set_rgb_with_priority(UI_CALLER, on);
         }
         else {
-            set_rgb_with_priority(AT_CMD_CALLER, off); 
+            set_rgb_with_priority(UI_CALLER, off); 
         }
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
