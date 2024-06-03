@@ -450,8 +450,11 @@ void revbc_cb(lv_event_t *e)
 
 void viewac_cb(lv_event_t *e)
 {
-    lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
-    lv_obj_move_foreground(ui_viewavap);
+    if(first_use || guide_step == 2)
+    {
+        lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+        lv_obj_move_foreground(ui_viewavap);
+    }
 }
 
 void viewaf_cb(lv_event_t *e)
@@ -473,14 +476,12 @@ void viewasl_cb(lv_event_t *e)
                 lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
                 lv_group_remove_all_objs(g_main);
                 lv_group_add_obj(g_main, ui_viewavap2);
-                // lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
                 lv_group_set_wrap(g_main, true);
             }
             else if (guide_step == 0)
             {
                 guide_step = 1;
                 lv_group_set_wrap(g_main, false);
-                // vTaskDelay(2000 / portTICK_PERIOD_MS);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_viewavap2);
             }
@@ -507,7 +508,6 @@ void viewasl_cb(lv_event_t *e)
             {
                 guide_step = 1;
                 lv_group_set_wrap(g_main, false);
-                // vTaskDelay(2000 / portTICK_PERIOD_MS);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_viewavap2);
             }
@@ -530,7 +530,7 @@ void ava1c_cb(lv_event_t *e)
     {
         guide_step = 3;
         set_reset_factory(UI_CALLER, 1);
-        // Todo nvs flash
+        get_reset_factory(UI_CALLER);
     }
     Task_end();
 }
@@ -552,8 +552,11 @@ void avagc_cb(lv_event_t *e)
 
 void viewlc_cb(lv_event_t *e)
 {
-    lv_obj_clear_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN); /// Flags
-    lv_obj_move_foreground(ui_viewlivp);
+    if(first_use)
+    {
+        lv_obj_clear_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN); /// Flags
+        lv_obj_move_foreground(ui_viewlivp);
+    }
 }
 
 void viewlf_cb(lv_event_t *e)
@@ -1052,7 +1055,6 @@ void slidervc_cb(lv_event_t *e)
 {
     static int32_t slider_value;
     slider_value = lv_slider_get_value(ui_spsilder);
-    // ESP_LOGI(TAG, "This is slider_value: %" PRId32, slider_value);
     if (slider_value > 80)
     {
         lv_obj_set_style_bg_color(ui_spsilder, lv_color_hex(0xFF5656), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -1087,7 +1089,6 @@ void sliderr_cb(lv_event_t *e)
                 break;
 
             case 1:
-                ESP_LOGI(TAG, "slider set reset factory##");
                 set_reset_factory(UI_CALLER, 0);
                 break;
 
