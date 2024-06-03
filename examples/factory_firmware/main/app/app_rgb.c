@@ -35,8 +35,8 @@ typedef struct
 
 static caller_context_t caller_contexts[STACK_SIZE];
 static int stack_top = -1; // Empty stack
-static SemaphoreHandle_t rgb_semaphore;
-static SemaphoreHandle_t __rgb_semaphore;
+SemaphoreHandle_t rgb_semaphore;
+SemaphoreHandle_t __rgb_semaphore;
 
 static esp_timer_handle_t rgb_timer_handle;
 static uint8_t flag = 0;
@@ -390,8 +390,7 @@ int app_rgb_init(void)
 {
     rgb_status_instance = (rgb_status) { .r = 255, .g = 255, .b = 255, .max_brightness_led = 255, .min_brightness_led = 0, .step = 50, .delay_time = 200 };
     // esp_timer_create_args_t timer_args = { .callback = &__timer_callback, .arg = (void *)rgb_timer_handle, .name = "rgb timer" };
-    rgb_semaphore = xSemaphoreCreateMutex();
-    __rgb_semaphore = xSemaphoreCreateMutex();
+
     if (rgb_semaphore == NULL)
     {
         ESP_LOGE(RGB_TAG, "Failed to create semaphore");

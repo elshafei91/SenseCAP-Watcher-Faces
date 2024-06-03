@@ -406,14 +406,20 @@ void arr1c_cb(lv_event_t *e)
     Page_ConnAPP_BLE();
 }
 
-void arr1f_cb(lv_event_t *e) { }
+void arr1f_cb(lv_event_t *e) 
+{
+    // Page_ConnAPP_BLE();
+}
 
 void arr2c_cb(lv_event_t *e)
 {
     Page_ConnAPP_Mate();
 }
 
-void arr2f_cb(lv_event_t *e) { }
+void arr2f_cb(lv_event_t *e) 
+{ 
+    // Page_ConnAPP_Mate();
+}
 
 void wifichange_cb(lv_event_t *e)
 {
