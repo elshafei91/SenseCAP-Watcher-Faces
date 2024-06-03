@@ -68,6 +68,8 @@ extern GroupInfo group_page_template;
 extern GroupInfo group_page_set;
 extern GroupInfo group_page_view;
 extern GroupInfo group_page_ha;
+extern GroupInfo group_page_brightness;
+extern GroupInfo group_page_volume;
 
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
@@ -335,6 +337,7 @@ void virtsl_cb(lv_event_t *e)
     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
     lv_group_add_obj(g_main, ui_Page_Vir);
     create_timer(0);
+    lv_group_set_wrap(g_main, false);
 }
 
 void virb1c_cb(lv_event_t *e)
@@ -489,19 +492,13 @@ void viewasl_cb(lv_event_t *e)
                 lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
                 lv_group_remove_all_objs(g_main);
                 lv_group_add_obj(g_main, ui_viewavap2);
-                lv_group_set_wrap(g_main, true);
             }
             else if (guide_step == 0)
             {
                 guide_step = 1;
-                lv_group_set_wrap(g_main, false);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_viewavap2);
             }
-        }
-        else
-        {
-            lv_group_set_wrap(g_main, true);
         }
     }
     else
@@ -515,19 +512,13 @@ void viewasl_cb(lv_event_t *e)
                 lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
                 lv_group_remove_all_objs(g_main);
                 lv_group_add_obj(g_main, ui_viewavap2);
-                lv_group_set_wrap(g_main, true);
             }
             else if (guide_step == 0)
             {
                 guide_step = 1;
-                lv_group_set_wrap(g_main, false);
                 lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_viewavap2);
             }
-        }
-        else
-        {
-            lv_group_set_wrap(g_main, true);
         }
     }
 }
@@ -540,12 +531,6 @@ void viewasul_cb(lv_event_t *e)
 void ava1c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "ava1c_cb");
-    if (guide_step == 2)
-    {
-        guide_step = 3;
-        set_usage_guide(UI_CALLER, 1);
-        get_usage_guide(UI_CALLER);
-    }
     Task_end();
 }
 
@@ -563,6 +548,12 @@ void avagc_cb(lv_event_t *e)
         lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
         lv_event_send(ui_Page_ViewAva, LV_EVENT_CLICKED, NULL);
+        guide_step = 3;
+        set_usage_guide(UI_CALLER, 1);
+        get_usage_guide(UI_CALLER);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_Page_ViewAva);
+        lv_group_add_obj(g_main, ui_Page_ViewLive);
     }
 }
 
@@ -592,7 +583,9 @@ void viewlsl_cb(lv_event_t *e)
     }
 }
 
-void viewlsul_cb(lv_event_t *e) { }
+void viewlsul_cb(lv_event_t *e) 
+{
+}
 
 void liv1c_cb(lv_event_t *e)
 {
@@ -836,16 +829,7 @@ void setvolc_cb(lv_event_t *e)
     lv_obj_add_flag(ui_bp, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_vp, LV_OBJ_FLAG_HIDDEN);
 
-    // esp_err_t ret = 0;
-    // size_t len = sizeof(volbri);
-    // ret = storage_read(VOLBRI_CFG, (void *)&volbri, &len);
-    // if( ret == ESP_OK && len == sizeof(volbri))
-    // {
-    // 	ESP_LOGI(TAG, "cfg read successful");
-    // 	lv_slider_set_value(ui_vslider, volbri.vs_value, LV_ANIM_OFF);
-    // }
-
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
+    lv_pm_open_page(g_main, &group_page_volume, PM_ADD_OBJS_TO_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
     lv_event_send(ui_vslider, LV_EVENT_VALUE_CHANGED, NULL);
 }
 
@@ -868,16 +852,7 @@ void setbric_cb(lv_event_t *e)
     lv_obj_clear_flag(ui_bp, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_vp, LV_OBJ_FLAG_HIDDEN);
 
-    // esp_err_t ret = 0;
-    // static size_t len = sizeof(volbri);
-    // volbri.bs_value = get_brightness(0);
-    // if( ret == ESP_OK && len == sizeof(volbri))
-    // {
-    // 	ESP_LOGI(TAG, "cfg read successful");
-    // 	lv_slider_set_value(ui_bslider, volbri.bs_value, LV_ANIM_OFF);
-    // }
-
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
+    lv_pm_open_page(g_main, &group_page_brightness, PM_ADD_OBJS_TO_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
     lv_event_send(ui_bslider, LV_EVENT_VALUE_CHANGED, NULL);
 }
 
