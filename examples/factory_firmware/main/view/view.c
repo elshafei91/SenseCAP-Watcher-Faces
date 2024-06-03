@@ -101,9 +101,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            case VIEW_EVENT_FACTORY_RESET_CODE:
+            case VIEW_EVENT_USAGE_GUIDE_SWITCH:
             {
-                ESP_LOGI(TAG, "event: VIEW_EVENT_FACTORY_RESET_CODE");
+                ESP_LOGI(TAG, "event: VIEW_EVENT_USAGE_GUIDE_SWITCH");
                 int *reset_st = (int *)event_data;
                 first_use = (*reset_st);
                 // ESP_LOGI(TAG, "first_use_value : %d", first_use);
@@ -416,7 +416,7 @@ int view_init(void)
                                                             __view_event_handler, NULL, NULL)); 
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-                                                            VIEW_EVENT_BASE, VIEW_EVENT_FACTORY_RESET_CODE, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_USAGE_GUIDE_SWITCH, 
                                                             __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
