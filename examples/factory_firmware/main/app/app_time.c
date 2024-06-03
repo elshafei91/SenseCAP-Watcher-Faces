@@ -211,6 +211,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
                     __time_sync_enable();
                 }
             }
+            break;
         }
         case VIEW_EVENT_TIME_ZONE: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TIME_ZONE");
@@ -259,6 +260,20 @@ static void __time_cfg_restore(void)
         __time_cfg_set(&cfg);
     }
 }
+
+
+
+void get_current_time_cfg(struct view_data_time_cfg *cfg)
+{
+    if (cfg != NULL)
+    {
+        xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+        memcpy(cfg, &__g_time_model.cfg, sizeof(struct view_data_time_cfg));
+        xSemaphoreGive(__g_data_mutex);
+    }
+}
+
+
 
 int app_time_init(void)
 {

@@ -370,7 +370,9 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
 {
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC)
     {
+#ifdef BLE_DEBUG
         esp_log_buffer_hex(GATTS_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
+#endif
     }
     else
     {
@@ -382,7 +384,6 @@ static void watcher_exec_write_event_env(prepare_type_env_t *prepare_write_env, 
         msg_at.size = prepare_write_env->prepare_len;
         msg_at.msg = (uint8_t *)heap_caps_malloc(msg_at.size, MALLOC_CAP_SPIRAM);
         memcpy(msg_at.msg, prepare_write_env->prepare_buf, msg_at.size);
-        esp_log_buffer_hex("TEST", msg_at.msg, msg_at.size);
         if (xQueueSend(message_queue, &msg_at, portMAX_DELAY) != pdPASS)
         {
             printf("Failed to send message to queue\n");
@@ -493,7 +494,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             esp_ble_gatts_create_service(gatts_if, &gl_profile_tab[PROFILE_WATCHER_APP_ID].service_id, GATTS_NUM_HANDLE_WATCHER);
             break;
         case ESP_GATTS_READ_EVT: {
-            ESP_LOGI(GATTS_TAG, "GATT_READ_EVT, conn_id %d, trans_id %" PRIu32 ", handle %d", param->read.conn_id, param->read.trans_id, param->read.handle);
+            ESP_LOGD(GATTS_TAG, "GATT_READ_EVT, conn_id %d, trans_id %" PRIu32 ", handle %d", param->read.conn_id, param->read.trans_id, param->read.handle);
             esp_gatt_rsp_t rsp;
             memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
             rsp.attr_value.handle = param->read.handle;
@@ -508,7 +509,9 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         case ESP_GATTS_WRITE_EVT: {
             // ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %" PRIu32 ", handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
             // ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT_TAG, value len %d, value :", param->write.len);
+#ifdef BLE_DEBUG
             esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
+#endif
             if (!param->write.is_prep)
             {
                 // ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT_TAG, value len %d, value :", param->write.len);
@@ -792,7 +795,6 @@ esp_err_t app_ble_init(void)
     {
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
-    AT_cmd_init();
     ble_task_stack = (StackType_t *)heap_caps_malloc(8192 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     TaskHandle_t task_handle = xTaskCreateStatic(ble_config_entry, "ble_config_entry", 8192, NULL, 4, ble_task_stack, &ble_task_buffer);
     if (task_handle == NULL)

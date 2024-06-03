@@ -24,6 +24,7 @@
 #include "app_ble.h"
 #include "app_time.h"
 #include "app_cmd.h"
+#include "at_cmd.h"
 #include "app_sensecraft.h"
 #include "app_rgb.h"
 #include "app_device_info.h"
@@ -94,7 +95,6 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_REBOOT");
         bsp_lcd_brightness_set(0);
-        view_render_black();
         fflush(stdout);
         if (get_sdcard_total_size(MAX_CALLER) > 0) {
             bsp_sdcard_deinit_default();
@@ -102,35 +102,11 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
         if (get_spiffs_total_size(MAX_CALLER) > 0) {
             esp_vfs_spiffs_unregister("storage");
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
         esp_restart();
         break;
     }
     default:
         break;
-    }
-}
-
-static void battery_check(void)
-{
-    bool st = false;
-    uint8_t percent = bsp_battery_get_percent();
-
-    ESP_LOGI(TAG, "battery: %d", percent);
-
-    if( percent > 0) {
-        return;
-    }
-
-    ESP_LOGI(TAG, "battery too low, wait for charging");
-
-    while(1) {
-        st = bsp_system_is_charging();
-        if ( st ) {
-            ESP_LOGI(TAG, "charging");
-            break;
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -148,23 +124,26 @@ void board_init(void)
     assert(lvgl_disp != NULL);
     bsp_rgb_init();
     bsp_codec_init();
+    bsp_sscma_client_init();
     // bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
 }
 
 void app_init(void)
 {
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    audio_player_init();
     app_device_info_init();
-    app_wifi_init(); //TODO Network update events may be missed
+    app_sensecraft_init();
+    app_rgb_init();
     app_ota_init();
     app_taskflow_init();
-    app_ble_init();
+    app_wifi_init();
     app_time_init();
-    app_rgb_init();
+    app_at_cmd_init();
+    app_ble_init();
     app_cmd_init();
-    app_sensecraft_init();
- 
-    audio_player_init();
     //app_sr_start(false);
 }
 
@@ -173,7 +152,6 @@ void task_app_init(void *p_arg)
     board_init();
     view_init();
     
-    // battery_check(); //TODO
     app_init();
 
     esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
