@@ -418,8 +418,11 @@ static int __wifi_connect(const char *p_ssid, const char *p_password, int retry_
     st.is_connected = false;
     st.is_connecting = false;
     st.is_network = false;
+    st.past_connected=true;
     __wifi_st_set(&st);
 
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st ), portMAX_DELAY);
+    
     ESP_ERROR_CHECK(esp_wifi_start());
     // esp_wifi_connect();
 
