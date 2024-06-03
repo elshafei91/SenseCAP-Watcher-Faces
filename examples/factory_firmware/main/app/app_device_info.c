@@ -50,8 +50,8 @@ int brightness_past = 100;
 int sound_value = 50;
 int sound_value_past = 50;
 
-int rgb_switch = 1;
-int rgb_switch_past = 1;
+int rgb_switch = 0;
+int rgb_switch_past = 0;
 
 int cloud_service_switch = 1;
 int cloud_service_switch_past = 1;
