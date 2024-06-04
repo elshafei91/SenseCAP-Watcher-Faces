@@ -130,6 +130,17 @@ esp_err_t bsp_i2c_detect(i2c_port_t i2c_num)
     return ESP_OK;
 }
 
+esp_err_t bsp_i2c_check(i2c_port_t i2c_num, uint8_t address)
+{
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (address << 1) | I2C_MASTER_WRITE, 0x1);
+    i2c_master_stop(cmd);
+    esp_err_t ret = i2c_master_cmd_begin(i2c_num, cmd, 50 / portTICK_PERIOD_MS);
+    i2c_cmd_link_delete(cmd);
+    return ret;
+}
+
 esp_io_expander_handle_t bsp_io_expander_init()
 {
     if (io_exp_handle != NULL)
@@ -973,6 +984,7 @@ esp_codec_dev_handle_t bsp_audio_codec_speaker_init(void)
 esp_codec_dev_handle_t bsp_audio_codec_microphone_init(void)
 {
     const audio_codec_data_if_t *i2s_data_if = bsp_audio_get_codec_itf();
+    const audio_codec_if_t *es7243_dev = NULL;
     if (i2s_data_if == NULL)
     {
         /* Initilize I2C */
@@ -983,17 +995,35 @@ esp_codec_dev_handle_t bsp_audio_codec_microphone_init(void)
     }
     assert(i2s_data_if);
 
-    audio_codec_i2c_cfg_t i2c_cfg = {
-        .port = BSP_GENERAL_I2C_NUM,
-        .addr = DRV_ES7243_I2C_ADDR,
-    };
-    const audio_codec_ctrl_if_t *i2c_ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
-    BSP_NULL_CHECK(i2c_ctrl_if, NULL);
+    if (bsp_i2c_check(BSP_GENERAL_I2C_NUM, DRV_ES7243_I2C_ADDR) == ESP_OK)
+    {
+        audio_codec_i2c_cfg_t i2c_cfg = {
+            .port = BSP_GENERAL_I2C_NUM,
+            .addr = DRV_ES7243_I2C_ADDR << 1,
+        };
 
-    es7243_codec_cfg_t es7243_cfg = {
-        .ctrl_if = i2c_ctrl_if,
-    };
-    const audio_codec_if_t *es7243_dev = es7243_codec_new(&es7243_cfg);
+        const audio_codec_ctrl_if_t *i2c_ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
+        BSP_NULL_CHECK(i2c_ctrl_if, NULL);
+
+        es7243_codec_cfg_t es7243_cfg = {
+            .ctrl_if = i2c_ctrl_if,
+        };
+        es7243_dev = es7243_codec_new(&es7243_cfg);
+    }
+    else
+    {
+        audio_codec_i2c_cfg_t i2c_cfg = {
+            .port = BSP_GENERAL_I2C_NUM,
+            .addr = DRV_ES7243E_I2C_ADDR << 1,
+        };
+        const audio_codec_ctrl_if_t *i2c_ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
+        BSP_NULL_CHECK(i2c_ctrl_if, NULL);
+        es7243e_codec_cfg_t es7243e_cfg = {
+            .ctrl_if = i2c_ctrl_if,
+        };
+        es7243_dev = es7243e_codec_new(&es7243e_cfg);
+    }
+
     BSP_NULL_CHECK(es7243_dev, NULL);
 
     esp_codec_dev_cfg_t codec_es7243_dev_cfg = {
@@ -1001,6 +1031,7 @@ esp_codec_dev_handle_t bsp_audio_codec_microphone_init(void)
         .codec_if = es7243_dev,
         .data_if = i2s_data_if,
     };
+
     return esp_codec_dev_new(&codec_es7243_dev_cfg);
 }
 
