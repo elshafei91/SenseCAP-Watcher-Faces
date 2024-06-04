@@ -157,7 +157,8 @@
 #define DRV_RTC_REG_TIMER      (0x0f)
 
 #define DRV_ES8311_I2C_ADDR   (0x30)
-#define DRV_ES7243_I2C_ADDR   (0x26)
+#define DRV_ES7243_I2C_ADDR   (0x13)
+#define DRV_ES7243E_I2C_ADDR  (0x14)
 #define DRV_AUDIO_SAMPLE_RATE (16000)
 #define DRV_AUDIO_SAMPLE_BITS (16)
 #define DRV_AUDIO_CHANNELS    (1)
