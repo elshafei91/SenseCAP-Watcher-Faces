@@ -19,6 +19,7 @@ GroupInfo group_page_view;
 GroupInfo group_page_ha;
 GroupInfo group_page_brightness;
 GroupInfo group_page_volume;
+GroupInfo group_page_connectapp;
 
 // Function to add objects to the group
 static void addObjToGroup(GroupInfo *groupInfo, lv_obj_t *objects[], int count) {
@@ -125,6 +126,7 @@ void initGroup()
     lv_obj_t * ha_objects[]          = {ui_Page_HA};
     lv_obj_t * brightness_objects[]  = {ui_bslider, ui_bvback};
     lv_obj_t * volume_objects[]      = {ui_vslider, ui_bvback};
+    lv_obj_t * connectapp_objects[]  = {ui_connp1, ui_connp2};
 
     addObjToGroup(&group_page_main, main_objects, sizeof(main_objects) / sizeof(main_objects[0]));
     addObjToGroup(&group_page_template, template_objects, sizeof(template_objects) / sizeof(template_objects[0]));
@@ -133,6 +135,7 @@ void initGroup()
     addObjToGroup(&group_page_ha, ha_objects, sizeof(ha_objects) / sizeof(ha_objects[0]));
     addObjToGroup(&group_page_brightness, brightness_objects, sizeof(brightness_objects) / sizeof(brightness_objects[0]));
     addObjToGroup(&group_page_volume, volume_objects, sizeof(volume_objects) / sizeof(volume_objects[0]));
+    addObjToGroup(&group_page_connectapp, connectapp_objects, sizeof(connectapp_objects) / sizeof(connectapp_objects[0]));
 }
 
 

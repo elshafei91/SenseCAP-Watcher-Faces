@@ -137,6 +137,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     shutdown_state = 0;
                     if(swipe_id==0)
                     {
+                        lv_label_set_text(ui_setdownt, "Reboot");
                         lv_label_set_text(ui_sptext, "Swipe to reboot");
                     }
                     lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
@@ -145,6 +146,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     shutdown_state = 1;
                     if(swipe_id==0)
                     {
+                        lv_label_set_text(ui_setdownt, "Shutdown");
                         lv_label_set_text(ui_sptext, "Swipe to shut down");
                     }
                     lv_obj_clear_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);

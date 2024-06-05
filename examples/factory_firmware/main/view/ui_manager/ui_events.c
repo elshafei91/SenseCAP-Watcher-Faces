@@ -70,6 +70,7 @@ extern GroupInfo group_page_view;
 extern GroupInfo group_page_ha;
 extern GroupInfo group_page_brightness;
 extern GroupInfo group_page_volume;
+extern GroupInfo group_page_connectapp;
 
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
@@ -345,7 +346,7 @@ void virb1c_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "virb1c_cb");
     settingInfoInit(); 
     create_timer(6);
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
+    lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
 }
 
@@ -417,23 +418,27 @@ void connc_cb(lv_event_t *e)
 void arr1c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "arr1c_cb");
+    lv_group_focus_obj(ui_connp2);
     Page_ConnAPP_BLE();
 }
 
 void arr1f_cb(lv_event_t *e) 
 {
-    // Page_ConnAPP_BLE();
+    ESP_LOGI(CLICK_TAG, "arr1f_cb");
+    Page_ConnAPP_Mate();
 }
 
 void arr2c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "arr2c_cb");
+    lv_group_focus_obj(ui_connp1);
     Page_ConnAPP_Mate();
 }
 
 void arr2f_cb(lv_event_t *e) 
 { 
-    // Page_ConnAPP_Mate();
+    ESP_LOGI(CLICK_TAG, "arr2f_cb");
+    Page_ConnAPP_BLE();
 }
 
 void ntaskb1c_cb(lv_event_t *e)
@@ -970,13 +975,13 @@ void setblec_cb(lv_event_t *e)
     switch (btn_state)
     {
         case 0:
+            ESP_LOGI(TAG, "ble_btn_status: on");
             lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
-            // ESP_LOGI(TAG, "ble_btn_status: off");
             set_ble_status(UI_CALLER, 1);
             break;
         case 1:
+            ESP_LOGI(TAG, "ble_btn_status: off");
             lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
-            // ESP_LOGI(TAG, "ble_btn_status: on");
             set_ble_status(UI_CALLER, 0);
             break;
 
@@ -1062,7 +1067,7 @@ void setappdf_cb(lv_event_t *e)
 void setappc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setappc_cb");
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
+    lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
 }
 
