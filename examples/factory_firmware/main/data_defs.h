@@ -84,13 +84,13 @@ struct view_data_time_cfg
     bool    time_format_24;
 
     bool    auto_update; //time auto update
-    time_t  time;       // use when auto_update is true
-    bool    set_time; 
+    time_t  time;       //utc, use when set time is true
+    bool    set_time;   
 
-    bool    auto_update_zone;  // use when  auto_update  is true
-    int8_t  zone;       // use when auto_update_zone is true
+    bool    auto_update_zone;
+    int8_t  zone;       // use when auto_update_zone is false
     
-    bool    daylight;   // use when auto_update is true  
+    bool    daylight;
 }__attribute__((packed));
 
 
@@ -190,7 +190,6 @@ enum {
     VIEW_EVENT_PNG_LOADING,
 
     VIEW_EVENT_TIME,      // bool time_format_24
-    VIEW_EVENT_TIME_ZONE,   // int8_t zone
     VIEW_EVENT_BATTERY_ST,// battery changed event, struct view_data_device_status
     VIEW_EVENT_CHARGE_ST, // charge status change, uint8_t
 
