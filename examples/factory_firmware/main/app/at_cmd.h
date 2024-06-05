@@ -40,7 +40,6 @@ typedef struct {
 
 
 
-extern SemaphoreHandle_t AT_response_semaphore;
 extern QueueHandle_t AT_response_queue;
 extern QueueHandle_t message_queue;
 
