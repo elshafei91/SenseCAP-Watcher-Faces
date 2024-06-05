@@ -244,6 +244,7 @@ enum {
     VIEW_EVENT_TASK_FLOW_STOP, //NULL
     VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
     VIEW_EVENT_TASK_FLOW_STATUS,  // struct view_data_taskflow_status
+    VIEW_EVENT_TASK_FLOW_ERROR, // char msg[64]
 
     VIEW_EVENT_ALL,
 };

@@ -346,7 +346,9 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
     struct app_taskflow * p_taskflow = ( struct app_taskflow *)p_arg;
     struct view_data_taskflow_status status;
     bool need_report = false;
+    bool need_notify_ui = false;
     char *p_module_name = NULL;
+    char err_msg[64];
 
     memset(&status, 0, sizeof(status));
     status.tid = tid;
@@ -364,7 +366,7 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
         p_module_name = "unknown";
     }
 
-    //notify UI and ble
+    //notify ble
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_TASK_FLOW_STATUS, &status, sizeof(status), portMAX_DELAY);
 
@@ -380,20 +382,49 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
     memcpy(&p_taskflow->status, &status, sizeof(struct view_data_taskflow_status));
     __data_unlock(p_taskflow);
 
+    memset(err_msg, 0, sizeof(err_msg));
     switch (engine_status)
     {
-        case TF_STATUS_ERR_JSON_PARSE:
-        case TF_STATUS_ERR_MODULE_NOT_FOUND:
-        case TF_STATUS_ERR_MODULES_INSTANCE:
-        case TF_STATUS_ERR_MODULES_PARAMS:
-        case TF_STATUS_ERR_MODULES_WIRES:
+        case TF_STATUS_ERR_JSON_PARSE: {
+            snprintf(err_msg, sizeof(err_msg) - 1, "json parse error");
+            need_notify_ui = true;
+            break;
+        }
+        case TF_STATUS_ERR_MODULE_NOT_FOUND: {
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] not found", p_module_name);
+            need_notify_ui = true;
+            break;
+        }
+        case TF_STATUS_ERR_MODULES_INSTANCE: {
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] instance error", p_module_name);
+            need_notify_ui = true;
+            break;
+        }
+        case TF_STATUS_ERR_MODULES_PARAMS: {
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] params error", p_module_name);
+            need_notify_ui = true;
+            break;
+        }
+        case TF_STATUS_ERR_MODULES_WIRES: {
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] wires error", p_module_name);
+            need_notify_ui = true;
+            break;
+        }
         case TF_STATUS_ERR_MODULES_START:{
-            ESP_LOGE(TAG, "Broken taskflow, clean it. err:%d", engine_status);
-            __task_flow_clean();
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] wires error", p_module_name);
+            need_notify_ui = true;
             break;
         }
     default:
         break;
+    }
+
+    //notify UI
+    if( need_notify_ui ) {
+        ESP_LOGE(TAG, "Broken taskflow, clean it. err: %s", err_msg);
+        __task_flow_clean();
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                        VIEW_EVENT_TASK_FLOW_ERROR, err_msg, sizeof(err_msg), portMAX_DELAY);
     }
 }
 
@@ -404,7 +435,8 @@ static void __task_flow_module_status_cb(void *p_arg, const char *p_name, int mo
     bool need_report = false;
     intmax_t tid = 0;
     char *p_module_name = NULL;
-    
+    char err_msg[64];
+
     tf_engine_tid_get(&tid);
 
     memset(&status, 0, sizeof(status));
@@ -412,10 +444,12 @@ static void __task_flow_module_status_cb(void *p_arg, const char *p_name, int mo
     status.engine_status = TF_STATUS_ERR_MODULES_INTERNAL; // module internal error
     
     if( p_name != NULL ) {
+        ESP_LOGI(TAG, "module:%s, status:%d", p_name, module_status);
         strncpy(status.module_name, p_name, sizeof(status.module_name) - 1);
         status.module_status = module_status;
         p_module_name = p_name;
     } else {
+        ESP_LOGI(TAG, "unknown module, status:%d", p_name, module_status);
         status.module_status = module_status;
         strncpy(status.module_name, "unknown", sizeof(status.module_name) - 1);
         p_module_name = "unknown";
@@ -436,6 +470,16 @@ static void __task_flow_module_status_cb(void *p_arg, const char *p_name, int mo
     p_taskflow->status_need_report = need_report;
     memcpy(&p_taskflow->status, &status, sizeof(struct view_data_taskflow_status));
     __data_unlock(p_taskflow);
+
+    if ( strcmp( p_module_name, TF_MODULE_AI_CAMERA_NAME) == 0 )
+    {
+        memset(err_msg, 0, sizeof(err_msg));
+        snprintf(err_msg, sizeof(err_msg) - 1, "%s err:%d", TF_MODULE_AI_CAMERA_NAME, module_status);
+        ESP_LOGE(TAG, "%s", err_msg);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                        VIEW_EVENT_TASK_FLOW_ERROR, err_msg, sizeof(err_msg), portMAX_DELAY);
+    }
+
 }
 
 static void __taskflow_task(void *p_arg)
