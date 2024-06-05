@@ -202,6 +202,9 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
     }
     cJSON_AddItemToObject(root, "connected_wifi", connected_array);
     cJSON_AddItemToObject(root, "scanned_wifi", scanned_array);
+    freeWiFiStack(&wifiStack_scanned);
+    freeWiFiStack(&wifiStack_connected);
+
     return root;
 }
 
@@ -995,13 +998,17 @@ void handle_wifi_query(char *params)
  *
  * The generated JSON object includes information about the WiFi networks that were scanned and the currently connected WiFi network.
  */
+
+SemaphoreHandle_t xBinarySemaphore_wifitable;
 void handle_wifi_table(char *params)
 {
     ESP_LOGI(TAG, "Handling wifi table command\n");
+    initWiFiStack(&wifiStack_scanned, 5);
+    initWiFiStack(&wifiStack_connected, 5);
     resetWiFiStack(&wifiStack_scanned);
+    resetWiFiStack(&wifiStack_connected);
     xTaskNotifyGive(xTask_wifi_config_entry);
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-    pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+    xSemaphoreTake(xBinarySemaphore_wifitable, portMAX_DELAY);
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
     char *json_str = cJSON_Print(json);
     ESP_LOGE(TAG, "json_str is %s", json_str);
@@ -1394,11 +1401,9 @@ void app_at_cmd_init()
 #endif
 
     AT_response_queue = xQueueCreate(10, sizeof(AT_Response));
-
+    xBinarySemaphore_wifitable =xSemaphoreCreateBinary();
     wifi_stack_semaphore_init();
     init_at_cmd_task();
-    initWiFiStack(&wifiStack_scanned, 10);
-    initWiFiStack(&wifiStack_connected, 10);
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL));
 
