@@ -331,19 +331,20 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
                     free(msg_at_response.response);
                     msg_at_response.response = NULL;
                 }
-                int segments = msg_at_response.length / 20;
-                int remaining_bytes = msg_at_response.length % 20;
+                int offset =400;
+                int segments = msg_at_response.length / offset;
+                int remaining_bytes = msg_at_response.length % offset;
 
                 for (int i = 0; i < segments; i++)
                 {
                     esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx,
-                        20, response_data + (i * 20), false);
+                        offset, response_data + (i * offset), false);
                 }
 
                 if (remaining_bytes > 0)
                 {
                     esp_ble_gatts_send_indicate(gl_profile_tab[PROFILE_WATCHER_APP_ID].gatts_if, gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id, gl_profile_tab[PROFILE_WATCHER_APP_ID].char_handl_tx,
-                        remaining_bytes, response_data + (segments * 20), false);
+                        remaining_bytes, response_data + (segments * offset), false);
                 }
                 free(response_data);
             }

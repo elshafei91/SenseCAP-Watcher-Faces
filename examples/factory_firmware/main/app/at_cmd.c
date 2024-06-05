@@ -27,7 +27,6 @@
 #include "app_device_info.h"
 #include "util.h"
 
-
 #define TAG "AT_CMD"
 /*------------------system basic DS-----------------------------------------------------*/
 StreamBufferHandle_t xStreamBuffer;
@@ -141,12 +140,14 @@ void freeWiFiStack(WiFiStack *stack)
 
 void resetWiFiStack(WiFiStack *stack)
 {
-    if (stack && stack->entries && stack->capacity > 0) {
-        if (stack->size > 0) {
+    if (stack && stack->entries && stack->capacity > 0)
+    {
+        if (stack->size > 0)
+        {
             for (size_t i = 0; i < stack->size; i++)
             {
                 WiFiEntry *wifi = &stack->entries[i];
-                //they're all from strdup, need to be freed
+                // they're all from strdup, need to be freed
                 free(wifi->ssid);
                 free(wifi->rssi);
                 free(wifi->encryption);
@@ -220,11 +221,11 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
  */
 esp_err_t send_at_response(const char *message)
 {
-    AT_Response response = {.response = NULL, .length = 0};
+    AT_Response response = { .response = NULL, .length = 0 };
     if (message)
     {
         const char *suffix = "\r\nok\r\n";
-        size_t total_length = strlen(message) + strlen(suffix) + 1;  // +1 for null terminator
+        size_t total_length = strlen(message) + strlen(suffix) + 1; // +1 for null terminator
         response.response = psram_calloc(1, total_length);
         if (response.response)
         {
@@ -736,8 +737,9 @@ void handle_deviceinfo_cfg_command(char *params)
             set_sound(AT_CMD_CALLER, volume);
         }
         cJSON *reset_flag = cJSON_GetObjectItemCaseSensitive(data, "reset");
-        if(cJSON_IsNumber(reset_flag)){
-            int reset_factory_flag =reset_flag->valueint;
+        if (cJSON_IsNumber(reset_flag))
+        {
+            int reset_factory_flag = reset_flag->valueint;
             set_reset_factory(AT_CMD_CALLER, reset_factory_flag);
         }
     }
@@ -999,9 +1001,10 @@ void handle_wifi_table(char *params)
     resetWiFiStack(&wifiStack_scanned);
     xTaskNotifyGive(xTask_wifi_config_entry);
     vTaskDelay(5000 / portTICK_PERIOD_MS);
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+    pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
     char *json_str = cJSON_Print(json);
+    ESP_LOGE(TAG, "json_str is %s", json_str);
     send_at_response(json_str);
     cJSON_Delete(json);
     free(json_str);
