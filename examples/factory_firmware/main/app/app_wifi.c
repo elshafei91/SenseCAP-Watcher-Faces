@@ -8,6 +8,7 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_check.h"
 #include "esp_heap_caps.h"
 
 #include "lwip/err.h"
@@ -359,19 +360,17 @@ void addWiFiEntryToStack(WiFiStack *stack, uint8_t ssid[33], int8_t rssi, const 
 
 void wifi_scan(void)
 {
-    uint16_t number = 5;
-    wifi_ap_record_t ap_info[5];
-    uint16_t ap_count = 0;
-    memset(ap_info, 0, sizeof(ap_info));
+    esp_err_t ret;
+    const int max_cnt = 10;
+    wifi_ap_record_t *ap_info = psram_calloc(1, sizeof(wifi_ap_record_t) * max_cnt);
+    uint16_t ap_cnt = max_cnt;
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    esp_wifi_scan_start(NULL, true);
-    ESP_LOGI(TAG, "Max AP number ap_info can hold = %u", number);
-    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
-    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
-    ESP_LOGI(TAG, "Total APs scanned = %u, actual AP number ap_info holds = %u", ap_count, number);
-    for (int i = 0; i < number; i++)
+    ESP_GOTO_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), wifi_scan_end, TAG, "esp_wifi_set_mode failed");
+    ESP_GOTO_ON_ERROR(esp_wifi_start(), wifi_scan_end, TAG, "esp_wifi_start failed");
+    ESP_GOTO_ON_ERROR(esp_wifi_scan_start(NULL, true), wifi_scan_end, TAG, "esp_wifi_scan_start failed");
+    ESP_GOTO_ON_ERROR(esp_wifi_scan_get_ap_records(&ap_cnt, ap_info), wifi_scan_end, TAG, "esp_wifi_scan_get_ap_records failed");
+    ESP_LOGI(TAG, "Max number of APs want: %d, scanned = %d", max_cnt, ap_cnt);
+    for (int i = 0; i < ap_cnt; i++)
     {
         ESP_LOGI(TAG, "SSID \t\t%s", ap_info[i].ssid);
         ESP_LOGI(TAG, "RSSI \t\t%d", ap_info[i].rssi);
@@ -383,6 +382,8 @@ void wifi_scan(void)
         addWiFiEntryToStack(&wifiStack_scanned, ap_info[i].ssid, ap_info[i].rssi, encryption);
         ESP_LOGI(TAG, "Channel \t\t%d", ap_info[i].primary);
     }
+wifi_scan_end:
+    free(ap_info);
 }
 
 
