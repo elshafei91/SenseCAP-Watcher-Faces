@@ -326,9 +326,11 @@ void virtc_cb(lv_event_t *e)
     {
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
         create_timer(6);    // stop timer
+        settingInfoInit();
     }else{              // else the device is wifi-configed, then page jump to main page
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
         create_timer(6);    // stop timer
+        settingInfoInit();
     }
 }
 
@@ -344,7 +346,6 @@ void virtsl_cb(lv_event_t *e)
 void virb1c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "virb1c_cb");
-    settingInfoInit(); 
     create_timer(6);
     lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
@@ -353,7 +354,6 @@ void virb1c_cb(lv_event_t *e)
 void virb2c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "virb2c_cb");
-    settingInfoInit();
     create_timer(6);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
@@ -398,7 +398,6 @@ void main3f_cb(lv_event_t *e)
 void main4c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "main4c_cb");
-    settingInfoInit();
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
@@ -1299,7 +1298,6 @@ void wifiConnectFailed()
 static void settingInfoInit()
 {
     lv_slider_set_range(ui_bslider, 1, 100);
-    lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
     get_sn(UI_CALLER);
     get_brightness(UI_CALLER);
     get_rgb_switch(UI_CALLER);
