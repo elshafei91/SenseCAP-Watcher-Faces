@@ -170,15 +170,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
             } else {
                 ESP_LOGE(TAG, "audio is playing");
             }
-            fp = fmemopen((void *)p_data->audio.p_buf, p_data->audio.len, "rb");
-            if (fp) {
-                status = audio_player_play(fp);
-            }
-            if (status == ESP_OK) {
-                p_module_ins->audio.p_buf = p_data->audio.p_buf;
-                p_module_ins->audio.len = p_data->audio.len;
-                audio_used = true;
-            }
+                        
         } else {
             ESP_LOGI(TAG,"play audio file:%s" ,TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE);
             audio_play_task(TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE); //TODO , block??
