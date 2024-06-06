@@ -202,10 +202,9 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
     }
     cJSON_AddItemToObject(root, "connected_wifi", connected_array);
     cJSON_AddItemToObject(root, "scanned_wifi", scanned_array);
-    freeWiFiStack(&wifiStack_scanned);
-    freeWiFiStack(&wifiStack_connected);
     resetWiFiStack(&wifiStack_scanned);
     resetWiFiStack(&wifiStack_connected);
+
     return root;
 }
 
@@ -1004,8 +1003,6 @@ SemaphoreHandle_t xBinarySemaphore_wifitable;
 void handle_wifi_table(char *params)
 {
     ESP_LOGI(TAG, "Handling wifi table command\n");
-    initWiFiStack(&wifiStack_scanned, 5);
-    initWiFiStack(&wifiStack_connected, 5);
     resetWiFiStack(&wifiStack_scanned);
     resetWiFiStack(&wifiStack_connected);
     xTaskNotifyGive(xTask_wifi_config_entry);
@@ -1401,7 +1398,9 @@ void app_at_cmd_init()
 #endif
 
     AT_response_queue = xQueueCreate(10, sizeof(AT_Response));
-    xBinarySemaphore_wifitable =xSemaphoreCreateBinary();
+    xBinarySemaphore_wifitable = xSemaphoreCreateBinary();
+    initWiFiStack(&wifiStack_scanned, 5);
+    initWiFiStack(&wifiStack_connected, 5);
     wifi_stack_semaphore_init();
     init_at_cmd_task();
 
