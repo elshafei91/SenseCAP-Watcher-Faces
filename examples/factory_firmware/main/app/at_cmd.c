@@ -27,7 +27,6 @@
 #include "app_device_info.h"
 #include "util.h"
 
-
 #define TAG "AT_CMD"
 /*------------------system basic DS-----------------------------------------------------*/
 StreamBufferHandle_t xStreamBuffer;
@@ -46,6 +45,9 @@ SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
 static wifi_ap_record_t current_connected_wifi;
 static int task_flow_resp;
+
+SemaphoreHandle_t semaphorewificonnected;
+SemaphoreHandle_t semaphorewifidisconnected;
 /*------------------critical DS for task_flow-------------------------------------------*/
 
 typedef struct
@@ -141,12 +143,14 @@ void freeWiFiStack(WiFiStack *stack)
 
 void resetWiFiStack(WiFiStack *stack)
 {
-    if (stack && stack->entries && stack->capacity > 0) {
-        if (stack->size > 0) {
+    if (stack && stack->entries && stack->capacity > 0)
+    {
+        if (stack->size > 0)
+        {
             for (size_t i = 0; i < stack->size; i++)
             {
                 WiFiEntry *wifi = &stack->entries[i];
-                //they're all from strdup, need to be freed
+                // they're all from strdup, need to be freed
                 free(wifi->ssid);
                 free(wifi->rssi);
                 free(wifi->encryption);
@@ -201,6 +205,9 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
     }
     cJSON_AddItemToObject(root, "connected_wifi", connected_array);
     cJSON_AddItemToObject(root, "scanned_wifi", scanned_array);
+    resetWiFiStack(&wifiStack_scanned);
+    resetWiFiStack(&wifiStack_connected);
+
     return root;
 }
 
@@ -220,11 +227,11 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
  */
 esp_err_t send_at_response(const char *message)
 {
-    AT_Response response = {.response = NULL, .length = 0};
+    AT_Response response = { .response = NULL, .length = 0 };
     if (message)
     {
         const char *suffix = "\r\nok\r\n";
-        size_t total_length = strlen(message) + strlen(suffix) + 1;  // +1 for null terminator
+        size_t total_length = strlen(message) + strlen(suffix) + 1; // +1 for null terminator
         response.response = psram_calloc(1, total_length);
         if (response.response)
         {
@@ -740,8 +747,9 @@ void handle_deviceinfo_cfg_command(char *params)
             set_sound(AT_CMD_CALLER, volume);
         }
         cJSON *reset_flag = cJSON_GetObjectItemCaseSensitive(data, "reset");
-        if(cJSON_IsNumber(reset_flag)){
-            int reset_factory_flag =reset_flag->valueint;
+        if (cJSON_IsNumber(reset_flag))
+        {
+            int reset_factory_flag = reset_flag->valueint;
             set_reset_factory(AT_CMD_CALLER, reset_factory_flag);
         }
     }
@@ -929,7 +937,9 @@ void handle_wifi_set(char *params)
     set_wifi_config(config);
     free(config);
     config = NULL;
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    if((xSemaphoreTake(semaphorewificonnected, portMAX_DELAY)==pdTRUE)||(xSemaphoreTake(semaphorewifidisconnected, portMAX_DELAY)==pdTRUE)){
     cJSON_AddStringToObject(root, "name", config->ssid);
     cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
     cJSON_AddItemToObject(root, "data", data);
@@ -941,6 +951,7 @@ void handle_wifi_set(char *params)
     send_at_response(json_string);
     cJSON_Delete(root);
     free(json_string);
+    }
 }
 
 /**
@@ -997,13 +1008,15 @@ void handle_wifi_query(char *params)
  *
  * The generated JSON object includes information about the WiFi networks that were scanned and the currently connected WiFi network.
  */
+
+SemaphoreHandle_t xBinarySemaphore_wifitable;
 void handle_wifi_table(char *params)
 {
     ESP_LOGI(TAG, "Handling wifi table command\n");
     resetWiFiStack(&wifiStack_scanned);
+    resetWiFiStack(&wifiStack_connected);
     xTaskNotifyGive(xTask_wifi_config_entry);
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+    xSemaphoreTake(xBinarySemaphore_wifitable, portMAX_DELAY);
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
     char *json_str = cJSON_Print(json);
     send_at_response(json_str);
@@ -1395,11 +1408,11 @@ void app_at_cmd_init()
 #endif
 
     AT_response_queue = xQueueCreate(10, sizeof(AT_Response));
-
+    xBinarySemaphore_wifitable = xSemaphoreCreateBinary();
+    initWiFiStack(&wifiStack_scanned, 5);
+    initWiFiStack(&wifiStack_connected, 5);
     wifi_stack_semaphore_init();
     init_at_cmd_task();
-    initWiFiStack(&wifiStack_scanned, 10);
-    initWiFiStack(&wifiStack_connected, 10);
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL));
 
