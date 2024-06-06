@@ -140,7 +140,6 @@ void slpt5c_cb(lv_event_t * e);
 void slpt6c_cb(lv_event_t * e);
 void slpt7c_cb(lv_event_t * e);
 
-
 void waitForWifi();
 void waitForBinding();
 void waitForAddDev();

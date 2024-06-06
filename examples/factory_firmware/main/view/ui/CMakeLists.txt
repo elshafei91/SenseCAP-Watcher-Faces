@@ -43,8 +43,9 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_arrow_png.c
     images/ui_img_wifi_3_png.c
     images/ui_img_1067503588.c
-    images/ui_img_switch_group_png.c
+    images/ui_img_wifiok_png.c
     images/ui_img_setback_png.c
+    images/ui_img_switch_group_png.c
     images/ui_img_template1_png.c
     images/ui_img_template1_f_png.c
     images/ui_img_template2_png.c
@@ -62,7 +63,6 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_human_d_png.c
     images/ui_img_volicon_png.c
     images/ui_img_swipe_png.c
-    images/ui_img_wifiok_png.c
     images/ui_img_smile1_png.c
     images/ui_img_wifi_0_png.c
     images/ui_img_wifi_1_png.c
