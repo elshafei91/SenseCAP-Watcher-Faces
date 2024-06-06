@@ -3,34 +3,35 @@
 #include <string.h>
 #include <inttypes.h>
 #include <regex.h>
+#include <time.h>
 #include <mbedtls/base64.h>
 
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/stream_buffer.h"
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_system.h"
 #include "esp_log.h"
+#include "esp_err.h"
+#include "esp_check.h"
 #include "esp_event.h"
 #include "esp_wifi.h"
-#include "time.h"
+#include "cJSON.h"
+
+#include "data_defs.h"
+#include "event_loops.h"
 #include "app_time.h"
 #include "app_wifi.h"
-#include "event_loops.h"
-#include "data_defs.h"
-#include "portmacro.h"
 #include "uhash.h"
 #include "at_cmd.h"
-#include "cJSON.h"
 #include "app_device_info.h"
+#include "util.h"
+
 
 #define TAG "AT_CMD"
 /*------------------system basic DS-----------------------------------------------------*/
 StreamBufferHandle_t xStreamBuffer;
 
-SemaphoreHandle_t AT_response_semaphore;
 QueueHandle_t AT_response_queue;
 TaskHandle_t xTaskToNotify_AT = NULL;
 
@@ -91,7 +92,7 @@ void wifi_stack_semaphore_init()
  */
 void initWiFiStack(WiFiStack *stack, int capacity)
 {
-    stack->entries = (WiFiEntry *)heap_caps_malloc(capacity * sizeof(WiFiEntry), MALLOC_CAP_SPIRAM);
+    stack->entries = (WiFiEntry *)psram_calloc(1, capacity * sizeof(WiFiEntry));
     stack->size = 0;
     stack->capacity = capacity;
 }
@@ -114,8 +115,7 @@ void pushWiFiStack(WiFiStack *stack, WiFiEntry entry)
 
     if (stack->size >= stack->capacity)
     {
-        stack->capacity *= 2;
-        stack->entries = (WiFiEntry *)realloc(stack->entries, stack->capacity * sizeof(WiFiEntry));
+        return;
     }
     stack->entries[stack->size++] = entry;
 
@@ -137,6 +137,24 @@ void freeWiFiStack(WiFiStack *stack)
     stack->entries = NULL;
     stack->size = 0;
     stack->capacity = 0;
+}
+
+void resetWiFiStack(WiFiStack *stack)
+{
+    if (stack && stack->entries && stack->capacity > 0) {
+        if (stack->size > 0) {
+            for (size_t i = 0; i < stack->size; i++)
+            {
+                WiFiEntry *wifi = &stack->entries[i];
+                //they're all from strdup, need to be freed
+                free(wifi->ssid);
+                free(wifi->rssi);
+                free(wifi->encryption);
+            }
+        }
+        stack->entries = memset(stack->entries, 0, stack->capacity * sizeof(WiFiEntry));
+        stack->size = 0;
+    }
 }
 
 /**
@@ -189,10 +207,41 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
 // AT command system
 /*----------------------------------------------------------------------------------------------------*/
 
-void create_AT_response_queue();
-void init_AT_response_semaphore();
-void send_at_response(AT_Response *AT_Response);
-AT_Response create_at_response(const char *message);
+/**
+ * @brief Creates an AT command response by appending a standard suffix to the given message.
+ *
+ * This function takes a message string, appends the standard suffix "\r\nok\r\n" to it,
+ * and allocates memory for the complete response. It returns an AT_Response structure
+ * containing the formatted response and its length.
+ *
+ * @param message A constant character pointer to the message to be included in the response.
+ *                If the message is NULL, an empty response is created.
+ * @return AT_Response A structure containing the formatted response string and its length.
+ */
+esp_err_t send_at_response(const char *message)
+{
+    AT_Response response = {.response = NULL, .length = 0};
+    if (message)
+    {
+        const char *suffix = "\r\nok\r\n";
+        size_t total_length = strlen(message) + strlen(suffix) + 1;  // +1 for null terminator
+        response.response = psram_calloc(1, total_length);
+        if (response.response)
+        {
+            strcpy(response.response, message);
+            strcat(response.response, suffix);
+            response.length = strlen(response.response);
+        }
+    }
+
+    if (xQueueSend(AT_response_queue, &response, 0) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "Failed to send AT response, maybe the queue is full?");
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
 
 /**
  * @brief Add a command to the hash table of commands.
@@ -244,6 +293,14 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     else
     {
         ESP_LOGI(TAG, "Command not found\n");
+        cJSON *root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "name", "Command_not_found");
+        cJSON_AddNumberToObject(root, "code", 0);
+        char *json_string = cJSON_Print(root);
+        ESP_LOGD(TAG, "JSON String: %s\n", json_string);
+        send_at_response(json_string);
+        cJSON_Delete(root);
+        free(json_string);
     }
 }
 
@@ -305,10 +362,10 @@ void handle_bind_command(char *params)
     cJSON_AddItemToObject(root, "data", data_rep);
     cJSON_AddStringToObject(data_rep, "bind", "");
     char *json_string = cJSON_Print(root);
-    ESP_LOGI(TAG, "JSON String: %s\n", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON String: %s\n", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -479,10 +536,10 @@ void handle_emoji_command(char *params)
     cJSON_AddItemToObject(root, "data", data_rep);
     cJSON_AddStringToObject(data_rep, "emoji", "");
     char *json_string = cJSON_Print(root);
-    ESP_LOGI(TAG, "JSON String: %s\n", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON String: %s\n", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -509,10 +566,10 @@ void handle_cloud_service_qurey_command(char *params)
     cJSON_AddItemToObject(root, "data", data_rep);
     cJSON_AddNumberToObject(data_rep, "remotecontrol", cloud_service_switch);
     char *json_string = cJSON_Print(root);
-    ESP_LOGI(TAG, "JSON String in cloud service qurey handle: %s\n", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON String in cloud service qurey handle: %s\n", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /**
@@ -564,10 +621,10 @@ void handle_cloud_service_command(char *params)
     cJSON_AddItemToObject(root, "data", data_rep);
     cJSON_AddStringToObject(data_rep, "remotecontrol", "");
     char *json_string = cJSON_Print(root);
-    ESP_LOGI(TAG, "JSON String: %s\n", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON String: %s\n", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /**
@@ -598,15 +655,27 @@ void handle_deviceinfo_cfg_command(char *params)
     if (cJSON_IsObject(data))
     {
         // Get the "Time_Zone" item
-        cJSON *time_zone = cJSON_GetObjectItemCaseSensitive(data, "timezone");
-        if (cJSON_IsNumber(time_zone))
+        bool timezone_valid = false;
+        bool timestamp_valid = false;
+        bool daylight_valid = false;
+        int timezone = 0;
+        int daylight = 0;
+        long long int utc_timestamp = 0;
+
+        cJSON *timezone_json = cJSON_GetObjectItemCaseSensitive(data, "timezone");
+        if (cJSON_IsNumber(timezone_json))
         {
-            int timezone = time_zone->valueint;
-            struct view_data_time_cfg time_cfg;
-            time_cfg.zone = timezone;
-            time_cfg.auto_update = true;
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
+            timezone_valid = true;
+            timezone = timezone_json->valueint;
         }
+
+        cJSON *daylight_json = cJSON_GetObjectItemCaseSensitive(data, "daylight");
+        if (cJSON_IsNumber(daylight_json))
+        {
+            daylight_valid = true;
+            daylight = daylight_json->valueint;
+        }
+
         cJSON *time = cJSON_GetObjectItemCaseSensitive(data, "timestamp");
         if (cJSON_IsString(time))
         {
@@ -624,20 +693,31 @@ void handle_deviceinfo_cfg_command(char *params)
             }
             else
             {
+                timestamp_valid = true;
+                utc_timestamp = value;
                 ESP_LOGI(TAG, "The converted value is %lld\n", value);
-                struct view_data_time_cfg time_cfg_mannual;
-                time_cfg_mannual.time = value;
-                time_cfg_mannual.set_time = true;
-                time_cfg_mannual.auto_update = false;
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg_mannual, sizeof(time_cfg_mannual), portMAX_DELAY);
             }
         }
-        cJSON *time_auto = cJSON_GetObjectItemCaseSensitive(data, "automatic");
-        if (cJSON_IsNumber(time_auto))
-        {
-            int time_automatic = time_auto->valueint;
-            set_time_automatic(AT_CMD_CALLER, time_automatic);
+
+        if ( timezone_valid || daylight_valid || timestamp_valid) {
+            struct view_data_time_cfg time_cfg;
+            memset(&time_cfg, 0, sizeof(time_cfg));
+            app_time_cfg_get(&time_cfg);
+
+            if( timezone_valid) {
+                time_cfg.zone = timezone;
+            }
+            if( daylight_valid) {
+                time_cfg.daylight = daylight;
+            }
+            if( timestamp_valid) {
+                // auto_update flag don't change, device will update time automatically if it have network.
+                time_cfg.time = utc_timestamp;
+                time_cfg.set_time = true;
+            }
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
         }
+
         // get brightness item
         cJSON *brightness = cJSON_GetObjectItemCaseSensitive(data, "brightness");
         if (cJSON_IsNumber(brightness))
@@ -653,11 +733,16 @@ void handle_deviceinfo_cfg_command(char *params)
             int rgbswitch_value = rgbswitch->valueint;
             set_rgb_switch(AT_CMD_CALLER, rgbswitch_value);
         }
-        cJSON *soundvolume = cJSON_GetObjectItemCaseSensitive(data, "volume");
+        cJSON *soundvolume = cJSON_GetObjectItemCaseSensitive(data, "sound");
         if (cJSON_IsNumber(soundvolume))
         {
             int volume = soundvolume->valueint;
             set_sound(AT_CMD_CALLER, volume);
+        }
+        cJSON *reset_flag = cJSON_GetObjectItemCaseSensitive(data, "reset");
+        if(cJSON_IsNumber(reset_flag)){
+            int reset_factory_flag =reset_flag->valueint;
+            set_reset_factory(AT_CMD_CALLER, reset_factory_flag);
         }
     }
     else
@@ -668,17 +753,15 @@ void handle_deviceinfo_cfg_command(char *params)
     cJSON_Delete(json);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-    int brightness_value_resp = get_brightness(AT_CMD_CALLER);
-    int sound_value_resp = get_sound(AT_CMD_CALLER);
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "deviceinfo=");
     cJSON_AddNumberToObject(root, "code", 0);
     char *json_string = cJSON_Print(root);
-    ESP_LOGI(TAG, "JSON String in device cfg command: %s\n", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON String in device cfg command: %s\n", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /**
@@ -713,13 +796,12 @@ void handle_deviceinfo_command(char *params)
     int sound_value_resp = get_sound(AT_CMD_CALLER);
     int rgb_switch = get_rgb_switch(AT_CMD_CALLER);
     struct view_data_time_cfg cfg;
-    get_current_time_cfg(&cfg);
+    app_time_cfg_get(&cfg);
     char timestamp_str[20];
-    snprintf(timestamp_str, sizeof(timestamp_str), "%ld", cfg.time);
+    snprintf(timestamp_str, sizeof(timestamp_str), "%lld", cfg.time);
     ESP_LOGI(TAG, "Current time configuration:\n");
     ESP_LOGI(TAG, "zone: %d\n", cfg.zone);
-    // ESP_LOGE(TAG,"get himax version:%s",himax_version);
-    int time_auto = get_time_automatic(AT_CMD_CALLER);
+
     cJSON *root = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, "name", "deviceinfo?");
@@ -736,7 +818,7 @@ void handle_deviceinfo_command(char *params)
     cJSON_AddStringToObject(data, "eui", (const char *)eui_rsp);
     cJSON_AddStringToObject(data, "blemac", (const char *)bt_mac_rsp);
     cJSON_AddStringToObject(data, "himaxsoftwareversion", (const char *)himax_version);
-    cJSON_AddNumberToObject(data, "automatic", time_auto);
+    cJSON_AddNumberToObject(data, "automatic", cfg.auto_update);
     cJSON_AddNumberToObject(data, "rgbswitch", rgb_switch);
     cJSON_AddNumberToObject(data, "sound", sound_value_resp);
     cJSON_AddNumberToObject(data, "brightness", brightness_value_resp);
@@ -748,10 +830,10 @@ void handle_deviceinfo_command(char *params)
 
     char *json_string = cJSON_Print(root);
 
-    ESP_LOGI(TAG, "JSON Stringin handle_deviceinfo_command: %s\n", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON Stringin handle_deviceinfo_command: %s\n", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /**
@@ -855,10 +937,10 @@ void handle_wifi_set(char *params)
     cJSON_AddStringToObject(data, "rssi", "2");
     cJSON_AddStringToObject(data, "encryption", "WPA");
     char *json_string = cJSON_Print(root);
-    ESP_LOGI(TAG, "JSON String: %s", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON String: %s", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /**
@@ -898,10 +980,10 @@ void handle_wifi_query(char *params)
     ESP_LOGI(TAG, "current_connected_wifi.rssi: %d", current_connected_wifi.rssi);
 
     char *json_string = cJSON_Print(root);
-    ESP_LOGI(TAG, "JSON String: %s", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON String: %s", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /**
@@ -918,17 +1000,15 @@ void handle_wifi_query(char *params)
 void handle_wifi_table(char *params)
 {
     ESP_LOGI(TAG, "Handling wifi table command\n");
-    initWiFiStack(&wifiStack_scanned, 6);
+    resetWiFiStack(&wifiStack_scanned);
     xTaskNotifyGive(xTask_wifi_config_entry);
     vTaskDelay(5000 / portTICK_PERIOD_MS);
-    pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
+    // pushWiFiStack(&wifiStack_scanned, (WiFiEntry) { "Network6", "-120", "WPA2" });
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
     char *json_str = cJSON_Print(json);
-
-    AT_Response response = create_at_response(json_str);
-    ESP_LOGI(TAG, "JSON String: %s\n", json_str);
-    send_at_response(&response);
-    freeWiFiStack(&wifiStack_scanned);
+    send_at_response(json_str);
+    cJSON_Delete(json);
+    free(json_str);
 }
 
 void handle_taskflow_query_command(char *params)
@@ -940,10 +1020,10 @@ void handle_taskflow_query_command(char *params)
     cJSON_AddStringToObject(root, "name", "taskflow");
     cJSON_AddNumberToObject(root, "code", task_flow_resp);
     char *json_string = cJSON_Print(root);
-    ESP_LOGI(TAG, "JSON String: %s\n", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON String: %s\n", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /**
@@ -1140,7 +1220,8 @@ void handle_taskflow_command(char *params)
         size_t output_len;
         base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
         free(result);
-        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, output_len, portMAX_DELAY);
+        printf("send task flow is %s", base64_output);
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, 4, portMAX_DELAY);
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1150,10 +1231,10 @@ void handle_taskflow_command(char *params)
     cJSON_AddNumberToObject(root, "code", code);
     cJSON_AddItemToObject(root, "data", data_rep);
     char *json_string = cJSON_Print(root);
-    ESP_LOGI(TAG, "JSON String: %s", json_string);
-    AT_Response response = create_at_response(json_string);
-    send_at_response(&response);
+    ESP_LOGD(TAG, "JSON String: %s", json_string);
+    send_at_response(json_string);
     cJSON_Delete(root);
+    free(json_string);
 }
 
 /**
@@ -1302,90 +1383,6 @@ void init_at_cmd_task(void)
 }
 
 /**
- * @brief Creates a queue for AT command responses.
- *
- * This function initializes a queue that can hold up to 10 AT_Response items.
- * The queue is used to manage the responses to AT commands.
- */
-void create_AT_response_queue()
-{
-    AT_response_queue = xQueueCreate(10, sizeof(AT_Response));
-}
-
-/**
- * @brief Initializes a binary semaphore for managing AT command responses.
- *
- * This function creates a binary semaphore and gives it initially to ensure it is available.
- * The semaphore is used to synchronize access to AT command responses.
- */
-void init_AT_response_semaphore()
-{
-    AT_response_semaphore = xSemaphoreCreateBinary();
-    xSemaphoreGive(AT_response_semaphore);
-}
-
-/**
- * @brief Sends an AT command response to the response queue.
- *
- * This function takes a binary semaphore to ensure exclusive access to the AT response queue,
- * then sends the given AT response to the queue. After sending the response, it gives back the semaphore.
- *
- * @param AT_Response A pointer to the AT_Response structure to be sent to the queue.
- */
-void send_at_response(AT_Response *AT_Response)
-{
-    if (xSemaphoreTake(AT_response_semaphore, portMAX_DELAY))
-    {
-        if (!xQueueSend(AT_response_queue, AT_Response, 0))
-        {
-            ESP_LOGI(TAG, "Failed to send AT response\n");
-        }
-        xSemaphoreGive(AT_response_semaphore);
-    }
-}
-
-/**
- * @brief Creates an AT command response by appending a standard suffix to the given message.
- *
- * This function takes a message string, appends the standard suffix "\r\nok\r\n" to it,
- * and allocates memory for the complete response. It returns an AT_Response structure
- * containing the formatted response and its length.
- *
- * @param message A constant character pointer to the message to be included in the response.
- *                If the message is NULL, an empty response is created.
- * @return AT_Response A structure containing the formatted response string and its length.
- */
-AT_Response create_at_response(const char *message)
-{
-    AT_Response response;
-    if (message)
-    {
-        const char *suffix = "\r\nok\r\n";
-        size_t total_length = strlen(message) + strlen(suffix) + 1;
-        response.response = heap_caps_malloc(total_length, MALLOC_CAP_SPIRAM); // +1 for null terminator
-        if (response.response)
-        {
-            strcpy(response.response, message);
-            strcat(response.response, suffix);
-            response.length = strlen(response.response);
-        }
-        else
-        {
-            ESP_LOGE(TAG, "Failed to allocate memory for AT response\n");
-
-            response.response = NULL;
-            response.length = 0;
-        }
-    }
-    else
-    {
-        response.response = NULL;
-        response.length = 0;
-    }
-    return response;
-}
-
-/**
  * @brief Initializes the AT command handling system.
  *
  * This function sets up the necessary components for handling AT commands, including creating the response queue,
@@ -1393,25 +1390,20 @@ AT_Response create_at_response(const char *message)
  */
 void app_at_cmd_init()
 {
-    create_AT_response_queue();
-    init_AT_response_semaphore();
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
+    AT_response_queue = xQueueCreate(10, sizeof(AT_Response));
+
     wifi_stack_semaphore_init();
     init_at_cmd_task();
     initWiFiStack(&wifiStack_scanned, 10);
     initWiFiStack(&wifiStack_connected, 10);
 
-    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
-                                                    VIEW_EVENT_BASE, 
-                                                    VIEW_EVENT_WIFI_ST, 
-                                                    __view_event_handler, 
-                                                    NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL));
 
-    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
-                                                    VIEW_EVENT_BASE, 
-                                                    VIEW_EVENT_TASK_FLOW_STATUS, 
-                                                    __view_event_handler, 
-                                                    NULL));
-
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STATUS, __view_event_handler, NULL));
 }
 
 /**

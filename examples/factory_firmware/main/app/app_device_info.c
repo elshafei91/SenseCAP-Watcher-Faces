@@ -479,7 +479,7 @@ static esp_err_t __set_rgb_switch()
     if (rgb_switch_past != rgb_switch)
     {
         ESP_RETURN_ON_ERROR(storage_write(BRIGHTNESS_STORAGE_KEY, &brightness, sizeof(brightness)), TAG, "set_rgb_switch cfg write err");
-        set_rgb_with_priority(AT_CMD_CALLER, rgb_switch == 1 ? on : off);
+        set_rgb_with_priority(UI_CALLER, rgb_switch == 1 ? on : off);
         rgb_switch_past = rgb_switch;
         ESP_LOGD(TAG, "set_rgb_switch done: %d", rgb_switch);
     }
@@ -804,8 +804,6 @@ void __app_device_info_task(void *pvParameter)
     bool firstboot_reported = false, himax_version_got = false;
     static uint8_t last_charge_st = 0x66, last_sdcard_inserted = 0x88, sdcard_debounce = 0x99;
 
-    rgb_semaphore = xSemaphoreCreateMutex();
-    __rgb_semaphore = xSemaphoreCreateMutex();
 
     MUTEX_brightness = xSemaphoreCreateMutex();
     MUTEX_rgb_switch = xSemaphoreCreateMutex();

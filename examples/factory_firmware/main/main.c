@@ -141,9 +141,9 @@ void app_init(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     audio_player_init();
+    app_rgb_init();
     app_device_info_init();
     app_sensecraft_init();
-    app_rgb_init();
     app_ota_init();
     app_taskflow_init();
     app_wifi_init();

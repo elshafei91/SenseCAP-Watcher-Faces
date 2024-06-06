@@ -27,6 +27,7 @@
 #include "audio_player.h"
 #include "data_defs.h"
 #include "event_loops.h"
+#include "app_device_info.h"
 
 
 static const char *TAG = "app_audio";
@@ -66,7 +67,7 @@ static esp_err_t audio_mute_function(AUDIO_PLAYER_MUTE_SETTING setting)
     bsp_codec_mute_set(setting == AUDIO_PLAYER_MUTE ? true : false);
     // restore the voice volume upon unmuting
     if (setting == AUDIO_PLAYER_UNMUTE) {
-        bsp_codec_volume_set(CONFIG_VOLUME_LEVEL, NULL);
+        bsp_codec_volume_set(get_sound(MAX_CALLER), NULL);
     }
     return ESP_OK;
 }
@@ -78,7 +79,7 @@ static esp_err_t audio_codec_set_fs(uint32_t rate, uint32_t bits_cfg, i2s_slot_m
 
     bsp_codec_mute_set(true);
     bsp_codec_mute_set(false);
-    bsp_codec_volume_set(CONFIG_VOLUME_LEVEL, NULL);
+    bsp_codec_volume_set(get_sound(MAX_CALLER), NULL);
     vTaskDelay(pdMS_TO_TICKS(50));
 
     return ret;
@@ -270,7 +271,7 @@ esp_err_t audio_play_task(void *filepath)
 
     bsp_codec_mute_set(true);
     bsp_codec_mute_set(false);
-    bsp_codec_volume_set(CONFIG_VOLUME_LEVEL, NULL);
+    bsp_codec_volume_set(get_sound(MAX_CALLER), NULL);
 
     size_t cnt, total_cnt = 0;
     do {

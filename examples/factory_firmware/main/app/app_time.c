@@ -73,13 +73,6 @@ static void __time_sync_notification_cb(struct timeval *tv)
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED, NULL, 0, portMAX_DELAY);
 }
 
-static void __time_set(time_t time)
-{
-    struct tm tm = { 4, 14, 3, 19, 0, 138, 0, 0, 0 };
-    struct timeval timestamp = { time, 0 };
-    settimeofday(&timestamp, NULL);
-}
-
 static void __time_sync_enable(void)
 {
     sntp_init();
@@ -131,17 +124,29 @@ static void __time_cfg(struct view_data_time_cfg *p_cfg, bool set_time)
     if (p_cfg->auto_update)
     {
         __time_sync_enable();
+        if (set_time) {
+            struct timeval timestamp = { p_cfg->time, 0 };
+            settimeofday(&timestamp, NULL);
+        }
         __time_zone_set(p_cfg);
     }
     else
     {
         __time_sync_stop();
-        struct timeval timestamp = { p_cfg->time, 0 };
-        if (set_time)
-        {
+        if (set_time) {
+            struct timeval timestamp = { p_cfg->time, 0 };
             settimeofday(&timestamp, NULL);
         }
+        __time_zone_set(p_cfg);
     }
+
+    time_t now;
+    char strftime_buf[64];
+    struct tm timeinfo = { 0 };
+	time(&now);
+    localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    ESP_LOGI(TAG, "After cfg, utc time:%ld, local time:%s\n", (long)now, strftime_buf);
 }
 
 static void __time_view_update_callback(void *arg)
@@ -183,10 +188,15 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
         case VIEW_EVENT_TIME_CFG_APPLY: {
             struct view_data_time_cfg *p_cfg = (struct view_data_time_cfg *)event_data;
             ESP_LOGI(TAG, "event: VIEW_EVENT_TIME_CFG_APPLY");
+            bool set_time = false;
+            if( p_cfg->set_time && p_cfg->time ) {
+                p_cfg->set_time = false; //don't set time again 
+                set_time = true;
+            }
             __time_cfg_print(p_cfg);
             __time_cfg_set(p_cfg);
             __time_cfg_save(p_cfg);
-            __time_cfg(p_cfg, p_cfg->set_time); // config;
+            __time_cfg(p_cfg, set_time); // config;
 
             bool time_format_24 = p_cfg->time_format_24;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
@@ -211,14 +221,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
                     __time_sync_enable();
                 }
             }
-            break;
-        }
-        case VIEW_EVENT_TIME_ZONE: {
-            ESP_LOGI(TAG, "event: VIEW_EVENT_TIME_ZONE");
-            struct view_data_time_cfg *p_zone = (struct view_data_time_cfg *)event_data;
-            p_zone->auto_update = 0;
-            p_zone->auto_update_zone = 0;
-            __time_zone_set(p_zone);
             break;
         }
         default:
@@ -252,24 +254,13 @@ static void __time_cfg_restore(void)
         }
 
         cfg.auto_update = true;
-        cfg.auto_update_zone = true;
-        cfg.daylight = true;
+        cfg.auto_update_zone = false;
+        cfg.daylight = false;
         cfg.time_format_24 = true;
         cfg.zone = 0;
         cfg.time = 0;
+        cfg.set_time = false;
         __time_cfg_set(&cfg);
-    }
-}
-
-
-
-void get_current_time_cfg(struct view_data_time_cfg *cfg)
-{
-    if (cfg != NULL)
-    {
-        xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
-        memcpy(cfg, &__g_time_model.cfg, sizeof(struct view_data_time_cfg));
-        xSemaphoreGive(__g_data_mutex);
     }
 }
 
@@ -290,14 +281,13 @@ int app_time_init(void)
 
     struct view_data_time_cfg cfg;
     __time_cfg_get(&cfg);
-    __time_cfg(&cfg, true);
+    __time_cfg(&cfg, false); // don't reconfig time when reboot
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_UPDATE, &cfg, sizeof(cfg), portMAX_DELAY);
 
     __time_view_update_init();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, __view_event_handler, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, __view_event_handler, NULL, NULL));
     return 0;
 }
 
@@ -317,4 +307,14 @@ int app_time_net_zone_set(char *p)
     bool time_format_24 = cfg.time_format_24;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
     return 0;
+}
+
+void app_time_cfg_get(struct view_data_time_cfg *cfg)
+{
+    if (cfg != NULL)
+    {
+        xSemaphoreTake(__g_data_mutex, portMAX_DELAY);
+        memcpy(cfg, &__g_time_model.cfg, sizeof(struct view_data_time_cfg));
+        xSemaphoreGive(__g_data_mutex);
+    }
 }

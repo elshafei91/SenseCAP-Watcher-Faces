@@ -65,6 +65,13 @@ static void alarm_timer_stop()
 
 int view_alarm_init(lv_obj_t *ui_screen)
 {
+    image_jpeg_buf = psram_malloc(IMG_JPEG_BUF_SIZE);
+    assert(image_jpeg_buf);
+
+    //must be 16 byte aligned
+    image_ram_buf = heap_caps_aligned_alloc(16, IMG_RAM_BUF_SIZE, MALLOC_CAP_SPIRAM);
+    assert(image_ram_buf);
+
     ui_alarm_indicator = lv_arc_create(ui_screen);
     lv_obj_set_width(ui_alarm_indicator, 412);
     lv_obj_set_height(ui_alarm_indicator, 412);
@@ -168,22 +175,14 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
         if (alarm_text->p_buf != NULL)
         {
             lv_label_set_text(ui_viewtext, (const char *)alarm_text->p_buf);
-            free(alarm_text->p_buf);
-            alarm_text->p_buf = NULL;
+            tf_data_buf_free(alarm_text);
         }
     }
     // image display 
     if (alarm_st->is_show_img)
     {
-        lv_obj_clear_flag(ui_image, LV_OBJ_FLAG_HIDDEN);
         struct tf_data_image *alarm_img = &alarm_st->img;
-        if (alarm_img->p_buf != NULL){
-            image_jpeg_buf = psram_malloc(IMG_JPEG_BUF_SIZE);
-            assert(image_jpeg_buf);
-
-            //must be 16 byte aligned
-            image_ram_buf = heap_caps_aligned_alloc(16, IMG_RAM_BUF_SIZE, MALLOC_CAP_SPIRAM);
-            assert(image_ram_buf);
+        if (alarm_img->p_buf != NULL) {
 
             int ret = 0; 
             size_t output_len = 0;       
@@ -202,6 +201,7 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 
             img_dsc.data = image_ram_buf;
             lv_img_set_src(ui_image, &img_dsc);
+            lv_obj_clear_flag(ui_image, LV_OBJ_FLAG_HIDDEN);
             tf_data_image_free(&alarm_st->img);
         }
     }

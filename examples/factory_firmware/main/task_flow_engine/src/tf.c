@@ -262,8 +262,6 @@ static int __stop(tf_engine_t *p_engine)
     p_engine->module_item_num = 0;
     memset(&p_engine->tf_info, 0, sizeof(tf_info_t));
     __data_unlock(p_engine);
-
-    __status_cb(p_engine, TF_STATUS_STOP, NULL);
     
     return ESP_OK;
 }
@@ -291,14 +289,14 @@ static void __tf_engine_task(void *p_arg)
         
         if( ( bits & EVENT_STOP ) != 0  &&  run_flag) {
             ESP_LOGI(TAG, "EVENT_STOP");
-            __stop(p_engine);
             __status_cb(p_engine, TF_STATUS_STOP, NULL);
+            __stop(p_engine);
             run_flag = false;
         }
 
         if( ( bits & EVENT_ERR_EXIT ) != 0) {
             ESP_LOGI(TAG, "EVENT_ERR_EXIT");
-            __stop(p_engine); //TODO
+            __stop(p_engine);
         }
 
         if(xQueueReceive(p_engine->queue_handle, &flow, ( TickType_t ) 10 ) == pdPASS ) {
@@ -306,6 +304,7 @@ static void __tf_engine_task(void *p_arg)
             ESP_LOGI(TAG, "RECV NEW TASK");
             if(run_flag) {
                 ESP_LOGI(TAG, "STOP LAST TASK");
+                __status_cb(p_engine, TF_STATUS_STOP, NULL);
                 __stop(p_engine);
                 run_flag = false;
             }

@@ -456,6 +456,7 @@ static void __sensecraft_task(void *p_arg)
 
         if( is_need_update_token ) {
             is_need_update_token = false;
+            vTaskDelay(1000 / portTICK_PERIOD_MS); //wait ntp sync priority
             ESP_LOGI(TAG, "mqtt token is near expiration, now: %d, expire: %d, refresh it ...", (int)now, (p_mqtt_info->expiresIn));
             
             ret = __https_mqtt_token_get(p_mqtt_info, (const char *)p_sensecraft->https_token);
