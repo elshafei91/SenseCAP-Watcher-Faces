@@ -45,6 +45,9 @@ SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
 static wifi_ap_record_t current_connected_wifi;
 static int task_flow_resp;
+
+SemaphoreHandle_t semaphorewificonnected;
+SemaphoreHandle_t semaphorewifidisconnected;
 /*------------------critical DS for task_flow-------------------------------------------*/
 
 typedef struct
@@ -930,7 +933,9 @@ void handle_wifi_set(char *params)
     set_wifi_config(config);
     free(config);
     config = NULL;
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    if((xSemaphoreTake(semaphorewificonnected, portMAX_DELAY)==pdTRUE)||(xSemaphoreTake(semaphorewifidisconnected, portMAX_DELAY)==pdTRUE)){
     cJSON_AddStringToObject(root, "name", config->ssid);
     cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
     cJSON_AddItemToObject(root, "data", data);
@@ -938,10 +943,11 @@ void handle_wifi_set(char *params)
     cJSON_AddStringToObject(data, "rssi", "2");
     cJSON_AddStringToObject(data, "encryption", "WPA");
     char *json_string = cJSON_Print(root);
-    ESP_LOGD(TAG, "JSON String: %s", json_string);
+    ESP_LOGE(TAG, "JSON String: %s", json_string);
     send_at_response(json_string);
     cJSON_Delete(root);
     free(json_string);
+    }
 }
 
 /**

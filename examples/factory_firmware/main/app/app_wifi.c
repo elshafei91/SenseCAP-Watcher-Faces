@@ -43,7 +43,7 @@ static SemaphoreHandle_t __g_net_check_sem;
 static int s_retry_num = 0;
 static int wifi_retry_max = 3;
 static bool __g_ping_done = true;
-int wifi_connect_failed_reason;
+int wifi_connect_failed_reason = 10;
 static EventGroupHandle_t __wifi_event_group;
 static StaticTask_t wifi_task_buffer;
 static StackType_t *wifi_task_stack = NULL;
@@ -80,6 +80,10 @@ void current_wifi_get(wifi_ap_record_t *p_st)
         ESP_LOGI(TAG, " wifi  disconnected");
     }
 }
+
+extern SemaphoreHandle_t semaphorewificonnected;
+extern SemaphoreHandle_t semaphorewifidisconnected;
+static wifi_config_t previous_wifi_config;
 static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     switch (event_id)
@@ -98,6 +102,7 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
             break;
         }
         case WIFI_EVENT_STA_CONNECTED: {
+            xSemaphoreGive(semaphorewificonnected);
             ESP_LOGI(TAG, "wifi event: WIFI_EVENT_STA_CONNECTED");
             wifi_event_sta_connected_t *event = (wifi_event_sta_connected_t *)event_data;
             struct view_data_wifi_st st;
@@ -116,10 +121,33 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
             msg.ret = 0;
             strcpy(msg.msg, "Connection successful");
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
+
+            // Save the current WiFi config as the previous config
+            esp_wifi_get_config(WIFI_IF_STA, &previous_wifi_config);
+            wifi_connect_failed_reason = 0;
             break;
         }
         case WIFI_EVENT_STA_DISCONNECTED: {
+            xSemaphoreGive(semaphorewificonnected);
             ESP_LOGI(TAG, "wifi event: WIFI_EVENT_STA_DISCONNECTED");
+            wifi_event_sta_disconnected_t *disconnected_event = (wifi_event_sta_disconnected_t *)event_data;
+
+            switch (disconnected_event->reason)
+            {
+                case WIFI_REASON_AUTH_FAIL:
+                    ESP_LOGI(TAG, "Authentication failed, incorrect password");
+                    wifi_connect_failed_reason = disconnected_event->reason;
+                    break;
+                case WIFI_REASON_NO_AP_FOUND:
+                    wifi_connect_failed_reason = disconnected_event->reason;
+                    ESP_LOGI(TAG, "AP not found");
+                    break;
+                // Add more cases as needed
+                default:
+                    wifi_connect_failed_reason = disconnected_event->reason;
+                    ESP_LOGI(TAG, "Other disconnection reason: %d", disconnected_event->reason);
+                    break;
+            }
 
             if ((wifi_retry_max == -1) || s_retry_num < wifi_retry_max)
             {
@@ -129,9 +157,13 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
             }
             else
             {
-                // update list  todo
-                struct view_data_wifi_st st;
+                // Attempt to reconnect to previous WiFi
+                ESP_LOGI(TAG, "Reconnecting to previous WiFi");
+                esp_wifi_disconnect();
+                ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &previous_wifi_config));
+                esp_wifi_connect();
 
+                struct view_data_wifi_st st;
                 __wifi_st_get(&st);
                 st.is_connected = false;
                 st.is_network = false;
@@ -140,7 +172,6 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
 
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), portMAX_DELAY);
 
-                char *p_str = "";
                 struct view_data_wifi_connet_ret_msg msg;
                 msg.ret = 0;
                 strcpy(msg.msg, "Connection failure");
@@ -414,7 +445,7 @@ static int __wifi_connect(const char *p_ssid, const char *p_password, int retry_
 
     esp_wifi_stop();
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    wifi_connect_failed_reason = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
 
     _g_wifi_cfg.is_cfg = true;
 
@@ -677,7 +708,6 @@ int set_wifi_config(wifi_config *config)
     return result;
 }
 
-
 extern SemaphoreHandle_t xBinarySemaphore_wifitable;
 void wifi_config_entry(void *pvParameters)
 {
@@ -716,7 +746,8 @@ int app_wifi_init(void)
     __g_wifi_mutex = xSemaphoreCreateMutex();
     __g_data_mutex = xSemaphoreCreateMutex();
     __g_net_check_sem = xSemaphoreCreateBinary();
-
+    semaphorewifidisconnected = xSemaphoreCreateBinary();
+    semaphorewificonnected = xSemaphoreCreateBinary();
     __wifi_cfg_init();
     app_wifi_config_entry_init();
 
