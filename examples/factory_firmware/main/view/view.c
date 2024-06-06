@@ -184,6 +184,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     {
                         lv_label_set_text(ui_setdownt, "Reboot");
                         lv_label_set_text(ui_sptext, "Swipe to reboot");
+                        lv_label_set_text(ui_sptitle, "Reboot");
                     }
                     lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
@@ -193,6 +194,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     {
                         lv_label_set_text(ui_setdownt, "Shutdown");
                         lv_label_set_text(ui_sptext, "Swipe to shut down");
+                        lv_label_set_text(ui_sptitle, "Shut down");
                     }
                     lv_obj_clear_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_frame_png);
@@ -265,7 +267,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONFIG_SYNC");
                 int * wifi_config_sync = (int*)event_data;
                 if(lv_scr_act() != ui_Page_Wifi)_ui_screen_change(&ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
-                // lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
                 if(* wifi_config_sync == 0)
                 {
                     waitForWifi();
@@ -284,6 +285,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }else if(* wifi_config_sync == 4)
                 {
                     wifiConnectFailed();
+                }else if (* wifi_config_sync == 5)
+                {
+                    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
                 }
                 break;
             }
