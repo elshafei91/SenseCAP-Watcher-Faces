@@ -947,7 +947,7 @@ void handle_wifi_set(char *params)
     cJSON_AddStringToObject(data, "rssi", "2");
     cJSON_AddStringToObject(data, "encryption", "WPA");
     char *json_string = cJSON_Print(root);
-    ESP_LOGE(TAG, "JSON String: %s", json_string);
+    ESP_LOGD(TAG, "JSON String: %s", json_string);
     send_at_response(json_string);
     cJSON_Delete(root);
     free(json_string);
