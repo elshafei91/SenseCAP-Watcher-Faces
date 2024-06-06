@@ -131,6 +131,8 @@ void board_init(void)
     if (sscma_client) {
         ESP_ERROR_CHECK_WITHOUT_ABORT(sscma_client_init(sscma_client));
     }
+
+    bsp_rtc_init();
     
     bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");

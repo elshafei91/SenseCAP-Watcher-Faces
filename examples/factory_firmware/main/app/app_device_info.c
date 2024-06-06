@@ -877,6 +877,8 @@ void __app_device_info_task(void *pvParameter)
                 ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, portMAX_DELAY);
             }
+            //TODO: open this after problem fignured
+            //bsp_rtc_set_timer(62);  // feed the watchdog, leave 2sec overhead for iteration cost
         }
 
         if ((cnt % 5) == 0)
