@@ -53,8 +53,8 @@ int create_batch = 1000205;
 int brightness = 100;
 int brightness_past = 100;
 
-int sound_value = 50;
-int sound_value_past = 50;
+int sound_value = 80;
+int sound_value_past = 80;
 
 int rgb_switch = 1;
 int rgb_switch_past = 1;
