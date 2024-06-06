@@ -386,8 +386,7 @@ void main2f_cb(lv_event_t *e)
 void main3c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "main3c_cb");
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_ERROR, NULL, NULL, portMAX_DELAY);
-    // lv_pm_open_page(g_main, &group_page_ha, PM_ADD_OBJS_TO_GROUP, &ui_Page_HA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_HA_screen_init);
+    lv_pm_open_page(g_main, &group_page_ha, PM_ADD_OBJS_TO_GROUP, &ui_Page_HA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_HA_screen_init);
 }
 
 void main3f_cb(lv_event_t *e)
