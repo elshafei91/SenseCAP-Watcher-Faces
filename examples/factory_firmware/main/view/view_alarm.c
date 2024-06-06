@@ -23,6 +23,10 @@ static uint8_t task_view_current = 0;
 static uint8_t *image_jpeg_buf = NULL;
 static uint8_t *image_ram_buf = NULL;
 
+static jpeg_dec_io_t *jpeg_io = NULL;
+static jpeg_dec_header_info_t *out_info = NULL;
+static jpeg_dec_handle_t jpeg_dec = NULL;
+
 static lv_img_dsc_t img_dsc = {
     .header.always_zero = 0,
     .header.w = IMG_WIDTH,
@@ -63,8 +67,65 @@ static void alarm_timer_stop()
     }
 }
 
+static int jpeg_decoder_init(void)
+{
+    esp_err_t ret = ESP_OK;
+    jpeg_dec_config_t config = { .output_type = JPEG_RAW_TYPE_RGB565_BE, .rotate = JPEG_ROTATE_0D };
+    
+    jpeg_dec = jpeg_dec_open(&config);
+    if (jpeg_dec == NULL) {
+        return ESP_FAIL;
+    }
+
+    jpeg_io = heap_caps_malloc(sizeof(jpeg_dec_io_t), MALLOC_CAP_SPIRAM);
+    if (jpeg_io == NULL) {
+        jpeg_dec_close(jpeg_dec);
+        return ESP_FAIL;
+    }
+    memset(jpeg_io, 0, sizeof(jpeg_dec_io_t));
+
+    out_info = heap_caps_aligned_alloc(16, sizeof(jpeg_dec_header_info_t), MALLOC_CAP_SPIRAM);
+    if (out_info == NULL) {
+        heap_caps_free(jpeg_io);
+        jpeg_dec_close(jpeg_dec);
+        return ESP_FAIL;
+    }
+    memset(out_info, 0, sizeof(jpeg_dec_header_info_t));
+
+    return ret;
+}
+
+static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *output_buf)
+{
+    esp_err_t ret = ESP_OK;
+
+    if (!jpeg_dec || !jpeg_io || !out_info) {
+        return ESP_FAIL;
+    }
+
+    jpeg_io->inbuf = input_buf;
+    jpeg_io->inbuf_len = len;
+    ret = jpeg_dec_parse_header(jpeg_dec, jpeg_io, out_info);
+    if (ret < 0) {
+        return ret;
+    }
+
+    jpeg_io->outbuf = output_buf;
+    int inbuf_consumed = jpeg_io->inbuf_len - jpeg_io->inbuf_remain;
+    jpeg_io->inbuf = input_buf + inbuf_consumed;
+    jpeg_io->inbuf_len = jpeg_io->inbuf_remain;
+
+    ret = jpeg_dec_process(jpeg_dec, jpeg_io);
+    return ret;
+}
+
 int view_alarm_init(lv_obj_t *ui_screen)
 {
+    int ret = jpeg_decoder_init();
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
     image_jpeg_buf = psram_malloc(IMG_JPEG_BUF_SIZE);
     assert(image_jpeg_buf);
 
@@ -95,56 +156,6 @@ int view_alarm_init(lv_obj_t *ui_screen)
     ESP_ERROR_CHECK(esp_timer_create(&alarm_timer_args, &alarm_timer));
 
     return 0;
-}
-
-static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *output_buf)
-{
-    esp_err_t ret = ESP_OK;
-    jpeg_dec_config_t config = { .output_type = JPEG_RAW_TYPE_RGB565_BE, .rotate = JPEG_ROTATE_0D };
-    jpeg_dec_handle_t jpeg_dec = NULL;
-    jpeg_dec = jpeg_dec_open(&config);
-
-    if (jpeg_dec == NULL) {
-        return ESP_FAIL;
-    }
-
-    jpeg_dec_io_t *jpeg_io = heap_caps_malloc(sizeof(jpeg_dec_io_t), MALLOC_CAP_SPIRAM);
-    if (jpeg_io == NULL) {
-        jpeg_dec_close(jpeg_dec);
-        return ESP_FAIL;
-    }
-    memset(jpeg_io, 0, sizeof(jpeg_dec_io_t));
-
-    jpeg_dec_header_info_t *out_info = heap_caps_aligned_alloc(16, sizeof(jpeg_dec_header_info_t), MALLOC_CAP_SPIRAM);
-    if (out_info == NULL) {
-        heap_caps_free(jpeg_io);
-        jpeg_dec_close(jpeg_dec);
-        return ESP_FAIL;
-    }
-    memset(out_info, 0, sizeof(jpeg_dec_header_info_t));
-
-    jpeg_io->inbuf = input_buf;
-    jpeg_io->inbuf_len = len;
-    ret = jpeg_dec_parse_header(jpeg_dec, jpeg_io, out_info);
-    if (ret < 0) {
-        goto _exit;
-    }
-
-    jpeg_io->outbuf = output_buf;
-    int inbuf_consumed = jpeg_io->inbuf_len - jpeg_io->inbuf_remain;
-    jpeg_io->inbuf = input_buf + inbuf_consumed;
-    jpeg_io->inbuf_len = jpeg_io->inbuf_remain;
-
-    ret = jpeg_dec_process(jpeg_dec, jpeg_io);
-    if (ret < 0) {
-        goto _exit;
-    }
-
-_exit:
-    jpeg_dec_close(jpeg_dec);
-    heap_caps_free(out_info);
-    heap_caps_free(jpeg_io);
-    return ret;
 }
 
 
