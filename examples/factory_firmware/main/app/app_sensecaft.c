@@ -128,6 +128,7 @@ static int __https_mqtt_token_get(struct sensecraft_mqtt_connect_info *p_info,
     }
     cJSON *root = cJSON_Parse(result);
     if (root == NULL) {
+        free(result);
         ESP_LOGE(TAG,"Error before: [%s]\n", cJSON_GetErrorPtr());
         return -1;
     }
@@ -135,6 +136,7 @@ static int __https_mqtt_token_get(struct sensecraft_mqtt_connect_info *p_info,
     if (  code->valueint != 0) {
         ESP_LOGE(TAG,"Code: %d\n", code->valueint);
         free(result);
+        cJSON_Delete(root);
         return -1;
     }
     cJSON *data = cJSON_GetObjectItem(root, "data");
@@ -456,6 +458,7 @@ static void __sensecraft_task(void *p_arg)
 
         if( is_need_update_token ) {
             is_need_update_token = false;
+            vTaskDelay(1000 / portTICK_PERIOD_MS); //wait ntp sync priority
             ESP_LOGI(TAG, "mqtt token is near expiration, now: %d, expire: %d, refresh it ...", (int)now, (p_mqtt_info->expiresIn));
             
             ret = __https_mqtt_token_get(p_mqtt_info, (const char *)p_sensecraft->https_token);
@@ -700,14 +703,12 @@ esp_err_t app_sensecraft_mqtt_report_taskflow(char *p_str, size_t len)
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_change_device_status, json_buff, json_len,
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
-
+    
+    free(json_buff);
     if (msg_id < 0) {
         ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow enqueue failed, err=%d", msg_id);
         ret = ESP_FAIL;
     }
-
-    free(json_buff);
-
     return ret;
 }
 esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id, char *p_str, size_t len)
@@ -754,12 +755,12 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id, char *p_str,
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_task_publish_ack, json_buff, json_len,
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
 
+    free(json_buff);
+
     if (msg_id < 0) {
         ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_ack enqueue failed, err=%d", msg_id);
         ret = ESP_FAIL;
     }
-
-    free(json_buff);
 
     return ret;
 }
@@ -807,12 +808,12 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t tasklist_id, int t
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_change_device_status, json_buff, json_len,
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
 
+    free(json_buff);
+
     if (msg_id < 0) {
         ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_status enqueue failed, err=%d", msg_id);
         ret = ESP_FAIL;
     }
-
-    free(json_buff);
 
     return ret;
 }
@@ -867,12 +868,12 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_module_status(intmax_t tasklist_id
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_change_device_status, json_buff, json_len,
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
 
+    free(json_buff);
+
     if (msg_id < 0) {
         ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_module_status enqueue failed, err=%d", msg_id);
         ret = ESP_FAIL;
     }
-
-    free(json_buff);
 
     return ret;
 }
@@ -932,12 +933,12 @@ esp_err_t app_sensecraft_mqtt_report_warn_event(intmax_t taskflow_id,
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_warn_event_report, json_buff, json_len,
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
 
+    free(json_buff);
+
     if (msg_id < 0) {
         ESP_LOGW(TAG, "app_sensecraft_mqtt_report_warn_event enqueue failed, err=%d", msg_id);
         ret = ESP_FAIL;
     }
-    free(json_buff);
-
     return ret;
 }
 
@@ -978,12 +979,12 @@ esp_err_t app_sensecraft_mqtt_report_device_status_generic(char *event_value_fie
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_change_device_status, json_buff, strlen(json_buff),
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
 
+    free(json_buff);
+
     if (msg_id < 0) {
         ESP_LOGW(TAG, "app_sensecraft_mqtt_report_device_status enqueue failed, err=%d", msg_id);
         ret = ESP_FAIL;
     }
-
-    free(json_buff);
 
     return ret;
 }

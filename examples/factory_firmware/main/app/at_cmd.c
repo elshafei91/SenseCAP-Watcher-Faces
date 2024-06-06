@@ -662,17 +662,27 @@ void handle_deviceinfo_cfg_command(char *params)
     if (cJSON_IsObject(data))
     {
         // Get the "Time_Zone" item
-        cJSON *time_zone = cJSON_GetObjectItemCaseSensitive(data, "timezone");
-        if (cJSON_IsNumber(time_zone))
+        bool timezone_valid = false;
+        bool timestamp_valid = false;
+        bool daylight_valid = false;
+        int timezone = 0;
+        int daylight = 0;
+        long long int utc_timestamp = 0;
+
+        cJSON *timezone_json = cJSON_GetObjectItemCaseSensitive(data, "timezone");
+        if (cJSON_IsNumber(timezone_json))
         {
-            int timezone = time_zone->valueint;
-            struct view_data_time_cfg time_cfg;
-            memset(&time_cfg, 0, sizeof(time_cfg));
-            get_current_time_cfg(&time_cfg);
-            time_cfg.zone = timezone;
-            time_cfg.auto_update = true;
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
+            timezone_valid = true;
+            timezone = timezone_json->valueint;
         }
+
+        cJSON *daylight_json = cJSON_GetObjectItemCaseSensitive(data, "daylight");
+        if (cJSON_IsNumber(daylight_json))
+        {
+            daylight_valid = true;
+            daylight = daylight_json->valueint;
+        }
+
         cJSON *time = cJSON_GetObjectItemCaseSensitive(data, "timestamp");
         if (cJSON_IsString(time))
         {
@@ -690,37 +700,31 @@ void handle_deviceinfo_cfg_command(char *params)
             }
             else
             {
+                timestamp_valid = true;
+                utc_timestamp = value;
                 ESP_LOGI(TAG, "The converted value is %lld\n", value);
-                struct view_data_time_cfg time_cfg_mannual;
-                memset(&time_cfg_mannual, 0, sizeof(time_cfg_mannual));
-                get_current_time_cfg(&time_cfg_mannual);
-                time_cfg_mannual.time = value;
-                time_cfg_mannual.zone = 0;
-                time_cfg_mannual.set_time = true;
-                time_cfg_mannual.auto_update = false;
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg_mannual, sizeof(time_cfg_mannual), portMAX_DELAY);
             }
         }
-        cJSON *time_auto = cJSON_GetObjectItemCaseSensitive(data, "automatic");
-        if (cJSON_IsNumber(time_auto))
-        {
-            struct view_data_time_cfg time_cfg_auto;
-            memset(&time_cfg_auto, 0, sizeof(time_cfg_auto));
-            get_current_time_cfg(&time_cfg_auto);
-            int time_auto_value = time_auto->valueint;
-            printf("time_auto check%d", time_auto_value);
-            if (time_auto_value == 1)
-            {
-                time_cfg_auto.auto_update = true;
+
+        if ( timezone_valid || daylight_valid || timestamp_valid) {
+            struct view_data_time_cfg time_cfg;
+            memset(&time_cfg, 0, sizeof(time_cfg));
+            app_time_cfg_get(&time_cfg);
+
+            if( timezone_valid) {
+                time_cfg.zone = timezone;
             }
-            else
-            {
-                time_cfg_auto.auto_update = false;
-                time_cfg_auto.zone = 0;
+            if( daylight_valid) {
+                time_cfg.daylight = daylight;
             }
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_ZONE, &time_cfg_auto, sizeof(time_cfg_auto), portMAX_DELAY);
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg_auto, sizeof(time_cfg_auto), portMAX_DELAY);
+            if( timestamp_valid) {
+                // auto_update flag don't change, device will update time automatically if it have network.
+                time_cfg.time = utc_timestamp;
+                time_cfg.set_time = true;
+            }
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
         }
+
         // get brightness item
         cJSON *brightness = cJSON_GetObjectItemCaseSensitive(data, "brightness");
         if (cJSON_IsNumber(brightness))
@@ -800,7 +804,7 @@ void handle_deviceinfo_command(char *params)
     int sound_value_resp = get_sound(AT_CMD_CALLER);
     int rgb_switch = get_rgb_switch(AT_CMD_CALLER);
     struct view_data_time_cfg cfg;
-    get_current_time_cfg(&cfg);
+    app_time_cfg_get(&cfg);
     char timestamp_str[20];
     snprintf(timestamp_str, sizeof(timestamp_str), "%lld", cfg.time);
     ESP_LOGI(TAG, "Current time configuration:\n");

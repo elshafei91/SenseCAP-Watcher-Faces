@@ -375,7 +375,7 @@ static void img_analyzer_task(void *p_arg)
                     output_data.type = TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT;
                     struct tf_data_buf   text;
                     text.p_buf = (uint8_t *)p_params->p_audio_txt;
-                    text.p_buf = strlen(p_params->p_audio_txt) + 1; // add \0
+                    text.len = strlen(p_params->p_audio_txt) + 1; // add \0
 
                     __data_lock(p_module_ins); 
                     for (int i = 0; i < p_module_ins->output_evt_num; i++) {
@@ -391,10 +391,11 @@ static void img_analyzer_task(void *p_arg)
                         ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
                     }
                     __data_unlock(p_module_ins);
-
-                    tf_data_image_free(&result.img);
-                    tf_data_buf_free(&result.audio);
                 }
+                
+                tf_data_image_free(&result.img);
+                tf_data_buf_free(&result.audio);
+
             } else {
                 ESP_LOGE(TAG, "Failed to analyse image");
             }
@@ -425,6 +426,10 @@ static void img_analyzer_task_destroy( tf_module_img_analyzer_t *p_module_ins)
     if (p_module_ins->event_group) {
         vEventGroupDelete(p_module_ins->event_group);
         p_module_ins->event_group = NULL;
+    }
+    if( p_module_ins->queue_handle ) {
+        vQueueDelete(p_module_ins->queue_handle);
+        p_module_ins->queue_handle = NULL;
     }
 }
 
@@ -612,6 +617,10 @@ err:
     if (p_module_ins->event_group) {
         vEventGroupDelete(p_module_ins->event_group);
         p_module_ins->event_group = NULL;
+    }
+    if( p_module_ins->queue_handle ) {
+        vQueueDelete(p_module_ins->queue_handle);
+        p_module_ins->queue_handle = NULL;
     }
     return NULL;
 }
