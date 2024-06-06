@@ -36,7 +36,8 @@ ESP_EVENT_DEFINE_BASE(OTA_EVENT_BASE);
 #define HTTPS_TIMEOUT_MS                30000
 #define HTTPS_DOWNLOAD_RETRY_TIMES      5
 #define HTTP_RX_CHUNK_SIZE              512
-#define SSCMA_FLASH_CHUNK_SIZE          128   //this value is copied from the `sscma_client_ota` example
+#define SSCMA_FLASH_CHUNK_SIZE_SPI      256   //this value is copied from the `sscma_client_ota` example
+#define SSCMA_FLASH_CHUNK_SIZE_UART     128   //this value is copied from the `sscma_client_ota` example
 #define AI_MODEL_RINGBUFF_SIZE          102400
 
 enum {
@@ -316,6 +317,57 @@ static const char *ota_type_str(int ota_type)
     else return "unknown ota";
 }
 
+static sscma_client_flasher_handle_t bsp_sscma_flasher_init_legacy(sscma_client_handle_t sscma_client)
+{
+    static sscma_client_flasher_handle_t _sscma_flasher_handle = NULL;
+    static sscma_client_io_handle_t _sscma_flasher_io_handle = NULL;
+
+    static bool initialized = false;
+    if (initialized)
+        return _sscma_flasher_handle;
+
+    if (bsp_io_expander_init() == NULL)
+        return NULL;
+
+    uart_config_t uart_config = {
+        .baud_rate = BSP_SSCMA_FLASHER_UART_BAUD_RATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+    int intr_alloc_flags = 0;
+
+#if CONFIG_UART_ISR_IN_IRAM
+    intr_alloc_flags = ESP_INTR_FLAG_IRAM;
+#endif
+
+    ESP_ERROR_CHECK(uart_driver_install(BSP_SSCMA_FLASHER_UART_NUM, 64 * 1024, 0, 0, NULL, intr_alloc_flags));
+    ESP_ERROR_CHECK(uart_param_config(BSP_SSCMA_FLASHER_UART_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(BSP_SSCMA_FLASHER_UART_NUM, BSP_SSCMA_FLASHER_UART_TX, BSP_SSCMA_FLASHER_UART_RX, -1, -1));
+
+    sscma_client_io_uart_config_t io_uart_config = {
+        .user_ctx = NULL,
+    };
+
+    sscma_client_new_io_uart_bus((sscma_client_uart_bus_handle_t)BSP_SSCMA_FLASHER_UART_NUM, &io_uart_config, &_sscma_flasher_io_handle);
+
+    const sscma_client_flasher_we2_config_t flasher_config = {
+        .reset_gpio_num = BSP_SSCMA_CLIENT_RST,
+        .io_expander = sscma_client->io_expander,
+        .flags.reset_use_expander = BSP_SSCMA_CLIENT_RST_USE_EXPANDER,
+        .flags.reset_high_active = false,
+        .user_ctx = NULL,
+    };
+
+    sscma_client_new_flasher_we2_uart(_sscma_flasher_io_handle, &flasher_config, &_sscma_flasher_handle);
+
+    initialized = true;
+
+    return _sscma_flasher_handle;
+}
+
 static void __sscma_writer_task(void *p_arg)
 {
     ota_sscma_writer_userdata_t *userdata = &g_sscma_writer_userdata;
@@ -336,10 +388,7 @@ static void __sscma_writer_task(void *p_arg)
         sscma_client_handle_t sscma_client = bsp_sscma_client_init();
         assert(sscma_client != NULL);
 
-        sscma_client_flasher_handle_t sscma_flasher = bsp_sscma_flasher_init();
-        assert(sscma_flasher != NULL);
-
-        //sscma_client_init(sscma_client);
+        bool use_spi_flasher = false;
 
         sscma_client_info_t *info;
         if (sscma_client_get_info(sscma_client, &info, true) == ESP_OK)
@@ -352,13 +401,26 @@ static void __sscma_writer_task(void *p_arg)
             ESP_LOGI(TAG, "Software Version: %s", (info->sw_ver != NULL) ? info->sw_ver : "NULL");
             ESP_LOGI(TAG, "Firmware Version: %s", (info->fw_ver != NULL) ? info->fw_ver : "NULL");
             ESP_LOGI(TAG, "--------------------------------------------");
+
+            if (ota_type == OTA_TYPE_AI_MODEL && cmp_versions(info->fw_ver, "2024.06.03") >= 0) {
+                ESP_LOGI(TAG, "sscma writer, will use SPI flasher");
+                use_spi_flasher = true;
+            }
         }
         else
         {
-            ESP_LOGW(TAG, "sscma client get info failed\n");
-            userdata->err = ESP_ERR_OTA_SSCMA_START_FAIL;
-            goto sscma_writer_end;
+            ESP_LOGW(TAG, "sscma client get info failed, will try to flash anyway\n");
+            // userdata->err = ESP_ERR_OTA_SSCMA_START_FAIL;
+            // goto sscma_writer_end;
         }
+
+        sscma_client_flasher_handle_t sscma_flasher = use_spi_flasher ? bsp_sscma_flasher_init() : 
+                                                                        bsp_sscma_flasher_init_legacy(sscma_client);
+        assert(sscma_flasher != NULL);
+
+        int sscma_flasher_chunk_size_decided = use_spi_flasher ? SSCMA_FLASH_CHUNK_SIZE_SPI : SSCMA_FLASH_CHUNK_SIZE_UART;
+
+        //sscma_client_init(sscma_client);
 
         int64_t start = esp_timer_get_time();
         uint32_t flash_addr = 0x0;
@@ -369,9 +431,9 @@ static void __sscma_writer_task(void *p_arg)
             flash_addr = 0xA00000;
         }
 
-        if (sscma_client_ota_start(sscma_client, sscma_flasher, flash_addr) != ESP_OK)
-        {
-            ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
+        //sscma_client_ota_start
+        if (sscma_client_ota_start(sscma_client, sscma_flasher, flash_addr) != ESP_OK) {
+            ESP_LOGE(TAG, "sscma writer, sscma_client_ota_start failed");
             g_result_err = ESP_ERR_OTA_SSCMA_START_FAIL;
             ota_status.status = OTA_STATUS_FAIL;
             ota_status.err_code = g_result_err;
@@ -389,13 +451,13 @@ static void __sscma_writer_task(void *p_arg)
         int last_report_bytes = step_bytes;
         int target_bytes;
         int retry_cnt = 0;
-        void *chunk = psram_calloc(1, SSCMA_FLASH_CHUNK_SIZE);
+        void *chunk = psram_calloc(1, sscma_flasher_chunk_size_decided);
         void *tmp;
         UBaseType_t available_bytes = 0;
         size_t rcvlen, rcvlen2;
 
         while (remain_len > 0 && !atomic_load(&g_sscma_writer_abort)) {
-            target_bytes = MIN(SSCMA_FLASH_CHUNK_SIZE, remain_len);
+            target_bytes = MIN(sscma_flasher_chunk_size_decided, remain_len);
             vRingbufferGetInfo(g_rb_ai_model, NULL, NULL, NULL, NULL, &available_bytes);
             if ((int)available_bytes < target_bytes) {
                 vTaskDelay(pdMS_TO_TICKS(1));
@@ -416,7 +478,7 @@ static void __sscma_writer_task(void *p_arg)
                 userdata->err = ESP_ERR_OTA_SSCMA_INTERNAL_ERR;
                 goto sscma_writer_end0;
             }
-            memset(chunk, 0, SSCMA_FLASH_CHUNK_SIZE);
+            memset(chunk, 0, sscma_flasher_chunk_size_decided);
             memcpy(chunk, tmp, rcvlen);
             target_bytes -= rcvlen;
             vRingbufferReturnItem(g_rb_ai_model, tmp);
@@ -441,7 +503,7 @@ static void __sscma_writer_task(void *p_arg)
 
             //write to sscma client
             // ESP_LOGD(TAG, "sscma writer, sscma_client_ota_write");
-            if (sscma_client_ota_write(sscma_client, chunk, SSCMA_FLASH_CHUNK_SIZE) != ESP_OK)
+            if (sscma_client_ota_write(sscma_client, chunk, sscma_flasher_chunk_size_decided) != ESP_OK)
             {
                 ESP_LOGW(TAG, "sscma writer, sscma_client_ota_write failed\n");
                 userdata->err = ESP_ERR_OTA_SSCMA_WRITE_FAIL;
@@ -469,7 +531,8 @@ static void __sscma_writer_task(void *p_arg)
         } else {
             ESP_LOGD(TAG, "%s sscma writer, write done, take %lld us", ota_type_str(ota_type), esp_timer_get_time() - start);
             sscma_client_ota_finish(sscma_client);
-            ESP_LOGI(TAG, "%s sscma writer, finish, take %lld us", ota_type_str(ota_type), esp_timer_get_time() - start);
+            ESP_LOGI(TAG, "%s sscma writer, finish, take %lld us, speed %d KB/s", ota_type_str(ota_type), esp_timer_get_time() - start,
+                            (int)(1000 * content_len / (esp_timer_get_time() - start)));
         }
 sscma_writer_end0:
         free(chunk);
@@ -587,11 +650,16 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
                 esp_http_client_get_status_code(http_client),
                 esp_http_client_get_content_length(http_client),
                 esp_timer_get_time() - start);
-        
+
         xSemaphoreTake(g_sem_sscma_writer_done, portMAX_DELAY);
-
-        if (atomic_load(&g_sscma_writer_abort)) ret = ESP_ERR_OTA_USER_CANCELED;
-
+        if (atomic_load(&g_sscma_writer_abort)) {
+            // user canceled
+            ret = ESP_ERR_OTA_USER_CANCELED;
+        } else if (!esp_http_client_is_complete_data_received(http_client)) {
+            ESP_LOGW(TAG, "sscma ota, HTTP finished but incompleted data received");
+            // maybe network connection broken?
+            ret = ESP_ERR_OTA_DOWNLOAD_FAIL;
+        }
     } else {
         ESP_LOGE(TAG, "sscma ota, HTTP GET request failed: %s", esp_err_to_name(err));
         //error defines:
@@ -1056,6 +1124,7 @@ static void __app_event_handler(void *handler_args, esp_event_base_t event_base,
                 ota_status_q_item_t *item = psram_calloc(1, sizeof(ota_status_q_item_t));
                 item->ota_src = event_id;
                 memcpy(&(item->ota_status), event_data, sizeof(struct view_data_ota_status));
+                ESP_LOGD(TAG, "ota_status.status=%d, .err_code=0x%x", item->ota_status.status, item->ota_status.err_code);
                 if (xQueueSend(g_Q_ota_status, item, 0) != pdPASS) {
                     ESP_LOGW(TAG, "can not push to ota status Q, maybe full? drop this item!");
                 }
