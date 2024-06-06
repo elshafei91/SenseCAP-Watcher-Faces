@@ -43,7 +43,7 @@ static SemaphoreHandle_t __g_net_check_sem;
 static int s_retry_num = 0;
 static int wifi_retry_max = 3;
 static bool __g_ping_done = true;
-int wifi_connect_failed_reason = 10;
+int wifi_connect_failed_reason = 70;
 static EventGroupHandle_t __wifi_event_group;
 static StaticTask_t wifi_task_buffer;
 static StackType_t *wifi_task_stack = NULL;
