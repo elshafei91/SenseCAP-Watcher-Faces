@@ -204,7 +204,8 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
     cJSON_AddItemToObject(root, "scanned_wifi", scanned_array);
     freeWiFiStack(&wifiStack_scanned);
     freeWiFiStack(&wifiStack_connected);
-
+    resetWiFiStack(&wifiStack_scanned);
+    resetWiFiStack(&wifiStack_connected);
     return root;
 }
 
@@ -1011,7 +1012,6 @@ void handle_wifi_table(char *params)
     xSemaphoreTake(xBinarySemaphore_wifitable, portMAX_DELAY);
     cJSON *json = create_wifi_stack_json(&wifiStack_scanned, &wifiStack_connected);
     char *json_str = cJSON_Print(json);
-    ESP_LOGE(TAG, "json_str is %s", json_str);
     send_at_response(json_str);
     cJSON_Delete(json);
     free(json_str);
