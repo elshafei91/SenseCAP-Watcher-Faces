@@ -23,6 +23,7 @@ static int PNG_LOADING_COUNT = 0;
 static uint8_t battery_per = 0;
 static bool battery_timer_toggle = 0;
 static int battery_flash_count = 0;
+static lv_obj_t * mbox1;
 extern uint8_t task_down;
 extern uint8_t swipe_id; // 0 for shutdown, 1 for factoryreset
 extern int first_use;
@@ -42,6 +43,10 @@ extern int g_load_image_count;
 extern int g_sleep_image_count;
 extern int g_smile_image_count;
 extern int g_detected_image_count;
+
+static void task_error_msg(const char *message);
+static void event_cb(lv_event_t * e);
+static void box_event();
 
 static void update_ai_ota_progress(int percentage)
 {
@@ -72,6 +77,30 @@ static void toggle_image_visibility(lv_timer_t *timer)
         lv_timer_del(timer);
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, portMAX_DELAY);
     }
+}
+
+static void box_event() {
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
+}
+
+static void event_cb(lv_event_t *e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    if (event_code == LV_EVENT_VALUE_CHANGED) {
+        box_event();
+        lv_obj_del_async(mbox1);
+        mbox1 = NULL;
+    }
+}
+static void task_error_msg(const char *message)
+{
+    static const char *btns[] = {"Close", ""};
+
+    mbox1 = lv_msgbox_create(lv_scr_act(), "Error", message, btns, false);
+    lv_obj_set_width(mbox1, 350);
+    lv_obj_set_height(mbox1, 200);
+    lv_obj_add_event_cb(mbox1, event_cb, LV_EVENT_ALL, NULL);
+    lv_obj_center(mbox1);
 }
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
@@ -352,6 +381,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
+            case VIEW_EVENT_TASK_FLOW_ERROR:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_ERROR");
+                const char* error_msg = (const char*)event_data;
+                task_error_msg(error_msg);
+                break;
+            }
             //Todo
             // case VIEW_EVENT_BAT_DRAIN_SHUTDOWN:{
 
@@ -495,6 +530,10 @@ int view_init(void)
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_OTA_STATUS, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_ERROR, 
                                                             __view_event_handler, NULL, NULL)); 
 
     if((bat_per < 1) && (! is_charging))
