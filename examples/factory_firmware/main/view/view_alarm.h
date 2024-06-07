@@ -18,6 +18,8 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st);
 
 void view_alarm_off(uint8_t task_down);
 
+void view_task_error_init();
+
 
 #ifdef __cplusplus
 }

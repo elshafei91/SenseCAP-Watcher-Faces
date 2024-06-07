@@ -46,6 +46,7 @@ extern uint8_t wifi_page_id;
 extern uint8_t shutdown_state;
 extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
 extern lv_obj_t *ui_alarm_indicator;
+extern lv_obj_t * ui_task_error;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -1174,6 +1175,12 @@ void slpt5c_cb(lv_event_t *e) { }
 void slpt6c_cb(lv_event_t *e) { }
 
 void slpt7c_cb(lv_event_t *e) { }
+
+void taskerrc_cb(lv_event_t *e)
+{
+    lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, 0, portMAX_DELAY);
+}
 /* Page status bundle
  *
  */
