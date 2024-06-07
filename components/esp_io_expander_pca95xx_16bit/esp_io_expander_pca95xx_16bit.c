@@ -13,15 +13,20 @@
 #include <string.h>
 
 #include "driver/i2c.h"
+
 #include "esp_bit_defs.h"
+#include "esp_timer.h"
 #include "esp_check.h"
-#include "esp_io_expander.h"
 #include "esp_log.h"
+
+#include "esp_io_expander.h"
 
 /* Timeout of each I2C communication */
 #define I2C_TIMEOUT_MS (10)
 
 #define IO_COUNT (16)
+
+#define MAX_UPDATE_INTERVAL_US (1000000) /* 1s */
 
 /* Register address */
 #define INPUT_REG_ADDR     (0x00)
@@ -42,7 +47,9 @@ typedef struct
     i2c_port_t i2c_num;
     uint32_t i2c_address;
     gpio_num_t int_gpio;
-    bool need_update;
+    volatile bool need_update;
+    volatile int64_t last_update_time;
+    uint32_t update_interval_us;
     void (*isr_cb)(void *arg);
     void *user_ctx;
     struct
@@ -140,6 +147,7 @@ esp_err_t esp_io_expander_new_i2c_pca95xx_16bit_ex(i2c_port_t i2c_num, uint32_t 
     pca->base.config.flags.dir_out_bit_zero = 1;
     pca->i2c_num = i2c_num;
     pca->i2c_address = i2c_address;
+    pca->update_interval_us = config->update_interval_us;
     pca->base.read_input_reg = read_input_reg;
     pca->base.write_output_reg = write_output_reg;
     pca->base.read_output_reg = read_output_reg;
@@ -165,11 +173,12 @@ static esp_err_t read_input_reg(esp_io_expander_handle_t handle, uint32_t *value
 
     uint8_t temp[2] = { 0, 0 };
     // *INDENT-OFF*
-    if (pca->int_gpio == -1 || pca->need_update)
+    if (pca->int_gpio == -1 || pca->need_update || esp_timer_get_time() > (pca->last_update_time + pca->update_interval_us))
     {
         ESP_RETURN_ON_ERROR(i2c_master_write_read_device(pca->i2c_num, pca->i2c_address, (uint8_t[]) { INPUT_REG_ADDR }, 1, (uint8_t *)&temp, 2, pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG,
             "Read input reg failed");
         pca->regs.input = (((uint32_t)temp[1]) << 8) | (temp[0]);
+        pca->last_update_time = esp_timer_get_time();
         pca->need_update = false;
     }
     else
@@ -185,7 +194,6 @@ static esp_err_t write_output_reg(esp_io_expander_handle_t handle, uint32_t valu
 {
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
     value &= 0xffff;
-
     uint8_t data[] = { OUTPUT_REG_ADDR, value & 0xff, value >> 8 };
     ESP_RETURN_ON_ERROR(i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG, "Write output reg failed");
     pca->regs.output = value;
