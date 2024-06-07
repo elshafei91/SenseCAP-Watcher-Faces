@@ -73,6 +73,8 @@ struct tf_module_ai_camera_model
     int size;
     char checksum[129];
     int model_type;
+    int iou;
+    int confidence;
     char *p_info_all;
 };
 
@@ -129,6 +131,9 @@ struct tf_module_ai_camera_params
 #define CONFIG_TF_MODULE_AI_CAMERA_CLASS_OBJECT_SCORE_THRESHOLD   50
 
 #define CONFIG_TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_BUF_SIZE    10
+
+#define CONFIG_TF_MODULE_AI_CAMERA_MODEL_IOU_DEFAULT            50
+#define CONFIG_TF_MODULE_AI_CAMERA_MODEL_CONFIDENCE_DEFAULT     50
 
 // Must be less than or equal to TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_BUF_SIZE
 #define CONFIG_TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_THRESHOLD   8 

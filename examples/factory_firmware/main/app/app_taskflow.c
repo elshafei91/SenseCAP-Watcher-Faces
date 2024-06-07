@@ -42,9 +42,15 @@ const char local_taskflow_gesture[] = \
 		\"type\": \"ai camera\",    \  
 		\"index\": 0,    \  
 		\"version\": \"1.0.0\",    \  
-		\"params\": {    \  
+		\"params\": {    \ 
 			\"model_type\": 3,    \  
-			\"modes\": 0,    \  
+			\"modes\": 0,    \
+            \"model\": {    \
+              \"arguments\": {  \
+                \"iou\":65,     \
+                \"conf\":65     \
+              }   \
+            },    \  
 			\"conditions\": [{    \  
 				\"class\": \"paper\",    \  
 				\"mode\": 1,    \  
@@ -112,7 +118,13 @@ const char local_taskflow_pet[] = \
 		\"version\": \"1.0.0\",    \  
 		\"params\": {    \  
 			\"model_type\": 2,    \  
-			\"modes\": 0,    \  
+			\"modes\": 0,    \
+            \"model\": {    \
+              \"arguments\": {  \
+                \"iou\":65,     \
+                \"conf\":65     \
+              }   \
+            },    \    
 			\"conditions\": [{    \  
 				\"class\": \"dog\",    \  
 				\"mode\": 1,    \  
@@ -184,7 +196,13 @@ const char local_taskflow_human[] = \
 		\"version\": \"1.0.0\",    \  
 		\"params\": {    \  
 			\"model_type\": 1,    \  
-			\"modes\": 0,    \  
+			\"modes\": 0,    \
+            \"model\": {    \
+              \"arguments\": {  \
+                \"iou\":45,     \
+                \"conf\":45     \
+              }   \
+            },    \    
 			\"conditions\": [{    \  
 				\"class\": \"person\",    \  
 				\"mode\": 1,    \  
