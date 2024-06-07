@@ -9,19 +9,29 @@
 #include "util.h"
 
 uint8_t emoticon_disp_id = 0;
-lv_obj_t *ui_alarm_indicator;
 lv_anim_t a;
+lv_obj_t *ui_alarm_indicator;
+lv_obj_t * ui_taskerrt2;
+lv_obj_t * ui_task_error;
 
 extern uint8_t wifi_page_id;
 extern int first_use;
 extern uint8_t guide_step;
 
 static int16_t indicator_value = 0;
-static lv_obj_t * ui_image = NULL;
 static uint8_t task_view_current = 0;
+static lv_obj_t * ui_image = NULL;
+static lv_obj_t * ui_Page_test;
+static lv_obj_t * ui_taskerrt;
+static lv_obj_t * ui_taskerrbtn;
+static lv_obj_t * ui_taskerrbt;
 
 static uint8_t *image_jpeg_buf = NULL;
 static uint8_t *image_ram_buf = NULL;
+
+static jpeg_dec_io_t *jpeg_io = NULL;
+static jpeg_dec_header_info_t *out_info = NULL;
+static jpeg_dec_handle_t jpeg_dec = NULL;
 
 static lv_img_dsc_t img_dsc = {
     .header.always_zero = 0,
@@ -63,8 +73,65 @@ static void alarm_timer_stop()
     }
 }
 
+static int jpeg_decoder_init(void)
+{
+    esp_err_t ret = ESP_OK;
+    jpeg_dec_config_t config = { .output_type = JPEG_RAW_TYPE_RGB565_BE, .rotate = JPEG_ROTATE_0D };
+    
+    jpeg_dec = jpeg_dec_open(&config);
+    if (jpeg_dec == NULL) {
+        return ESP_FAIL;
+    }
+
+    jpeg_io = heap_caps_malloc(sizeof(jpeg_dec_io_t), MALLOC_CAP_SPIRAM);
+    if (jpeg_io == NULL) {
+        jpeg_dec_close(jpeg_dec);
+        return ESP_FAIL;
+    }
+    memset(jpeg_io, 0, sizeof(jpeg_dec_io_t));
+
+    out_info = heap_caps_aligned_alloc(16, sizeof(jpeg_dec_header_info_t), MALLOC_CAP_SPIRAM);
+    if (out_info == NULL) {
+        heap_caps_free(jpeg_io);
+        jpeg_dec_close(jpeg_dec);
+        return ESP_FAIL;
+    }
+    memset(out_info, 0, sizeof(jpeg_dec_header_info_t));
+
+    return ret;
+}
+
+static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *output_buf)
+{
+    esp_err_t ret = ESP_OK;
+
+    if (!jpeg_dec || !jpeg_io || !out_info) {
+        return ESP_FAIL;
+    }
+
+    jpeg_io->inbuf = input_buf;
+    jpeg_io->inbuf_len = len;
+    ret = jpeg_dec_parse_header(jpeg_dec, jpeg_io, out_info);
+    if (ret < 0) {
+        return ret;
+    }
+
+    jpeg_io->outbuf = output_buf;
+    int inbuf_consumed = jpeg_io->inbuf_len - jpeg_io->inbuf_remain;
+    jpeg_io->inbuf = input_buf + inbuf_consumed;
+    jpeg_io->inbuf_len = jpeg_io->inbuf_remain;
+
+    ret = jpeg_dec_process(jpeg_dec, jpeg_io);
+    return ret;
+}
+
 int view_alarm_init(lv_obj_t *ui_screen)
 {
+    int ret = jpeg_decoder_init();
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
     image_jpeg_buf = psram_malloc(IMG_JPEG_BUF_SIZE);
     assert(image_jpeg_buf);
 
@@ -92,59 +159,11 @@ int view_alarm_init(lv_obj_t *ui_screen)
     ui_image = lv_img_create(ui_viewlivp2);
     lv_obj_set_align(ui_image, LV_ALIGN_CENTER);
 
+    view_task_error_init();
+
     ESP_ERROR_CHECK(esp_timer_create(&alarm_timer_args, &alarm_timer));
 
     return 0;
-}
-
-static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *output_buf)
-{
-    esp_err_t ret = ESP_OK;
-    jpeg_dec_config_t config = { .output_type = JPEG_RAW_TYPE_RGB565_BE, .rotate = JPEG_ROTATE_0D };
-    jpeg_dec_handle_t jpeg_dec = NULL;
-    jpeg_dec = jpeg_dec_open(&config);
-
-    if (jpeg_dec == NULL) {
-        return ESP_FAIL;
-    }
-
-    jpeg_dec_io_t *jpeg_io = heap_caps_malloc(sizeof(jpeg_dec_io_t), MALLOC_CAP_SPIRAM);
-    if (jpeg_io == NULL) {
-        jpeg_dec_close(jpeg_dec);
-        return ESP_FAIL;
-    }
-    memset(jpeg_io, 0, sizeof(jpeg_dec_io_t));
-
-    jpeg_dec_header_info_t *out_info = heap_caps_aligned_alloc(16, sizeof(jpeg_dec_header_info_t), MALLOC_CAP_SPIRAM);
-    if (out_info == NULL) {
-        heap_caps_free(jpeg_io);
-        jpeg_dec_close(jpeg_dec);
-        return ESP_FAIL;
-    }
-    memset(out_info, 0, sizeof(jpeg_dec_header_info_t));
-
-    jpeg_io->inbuf = input_buf;
-    jpeg_io->inbuf_len = len;
-    ret = jpeg_dec_parse_header(jpeg_dec, jpeg_io, out_info);
-    if (ret < 0) {
-        goto _exit;
-    }
-
-    jpeg_io->outbuf = output_buf;
-    int inbuf_consumed = jpeg_io->inbuf_len - jpeg_io->inbuf_remain;
-    jpeg_io->inbuf = input_buf + inbuf_consumed;
-    jpeg_io->inbuf_len = jpeg_io->inbuf_remain;
-
-    ret = jpeg_dec_process(jpeg_dec, jpeg_io);
-    if (ret < 0) {
-        goto _exit;
-    }
-
-_exit:
-    jpeg_dec_close(jpeg_dec);
-    heap_caps_free(out_info);
-    heap_caps_free(jpeg_io);
-    return ret;
 }
 
 
@@ -245,4 +264,66 @@ void view_alarm_off(uint8_t task_down)
         _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
         lv_group_focus_obj(ui_Page_ViewAva);
     }
+}
+
+void view_task_error_init()
+{
+    ui_task_error = lv_obj_create(lv_layer_top());
+    lv_obj_set_width(ui_task_error, 412);
+    lv_obj_set_height(ui_task_error, 412);
+    lv_obj_set_align(ui_task_error, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_task_error, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_radius(ui_task_error, 190, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_task_error, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_task_error, 230, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_task_error, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_task_error, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_taskerrt = lv_label_create(ui_task_error);
+    lv_obj_set_width(ui_taskerrt, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_taskerrt, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_x(ui_taskerrt, 0);
+    lv_obj_set_y(ui_taskerrt, -104);
+    lv_obj_set_align(ui_taskerrt, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_taskerrt, "TASK ERROR");
+    lv_obj_set_style_text_color(ui_taskerrt, lv_color_hex(0xBE2C2C), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_taskerrt, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_taskerrt, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_taskerrt2 = lv_label_create(ui_task_error);
+    lv_obj_set_width(ui_taskerrt2, 289);
+    lv_obj_set_height(ui_taskerrt2, 108);
+    lv_obj_set_x(ui_taskerrt2, 0);
+    lv_obj_set_y(ui_taskerrt2, -5);
+    lv_obj_set_align(ui_taskerrt2, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_taskerrt2, "[sensecraft alarm] failed to connect the next module");
+    lv_obj_set_style_text_color(ui_taskerrt2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_taskerrt2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_taskerrt2, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_taskerrt2, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_taskerrbtn = lv_btn_create(ui_task_error);
+    lv_obj_set_width(ui_taskerrbtn, 150);
+    lv_obj_set_height(ui_taskerrbtn, 60);
+    lv_obj_set_x(ui_taskerrbtn, 0);
+    lv_obj_set_y(ui_taskerrbtn, 110);
+    lv_obj_set_align(ui_taskerrbtn, LV_ALIGN_CENTER);
+    lv_obj_set_style_radius(ui_taskerrbtn, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_taskerrbtn, lv_color_hex(0xB80808), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_taskerrbtn, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_color(ui_taskerrbtn, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(ui_taskerrbtn, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_taskerrbt = lv_label_create(ui_taskerrbtn);
+    lv_obj_set_width(ui_taskerrbt, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_taskerrbt, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_align(ui_taskerrbt, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_taskerrbt, "End Task");
+    lv_obj_set_style_text_color(ui_taskerrbt, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_taskerrbt, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_taskerrbt, LV_TEXT_ALIGN_AUTO, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_taskerrbt, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_add_event_cb(ui_taskerrbtn, taskerrc_cb, LV_EVENT_CLICKED, NULL);
 }

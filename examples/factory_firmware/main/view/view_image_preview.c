@@ -28,6 +28,10 @@ static uint8_t *image_ram_buf = NULL;
 
 static lv_color_t cls_color[20];
 
+static jpeg_dec_io_t *jpeg_io = NULL;
+static jpeg_dec_header_info_t *out_info = NULL;
+static jpeg_dec_handle_t jpeg_dec = NULL;
+
 static void classes_color_init()
 {
     cls_color[0] = lv_palette_main(LV_PALETTE_RED);
@@ -35,43 +39,42 @@ static void classes_color_init()
     cls_color[2] = lv_palette_main(LV_PALETTE_GREEN);
     cls_color[3] = lv_palette_main(LV_PALETTE_BROWN);
     cls_color[4] = lv_palette_main(LV_PALETTE_PINK);
-    // cls_color[5] = lv_color_hex(0x00a86b);
-    // cls_color[6] = lv_color_hex(0xfcc200);
-    // cls_color[7] = lv_color_hex(0x4b0082);
-    // cls_color[8] = lv_color_hex(0x36648b);
-    // cls_color[9] = lv_color_hex(0xffc40c);
+    cls_color[5] = lv_color_hex(0x00a86b);
+    cls_color[6] = lv_color_hex(0xfcc200);
+    cls_color[7] = lv_color_hex(0x4b0082);
+    cls_color[8] = lv_color_hex(0x36648b);
+    cls_color[9] = lv_color_hex(0xffc40c);
 
-    // cls_color[10] = lv_color_hex(0x444444);
-    // cls_color[11] = lv_color_hex(0xbe29ec);
-    // cls_color[12] = lv_color_hex(0xb68fa9);
-    // cls_color[13] = lv_color_hex(0xa2c4c9);
-    // cls_color[14] = lv_color_hex(0xadff2f);
-    // cls_color[15] = lv_color_hex(0x7f1734);
-    // cls_color[16] = lv_color_hex(0xf7c2c2);
-    // cls_color[17] = lv_color_hex(0xd0e4e4);
-    // cls_color[18] = lv_color_hex(0x98f5ff);
-    // cls_color[19] = lv_color_hex(0xaaf0d1);
+    cls_color[10] = lv_color_hex(0x444444);
+    cls_color[11] = lv_color_hex(0xbe29ec);
+    cls_color[12] = lv_color_hex(0xb68fa9);
+    cls_color[13] = lv_color_hex(0xa2c4c9);
+    cls_color[14] = lv_color_hex(0xadff2f);
+    cls_color[15] = lv_color_hex(0x7f1734);
+    cls_color[16] = lv_color_hex(0xf7c2c2);
+    cls_color[17] = lv_color_hex(0xd0e4e4);
+    cls_color[18] = lv_color_hex(0x98f5ff);
+    cls_color[19] = lv_color_hex(0xaaf0d1);
 }
 
-static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *output_buf)
+static int jpeg_decoder_init(void)
 {
     esp_err_t ret = ESP_OK;
     jpeg_dec_config_t config = { .output_type = JPEG_RAW_TYPE_RGB565_BE, .rotate = JPEG_ROTATE_0D };
-    jpeg_dec_handle_t jpeg_dec = NULL;
+    
     jpeg_dec = jpeg_dec_open(&config);
-
     if (jpeg_dec == NULL) {
         return ESP_FAIL;
     }
 
-    jpeg_dec_io_t *jpeg_io = heap_caps_malloc(sizeof(jpeg_dec_io_t), MALLOC_CAP_SPIRAM);
+    jpeg_io = heap_caps_malloc(sizeof(jpeg_dec_io_t), MALLOC_CAP_SPIRAM);
     if (jpeg_io == NULL) {
         jpeg_dec_close(jpeg_dec);
         return ESP_FAIL;
     }
     memset(jpeg_io, 0, sizeof(jpeg_dec_io_t));
 
-    jpeg_dec_header_info_t *out_info = heap_caps_aligned_alloc(16, sizeof(jpeg_dec_header_info_t), MALLOC_CAP_SPIRAM);
+    out_info = heap_caps_aligned_alloc(16, sizeof(jpeg_dec_header_info_t), MALLOC_CAP_SPIRAM);
     if (out_info == NULL) {
         heap_caps_free(jpeg_io);
         jpeg_dec_close(jpeg_dec);
@@ -79,11 +82,40 @@ static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *ou
     }
     memset(out_info, 0, sizeof(jpeg_dec_header_info_t));
 
+    return ret;
+}
+// call it to free jpeg decoder mem
+static void jpeg_decoder_deinit(void)
+{
+    if (jpeg_dec) {
+        jpeg_dec_close(jpeg_dec);
+        jpeg_dec = NULL;
+    }
+
+    if (jpeg_io) {
+        heap_caps_free(jpeg_io);
+        jpeg_io = NULL;
+    }
+
+    if (out_info) {
+        heap_caps_free(out_info);
+        out_info = NULL;
+    }
+}
+
+static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *output_buf)
+{
+    esp_err_t ret = ESP_OK;
+
+    if (!jpeg_dec || !jpeg_io || !out_info) {
+        return ESP_FAIL;
+    }
+
     jpeg_io->inbuf = input_buf;
     jpeg_io->inbuf_len = len;
     ret = jpeg_dec_parse_header(jpeg_dec, jpeg_io, out_info);
     if (ret < 0) {
-        goto _exit;
+        return ret;
     }
 
     jpeg_io->outbuf = output_buf;
@@ -92,20 +124,17 @@ static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *ou
     jpeg_io->inbuf_len = jpeg_io->inbuf_remain;
 
     ret = jpeg_dec_process(jpeg_dec, jpeg_io);
-    if (ret < 0) {
-        goto _exit;
-    }
-
-_exit:
-    jpeg_dec_close(jpeg_dec);
-    heap_caps_free(out_info);
-    heap_caps_free(jpeg_io);
     return ret;
 }
 
 
 int view_image_preview_init(lv_obj_t *ui_screen)
 {
+    int ret = jpeg_decoder_init();
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
     image_jpeg_buf = psram_malloc(IMG_JPEG_BUF_SIZE);
     assert(image_jpeg_buf);
 
@@ -158,6 +187,11 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
     lv_img_set_src(ui_image, &img_dsc);
 
     if (!p_info->inference.is_valid) {
+        for (size_t i = 0; i < IMAGE_INVOKED_BOXES; i++)
+        {
+            lv_obj_add_flag(ui_rectangle[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_class_name[i], LV_OBJ_FLAG_HIDDEN);
+        }
         return 0;
     }
 

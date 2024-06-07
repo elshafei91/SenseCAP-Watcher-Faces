@@ -46,22 +46,24 @@ extern uint8_t wifi_page_id;
 extern uint8_t shutdown_state;
 extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
 extern lv_obj_t *ui_alarm_indicator;
+extern lv_obj_t * ui_task_error;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_anaylze_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 extern int g_detect_image_count;
 extern int g_speak_image_count;
 extern int g_listen_image_count;
-extern int g_load_image_count;
-extern int g_sleep_image_count;
-extern int g_smile_image_count;
+extern int g_analyze_image_count;
+extern int g_standby_image_count;
+extern int g_greet_image_count;
 extern int g_detected_image_count;
+
 
 extern GroupInfo group_page_main;
 extern GroupInfo group_page_template;
@@ -92,10 +94,10 @@ static void async_img_switch_viewava(void *arg)
 }
 
 static uint8_t vir_load_count = 0;
-static void smile_timer_callback(lv_timer_t *timer)
+static void greet_timer_callback(lv_timer_t *timer)
 {
-    current_img_index = (current_img_index + 1) % g_smile_image_count;
-    lv_img_dsc_t *current_img = g_smile_img_dsc[current_img_index];
+    current_img_index = (current_img_index + 1) % g_greet_image_count;
+    lv_img_dsc_t *current_img = g_greet_img_dsc[current_img_index];
     if (emoticon_disp_id)
     {
         async_img_switch_vir(current_img);
@@ -154,10 +156,10 @@ static void detected_timer_callback(lv_timer_t *timer)
     }
 }
 
-static void sleep_timer_callback(lv_timer_t *timer)
+static void standby_timer_callback(lv_timer_t *timer)
 {
-    current_img_index = (current_img_index + 1) % g_sleep_image_count;
-    lv_img_dsc_t *current_img = g_sleep_img_dsc[current_img_index];
+    current_img_index = (current_img_index + 1) % g_standby_image_count;
+    lv_img_dsc_t *current_img = g_standby_img_dsc[current_img_index];
     if (emoticon_disp_id)
     {
         async_img_switch_viewava(current_img);
@@ -192,22 +194,22 @@ static void create_timer(uint8_t det_task)
     switch (det_task)
     {
         case 0:
-            g_timer = lv_timer_create(smile_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(greet_timer_callback, 500, NULL);
             break;
         case 1:
-            g_timer = lv_timer_create(detect_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(detect_timer_callback, 500, NULL);
             break;
         case 2:
-            g_timer = lv_timer_create(listen_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(listen_timer_callback, 500, NULL);
             break;
         case 3:
-            g_timer = lv_timer_create(detected_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(detected_timer_callback, 500, NULL);
             break;
         case 4:
-            g_timer = lv_timer_create(sleep_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(standby_timer_callback, 500, NULL);
             break;
         case 5:
-            g_timer = lv_timer_create(speak_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(speak_timer_callback, 500, NULL);
             break;
         case 6:
             // lv_timer_pause(g_timer);
@@ -1173,6 +1175,12 @@ void slpt5c_cb(lv_event_t *e) { }
 void slpt6c_cb(lv_event_t *e) { }
 
 void slpt7c_cb(lv_event_t *e) { }
+
+void taskerrc_cb(lv_event_t *e)
+{
+    lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, 0, portMAX_DELAY);
+}
 /* Page status bundle
  *
  */
@@ -1229,13 +1237,14 @@ static void Task_end()
 
 static void Page_shutdown()
 {
-    lv_label_set_text(ui_sptitle, "Shut down");
     if (shutdown_state == 1)
     {
+        lv_label_set_text(ui_sptitle, "Shut down");
         lv_label_set_text(ui_sptext, "Swipe to shut down");
     }
     else if (shutdown_state == 0)
     {
+        lv_label_set_text(ui_sptitle, "Reboot");
         lv_label_set_text(ui_sptext, "Swipe to reboot");
     }
 }

@@ -11,7 +11,7 @@
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
 
-#define PNG_IMG_NUMS 32
+#define PNG_IMG_NUMS 24
 
 static const char *TAG = "view";
 
@@ -27,26 +27,24 @@ static lv_obj_t * mbox1;
 extern uint8_t task_down;
 extern uint8_t swipe_id; // 0 for shutdown, 1 for factoryreset
 extern int first_use;
+extern lv_obj_t * ui_taskerrt2;
+extern lv_obj_t * ui_task_error;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_anaylze_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 extern int g_detect_image_count;
 extern int g_speak_image_count;
 extern int g_listen_image_count;
-extern int g_load_image_count;
-extern int g_sleep_image_count;
-extern int g_smile_image_count;
+extern int g_analyze_image_count;
+extern int g_standby_image_count;
+extern int g_greet_image_count;
 extern int g_detected_image_count;
-
-static void task_error_msg(const char *message);
-static void event_cb(lv_event_t * e);
-static void box_event();
 
 static void update_ai_ota_progress(int percentage)
 {
@@ -77,46 +75,6 @@ static void toggle_image_visibility(lv_timer_t *timer)
         lv_timer_del(timer);
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, portMAX_DELAY);
     }
-}
-
-static void box_event() {
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
-}
-static void event_cb(lv_event_t *e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    if (event_code == LV_EVENT_CLICKED) {
-        box_event();
-        lv_obj_del_async(mbox1);
-        mbox1 = NULL;
-    }
-}
-static void task_error_msg(const char *message)
-{
-    static const char *btns[] = {""};
-
-    mbox1 = lv_msgbox_create(lv_layer_top(), "Error", message, btns, false);
-    lv_obj_set_width(mbox1, 300);
-    lv_obj_set_height(mbox1, 160);
-    lv_obj_add_event_cb(mbox1, event_cb, LV_EVENT_ALL, NULL);
-    lv_obj_align(mbox1, LV_ALIGN_CENTER, 0, 0);
-
-    lv_obj_t * stop_btn = lv_btn_create(mbox1);
-    lv_obj_set_width(stop_btn, 150);
-    lv_obj_set_height(stop_btn, 50);
-    lv_obj_set_x(stop_btn, 0);
-    lv_obj_set_y(stop_btn, 130);
-    lv_obj_set_style_bg_color(stop_btn, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN | LV_STATE_DEFAULT);
-    
-    lv_obj_t * stop_btn_t = lv_label_create(stop_btn);
-    lv_obj_set_align(stop_btn_t, LV_ALIGN_CENTER);
-    lv_label_set_text(stop_btn_t, "End Task");
-    lv_obj_set_style_text_font(stop_btn_t, &ui_font_fbold16, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    lv_obj_add_event_cb(stop_btn, event_cb, LV_EVENT_CLICKED, NULL);
-
-    lv_obj_t * msg = lv_msgbox_get_content(mbox1);
-    lv_obj_set_style_text_font(msg, &ui_font_fbold24, LV_PART_MAIN| LV_STATE_DEFAULT);
 }
 
 static void __view_event_handler(void* handler_args, esp_event_base_t base, int32_t id, void* event_data)
@@ -184,6 +142,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     {
                         lv_label_set_text(ui_setdownt, "Reboot");
                         lv_label_set_text(ui_sptext, "Swipe to reboot");
+                        lv_label_set_text(ui_sptitle, "Reboot");
                     }
                     lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
@@ -193,6 +152,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     {
                         lv_label_set_text(ui_setdownt, "Shutdown");
                         lv_label_set_text(ui_sptext, "Swipe to shut down");
+                        lv_label_set_text(ui_sptitle, "Shut down");
                     }
                     lv_obj_clear_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_frame_png);
@@ -265,7 +225,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONFIG_SYNC");
                 int * wifi_config_sync = (int*)event_data;
                 if(lv_scr_act() != ui_Page_Wifi)_ui_screen_change(&ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
-                // lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
                 if(* wifi_config_sync == 0)
                 {
                     waitForWifi();
@@ -284,6 +243,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }else if(* wifi_config_sync == 4)
                 {
                     wifiConnectFailed();
+                }else if (* wifi_config_sync == 5)
+                {
+                    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
                 }
                 break;
             }
@@ -379,8 +341,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_OTA_STATUS:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
-                _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
+                if(lv_scr_act() != ui_Page_OTA)_ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 if(ota_st->status == 0)
                 {
@@ -392,7 +353,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }else{
                     ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
                     lv_label_set_text(ui_otatext, "Update Failed");
-
                 }
                 break;
             }
@@ -400,7 +360,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_TASK_FLOW_ERROR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_ERROR");
                 const char* error_msg = (const char*)event_data;
-                task_error_msg(error_msg);
+                lv_obj_clear_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
+                lv_label_set_text(ui_taskerrt2, error_msg);
                 break;
             }
             //Todo
@@ -548,9 +509,9 @@ int view_init(void)
                                                             VIEW_EVENT_BASE, VIEW_EVENT_OTA_STATUS, 
                                                             __view_event_handler, NULL, NULL));
 
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_ERROR, 
-    //                                                         __view_event_handler, NULL, NULL)); 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_ERROR, 
+                                                            __view_event_handler, NULL, NULL)); 
 
     if((bat_per < 1) && (! is_charging))
     {
@@ -575,13 +536,13 @@ int view_init(void)
     vTaskDelay(pdMS_TO_TICKS(200));
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
 
-    read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
+    read_and_store_selected_pngs("greeting", g_greet_img_dsc, &g_greet_image_count);
     read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
     read_and_store_selected_pngs("detected", g_detected_img_dsc, &g_detected_image_count);
     read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
     read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
-    read_and_store_selected_pngs("loading", g_load_img_dsc, &g_load_image_count);
-    read_and_store_selected_pngs("sleeping", g_sleep_img_dsc, &g_sleep_image_count);
+    read_and_store_selected_pngs("analyzing", g_anaylze_img_dsc, &g_analyze_image_count);
+    read_and_store_selected_pngs("standby", g_standby_img_dsc, &g_standby_image_count);
 
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
                     
