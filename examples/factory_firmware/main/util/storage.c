@@ -183,7 +183,7 @@ esp_err_t storage_write(char *p_key, void *p_data, size_t len)
     storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = p_key, .data = p_data, .len = len, .err = ESP_OK };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_WRITE, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_WRITE, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
@@ -201,7 +201,7 @@ esp_err_t storage_read(char *p_key, void *p_data, size_t *p_len)
     storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = p_key, .data = p_data, .len = *p_len, .err = ESP_OK };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_READ, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_READ, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
@@ -223,7 +223,7 @@ esp_err_t storage_erase()
     };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_ERASE, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_ERASE, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
@@ -241,7 +241,7 @@ esp_err_t storage_file_write(char *file, void *p_data, size_t len)
     storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = file, .data = p_data, .len = len, .err = ESP_OK };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_WRITE, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_WRITE, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
@@ -259,7 +259,7 @@ esp_err_t storage_file_read(char *file, void *p_data, size_t *p_len)
     storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = file, .data = p_data, .len = *p_len, .err = ESP_OK };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_READ, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_READ, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
@@ -279,7 +279,7 @@ esp_err_t storage_file_size_get(char *file, size_t *p_len)
     storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = file, .err = ESP_OK };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_SIZE_GET, &pevtdata, sizeof(storage_event_data_t *), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_SIZE_GET, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 

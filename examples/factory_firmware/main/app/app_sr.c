@@ -126,7 +126,7 @@ static void audio_detect_task(void *arg)
                     .state = ESP_MN_STATE_DETECTING,
                     .command_id = 0,
                 };
-                // esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_WAKE, NULL, 0, portMAX_DELAY); //must before xQueueSend
+                // esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_WAKE, NULL, 0, pdMS_TO_TICKS(10000)); //must before xQueueSend
                 xQueueSend(g_sr_data->result_que, &result, 0);
             }
             frame_keep = 0;

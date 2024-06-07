@@ -630,7 +630,7 @@ static int __taskflow_stop_check(struct app_taskflow * p_taskflow, char *p_task_
     }
     if( need_stop) {
         free(p_task_flow);
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
     }
     cJSON_Delete(json_root);
 

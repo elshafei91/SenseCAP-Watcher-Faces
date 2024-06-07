@@ -228,7 +228,7 @@ void app_main(void)
     esp_event_loop_args_t app_event_loop_args = {
         .queue_size = 64,
         .task_name = "app_eventloop",
-        .task_priority = 6, // uxTaskPriorityGet(NULL),
+        .task_priority = 15, // uxTaskPriorityGet(NULL),
         .task_stack_size = 1024 * 4,
         .task_core_id = 0};
     ESP_ERROR_CHECK(esp_event_loop_create(&app_event_loop_args, &app_event_loop_handle));

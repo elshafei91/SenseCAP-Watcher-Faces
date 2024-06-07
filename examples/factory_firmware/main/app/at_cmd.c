@@ -357,7 +357,7 @@ void handle_bind_command(char *params)
 
     cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "code");
     bind_index = data->valueint;
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONFIG_SYNC, &bind_index, sizeof(bind_index), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONFIG_SYNC, &bind_index, sizeof(bind_index), pdMS_TO_TICKS(10000));
     ESP_LOGI(TAG, "bind_index: %d\n", bind_index);
 
     cJSON_Delete(json);
@@ -722,7 +722,7 @@ void handle_deviceinfo_cfg_command(char *params)
                 time_cfg.time = utc_timestamp;
                 time_cfg.set_time = true;
             }
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg, sizeof(time_cfg), pdMS_TO_TICKS(10000));
         }
 
         // get brightness item
@@ -1234,7 +1234,7 @@ void handle_taskflow_command(char *params)
         base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
         free(result);
         printf("send task flow is %s", base64_output);
-        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, 4, portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, 4, pdMS_TO_TICKS(10000));
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);

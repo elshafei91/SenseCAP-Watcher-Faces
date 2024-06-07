@@ -323,7 +323,7 @@ void sr_handler_task(void *pvParam)
                 struct view_data_record data;
                 data.p_buf = record_audio_buffer;
                 data.len = record_total_len;
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_VAD_TIMEOUT, &data, sizeof(data), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_AUDIO_VAD_TIMEOUT, &data, sizeof(data), pdMS_TO_TICKS(10000));
             }
 
             continue;

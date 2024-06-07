@@ -69,8 +69,8 @@ static void __time_sync_notification_cb(struct timeval *tv)
     struct view_data_time_cfg cfg;
     __time_cfg_get(&cfg);
     bool time_format_24 = cfg.time_format_24;
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
-    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED, NULL, 0, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), pdMS_TO_TICKS(10000));
+    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED, NULL, 0, pdMS_TO_TICKS(10000));
 }
 
 static void __time_sync_enable(void)
@@ -163,7 +163,7 @@ static void __time_view_update_callback(void *arg)
         struct view_data_time_cfg cfg;
         __time_cfg_get(&cfg);
         bool time_format_24 = cfg.time_format_24;
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), pdMS_TO_TICKS(10000));
         ESP_LOGI(TAG, "need update time view");
         char strftime_buf[64];
         strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
@@ -199,7 +199,7 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             __time_cfg(p_cfg, set_time); // config;
 
             bool time_format_24 = p_cfg->time_format_24;
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), pdMS_TO_TICKS(10000));
             break;
         }
         case VIEW_EVENT_WIFI_ST: {
@@ -282,7 +282,7 @@ int app_time_init(void)
     struct view_data_time_cfg cfg;
     __time_cfg_get(&cfg);
     __time_cfg(&cfg, false); // don't reconfig time when reboot
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_UPDATE, &cfg, sizeof(cfg), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_UPDATE, &cfg, sizeof(cfg), pdMS_TO_TICKS(10000));
 
     __time_view_update_init();
 
@@ -305,7 +305,7 @@ int app_time_net_zone_set(char *p)
         __time_zone_set(&cfg);
     }
     bool time_format_24 = cfg.time_format_24;
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME, &time_format_24, sizeof(time_format_24), pdMS_TO_TICKS(10000));
     return 0;
 }
 

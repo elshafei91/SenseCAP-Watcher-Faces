@@ -69,7 +69,7 @@ static int wifi_cfg_set(int argc, char **argv)
         cfg.have_password = true;
         strncpy( cfg.password, wifi_cfg_args.password->sval[0], len );
     }
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), pdMS_TO_TICKS(10000));
     return 0;
 }
 //wifi_cfg -s ssid -p password
@@ -92,7 +92,7 @@ static void register_cmd_wifi_sta(void)
 /************* reboot **************/
 static int do_reboot(int argc, char **argv)
 {
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
     return 0;
 }
 
