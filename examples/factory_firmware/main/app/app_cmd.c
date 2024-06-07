@@ -162,7 +162,6 @@ static int do_force_ota(int argc, char **argv)
         case 2:
             app_ota_any_ignore_version_check(true);
             ret = app_ota_esp32_fw_download(url);
-            app_ota_any_ignore_version_check(false);
             break;
         
         default:
@@ -348,8 +347,69 @@ static void register_cmd_factory_info(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* bsp function  **************/
+static struct {
+    struct arg_rex0 *subcmd;
+    // struct arg_rex0 *subcmd1;
+    // struct arg_rex0 *subcmd2;
+    struct arg_end *end;
+} bsp_cmd_args;
+
+static int do_bsp_cmd(int argc, char **argv)
+{
+    for (int i = 0; i < argc; i++)
+    {
+        ESP_LOGD(TAG, "argv[%d]: %s", i, argv[i]);
+    }
+
+    if (argc < 2) {
+        ESP_LOGW(TAG, "subcmd missing");
+        return 1;
+    }
+    
+    char *subcmd = argv[1];
+    if (strcmp(subcmd, "i2cdetect") == 0) {
+        if (argc < 3) {
+            ESP_LOGW(TAG, "i2c bus number missing");
+            return 2;
+        }
+        int bus = atoi(argv[2]);
+        if (bus >= I2C_NUM_MAX) {
+            ESP_LOGW(TAG, "the system only has %d i2c buses, specified bus %d exceeds range", (int)I2C_NUM_MAX, bus);
+            return 3;
+        }
+        ESP_LOGI(TAG, "i2cdetect on i2c bus %d", bus);
+        bsp_i2c_detect((i2c_port_t)bus);
+        return 0;
+    }
+    
+    return -1;  // invalid subcmd
+}
+
+static void register_bsp_cmd()
+{
+    // only used to print a neat help
+    bsp_cmd_args.subcmd = arg_rex0(NULL, NULL, "i2cdetect <0|1>", NULL, ARG_REX_ICASE, "scan the specified i2c bus");
+    bsp_cmd_args.end = arg_end(20);
+
+    const esp_console_cmd_t cmd = {
+        .command = "bsp",
+        .help = "call bsp functions",
+        .hint = "subcmd [subcmd args]",
+        .func = do_bsp_cmd,
+        .argtable = &bsp_cmd_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+
 int app_cmd_init(void)
 {
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
     esp_console_repl_t *repl = NULL;
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     /* Prompt to be printed before each line.
@@ -362,6 +422,7 @@ int app_cmd_init(void)
     register_cmd_force_ota();
     register_cmd_taskflow();
     register_cmd_factory_info();
+    register_bsp_cmd();
     register_cmd_reboot();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
