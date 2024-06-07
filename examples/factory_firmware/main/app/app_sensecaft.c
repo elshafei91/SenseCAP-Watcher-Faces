@@ -616,6 +616,30 @@ err:
     return ret;
 }
 
+esp_err_t app_sensecraft_disconnect(void)
+{
+    int ret = ESP_OK;
+    struct app_sensecraft * p_sensecraft = gp_sensecraft;
+    if( p_sensecraft == NULL) {
+        return ESP_FAIL;
+    }
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle != NULL, ESP_FAIL, TAG, "mqtt_client is not inited yet");
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet");
+    esp_mqtt_client_disconnect(p_sensecraft->mqtt_handle);
+    esp_mqtt_client_destroy(p_sensecraft->mqtt_handle);
+    
+    return ret;
+}
+
+bool app_sensecraft_is_connected(void)
+{
+    struct app_sensecraft * p_sensecraft = gp_sensecraft;
+    if( p_sensecraft == NULL) {
+        return false;
+    }
+    return p_sensecraft->mqtt_connected_flag;
+}
+
 static esp_err_t sensecraft_deviceinfo_get(struct sensecraft_deviceinfo *p_info)
 {
     esp_err_t ret = ESP_OK;
