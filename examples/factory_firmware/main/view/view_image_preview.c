@@ -39,22 +39,22 @@ static void classes_color_init()
     cls_color[2] = lv_palette_main(LV_PALETTE_GREEN);
     cls_color[3] = lv_palette_main(LV_PALETTE_BROWN);
     cls_color[4] = lv_palette_main(LV_PALETTE_PINK);
-    // cls_color[5] = lv_color_hex(0x00a86b);
-    // cls_color[6] = lv_color_hex(0xfcc200);
-    // cls_color[7] = lv_color_hex(0x4b0082);
-    // cls_color[8] = lv_color_hex(0x36648b);
-    // cls_color[9] = lv_color_hex(0xffc40c);
+    cls_color[5] = lv_color_hex(0x00a86b);
+    cls_color[6] = lv_color_hex(0xfcc200);
+    cls_color[7] = lv_color_hex(0x4b0082);
+    cls_color[8] = lv_color_hex(0x36648b);
+    cls_color[9] = lv_color_hex(0xffc40c);
 
-    // cls_color[10] = lv_color_hex(0x444444);
-    // cls_color[11] = lv_color_hex(0xbe29ec);
-    // cls_color[12] = lv_color_hex(0xb68fa9);
-    // cls_color[13] = lv_color_hex(0xa2c4c9);
-    // cls_color[14] = lv_color_hex(0xadff2f);
-    // cls_color[15] = lv_color_hex(0x7f1734);
-    // cls_color[16] = lv_color_hex(0xf7c2c2);
-    // cls_color[17] = lv_color_hex(0xd0e4e4);
-    // cls_color[18] = lv_color_hex(0x98f5ff);
-    // cls_color[19] = lv_color_hex(0xaaf0d1);
+    cls_color[10] = lv_color_hex(0x444444);
+    cls_color[11] = lv_color_hex(0xbe29ec);
+    cls_color[12] = lv_color_hex(0xb68fa9);
+    cls_color[13] = lv_color_hex(0xa2c4c9);
+    cls_color[14] = lv_color_hex(0xadff2f);
+    cls_color[15] = lv_color_hex(0x7f1734);
+    cls_color[16] = lv_color_hex(0xf7c2c2);
+    cls_color[17] = lv_color_hex(0xd0e4e4);
+    cls_color[18] = lv_color_hex(0x98f5ff);
+    cls_color[19] = lv_color_hex(0xaaf0d1);
 }
 
 static int jpeg_decoder_init(void)
@@ -187,6 +187,11 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
     lv_img_set_src(ui_image, &img_dsc);
 
     if (!p_info->inference.is_valid) {
+        for (size_t i = 0; i < IMAGE_INVOKED_BOXES; i++)
+        {
+            lv_obj_add_flag(ui_rectangle[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_class_name[i], LV_OBJ_FLAG_HIDDEN);
+        }
         return 0;
     }
 
