@@ -971,6 +971,10 @@ static void __mqtt_ota_executor_task(void *p_arg)
                 goto cleanup;
             }
 
+            //about to issue the ota call, clean up the ota status Q which might be filled
+            //by the console ota cmd
+            xQueueReset(g_Q_ota_status);
+
             bool need_reboot = false;
             //upgrade himax
             if (order_value_himax && new_himax) {

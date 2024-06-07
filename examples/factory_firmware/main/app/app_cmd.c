@@ -162,7 +162,6 @@ static int do_force_ota(int argc, char **argv)
         case 2:
             app_ota_any_ignore_version_check(true);
             ret = app_ota_esp32_fw_download(url);
-            app_ota_any_ignore_version_check(false);
             break;
         
         default:
