@@ -50,18 +50,19 @@ extern lv_obj_t *ui_alarm_indicator;
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_anaylze_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 extern int g_detect_image_count;
 extern int g_speak_image_count;
 extern int g_listen_image_count;
-extern int g_load_image_count;
-extern int g_sleep_image_count;
-extern int g_smile_image_count;
+extern int g_analyze_image_count;
+extern int g_standby_image_count;
+extern int g_greet_image_count;
 extern int g_detected_image_count;
+
 
 extern GroupInfo group_page_main;
 extern GroupInfo group_page_template;
@@ -92,10 +93,10 @@ static void async_img_switch_viewava(void *arg)
 }
 
 static uint8_t vir_load_count = 0;
-static void smile_timer_callback(lv_timer_t *timer)
+static void greet_timer_callback(lv_timer_t *timer)
 {
-    current_img_index = (current_img_index + 1) % g_smile_image_count;
-    lv_img_dsc_t *current_img = g_smile_img_dsc[current_img_index];
+    current_img_index = (current_img_index + 1) % g_greet_image_count;
+    lv_img_dsc_t *current_img = g_greet_img_dsc[current_img_index];
     if (emoticon_disp_id)
     {
         async_img_switch_vir(current_img);
@@ -154,10 +155,10 @@ static void detected_timer_callback(lv_timer_t *timer)
     }
 }
 
-static void sleep_timer_callback(lv_timer_t *timer)
+static void standby_timer_callback(lv_timer_t *timer)
 {
-    current_img_index = (current_img_index + 1) % g_sleep_image_count;
-    lv_img_dsc_t *current_img = g_sleep_img_dsc[current_img_index];
+    current_img_index = (current_img_index + 1) % g_standby_image_count;
+    lv_img_dsc_t *current_img = g_standby_img_dsc[current_img_index];
     if (emoticon_disp_id)
     {
         async_img_switch_viewava(current_img);
@@ -192,22 +193,22 @@ static void create_timer(uint8_t det_task)
     switch (det_task)
     {
         case 0:
-            g_timer = lv_timer_create(smile_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(greet_timer_callback, 500, NULL);
             break;
         case 1:
-            g_timer = lv_timer_create(detect_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(detect_timer_callback, 500, NULL);
             break;
         case 2:
-            g_timer = lv_timer_create(listen_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(listen_timer_callback, 500, NULL);
             break;
         case 3:
-            g_timer = lv_timer_create(detected_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(detected_timer_callback, 500, NULL);
             break;
         case 4:
-            g_timer = lv_timer_create(sleep_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(standby_timer_callback, 500, NULL);
             break;
         case 5:
-            g_timer = lv_timer_create(speak_timer_callback, 800, NULL);
+            g_timer = lv_timer_create(speak_timer_callback, 500, NULL);
             break;
         case 6:
             // lv_timer_pause(g_timer);
@@ -1229,13 +1230,14 @@ static void Task_end()
 
 static void Page_shutdown()
 {
-    lv_label_set_text(ui_sptitle, "Shut down");
     if (shutdown_state == 1)
     {
+        lv_label_set_text(ui_sptitle, "Shut down");
         lv_label_set_text(ui_sptext, "Swipe to shut down");
     }
     else if (shutdown_state == 0)
     {
+        lv_label_set_text(ui_sptitle, "Reboot");
         lv_label_set_text(ui_sptext, "Swipe to reboot");
     }
 }

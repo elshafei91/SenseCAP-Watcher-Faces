@@ -14,17 +14,17 @@
 lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
-lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
-lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_anaylze_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 int g_detect_image_count = 0;
 int g_speak_image_count = 0;
 int g_listen_image_count = 0;
-int g_load_image_count = 0;
-int g_sleep_image_count = 0;
-int g_smile_image_count = 0;
+int g_analyze_image_count = 0;
+int g_standby_image_count = 0;
+int g_greet_image_count = 0;
 int g_detected_image_count = 0;
 
 void create_img_dsc(lv_img_dsc_t **img_dsc, void *data, size_t size) {

@@ -11,7 +11,7 @@
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
 
-#define PNG_IMG_NUMS 32
+#define PNG_IMG_NUMS 24
 
 static const char *TAG = "view";
 
@@ -31,17 +31,17 @@ extern int first_use;
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_anaylze_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 extern int g_detect_image_count;
 extern int g_speak_image_count;
 extern int g_listen_image_count;
-extern int g_load_image_count;
-extern int g_sleep_image_count;
-extern int g_smile_image_count;
+extern int g_analyze_image_count;
+extern int g_standby_image_count;
+extern int g_greet_image_count;
 extern int g_detected_image_count;
 
 static void task_error_msg(const char *message);
@@ -383,8 +383,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_OTA_STATUS:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
-                _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
+                //TODO
+                if(lv_scr_act() != ui_Page_OTA)_ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 if(ota_st->status == 0)
                 {
@@ -396,7 +396,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }else{
                     ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
                     lv_label_set_text(ui_otatext, "Update Failed");
-
                 }
                 break;
             }
@@ -579,13 +578,13 @@ int view_init(void)
     vTaskDelay(pdMS_TO_TICKS(200));
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
 
-    read_and_store_selected_pngs("smiling", g_smile_img_dsc, &g_smile_image_count);
+    read_and_store_selected_pngs("greeting", g_greet_img_dsc, &g_greet_image_count);
     read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
     read_and_store_selected_pngs("detected", g_detected_img_dsc, &g_detected_image_count);
     read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
     read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
-    read_and_store_selected_pngs("loading", g_load_img_dsc, &g_load_image_count);
-    read_and_store_selected_pngs("sleeping", g_sleep_img_dsc, &g_sleep_image_count);
+    read_and_store_selected_pngs("analyzing", g_anaylze_img_dsc, &g_analyze_image_count);
+    read_and_store_selected_pngs("standby", g_standby_img_dsc, &g_standby_image_count);
 
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, portMAX_DELAY);
                     
