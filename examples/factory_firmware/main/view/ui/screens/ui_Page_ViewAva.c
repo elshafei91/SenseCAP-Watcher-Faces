@@ -78,7 +78,7 @@ void ui_Page_ViewAva_screen_init(void)
     lv_obj_set_style_border_opa(ui_viewavap2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_guideimg1 = lv_img_create(ui_viewavap2);
-    lv_img_set_src(ui_guideimg1, &ui_img_switch_group_png);
+    lv_img_set_src(ui_guideimg1, &ui_img_scroll_down_png);
     lv_obj_set_width(ui_guideimg1, LV_SIZE_CONTENT);   /// 222
     lv_obj_set_height(ui_guideimg1, LV_SIZE_CONTENT);    /// 234
     lv_obj_set_x(ui_guideimg1, 43);

@@ -429,7 +429,8 @@ LV_IMG_DECLARE(ui_img_onboardclick_png);
 LV_IMG_DECLARE(ui_img_error_png);
 LV_IMG_DECLARE(ui_img_no_wifi_png);
 LV_IMG_DECLARE(ui_img_battery_charging_png);
-
+LV_IMG_DECLARE(ui_img_scroll_down_png);
+LV_IMG_DECLARE(ui_img_scroll_up_png);
 
 LV_FONT_DECLARE(ui_font_fbold16);
 LV_FONT_DECLARE(ui_font_fbold24);
