@@ -376,7 +376,7 @@ static int __get_camera_mode_get(cJSON *payload)
 static void sscma_on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
 {
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)user_ctx;
-
+    esp_err_t ret = ESP_OK;
     int resolution = __get_camera_sensor_resolution(reply->payload);
     int mode = __get_camera_mode_get(reply->payload);
 
@@ -477,18 +477,20 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                     {
                         tf_data_image_copy(&p_module_ins->output_data.img_small, &info.img);
                         tf_data_inference_copy(&p_module_ins->output_data.inference, &info.inference);
-                        tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), portMAX_DELAY);
-                        ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+
+                        ret = tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), pdMS_TO_TICKS(100));
+                        if( ret != ESP_OK) {
+                            ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
+                            tf_data_free(&p_module_ins->output_data);
+                        } else {
+                            ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+                        }
                     }
 
                 }
             }
             __data_unlock(p_module_ins);
-            
-            //UI preview
-            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  
-            //                         VIEW_EVENT_AI_CAMERA_PREVIEW, &info, sizeof(info), portMAX_DELAY);
-            
+                       
             // Reduce event bus usage
             lvgl_port_lock(0);
             view_image_preview_flush(&info);
@@ -522,8 +524,13 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                 tf_data_image_copy(&p_module_ins->output_data.img_large, &img_large);
                 tf_data_image_copy(&p_module_ins->output_data.img_small, &p_module_ins->preview_info_cache.img);
                 tf_data_inference_copy(&p_module_ins->output_data.inference, &p_module_ins->preview_info_cache.inference);
-                tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), portMAX_DELAY);
-                ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+                ret = tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), pdMS_TO_TICKS(10000));
+                if( ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
+                    tf_data_free(&p_module_ins->output_data);
+                } else {
+                    ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+                }
             }
             __data_unlock(p_module_ins);
 

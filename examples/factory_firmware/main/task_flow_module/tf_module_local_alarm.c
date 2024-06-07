@@ -103,6 +103,7 @@ static void __alarm_off_event_handler(void *handler_args, esp_event_base_t base,
 
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
+    esp_err_t ret = ESP_OK;
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)handler_args;
     struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
    
@@ -138,8 +139,13 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         text_used = true;
     }
 
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+    ret = esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_ALARM_ON, &info, sizeof(info), portMAX_DELAY);
+    if( ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to post alram on event");
+        tf_data_image_free(&info.img);
+        tf_data_buf_free(&info.text);
+    }
 
     if(p_params->rgb) {
         // TODO RGB ON

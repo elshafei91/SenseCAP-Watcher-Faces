@@ -134,7 +134,7 @@ struct tf_module_ai_camera_params
 #define CONFIG_TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_THRESHOLD   8 
 
 // default silence duration(if not set)
-#define CONFIG_TF_MODULE_AI_CAMERA_SILENCE_DURATION_DEFAULT     1
+#define CONFIG_TF_MODULE_AI_CAMERA_SILENCE_DURATION_DEFAULT     60
 
 // classes max num
 #define CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM       20

@@ -65,6 +65,7 @@ static int __params_parse(struct tf_module_alarm_trigger_params *p_params, cJSON
 
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
+    esp_err_t ret = ESP_OK;
     tf_module_alarm_trigger_t *p_module_ins = (tf_module_alarm_trigger_t *)handler_args;
     ESP_LOGI(TAG, "Input trigger");
 
@@ -84,7 +85,13 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         tf_data_image_copy(&output_data.img_large, &p_data->img_large);
         tf_data_buf_copy(&output_data.audio, &p_params->audio);
         tf_data_buf_copy(&output_data.text, &p_params->text);
-        tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), portMAX_DELAY);
+        ret = tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), pdMS_TO_TICKS(100));
+        if( ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
+            tf_data_free(&output_data);
+        } else {
+            ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+        }
     }
     __data_unlock(p_module_ins);
 
