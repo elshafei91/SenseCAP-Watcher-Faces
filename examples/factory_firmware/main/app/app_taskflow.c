@@ -386,7 +386,7 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
     switch (engine_status)
     {
         case TF_STATUS_ERR_JSON_PARSE: {
-            snprintf(err_msg, sizeof(err_msg) - 1, "json parse error");
+            snprintf(err_msg, sizeof(err_msg) - 1, "Failed to parse json");
             need_notify_ui = true;
             break;
         }
@@ -396,22 +396,22 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
             break;
         }
         case TF_STATUS_ERR_MODULES_INSTANCE: {
-            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] instance error", p_module_name);
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] failed to create", p_module_name);
             need_notify_ui = true;
             break;
         }
         case TF_STATUS_ERR_MODULES_PARAMS: {
-            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] params error", p_module_name);
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s]'s parameters error", p_module_name);
             need_notify_ui = true;
             break;
         }
         case TF_STATUS_ERR_MODULES_WIRES: {
-            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] wires error", p_module_name);
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] failed to connect the next module", p_module_name);
             need_notify_ui = true;
             break;
         }
         case TF_STATUS_ERR_MODULES_START:{
-            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] wires error", p_module_name);
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] failed to start", p_module_name);
             need_notify_ui = true;
             break;
         }
