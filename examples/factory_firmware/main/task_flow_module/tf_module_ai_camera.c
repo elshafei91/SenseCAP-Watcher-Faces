@@ -294,7 +294,7 @@ static bool __silent_period_check(tf_module_ai_camera_t *p_module_ins)
         }
     }
 
-    ESP_LOGI(TAG, "Silence period pass, diff time:%d", diff);
+    ESP_LOGI(TAG, "Silence period pass, diff time:%.0f", diff);
     return true;
 }
 
@@ -459,6 +459,11 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                     xEventGroupSetBits(p_module_ins->event_group, EVENT_SIMPLE_640_480);
 
                     //save to preview_info_cache
+
+                    // maybe last not free, free it
+                    tf_data_image_free(&p_module_ins->preview_info_cache.img);
+                    tf_data_inference_free(&p_module_ins->preview_info_cache.inference);
+
                     tf_data_image_copy(&p_module_ins->preview_info_cache.img, &info.img);
                     tf_data_inference_copy(&p_module_ins->preview_info_cache.inference, &info.inference);
 

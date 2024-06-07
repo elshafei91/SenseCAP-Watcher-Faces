@@ -71,6 +71,8 @@ struct app_sensecraft
 };
 
 esp_err_t app_sensecraft_init(void);
+esp_err_t app_sensecraft_disconnect(void);
+bool app_sensecraft_is_connected(void);
 
 static esp_err_t sensecraft_deviceinfo_get(struct sensecraft_deviceinfo *p_info);
 

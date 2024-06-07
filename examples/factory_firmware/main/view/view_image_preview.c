@@ -56,49 +56,50 @@ static void classes_color_init()
 static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *output_buf)
 {
     esp_err_t ret = ESP_OK;
-    // Generate default configuration
     jpeg_dec_config_t config = { .output_type = JPEG_RAW_TYPE_RGB565_BE, .rotate = JPEG_ROTATE_0D };
-
-    // Empty handle to jpeg_decoder
     jpeg_dec_handle_t jpeg_dec = NULL;
-
-    // Create jpeg_dec
     jpeg_dec = jpeg_dec_open(&config);
 
-    // Create io_callback handle
-    static jpeg_dec_io_t jpeg_io;
-    memset(&jpeg_io, 0, sizeof(jpeg_io));
+    if (jpeg_dec == NULL) {
+        return ESP_FAIL;
+    }
 
-    // Create out_info handle
-    static jpeg_dec_header_info_t out_info;
-    memset(&out_info, 0, sizeof(out_info));
+    jpeg_dec_io_t *jpeg_io = heap_caps_malloc(sizeof(jpeg_dec_io_t), MALLOC_CAP_SPIRAM);
+    if (jpeg_io == NULL) {
+        jpeg_dec_close(jpeg_dec);
+        return ESP_FAIL;
+    }
+    memset(jpeg_io, 0, sizeof(jpeg_dec_io_t));
 
-    // Set input buffer and buffer len to io_callback
-    jpeg_io.inbuf = input_buf;
-    jpeg_io.inbuf_len = len;
+    jpeg_dec_header_info_t *out_info = heap_caps_aligned_alloc(16, sizeof(jpeg_dec_header_info_t), MALLOC_CAP_SPIRAM);
+    if (out_info == NULL) {
+        heap_caps_free(jpeg_io);
+        jpeg_dec_close(jpeg_dec);
+        return ESP_FAIL;
+    }
+    memset(out_info, 0, sizeof(jpeg_dec_header_info_t));
 
-    // Parse jpeg picture header and get picture for user and decoder
-    ret = jpeg_dec_parse_header(jpeg_dec, &jpeg_io, &out_info);
-    if (ret < 0)
-    {
+    jpeg_io->inbuf = input_buf;
+    jpeg_io->inbuf_len = len;
+    ret = jpeg_dec_parse_header(jpeg_dec, jpeg_io, out_info);
+    if (ret < 0) {
         goto _exit;
     }
 
-    jpeg_io.outbuf = output_buf;
-    int inbuf_consumed = jpeg_io.inbuf_len - jpeg_io.inbuf_remain;
-    jpeg_io.inbuf = input_buf + inbuf_consumed;
-    jpeg_io.inbuf_len = jpeg_io.inbuf_remain;
+    jpeg_io->outbuf = output_buf;
+    int inbuf_consumed = jpeg_io->inbuf_len - jpeg_io->inbuf_remain;
+    jpeg_io->inbuf = input_buf + inbuf_consumed;
+    jpeg_io->inbuf_len = jpeg_io->inbuf_remain;
 
-    // Start decode jpeg raw data
-    ret = jpeg_dec_process(jpeg_dec, &jpeg_io);
-    if (ret < 0)
-    {
+    ret = jpeg_dec_process(jpeg_dec, jpeg_io);
+    if (ret < 0) {
         goto _exit;
     }
 
 _exit:
-    // Decoder deinitialize
     jpeg_dec_close(jpeg_dec);
+    heap_caps_free(out_info);
+    heap_caps_free(jpeg_io);
     return ret;
 }
 

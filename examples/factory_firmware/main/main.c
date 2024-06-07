@@ -85,6 +85,13 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
     case VIEW_EVENT_SHUTDOWN:
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
+        app_sensecraft_disconnect();
+        bsp_lcd_brightness_set(0);
+        for (int i = 0; i < 10; i++)
+        {
+            vTaskDelay(pdMS_TO_TICKS(200));
+            if (!app_sensecraft_is_connected()) break;
+        }        
         fflush(stdout);
         if (get_sdcard_total_size(MAX_CALLER) > 0) {
             bsp_sdcard_deinit_default();
@@ -98,6 +105,7 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
     case VIEW_EVENT_REBOOT:
     {
         ESP_LOGI(TAG, "event: VIEW_EVENT_REBOOT");
+        app_sensecraft_disconnect();
         bsp_lcd_brightness_set(0);
         fflush(stdout);
         if (get_sdcard_total_size(MAX_CALLER) > 0) {
@@ -106,6 +114,7 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
         if (get_spiffs_total_size(MAX_CALLER) > 0) {
             esp_vfs_spiffs_unregister("storage");
         }
+        vTaskDelay(pdMS_TO_TICKS(20));
         esp_restart();
         break;
     }
@@ -135,8 +144,10 @@ void board_init(void)
     if (sscma_client) {
         ESP_ERROR_CHECK_WITHOUT_ABORT(sscma_client_init(sscma_client));
     }
+
+    bsp_rtc_init();
     
-    // bsp_codec_volume_set(100, NULL);
+    bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
 }
 
