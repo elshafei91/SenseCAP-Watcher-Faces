@@ -304,7 +304,7 @@ static void __tf_engine_task(void *p_arg)
             ESP_LOGI(TAG, "RECV NEW TASK");
             if(run_flag) {
                 ESP_LOGI(TAG, "STOP LAST TASK");
-                __status_cb(p_engine, TF_STATUS_STOP, NULL);
+                // __status_cb(p_engine, TF_STATUS_STOP, NULL);
                 __stop(p_engine);
                 run_flag = false;
             }
