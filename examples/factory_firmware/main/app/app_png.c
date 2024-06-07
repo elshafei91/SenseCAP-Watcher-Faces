@@ -103,7 +103,7 @@ void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_ds
                     
                     create_img_dsc(&img_dsc_array[*image_count], data, size);
                     (*image_count)++;
-                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, portMAX_DELAY);
+                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
                 }
             }
         }
