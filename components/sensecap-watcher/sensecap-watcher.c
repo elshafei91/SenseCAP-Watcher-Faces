@@ -154,6 +154,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     const pca95xx_16bit_ex_config_t io_exp_config = {
 
         .int_gpio = BSP_IO_EXPANDER_INT,
+        .update_interval_us = 1000000, // 1s
         .isr_cb = NULL,
         .user_ctx = NULL,
     };
