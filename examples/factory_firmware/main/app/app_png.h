@@ -23,7 +23,7 @@ void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_ds
 
 
 
-void download_emoji_image(char *name, char *url);  
+void download_emoji_images(char *name, char *urls[], int url_count);
 #ifdef __cplusplus
 }
 #endif
