@@ -32,6 +32,10 @@
 #include "app_ota.h"
 #include "app_taskflow.h"
 #include "view.h"
+
+#include "app_png.h"
+
+
 #ifdef CONFIG_INTR_TRACKING
 #include "esp_intr_types.h"
 #endif
@@ -151,6 +155,7 @@ void app_init(void)
     app_at_cmd_init();
     app_ble_init();
     app_cmd_init();
+    download_emoji_image("speaking", "https://sensecraft-statics.seeed.cc/device/emoji/1CF7F1C862200081/speaking/01.png");   
     //app_sr_start(false);
 }
 

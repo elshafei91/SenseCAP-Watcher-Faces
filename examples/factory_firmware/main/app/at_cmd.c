@@ -26,6 +26,7 @@
 #include "at_cmd.h"
 #include "app_device_info.h"
 #include "util.h"
+#include "storage.h"
 
 #define TAG "AT_CMD"
 /*------------------system basic DS-----------------------------------------------------*/
@@ -377,54 +378,80 @@ void handle_bind_command(char *params)
 
 /*-----------------------------------------------------------------------------------------------------------*/
 static int emoji_index = 1;
-static char *emoji_name_prefix;
-static char *emoji_name_final;
+static char emoji_name_prefix[256];
+char *emoji_name_final=NULL;
+static int total_size_value;
 void parse_json_and_concatenate_emoji(char *json_string)
 {
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL)
     {
         ESP_LOGI(TAG, "Error parsing emoji JSON\n");
+        return;
     }
-
-    cJSON *name = cJSON_GetObjectItem(json, "name");
+    //ESP_LOGW(TAG,"checkpoint01");
+    
+    cJSON *name = cJSON_GetObjectItem(json, "filename");
+    cJSON *emoji_index_cjson = cJSON_GetObjectItem(json, "index");
     cJSON *package = cJSON_GetObjectItem(json, "package");
     cJSON *sum = cJSON_GetObjectItem(json, "sum");
-    cJSON *data = cJSON_GetObjectItem(json, "data");
     cJSON *total_size = cJSON_GetObjectItem(json, "totalsize");
-    cJSON *emoji_index_cjson = cJSON_GetObjectItem(json, "emoji_index");
-    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data) || !cJSON_IsNumber(total_size))
+    cJSON *data = cJSON_GetObjectItem(json, "data");
+    
+    if (!cJSON_IsString(name) || !cJSON_IsNumber(emoji_index_cjson) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data) || !cJSON_IsNumber(total_size))
     {
         ESP_LOGI(TAG, "Invalid JSON format in parse_json_and_concatenate_emoji\n");
+        //ESP_LOGW(TAG,"checkpoint02");
         cJSON_Delete(json);
+        return;
     }
 
-    emoji_index = emoji_index_cjson->valueint;
+    int emoji_index = emoji_index_cjson->valueint;
     int prefix_size = 256;
     if (name && name->valuestring)
     {
-        emoji_name_prefix[prefix_size - 1] = '\0';
+        //ESP_LOGW(TAG,"checkpoint03");
+        prefix_size = strlen(name->valuestring);
+        if (prefix_size >= sizeof(emoji_name_prefix))
+        {
+            ESP_LOGI(TAG, "Filename is too long\n");
+            cJSON_Delete(json);
+            return;
+        }
+        strncpy(emoji_name_prefix, name->valuestring, prefix_size);
+        emoji_name_prefix[prefix_size] = '\0'; // Ensure null-termination
     }
     else
     {
-        fprintf(stderr, "name or name->valuestring is null\n");
+        //ESP_LOGW(TAG,"checkpoint04");
+        ESP_LOGI(TAG, "name or name->valuestring is null\n");
         emoji_name_prefix[0] = '\0';
     }
-    int emoji_name_length = snprintf(NULL, 0, "emoji name is %s%d", emoji_name_prefix, emoji_index) + 1;
-    char *emoji_name_final = (char *)heap_caps_malloc(emoji_name_length, MALLOC_CAP_SPIRAM);
-    snprintf(emoji_name_final, emoji_name_length, "emoji name is %s%d", emoji_name_prefix, emoji_index);
+    //ESP_LOGW(TAG,"checkpoint05");
 
-    total_size = total_size->valueint;
+    int emoji_name_length = snprintf(NULL, 0, "%s%d", emoji_name_prefix, emoji_index) + 1;
+    emoji_name_final = (char *)heap_caps_malloc(emoji_name_length, MALLOC_CAP_SPIRAM);
+    if (emoji_name_final == NULL)
+    {
+        ESP_LOGI(TAG, "Failed to allocate memory for emoji_name_final\n");
+        cJSON_Delete(json);
+        return;
+    }
+    snprintf(emoji_name_final, emoji_name_length, "%s%d", emoji_name_prefix, emoji_index);
+
+    total_size_value = total_size->valueint;
     int index = package->valueint;
 
     if (num_jsons == 0)
     {
+        //ESP_LOGW(TAG,"checkpoint06");
         num_jsons = sum->valueint;
         emoji_tasks = (Task *)heap_caps_malloc(num_jsons * sizeof(Task), MALLOC_CAP_SPIRAM);
         if (emoji_tasks == NULL)
         {
             ESP_LOGI(TAG, "Failed to allocate memory for tasks\n");
             cJSON_Delete(json);
+            return;
         }
         for (int i = 0; i < num_jsons; i++)
         {
@@ -434,23 +461,28 @@ void parse_json_and_concatenate_emoji(char *json_string)
 
     if (emoji_tasks == NULL || index < 0 || index >= num_jsons)
     {
+        //ESP_LOGW(TAG,"checkpoint07");
         ESP_LOGI(TAG, "emoji Tasks array is not properly allocated or index out of range\n");
         cJSON_Delete(json);
+        return;
     }
 
     emoji_tasks[index].package = package->valueint;
     emoji_tasks[index].sum = sum->valueint;
     emoji_tasks[index].data = (char *)heap_caps_malloc(DATA_LENGTH + 1, MALLOC_CAP_SPIRAM);
+    //ESP_LOGW(TAG,"checkpoint08");
     if (emoji_tasks[index].data == NULL)
     {
         ESP_LOGI(TAG, "Failed to allocate memory for data\n");
         cJSON_Delete(json);
+        return;
     }
     strncpy(emoji_tasks[index].data, data->valuestring, DATA_LENGTH);
     emoji_tasks[index].data[DATA_LENGTH] = '\0'; // end
-
+    //ESP_LOGW(TAG,"checkpoint09");
     cJSON_Delete(json);
 }
+
 void concatenate_data_emoji(char *result)
 {
     // sort
@@ -479,29 +511,11 @@ void concatenate_data_emoji(char *result)
     emoji_tasks = NULL;
 }
 
-void write_to_file(const char *file_path, const char *data)
-{
-    FILE *file = fopen(file_path, "w");
-    if (file == NULL)
-    {
-        ESP_LOGE("write to file", "Failed to open file for writing: %s", file_path);
-        return;
-    }
-
-    if (fputs(data, file) == EOF)
-    {
-        ESP_LOGE("write to file", "Failed to write data to file: %s", file_path);
-        fclose(file);
-        return;
-    }
-    fclose(file);
-    ESP_LOGI("write to file", "Successfully wrote data to file: %s", file_path);
-}
 
 void handle_emoji_command(char *params)
 {
     ESP_LOGI(TAG, "handle_emoji_command\n");
-    ESP_LOGI(TAG, "emoji Params: %s\n", params);
+    ESP_LOGW(TAG, "emoji Params: %s\n", params);
     parse_json_and_concatenate_emoji(params);
 
     int all_received = 1;
@@ -528,10 +542,12 @@ void handle_emoji_command(char *params)
 
         concatenate_data_emoji(result);
         char file_path[256];
-        snprintf(file_path, sizeof(file_path), "/spiffs/%s", emoji_name_final);
+        printf("check point 10:  %s",emoji_name_final);
+        snprintf(file_path, sizeof(file_path), "/sdcard/%s", emoji_name_final);
         ESP_LOGI(TAG, "emoji Final data: %s\n", result);
+        storage_file_write(file_path, result, total_size_value);        
         // todo write to spiffs
-        write_to_file(file_path, result);
+        // write_to_file(file_path, result);
     }
 
     free(emoji_name_final);
