@@ -304,7 +304,7 @@ static void __tf_engine_task(void *p_arg)
             ESP_LOGI(TAG, "RECV NEW TASK");
             if(run_flag) {
                 ESP_LOGI(TAG, "STOP LAST TASK");
-                __status_cb(p_engine, TF_STATUS_STOP, NULL);
+                // __status_cb(p_engine, TF_STATUS_STOP, NULL);
                 __stop(p_engine);
                 run_flag = false;
             }
@@ -388,9 +388,9 @@ esp_err_t tf_engine_init(void)
     memset(gp_engine, 0, sizeof(tf_engine_t));
 
     esp_event_loop_args_t event_task_args = {
-        .queue_size = 10,
+        .queue_size = 32,
         .task_name = "tf_event_task",
-        .task_priority = 6,
+        .task_priority = 10,
         .task_stack_size = 1024 * 3,
         .task_core_id = 1
     };
@@ -502,7 +502,7 @@ esp_err_t tf_engine_flow_set(const char *p_str, size_t len)
     flow.p_data = p_data;
     flow.len = len;
 
-    if( xQueueSend(gp_engine->queue_handle, &flow, portMAX_DELAY) != pdTRUE) {
+    if( xQueueSend(gp_engine->queue_handle, &flow, ( TickType_t )1000 ) != pdTRUE) {
         tf_free(p_data);
         return ESP_FAIL;
     }
