@@ -803,6 +803,7 @@ void __app_device_info_task(void *pvParameter)
     uint32_t cnt = 0;
     bool firstboot_reported = false, himax_version_got = false;
     static uint8_t last_charge_st = 0x66, last_sdcard_inserted = 0x88, sdcard_debounce = 0x99;
+    static uint8_t last_bat_level_report = 255;
 
 
     MUTEX_brightness = xSemaphoreCreateMutex();
@@ -828,6 +829,10 @@ void __app_device_info_task(void *pvParameter)
     __try_check_sdcard_flash();
 
     g_device_status.battery_per = bsp_battery_get_percent();
+
+    //post battery level to UI at early time
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
+                        &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
 
     while (1)
     {
@@ -855,6 +860,7 @@ void __app_device_info_task(void *pvParameter)
 
         if (!firstboot_reported && atomic_load(&g_timeout_firstreport))
         {
+            last_bat_level_report = g_device_status.battery_per;
             app_sensecraft_mqtt_report_device_status(&g_device_status);
             firstboot_reported = true;
         }
@@ -862,18 +868,18 @@ void __app_device_info_task(void *pvParameter)
         if ((cnt % 300) == 0)
         {
             batnow = bsp_battery_get_percent();
-            if (abs(g_device_status.battery_per - batnow) > 10 || batnow == 0)
-            {
+            if (abs(g_device_status.battery_per - batnow) > 1 || batnow == 0) {
                 g_device_status.battery_per = batnow;
-                // mqtt pub
-                if (firstboot_reported)
-                {
-                    app_sensecraft_mqtt_report_device_status(&g_device_status);
-                }
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
+                                    &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
             }
-            if (batnow == 0)
-            {
+            // mqtt pub
+            if (firstboot_reported && (abs(last_bat_level_report - batnow) > 10 || batnow == 0)) {
+                app_sensecraft_mqtt_report_device_status(&g_device_status);
+                last_bat_level_report = batnow;
+            }
+            if (batnow == 0) {
+                vTaskDelay(pdMS_TO_TICKS(2000)); //for mqtt pub
                 ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, portMAX_DELAY);
             }
@@ -889,6 +895,14 @@ void __app_device_info_task(void *pvParameter)
             {
                 last_charge_st = chg;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, &last_charge_st, 1, portMAX_DELAY);
+                if (!chg) {  //measure the battery immediately when unplug the usb-c charger
+                    batnow = bsp_battery_get_percent();
+                    if (abs(g_device_status.battery_per - batnow) > 1 || batnow == 0) {
+                        g_device_status.battery_per = batnow;
+                        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
+                                            &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
+                    }
+                }
             }
         }
 
