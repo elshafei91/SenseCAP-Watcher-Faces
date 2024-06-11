@@ -41,8 +41,8 @@ static int file_idx = 0;
 static int current_img_index = 0;
 static uint32_t local_task_id;
 static lv_timer_t *g_timer;
+static char *qrcode_content = NULL;
 
-extern char sn_data[66];
 extern uint8_t wifi_page_id;
 extern uint8_t shutdown_state;
 extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
@@ -1220,7 +1220,11 @@ static void Page_ConnAPP_BLE()
     static lv_obj_t *qr;
     qr = lv_qrcode_create(ui_conn_QR, 160, fg_color, bg_color);
 
-    lv_qrcode_update(qr, sn_data, strlen(sn_data));
+    if (qrcode_content && strlen(qrcode_content) > 16) {
+        lv_qrcode_update(qr, qrcode_content, strlen(qrcode_content));
+    } else {
+        lv_qrcode_update(qr, "NULL", 4);  // just in case
+    }
     lv_obj_center(qr);
 }
 
@@ -1310,7 +1314,7 @@ static void settingInfoInit()
 {
     lv_slider_set_range(ui_bslider, 1, 100);
     lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
-    get_sn(UI_CALLER);
+    qrcode_content = (char *)get_qrcode_content();
     get_brightness(UI_CALLER);
     get_rgb_switch(UI_CALLER);
     get_sound(UI_CALLER);
@@ -1319,11 +1323,13 @@ static void settingInfoInit()
     static char about_sn[20];
     static char about_eui[40];
     static char about_btmac[20];
+    static char about_wifimac[20];
     static char about_sw_version[20];
 
-    const uint8_t *sn_code = get_sn_code();
+    const uint8_t *sn_code = get_sn(UI_CALLER);
     const uint8_t *eui_code = get_eui();
     const uint8_t *bt_mac = get_bt_mac();
+    const uint8_t *wifi_mac = get_wifi_mac();
     const char *sw_version = get_software_version(UI_CALLER);
 
     snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X", sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
@@ -1331,6 +1337,8 @@ static void settingInfoInit()
     snprintf(about_eui, sizeof(about_eui), "%02X%02X%02X%02X%02X%02X%02X%02X", eui_code[0], eui_code[1], eui_code[2], eui_code[3], eui_code[4], eui_code[5], eui_code[6], eui_code[7]);
 
     snprintf(about_btmac, sizeof(about_btmac), "%02X:%02X:%02X:%02X:%02X:%02X", bt_mac[0], bt_mac[1], bt_mac[2], bt_mac[3], bt_mac[4], bt_mac[5]);
+
+    snprintf(about_wifimac, sizeof(about_wifimac), "%02X:%02X:%02X:%02X:%02X:%02X", wifi_mac[0], wifi_mac[1], wifi_mac[2], wifi_mac[3], wifi_mac[4], wifi_mac[5]);
 
     snprintf(about_sw_version, sizeof(about_sw_version), "%s", sw_version);
 

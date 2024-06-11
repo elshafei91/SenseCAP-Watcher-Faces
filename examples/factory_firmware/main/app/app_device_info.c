@@ -15,6 +15,7 @@
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
+#include "esp_wifi.h"
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
 #include "esp_timer.h"
@@ -43,9 +44,10 @@
 #define TIME_AUTOMATIC_SK         "time_auto"
 static const char *TAG = "deviceinfo";
 
-uint8_t SN[9] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
-uint8_t EUI[8]={0};
-uint8_t EUI_CODE[16] = { 0x00 };
+static uint8_t SN[9] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
+static uint8_t EUI[8] = { 0 };
+static uint8_t DEVCODE[8] = { 0 };
+static uint8_t QRCODE[67] = { 0 };
 
 int server_code = 1;
 int create_batch = 1000205;
@@ -131,9 +133,7 @@ void init_eui_from_nvs()
 
     uint8_t code[8];
     string_to_byte_array(eui_str, EUI, 8);
-    string_to_byte_array(code_str, code, 8);
-    memcpy(EUI_CODE, EUI, 8);
-    memcpy(EUI_CODE + 8, code, 8);
+    string_to_byte_array(code_str, DEVCODE, 8);
 }
 
 void init_batchid_from_nvs()
@@ -295,40 +295,39 @@ void init_usage_guide_switch_from_nvs()
     }
 }
 
+void init_qrcode_content()
+{
+    char str_platformid[4] = { 0 };
+    char str_batchid[20] = { 0 };
+    snprintf(str_platformid, sizeof(str_platformid), "%d", server_code);
+    snprintf(str_batchid, sizeof(str_batchid), "%d", create_batch);
+    char hexStringEUI[19] = { 0 };
+    char hexStringCode[19] = { 0 };
+    char hexStringSn[19] = { 0 };
+    byteArrayToHexString(EUI, sizeof(EUI), hexStringEUI);
+    byteArrayToHexString(DEVCODE, sizeof(DEVCODE), hexStringCode);
+    byteArrayToHexString(SN, sizeof(SN), hexStringSn);
+
+    snprintf((char *)QRCODE, sizeof(QRCODE), "w1:%s%s:%s:%s:%s", hexStringEUI, hexStringCode, str_platformid, str_batchid, hexStringSn);
+    //esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, QRCODE, sizeof(QRCODE), pdMS_TO_TICKS(10000));
+}
+
 /*----------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
 
 uint8_t *get_sn(int caller)
 {
-    uint8_t *result = NULL;
+    return SN;
+}
 
-    switch (caller)
-    {
-        case BLE_CALLER:
-            ESP_LOGI(TAG, "BLE get sn");
-            result = SN;
-            break;
-        case UI_CALLER:
-            ESP_LOGI(TAG, "UI get sn");
-            char storage_space_2[10];
-            char storage_space_3[20];
-            char storage_space_4[19];
-            snprintf(storage_space_2, sizeof(storage_space_2), "%d", server_code);
-            snprintf(storage_space_3, sizeof(storage_space_3), "%d", create_batch);
-            char hexString1[33] = { 0 };
-            char hexString4[19] = { 0 };
-            byteArrayToHexString(EUI_CODE, sizeof(EUI_CODE), hexString1);
-            byteArrayToHexString(SN, sizeof(SN), hexString4);
-            hexString1[32] = '\0';
-            hexString4[18] = '\0';
-            char final_string[150];
-            snprintf(final_string, sizeof(final_string), "w1:%s:%s:%s:%s", hexString1, storage_space_2, storage_space_3, hexString4);
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, final_string, sizeof(final_string), pdMS_TO_TICKS(10000));
-            result = SN;
-            break;
-    }
+uint8_t *get_eui()
+{
+    return EUI;
+}
 
-    return result;
+uint8_t *get_qrcode_content()
+{
+    return QRCODE;
 }
 
 uint8_t *get_bt_mac()
@@ -345,14 +344,15 @@ uint8_t *get_bt_mac()
     return bd_addr;
 }
 
-uint8_t *get_sn_code()
+uint8_t *get_wifi_mac()
 {
-    return SN;
-}
+    static uint8_t wifi_mac[6] = { 0 };
 
-uint8_t *get_eui()
-{
-    return EUI;
+    if (wifi_mac[0] == 0 && wifi_mac[1] == 0 && wifi_mac[2] == 0) {
+        esp_wifi_get_mac(WIFI_IF_STA, wifi_mac);
+        ESP_LOGI(TAG, "WiFi MAC Address: %02X:%02X:%02X:%02X:%02X:%02X", wifi_mac[0], wifi_mac[1], wifi_mac[2], wifi_mac[3], wifi_mac[4], wifi_mac[5]);
+    }
+    return wifi_mac;
 }
 
 /*---------------------------------------------version module--------------------------------------------------------------*/
@@ -824,6 +824,7 @@ void __app_device_info_task(void *pvParameter)
     init_cloud_service_switch_from_nvs();
     init_ai_service_param_from_nvs();
     init_usage_guide_switch_from_nvs();
+    init_qrcode_content();
 
     // get spiffs and sdcard status
     __try_check_sdcard_flash();
