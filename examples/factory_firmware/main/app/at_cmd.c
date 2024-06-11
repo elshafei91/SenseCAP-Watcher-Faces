@@ -804,9 +804,12 @@ void handle_deviceinfo_command(char *params)
     int sound_value_resp = get_sound(AT_CMD_CALLER);
     int rgb_switch = get_rgb_switch(AT_CMD_CALLER);
     struct view_data_time_cfg cfg;
+    time_t timenow;
     app_time_cfg_get(&cfg);
+    time(&timenow);
+    if (timenow < cfg.time) timenow = cfg.time;
     char timestamp_str[20];
-    snprintf(timestamp_str, sizeof(timestamp_str), "%lld", cfg.time);
+    snprintf(timestamp_str, sizeof(timestamp_str), "%lld", timenow);
     ESP_LOGI(TAG, "Current time configuration:\n");
     ESP_LOGI(TAG, "zone: %d\n", cfg.zone);
 

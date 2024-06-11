@@ -724,6 +724,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &tp_handle));
 
     // Note: read once to initialize the touch panel
+    vTaskDelay(50 / portTICK_PERIOD_MS);
     esp_lcd_touch_read_data(tp_handle);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -731,6 +732,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = tp_handle,
+        .sensitivity = CONFIG_LVGL_INPUT_DEVICE_SENSITIVITY,
     };
     return lvgl_port_add_touch(&touch);
 }
