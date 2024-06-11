@@ -107,7 +107,7 @@ static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32
 static void worker_call(ota_worker_task_data_t *worker_data, int cmd)
 {
     esp_event_post_to(app_event_loop_handle, OTA_EVENT_BASE, cmd,
-                      &worker_data, sizeof(ota_worker_task_data_t *),  portMAX_DELAY);
+                      &worker_data, sizeof(ota_worker_task_data_t *),  pdMS_TO_TICKS(10000));
     xSemaphoreTake(g_sem_worker_done, portMAX_DELAY);
 }
 
@@ -204,7 +204,7 @@ static void esp32_ota_process(char *url)
         ota_status.err_code = ESP_ERR_OTA_CONNECTION_FAIL;
         esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                                     &ota_status, sizeof(struct view_data_ota_status),
-                                    portMAX_DELAY);
+                                    pdMS_TO_TICKS(10000));
         free(config);
         free(ota_config);
         return;
@@ -215,7 +215,7 @@ static void esp32_ota_process(char *url)
     ota_status.percentage = 0;
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                         &ota_status, sizeof(struct view_data_ota_status),
-                        portMAX_DELAY);
+                        pdMS_TO_TICKS(10000));
 
     esp_app_desc_t app_desc;
     worker_data.ota_handle = &https_ota_handle;
@@ -262,7 +262,7 @@ static void esp32_ota_process(char *url)
             ota_status.err_code = ESP_OK;
             esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                                 &ota_status, sizeof(struct view_data_ota_status),
-                                portMAX_DELAY);
+                                pdMS_TO_TICKS(10000));
             last_report_bytes += step_bytes;
             ESP_LOGI(TAG, "esp32 ota, image bytes read: %d, %d%%", read_bytes, ota_status.percentage);
         }
@@ -304,7 +304,7 @@ ota_end:
     }
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                         &ota_status, sizeof(struct view_data_ota_status),
-                        portMAX_DELAY);
+                        pdMS_TO_TICKS(10000));
     free(config);
     free(ota_config);
 }
@@ -434,15 +434,15 @@ static void __sscma_writer_task(void *p_arg)
         //sscma_client_ota_start
         if (sscma_client_ota_start(sscma_client, sscma_flasher, flash_addr) != ESP_OK) {
             ESP_LOGE(TAG, "sscma writer, sscma_client_ota_start failed");
-            g_result_err = ESP_ERR_OTA_SSCMA_START_FAIL;
-            ota_status.status = OTA_STATUS_FAIL;
-            ota_status.err_code = g_result_err;
-            esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
-                                            &ota_status, sizeof(struct view_data_ota_status),
-                                            portMAX_DELAY);
             userdata->err = ESP_ERR_OTA_SSCMA_START_FAIL;
             goto sscma_writer_end;
         }
+        ota_status.status = OTA_STATUS_DOWNLOADING;
+        ota_status.err_code = ESP_OK;
+        ota_status.percentage = 0;
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
+                                            &ota_status, sizeof(struct view_data_ota_status),
+                                            pdMS_TO_TICKS(10000));
 
         // drain the ringbuffer and write to himax
         int written_len = 0;
@@ -516,7 +516,7 @@ static void __sscma_writer_task(void *p_arg)
                     ota_status.err_code = ESP_OK;
                     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid,
                                         &ota_status, sizeof(struct view_data_ota_status),
-                                        portMAX_DELAY);
+                                        pdMS_TO_TICKS(10000));
                     last_report_bytes += step_bytes;
                     ESP_LOGI(TAG, "%s ota, bytes written: %d, %d%%", ota_type_str(ota_type), written_len, ota_status.percentage);
                 }
@@ -584,6 +584,11 @@ static esp_err_t __http_event_handler(esp_http_client_event_t *evt)
                 last_report_bytes = step_bytes;
             }
 
+            if (userdata->err != ESP_OK) {
+                ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, userdata->err != ESP_OK (0x%x), error happened in sscma writer", userdata->err);
+                break;  // don't waste time on ringbuffer send
+            }
+
             //push to ringbuffer
             //himax will move the written bytes into flash every 1MB, it will take pretty long.
             //we give it 1min?
@@ -643,6 +648,7 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
 
     g_sscma_writer_userdata.ota_type = ota_type;
     g_sscma_writer_userdata.http_client = http_client;
+    g_sscma_writer_userdata.err = ESP_OK;
 
     esp_err_t err = esp_http_client_perform(http_client);
     if (err == ESP_OK) {
@@ -659,6 +665,8 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
             ESP_LOGW(TAG, "sscma ota, HTTP finished but incompleted data received");
             // maybe network connection broken?
             ret = ESP_ERR_OTA_DOWNLOAD_FAIL;
+        } else {
+            ret = g_sscma_writer_userdata.err;  //there might be errors in sscma writer task.
         }
     } else {
         ESP_LOGE(TAG, "sscma ota, HTTP GET request failed: %s", esp_err_to_name(err));
@@ -679,9 +687,10 @@ sscma_ota_end:
 
     ota_status.status = g_result_err == ESP_OK ? OTA_STATUS_SUCCEED : OTA_STATUS_FAIL;
     ota_status.err_code = g_result_err;
+    ota_status.percentage = g_result_err == ESP_OK ? 100 : 0;
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
                                     &ota_status, sizeof(struct view_data_ota_status),
-                                    portMAX_DELAY);
+                                    pdMS_TO_TICKS(10000));
 }
 
 static void __app_ota_task(void *p_arg)
@@ -733,7 +742,7 @@ static void ota_status_report(struct view_data_ota_status *ota_status)
                                               ota_status->status, ota_status->err_code, ota_status->percentage);
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_STATUS, 
                             ota_status, sizeof(struct view_data_ota_status),
-                            portMAX_DELAY);
+                            pdMS_TO_TICKS(10000));
     // MQTT report
     const char *fmt = \
                 "\"3578\": %d,"
@@ -1128,7 +1137,8 @@ static void __app_event_handler(void *handler_args, esp_event_base_t event_base,
                 ota_status_q_item_t *item = psram_calloc(1, sizeof(ota_status_q_item_t));
                 item->ota_src = event_id;
                 memcpy(&(item->ota_status), event_data, sizeof(struct view_data_ota_status));
-                ESP_LOGD(TAG, "ota_status.status=%d, .err_code=0x%x", item->ota_status.status, item->ota_status.err_code);
+                ESP_LOGD(TAG, "ota_status.status=%d, .err_code=0x%x, .percentage=%d%%", item->ota_status.status, item->ota_status.err_code,
+                                                                                        item->ota_status.percentage);
                 if (xQueueSend(g_Q_ota_status, item, 0) != pdPASS) {
                     ESP_LOGW(TAG, "can not push to ota status Q, maybe full? drop this item!");
                 }
