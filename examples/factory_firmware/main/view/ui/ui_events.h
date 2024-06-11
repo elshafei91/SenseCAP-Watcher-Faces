@@ -140,14 +140,6 @@ void slpt5c_cb(lv_event_t * e);
 void slpt6c_cb(lv_event_t * e);
 void slpt7c_cb(lv_event_t * e);
 
-void taskerrc_cb(lv_event_t *e);
-
-void waitForWifi();
-void waitForBinding();
-void waitForAddDev();
-void bindFinish();
-void wifiConnectFailed();
-
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif

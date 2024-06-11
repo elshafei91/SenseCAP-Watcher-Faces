@@ -183,12 +183,6 @@ lv_obj_t * ui_revb;
 void ui_Page_ViewAva_screen_init(void);
 void ui_event_Page_ViewAva(lv_event_t * e);
 lv_obj_t * ui_Page_ViewAva;
-lv_obj_t * ui_viewavap;
-lv_obj_t * ui_avat1;
-void ui_event_avabtn1(lv_event_t * e);
-lv_obj_t * ui_avabtn1;
-void ui_event_avabtn2(lv_event_t * e);
-lv_obj_t * ui_avabtn2;
 void ui_event_viewavap2(lv_event_t * e);
 lv_obj_t * ui_viewavap2;
 lv_obj_t * ui_guideimg1;
@@ -198,12 +192,6 @@ lv_obj_t * ui_guideimg1;
 void ui_Page_ViewLive_screen_init(void);
 void ui_event_Page_ViewLive(lv_event_t * e);
 lv_obj_t * ui_Page_ViewLive;
-lv_obj_t * ui_viewlivp;
-void ui_event_livbtn1(lv_event_t * e);
-lv_obj_t * ui_livbtn1;
-void ui_event_livbtn2(lv_event_t * e);
-lv_obj_t * ui_livbtn2;
-lv_obj_t * ui_liv1;
 lv_obj_t * ui_viewlivp2;
 lv_obj_t * ui_viewtext;
 void ui_event_viewback(lv_event_t * e);
@@ -859,22 +847,6 @@ void ui_event_Page_ViewAva(lv_event_t * e)
         viewasul_cb(e);
     }
 }
-void ui_event_avabtn1(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        ava1c_cb(e);
-    }
-}
-void ui_event_avabtn2(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        ava2c_cb(e);
-    }
-}
 void ui_event_viewavap2(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -898,22 +870,6 @@ void ui_event_Page_ViewLive(lv_event_t * e)
     }
     if(event_code == LV_EVENT_SCREEN_UNLOADED) {
         viewlsul_cb(e);
-    }
-}
-void ui_event_livbtn1(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        liv1c_cb(e);
-    }
-}
-void ui_event_livbtn2(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        liv2c_cb(e);
     }
 }
 void ui_event_viewback(lv_event_t * e)

@@ -1,6 +1,7 @@
 #include "view_alarm.h"
 #include "ui/ui.h"
 #include "ui_manager/pm.h"
+#include "ui_manager/event.h"
 #include "esp_timer.h"
 #include "data_defs.h"
 
@@ -14,9 +15,16 @@ lv_obj_t *ui_alarm_indicator;
 lv_obj_t * ui_taskerrt2;
 lv_obj_t * ui_task_error;
 
+// view_alarm obj 
+lv_obj_t * ui_viewavap;
+lv_obj_t * ui_avat1;
+lv_obj_t * ui_avabtn1;
+lv_obj_t * ui_avabtn2;
+
 extern uint8_t wifi_page_id;
 extern int first_use;
 extern uint8_t guide_step;
+extern uint8_t g_alarm_p;
 
 static int16_t indicator_value = 0;
 static uint8_t task_view_current = 0;
@@ -160,6 +168,7 @@ int view_alarm_init(lv_obj_t *ui_screen)
     lv_obj_set_align(ui_image, LV_ALIGN_CENTER);
 
     view_task_error_init();
+    view_alarm_panel_init();
 
     ESP_ERROR_CHECK(esp_timer_create(&alarm_timer_args, &alarm_timer));
 
@@ -178,7 +187,7 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     alarm_timer_start(alarm_st->duration);
 
     // turn the page to view live
-    if ((lv_scr_act() != ui_Page_ViewLive)){
+    if ((lv_scr_act() != ui_Page_ViewLive) && g_alarm_p == 0){
         task_view_current = 0;
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
         lv_group_focus_obj(ui_Page_ViewLive);
@@ -259,7 +268,7 @@ void view_alarm_off(uint8_t task_down)
     lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
 
     // if the page is avatar when the alarm is triggered, turn the page back when the alarm is off
-    if(task_view_current == 0 && task_down == 0)
+    if(task_view_current == 0 && task_down == 0 && g_alarm_p == 0)
     {
         _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
         lv_group_focus_obj(ui_Page_ViewAva);
@@ -326,4 +335,64 @@ void view_task_error_init()
     lv_obj_set_style_text_font(ui_taskerrbt, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_taskerrbtn, taskerrc_cb, LV_EVENT_CLICKED, NULL);
+}
+
+void view_alarm_panel_init()
+{
+    ui_viewavap = lv_obj_create(lv_layer_top());
+    lv_obj_set_width(ui_viewavap, 412);
+    lv_obj_set_height(ui_viewavap, 412);
+    lv_obj_set_align(ui_viewavap, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);     /// Flags
+    lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_viewavap, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_viewavap, 125, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_viewavap, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_viewavap, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_row(ui_viewavap, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_column(ui_viewavap, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_avat1 = lv_label_create(ui_viewavap);
+    lv_obj_set_width(ui_avat1, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_avat1, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_align(ui_avat1, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_avat1, "End Task?");
+    lv_obj_set_style_text_color(ui_avat1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_avat1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_avat1, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_avabtn1 = lv_btn_create(ui_viewavap);
+    lv_obj_set_width(ui_avabtn1, 100);
+    lv_obj_set_height(ui_avabtn1, 100);
+    lv_obj_set_x(ui_avabtn1, 70);
+    lv_obj_set_y(ui_avabtn1, 110);
+    lv_obj_set_align(ui_avabtn1, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_avabtn1, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_clear_flag(ui_avabtn1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_radius(ui_avabtn1, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_avabtn1, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_avabtn1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_avabtn1, &ui_img_wifiok_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_recolor(ui_avabtn1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_recolor_opa(ui_avabtn1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_color(ui_avabtn1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(ui_avabtn1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_avabtn2 = lv_btn_create(ui_viewavap);
+    lv_obj_set_width(ui_avabtn2, 100);
+    lv_obj_set_height(ui_avabtn2, 100);
+    lv_obj_set_x(ui_avabtn2, -70);
+    lv_obj_set_y(ui_avabtn2, 110);
+    lv_obj_set_align(ui_avabtn2, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_avabtn2, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_clear_flag(ui_avabtn2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_radius(ui_avabtn2, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_avabtn2, lv_color_hex(0x202124), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_avabtn2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_avabtn2, &ui_img_setback_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_color(ui_avabtn2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(ui_avabtn2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_add_event_cb(ui_avabtn1, ui_event_alarm_panel, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_avabtn2, ui_event_alarm_panel, LV_EVENT_ALL, NULL);
 }

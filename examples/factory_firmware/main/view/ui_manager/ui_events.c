@@ -30,6 +30,7 @@ int first_use = 0;
 uint8_t task_down = 0;
 uint8_t guide_step = 0;
 uint8_t swipe_id = 0; // 0 for shutdown, 1 for factoryreset
+uint8_t g_alarm_p = 0;
 static bool is_charging = 0;
 static uint8_t loading_flag = 0;
 static struct view_data_setting_volbri volbri;
@@ -73,6 +74,12 @@ extern GroupInfo group_page_ha;
 extern GroupInfo group_page_brightness;
 extern GroupInfo group_page_volume;
 extern GroupInfo group_page_connectapp;
+
+// view_alarm obj extern
+extern lv_obj_t * ui_viewavap;
+extern lv_obj_t * ui_avat1;
+extern lv_obj_t * ui_avabtn1;
+extern lv_obj_t * ui_avabtn2;
 
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
@@ -475,6 +482,8 @@ void viewac_cb(lv_event_t *e)
     {
         lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
         lv_obj_move_foreground(ui_viewavap);
+        g_alarm_p = 1;
+        lv_group_remove_all_objs(g_main);
     }
 }
 
@@ -543,6 +552,10 @@ void ava2c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "ava2c_cb");
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+    g_alarm_p = 0;
+    lv_group_remove_all_objs(g_main);
+    lv_group_add_obj(g_main, ui_Page_ViewAva);
+    lv_group_add_obj(g_main, ui_Page_ViewLive);
 }
 
 void avagc_cb(lv_event_t *e)
@@ -567,8 +580,10 @@ void viewlc_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "viewlc_cb");
     if(first_use)
     {
-        lv_obj_clear_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN); /// Flags
-        lv_obj_move_foreground(ui_viewlivp);
+        lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+        lv_obj_move_foreground(ui_viewavap);
+        g_alarm_p = 1;
+        lv_group_remove_all_objs(g_main);
     }
 }
 
@@ -582,7 +597,6 @@ void viewlsl_cb(lv_event_t *e)
     if ((!first_use) && (guide_step != 3))
     {
         guide_step = 2;
-        // vTaskDelay(2000 / portTICK_PERIOD_MS);
         lv_obj_clear_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
         lv_obj_move_foreground(ui_viewlivp3);
     }
@@ -590,18 +604,6 @@ void viewlsl_cb(lv_event_t *e)
 
 void viewlsul_cb(lv_event_t *e) 
 {
-}
-
-void liv1c_cb(lv_event_t *e)
-{
-    ESP_LOGI(CLICK_TAG, "liv1c_cb");
-    Task_end();
-}
-
-void liv2c_cb(lv_event_t *e)
-{
-    ESP_LOGI(CLICK_TAG, "liv2c_cb");
-    lv_obj_add_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN); /// Flags
 }
 
 void waitT_cb(lv_event_t *e)
@@ -711,8 +713,6 @@ void vieback_cb(lv_event_t *e)
 void livgc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "livgc_cb");
-    // lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
-    // lv_obj_add_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
 }
 
 void lgesleft_cb(lv_event_t *e)
@@ -1229,7 +1229,7 @@ static void Task_end()
     task_down = 1;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &task_down, sizeof(uint8_t), portMAX_DELAY);
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
-    lv_obj_add_flag(ui_viewlivp, LV_OBJ_FLAG_HIDDEN); /// Flags
+    
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
     // event_post_to
     lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
@@ -1338,4 +1338,19 @@ static void settingInfoInit()
     lv_label_set_text(ui_snt2, (char *)about_sn);
     lv_label_set_text(ui_euit2, (char *)about_eui);
     lv_label_set_text(ui_blet2, (char *)about_btmac);
+}
+
+void ui_event_alarm_panel(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        if(target == ui_avabtn1)
+        {
+            ava1c_cb(e);
+        }else if (target == ui_avabtn2)
+        {
+            ava2c_cb(e);
+        }
+    }
 }
