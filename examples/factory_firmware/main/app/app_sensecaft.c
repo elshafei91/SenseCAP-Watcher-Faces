@@ -249,7 +249,7 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
 
     if( need_stop) {
         ESP_LOGI(TAG, "STOP TASK FLOW");
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
         free(tl_str);
     } else {
         esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_MQTT, 
@@ -614,6 +614,30 @@ err:
     }
     ESP_LOGE(TAG, "app_sensecraft_init fail %d!", ret);
     return ret;
+}
+
+esp_err_t app_sensecraft_disconnect(void)
+{
+    int ret = ESP_OK;
+    struct app_sensecraft * p_sensecraft = gp_sensecraft;
+    if( p_sensecraft == NULL) {
+        return ESP_FAIL;
+    }
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle != NULL, ESP_FAIL, TAG, "mqtt_client is not inited yet");
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet");
+    esp_mqtt_client_disconnect(p_sensecraft->mqtt_handle);
+    esp_mqtt_client_destroy(p_sensecraft->mqtt_handle);
+    
+    return ret;
+}
+
+bool app_sensecraft_is_connected(void)
+{
+    struct app_sensecraft * p_sensecraft = gp_sensecraft;
+    if( p_sensecraft == NULL) {
+        return false;
+    }
+    return p_sensecraft->mqtt_connected_flag;
 }
 
 static esp_err_t sensecraft_deviceinfo_get(struct sensecraft_deviceinfo *p_info)

@@ -10,6 +10,7 @@ static const char *TAG = "tfm.timer";
 
 static void __timer_callback(void* p_arg)
 {
+    esp_err_t ret = ESP_OK;
     tf_module_timer_t *p_module_ins = (tf_module_timer_t *)p_arg;
 
     char buf[32];
@@ -31,7 +32,13 @@ static void __timer_callback(void* p_arg)
     buf_data.type = TF_DATA_TYPE_BUFFER;
     for(int i = 0; i < p_module_ins->output_evt_num; i++) {
         tf_data_buf_copy(&buf_data.data, &buf_temp);  //next module use and then free
-        tf_event_post(p_module_ins->p_output_evt_id[i], &buf_data, sizeof(buf_data),portMAX_DELAY);
+        ret = tf_event_post(p_module_ins->p_output_evt_id[i], &buf_data, sizeof(buf_data), pdMS_TO_TICKS(10000));
+        if( ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
+            tf_data_free(&buf_data);
+        } else {
+            ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+        }
     }
 }
 

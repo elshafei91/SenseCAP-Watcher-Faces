@@ -323,7 +323,7 @@ uint8_t *get_sn(int caller)
             hexString4[18] = '\0';
             char final_string[150];
             snprintf(final_string, sizeof(final_string), "w1:%s:%s:%s:%s", hexString1, storage_space_2, storage_space_3, hexString4);
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, final_string, sizeof(final_string), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, final_string, sizeof(final_string), pdMS_TO_TICKS(10000));
             result = SN;
             break;
     }
@@ -411,7 +411,7 @@ int get_brightness(int caller)
             break;
         case UI_CALLER:
             ESP_LOGI(TAG, "UI get brightness");
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, &brightness2, sizeof(int), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, &brightness2, sizeof(int), pdMS_TO_TICKS(10000));
             break;
     }
 
@@ -456,7 +456,7 @@ int get_rgb_switch(int caller)
             break;
         case UI_CALLER:
             ESP_LOGI(TAG, "UI get rgb_switch");
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, &rgb_switch2, sizeof(int), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, &rgb_switch2, sizeof(int), pdMS_TO_TICKS(10000));
             break;
     }
 
@@ -501,7 +501,7 @@ int get_sound(int caller)
             break;
         case UI_CALLER:
             ESP_LOGI(TAG, "UI get sound");
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOUND, &sound2, sizeof(int), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOUND, &sound2, sizeof(int), pdMS_TO_TICKS(10000));
             break;
     }
 
@@ -698,7 +698,7 @@ static esp_err_t __check_reset_factory()
     {
         ESP_LOGI(TAG, "###########>>> start to reset factory <<<###########");
         storage_erase();
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
         atomic_store(&g_will_reset_factory, false);
     }
     return ESP_OK;
@@ -846,7 +846,7 @@ void __app_device_info_task(void *pvParameter)
         vTaskDelay(100 / portTICK_PERIOD_MS);
         cnt++;
 
-        if (!atomic_load(&g_timeout_firstreport) && !himax_version_got) {
+        if (!himax_version_got && !atomic_load(&g_timeout_firstreport)) {
             char *himax_version = tf_module_ai_camera_himax_version_get();
 
             if (himax_version && strlen(himax_version) > 0) {
@@ -868,20 +868,22 @@ void __app_device_info_task(void *pvParameter)
         if ((cnt % 300) == 0)
         {
             batnow = bsp_battery_get_percent();
-            if (abs(g_device_status.battery_per - batnow) > 1 || batnow == 0) {
+            if (abs(g_device_status.battery_per - batnow) > 0 || batnow == 0) {
                 g_device_status.battery_per = batnow;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                                     &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
             }
             // mqtt pub
-            if (firstboot_reported && (abs(last_bat_level_report - batnow) > 10 || batnow == 0)) {
+            if (firstboot_reported && 
+                (abs(last_bat_level_report - batnow) > 10 || batnow == 0 || (batnow == 100 && abs(last_bat_level_report - batnow) > 0))) {
+                g_device_status.battery_per = batnow;
                 app_sensecraft_mqtt_report_device_status(&g_device_status);
                 last_bat_level_report = batnow;
             }
             if (batnow == 0) {
                 vTaskDelay(pdMS_TO_TICKS(2000)); //for mqtt pub
                 ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
             }
             //TODO: open this after problem fignured
             //bsp_rtc_set_timer(62);  // feed the watchdog, leave 2sec overhead for iteration cost
@@ -894,7 +896,7 @@ void __app_device_info_task(void *pvParameter)
             if (chg != last_charge_st)
             {
                 last_charge_st = chg;
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, &last_charge_st, 1, portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, &last_charge_st, 1, pdMS_TO_TICKS(10000));
                 if (!chg) {  //measure the battery immediately when unplug the usb-c charger
                     batnow = bsp_battery_get_percent();
                     if (abs(g_device_status.battery_per - batnow) > 1 || batnow == 0) {

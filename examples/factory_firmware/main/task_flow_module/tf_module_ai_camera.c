@@ -376,7 +376,7 @@ static int __get_camera_mode_get(cJSON *payload)
 static void sscma_on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
 {
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)user_ctx;
-
+    esp_err_t ret = ESP_OK;
     int resolution = __get_camera_sensor_resolution(reply->payload);
     int mode = __get_camera_mode_get(reply->payload);
 
@@ -477,18 +477,20 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                     {
                         tf_data_image_copy(&p_module_ins->output_data.img_small, &info.img);
                         tf_data_inference_copy(&p_module_ins->output_data.inference, &info.inference);
-                        tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), portMAX_DELAY);
-                        ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+
+                        ret = tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), pdMS_TO_TICKS(100));
+                        if( ret != ESP_OK) {
+                            ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
+                            tf_data_free(&p_module_ins->output_data);
+                        } else {
+                            ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+                        }
                     }
 
                 }
             }
             __data_unlock(p_module_ins);
-            
-            //UI preview
-            // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  
-            //                         VIEW_EVENT_AI_CAMERA_PREVIEW, &info, sizeof(info), portMAX_DELAY);
-            
+                       
             // Reduce event bus usage
             lvgl_port_lock(0);
             view_image_preview_flush(&info);
@@ -522,8 +524,13 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                 tf_data_image_copy(&p_module_ins->output_data.img_large, &img_large);
                 tf_data_image_copy(&p_module_ins->output_data.img_small, &p_module_ins->preview_info_cache.img);
                 tf_data_inference_copy(&p_module_ins->output_data.inference, &p_module_ins->preview_info_cache.inference);
-                tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), portMAX_DELAY);
-                ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+                ret = tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), pdMS_TO_TICKS(10000));
+                if( ret != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
+                    tf_data_free(&p_module_ins->output_data);
+                } else {
+                    ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+                }
             }
             __data_unlock(p_module_ins);
 
@@ -556,7 +563,9 @@ static void __parmas_printf(struct tf_module_ai_camera_params *p_params)
     } else {
         ESP_LOGD(TAG, "Model local: %d", p_params->model.model_type);
     }
-
+    ESP_LOGD(TAG, "iou: %d", p_params->model.iou);
+    ESP_LOGD(TAG, "confidence: %d", p_params->model.confidence);
+    
     ESP_LOGD(TAG, "Conditions combo: %d", p_params->conditions_combo);
     for (size_t i = 0; i < p_params->condition_num; i++)
     {
@@ -608,6 +617,8 @@ static void __parmas_default(struct tf_module_ai_camera_params *p_params)
     p_params->model.url[0] = '\0';
     p_params->model.version[0] = '\0';
     p_params->model.checksum[0] = '\0';
+    p_params->model.iou = CONFIG_TF_MODULE_AI_CAMERA_MODEL_IOU_DEFAULT;
+    p_params->model.confidence = CONFIG_TF_MODULE_AI_CAMERA_MODEL_CONFIDENCE_DEFAULT;
     p_params->model.p_info_all = NULL;
     p_params->shutter = TF_MODULE_AI_CAMERA_SHUTTER_TRIGGER_CONSTANTLY;
     p_params->condition_num = 0;
@@ -677,6 +688,25 @@ static int __params_parse(struct tf_module_ai_camera_params *p_params, cJSON *p_
         
     } else {
         p_params->model.p_info_all = NULL;
+    }
+
+    // get iou and confidence
+    model_json = cJSON_GetObjectItem(p_json, "model");
+    if ( (p_params->mode == TF_MODULE_AI_CAMERA_MODES_INFERENCE) && model_json != NULL) 
+    {
+        cJSON *arguments_json = cJSON_GetObjectItem(model_json, "arguments");
+        if (arguments_json != NULL) {
+            cJSON *iou_json = cJSON_GetObjectItem(arguments_json, "iou");
+            cJSON *confidence_json = cJSON_GetObjectItem(arguments_json, "conf");
+            if (iou_json && cJSON_IsNumber(iou_json) &&
+                confidence_json && cJSON_IsNumber(confidence_json) )
+            {
+                p_params->model.iou = iou_json->valueint;
+                p_params->model.confidence = confidence_json->valueint;
+            }
+            
+        } 
+
     }
 
     cJSON *conditions_json = cJSON_GetObjectItem(p_json, "conditions");
@@ -838,6 +868,17 @@ static void ai_camera_task(void *p_arg)
                     ESP_LOGE(TAG, "Invoke %d failed\n", TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_416_416);
                     err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_INVOKE; 
                 }
+                if (sscma_client_set_iou_threshold(p_module_ins->sscma_client_handle, p_params->model.iou) != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to set iou threshold: %d\n", p_params->model.iou);
+                } else {
+                    ESP_LOGI(TAG, "Set iou threshold: %d", p_params->model.iou);
+                }
+
+                if (sscma_client_set_confidence_threshold(p_module_ins->sscma_client_handle, p_params->model.confidence)) {
+                    ESP_LOGE(TAG, "Failed to set confidence threshold: %d\n", p_params->model.confidence);
+                } else {
+                    ESP_LOGI(TAG, "Set confidence threshold: %d", p_params->model.confidence);
+                }
             } else {
                 if (sscma_client_sample(p_module_ins->sscma_client_handle, -1) != ESP_OK) {
                     ESP_LOGE(TAG, "Sample %d failed\n", TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_416_416);
@@ -962,6 +1003,7 @@ static void ai_camera_task(void *p_arg)
                     ESP_LOGE(TAG, "Failed to get model info\n");
                     err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL;
                 }
+                
             } else {
                 ESP_LOGI(TAG, "Do not use model");
             }

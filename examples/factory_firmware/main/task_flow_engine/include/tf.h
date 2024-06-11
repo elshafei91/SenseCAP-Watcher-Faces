@@ -15,7 +15,7 @@ extern "C"
 
 #define TF_ENGINE_TASK_STACK_SIZE 1024 * 5
 #define TF_ENGINE_TASK_PRIO 5
-#define TF_ENGINE_QUEUE_SIZE 5
+#define TF_ENGINE_QUEUE_SIZE 3
 
 // task flow status
 #define TF_STATUS_RUNNING               0

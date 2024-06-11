@@ -11,6 +11,7 @@
 #include "data_defs.h"
 #include "event_loops.h"
 #include "esp_event_base.h"
+#include "factory_info.h"
 
 static const char *TAG = "tfm.img_analyzer";
 
@@ -101,6 +102,7 @@ static void __wifi_event_handler(void *handler_args, esp_event_base_t base, int3
     }
 }
 #endif
+
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)handler_args;
@@ -123,12 +125,47 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     }
 #endif
 
-    if( xQueueSend(p_module_ins->queue_handle, p_event_data, portMAX_DELAY) != pdTRUE) {
+    if( xQueueSend(p_module_ins->queue_handle, p_event_data, ( TickType_t ) 0) != pdTRUE) {
         ESP_LOGW(TAG, "xQueueSend failed");
         tf_data_free(p_event_data);
     }
 
 }
+char * __token_gen(void)
+{
+    static char token[41] = {0};
+    esp_err_t ret = ESP_OK;
+    const char *eui = NULL;
+    const char *key = NULL;
+    size_t str_len = 0;
+    size_t token_len = 0;
+    char deviceinfo_buf[40];
+
+    if( strlen(token) > 0 ) {
+        return token;
+    }
+
+    eui = factory_info_eui_get();
+    key = factory_info_ai_key_get();
+    if( eui == NULL || key == NULL ) {
+        ESP_LOGE(TAG, "EUI or key not set");
+        return NULL;
+    }
+
+    memset(deviceinfo_buf, 0, sizeof(deviceinfo_buf));
+    str_len = snprintf(deviceinfo_buf, sizeof(deviceinfo_buf), "%s:%s", eui, key);
+    if( str_len >= 30 ) {
+        ESP_LOGE(TAG, "EUI or key too long");
+        return NULL;
+    }
+    ret = mbedtls_base64_encode(( uint8_t *)token, sizeof(token), &token_len, ( uint8_t *)deviceinfo_buf, str_len);
+    if( ret != 0  ||  token_len < 40 ) {
+        ESP_LOGE(TAG, "mbedtls_base64_encode failed:%d,", ret);
+        return NULL;
+    }
+    return token;
+}
+
 static char *__request( const char *url,
                         esp_http_client_method_t method, 
                         const char *token, 
@@ -151,6 +188,7 @@ static char *__request( const char *url,
     esp_http_client_set_header(client, "Content-Type", content_type);
 
     if( token !=NULL && strlen(token) > 0 ) {
+        ESP_LOGI(TAG, "token: %s", token);
         esp_http_client_set_header(client, "Authorization", token);
     }
 
@@ -387,8 +425,13 @@ static void img_analyzer_task(void *p_arg)
                         tf_data_image_copy(&output_data.img_large, &data.img_large);
                         tf_data_buf_copy(&output_data.audio, &result.audio);
                         tf_data_buf_copy(&output_data.text, &text);
-                        tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), portMAX_DELAY);
-                        ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+                        ret = tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), pdMS_TO_TICKS(10000));
+                        if( ret != ESP_OK) {
+                            ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
+                            tf_data_free(&output_data);
+                        } else {
+                            ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
+                        }
                     }
                     __data_unlock(p_module_ins);
                 }
@@ -438,12 +481,21 @@ static void img_analyzer_task_destroy( tf_module_img_analyzer_t *p_module_ins)
  ************************************************************************/
 static int __start(void *p_module)
 {
+    char *p_token =NULL;
+
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)p_module;
     struct tf_module_img_analyzer_params *p_params = &p_module_ins->params;
 
     // TODO set url、token、head
     snprintf(p_module_ins->url,sizeof(p_module_ins->url),"%s%s",CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST,CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
-    p_module_ins->token[0] = '\0';
+    
+    p_token =  __token_gen();
+    if( p_token ) {
+        snprintf(p_module_ins->token, sizeof(p_module_ins->token), "Device %s", p_token);
+    } else {
+        p_module_ins->token[0] = '\0';
+    }
+
     p_module_ins->head[0] = '\0';
     return 0;
 }

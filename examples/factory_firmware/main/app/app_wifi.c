@@ -115,12 +115,12 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
             st.is_connecting = false;
             __wifi_st_set(&st);
 
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), pdMS_TO_TICKS(10000));
 
             struct view_data_wifi_connet_ret_msg msg;
             msg.ret = 0;
             strcpy(msg.msg, "Connection successful");
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), pdMS_TO_TICKS(10000));
 
             // Save the current WiFi config as the previous config
             esp_wifi_get_config(WIFI_IF_STA, &previous_wifi_config);
@@ -170,12 +170,12 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
                 st.is_connecting = false;
                 __wifi_st_set(&st);
 
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), pdMS_TO_TICKS(10000));
 
                 struct view_data_wifi_connet_ret_msg msg;
                 msg.ret = 0;
                 strcpy(msg.msg, "Connection failure");
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT_RET, &msg, sizeof(msg), pdMS_TO_TICKS(10000));
             }
             break;
         }
@@ -234,7 +234,7 @@ static int __wifi_scan()
         wifi_table_element.is_connecting = false;
         wifi_table_element.authmode = p_ap_info[i].authmode;
         strcpy(wifi_table_element.ssid, (char *)p_ap_info[i].ssid);
-        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST, &wifi_table_element, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+        esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST, &wifi_table_element, sizeof(struct view_data_wifi_st), pdMS_TO_TICKS(10000));
     }
     return ap_count;
 }
@@ -456,7 +456,7 @@ static int __wifi_connect(const char *p_ssid, const char *p_password, int retry_
     st.past_connected = true;
     __wifi_st_set(&st);
 
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), pdMS_TO_TICKS(10000));
 
     ESP_ERROR_CHECK(esp_wifi_start());
     // esp_wifi_connect();
@@ -476,7 +476,7 @@ static void __wifi_cfg_restore(void)
     st.is_network = false;
     __wifi_st_set(&st);
 
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), pdMS_TO_TICKS(10000));
 
     // restore and stop
     esp_wifi_restore();
@@ -492,7 +492,7 @@ static void __wifi_shutdown(void)
     st.is_network = false;
     __wifi_st_set(&st);
 
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), pdMS_TO_TICKS(10000));
 
     esp_wifi_stop();
 }
@@ -543,7 +543,7 @@ static void __ping_end(esp_ping_handle_t hdl, void *args)
         st.is_network = false;
         __wifi_st_set(&st);
     }
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &st, sizeof(struct view_data_wifi_st), pdMS_TO_TICKS(10000));
     __g_ping_done = true;
 }
 
@@ -697,7 +697,7 @@ int set_wifi_config(wifi_config *config)
 
             ESP_LOGI("AT_CMD_CALLER", "SSID: %s, Password: %s", outer_config.ssid, outer_config.have_password ? outer_config.password : "No Password");
 
-            result = esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &outer_config, sizeof(struct view_data_wifi_config), portMAX_DELAY);
+            result = esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &outer_config, sizeof(struct view_data_wifi_config), pdMS_TO_TICKS(10000));
 
             break;
         }
@@ -783,7 +783,7 @@ int app_wifi_init(void)
     esp_wifi_get_config(WIFI_IF_STA, &wifi_cfg);
     // wifi_table_element_connected.= wifi_cfg.sta.password;
     strcpy(wifi_table_element_connected.ssid, (char *)wifi_cfg.sta.ssid);
-    // esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST_REQ, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+    // esp_event_post_to(view_event_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_LIST_REQ, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), pdMS_TO_TICKS(10000));
 
     if (strlen((const char *)wifi_cfg.sta.ssid))
     {
@@ -793,7 +793,7 @@ int app_wifi_init(void)
         ESP_ERROR_CHECK(esp_wifi_start());
         wifi_table_element_connected.past_connected = true;
         __wifi_st_set(&wifi_table_element_connected);
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, &wifi_table_element_connected, sizeof(struct view_data_wifi_st), pdMS_TO_TICKS(10000));
     }
     else
     {

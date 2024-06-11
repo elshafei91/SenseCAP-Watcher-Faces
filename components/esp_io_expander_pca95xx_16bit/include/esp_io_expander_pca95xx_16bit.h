@@ -21,6 +21,7 @@ extern "C" {
 typedef struct
 {
     gpio_num_t int_gpio;
+    uint32_t update_interval_us;
     void (*isr_cb)(void *arg);
     void *user_ctx;
 } pca95xx_16bit_ex_config_t;

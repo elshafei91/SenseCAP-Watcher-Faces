@@ -44,6 +44,7 @@ esp_err_t factory_info_init(void)
     ret = nvs_open_from_partition(FACTORY_NVS_PART_NAME, "device_info", NVS_READONLY, &handle);
     if (ret != ESP_OK) {
         free(gp_info);
+        gp_info = NULL;
         ESP_LOGE(FACTORY_INFO_TAG, "nvs_open failed: %s", esp_err_to_name(ret));
         return ret;
     }

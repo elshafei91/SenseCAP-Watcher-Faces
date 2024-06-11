@@ -42,9 +42,15 @@ const char local_taskflow_gesture[] = \
 		\"type\": \"ai camera\",    \  
 		\"index\": 0,    \  
 		\"version\": \"1.0.0\",    \  
-		\"params\": {    \  
+		\"params\": {    \ 
 			\"model_type\": 3,    \  
-			\"modes\": 0,    \  
+			\"modes\": 0,    \
+            \"model\": {    \
+              \"arguments\": {  \
+                \"iou\":65,     \
+                \"conf\":65     \
+              }   \
+            },    \  
 			\"conditions\": [{    \  
 				\"class\": \"paper\",    \  
 				\"mode\": 1,    \  
@@ -112,7 +118,13 @@ const char local_taskflow_pet[] = \
 		\"version\": \"1.0.0\",    \  
 		\"params\": {    \  
 			\"model_type\": 2,    \  
-			\"modes\": 0,    \  
+			\"modes\": 0,    \
+            \"model\": {    \
+              \"arguments\": {  \
+                \"iou\":65,     \
+                \"conf\":65     \
+              }   \
+            },    \    
 			\"conditions\": [{    \  
 				\"class\": \"dog\",    \  
 				\"mode\": 1,    \  
@@ -184,7 +196,13 @@ const char local_taskflow_human[] = \
 		\"version\": \"1.0.0\",    \  
 		\"params\": {    \  
 			\"model_type\": 1,    \  
-			\"modes\": 0,    \  
+			\"modes\": 0,    \
+            \"model\": {    \
+              \"arguments\": {  \
+                \"iou\":45,     \
+                \"conf\":45     \
+              }   \
+            },    \    
 			\"conditions\": [{    \  
 				\"class\": \"person\",    \  
 				\"mode\": 1,    \  
@@ -386,7 +404,7 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
     switch (engine_status)
     {
         case TF_STATUS_ERR_JSON_PARSE: {
-            snprintf(err_msg, sizeof(err_msg) - 1, "json parse error");
+            snprintf(err_msg, sizeof(err_msg) - 1, "Failed to parse json");
             need_notify_ui = true;
             break;
         }
@@ -396,22 +414,22 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
             break;
         }
         case TF_STATUS_ERR_MODULES_INSTANCE: {
-            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] instance error", p_module_name);
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] failed to create", p_module_name);
             need_notify_ui = true;
             break;
         }
         case TF_STATUS_ERR_MODULES_PARAMS: {
-            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] params error", p_module_name);
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s]'s parameters error", p_module_name);
             need_notify_ui = true;
             break;
         }
         case TF_STATUS_ERR_MODULES_WIRES: {
-            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] wires error", p_module_name);
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] failed to connect the next module", p_module_name);
             need_notify_ui = true;
             break;
         }
         case TF_STATUS_ERR_MODULES_START:{
-            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] wires error", p_module_name);
+            snprintf(err_msg, sizeof(err_msg) - 1, "[%s] failed to start", p_module_name);
             need_notify_ui = true;
             break;
         }
@@ -612,7 +630,7 @@ static int __taskflow_stop_check(struct app_taskflow * p_taskflow, char *p_task_
     }
     if( need_stop) {
         free(p_task_flow);
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
     }
     cJSON_Delete(json_root);
 

@@ -56,7 +56,7 @@ static esp_timer_handle_t alarm_timer;
 
 static void alarm_timer_callback(void *arg)
 {
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, NULL, NULL, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, NULL, NULL, pdMS_TO_TICKS(10000));
 }
 
 static void set_angle(void *obj, int32_t v)
