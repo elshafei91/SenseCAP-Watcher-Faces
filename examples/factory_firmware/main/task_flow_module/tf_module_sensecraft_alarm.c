@@ -33,8 +33,8 @@ static int __params_parse(struct tf_module_sensecraft_alarm_params *p_params, cJ
         p_params->text.p_buf = (uint8_t *)tf_malloc(strlen(json_text->valuestring) + 1);
         if( p_params->text.p_buf ) {
             memcpy(p_params->text.p_buf, json_text->valuestring, strlen(json_text->valuestring));
-            p_params->text.len = strlen(json_text->valuestring);
-            p_params->text.p_buf[p_params->text.len] = '\0';
+            p_params->text.len = strlen(json_text->valuestring) + 1;
+            p_params->text.p_buf[p_params->text.len - 1 ] = '\0';
         }
     }
     return 0;
@@ -66,7 +66,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         p_module_ins->last_alarm_time = now;
         tf_data_dualimage_with_audio_text_t *p_data = (tf_data_dualimage_with_audio_text_t*)p_event_data;
         char *p_text_buf = NULL;
-        char *p_text_len = 0;
+        int text_len = 0;
 
         tf_info_t tf_info;
         tf_engine_info_get(&tf_info);
@@ -74,19 +74,19 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         __data_lock(p_module_ins);
         if( p_params->text.p_buf  && p_params->text.len > 0 ) {
             p_text_buf = (char *)p_params->text.p_buf;
-            p_text_len = (char *)p_params->text.len;
+            text_len = strlen((char *)p_params->text.p_buf);
         } else  if ( p_data->text.p_buf && p_data->text.len > 0) {
             p_text_buf = (char *)p_data->text.p_buf;
-            p_text_len = (char *)p_data->text.len;
+            text_len = strlen((char *)p_data->text.p_buf);
         } else {
             p_text_buf = "unknown";
-            p_text_len = strlen("unknown");
+            text_len = strlen("unknown");
         }
 
         ret = app_sensecraft_mqtt_report_warn_event(tf_info.tid, 
                                               tf_info.p_tf_name,
                                               (char *)p_data->img_small.p_buf, p_data->img_small.len,
-                                              (char *)p_text_buf, p_text_len);
+                                              (char *)p_text_buf, text_len);
         __data_unlock(p_module_ins);
 
         if( ret != ESP_OK ) {
