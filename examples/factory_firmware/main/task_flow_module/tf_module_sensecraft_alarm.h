@@ -4,6 +4,8 @@
 #include "tf_module_data_type.h"
 #include "esp_err.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -19,6 +21,7 @@ extern "C"
 struct tf_module_sensecraft_alarm_params
 {
     int  silence_duration; //seconds
+    struct tf_data_buf text; 
 };
 
 typedef struct tf_module_sensecraft_alarm
@@ -27,6 +30,7 @@ typedef struct tf_module_sensecraft_alarm
     int input_evt_id; // no output
     struct tf_module_sensecraft_alarm_params params;
     time_t last_alarm_time;
+    SemaphoreHandle_t sem_handle;
 } tf_module_sensecraft_alarm_t;
 
 tf_module_t * tf_module_sensecraft_alarm_init(tf_module_sensecraft_alarm_t *p_module_ins);
