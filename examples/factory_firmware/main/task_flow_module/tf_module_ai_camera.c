@@ -12,6 +12,7 @@
 #include "event_loops.h"
 #include "view_image_preview.h"
 #include "app_ota.h"
+#include "storage.h"
 
 static const char *TAG = "tfm.ai_camera";
 
@@ -23,6 +24,14 @@ static tf_module_t *g_handle = NULL;
 #define EVENT_SIMPLE_640_480  BIT3     
 #define EVENT_PRVIEW_416_416  BIT4 
 #define EVENT_STATRT_DONE     BIT5
+
+#define AI_CAMERA_MODEL_FLAG_STORAGE  "model-flag"
+
+struct tf_module_ai_camera_model_flag 
+{
+    char model_id[32];
+    char version[16];
+};
 
 static int __time_to_seconds(struct tf_module_ai_camera_time *time) {
     if (!time) return -1;
@@ -37,6 +46,41 @@ static void __data_unlock( tf_module_ai_camera_t *p_module)
 {
     xSemaphoreGive(p_module->sem_handle);  
 }
+
+
+static int __model_flag_set(struct tf_module_ai_camera_model_flag *p_flag)
+{
+    esp_err_t ret = 0;
+    ret = storage_write(AI_CAMERA_MODEL_FLAG_STORAGE, (void *)p_flag, sizeof(struct tf_module_ai_camera_model_flag));
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "flag write err:%d", ret);
+    } else {
+        ESP_LOGI(TAG, "flag write successful");
+    }
+    return ret;
+}
+
+static int __model_flag_get(struct tf_module_ai_camera_model_flag *p_flag)
+{
+    esp_err_t ret = 0;
+    size_t len = sizeof(struct tf_module_ai_camera_model_flag);
+    ret = storage_read(AI_CAMERA_MODEL_FLAG_STORAGE, (void *)p_flag, &len);
+    if (ret == ESP_OK && len == (sizeof(struct tf_module_ai_camera_model_flag))) {
+        ESP_LOGI(TAG, "flag read successful");
+        return  ESP_OK;
+    } else {
+        ESP_LOGE(TAG, "flag read err:%d", ret);
+        return ESP_FAIL;
+    }
+}
+
+static int __model_flag_clear(void)
+{
+    struct tf_module_ai_camera_model_flag flag;
+    memset(&flag, 0, sizeof(flag));
+    return __model_flag_set(&flag);
+}
+
 
 static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
@@ -865,6 +909,10 @@ static void ai_camera_task(void *p_arg)
             sscma_client_break(p_module_ins->sscma_client_handle);
             sscma_client_set_sensor(p_module_ins->sscma_client_handle, 1,  \
                                     TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_416_416, true);
+
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                VIEW_EVENT_AI_CAMERA_READY, NULL, 0, portMAX_DELAY);
+
             if( p_params->mode == TF_MODULE_AI_CAMERA_MODES_INFERENCE ) {
                 if (sscma_client_invoke(p_module_ins->sscma_client_handle, -1, false, true) != ESP_OK) {
                     ESP_LOGE(TAG, "Invoke %d failed\n", TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_416_416);
@@ -929,7 +977,18 @@ static void ai_camera_task(void *p_arg)
                         if( model_info->uuid && model_info->ver &&  \
                             strcmp(model_info->uuid, p_params->model.model_id) == 0  && 
                             strcmp(model_info->ver, p_params->model.version) == 0 ) {
-                            is_need_update = false;
+                        
+                            struct tf_module_ai_camera_model_flag flag;
+                            memset(&flag, 0, sizeof(flag));
+                            __model_flag_get(&flag);
+                            if(  strcmp(model_info->uuid, flag.model_id) == 0  && 
+                                 strcmp(model_info->ver, flag.version) == 0  ) {
+                                is_need_update = false;
+                            } else {
+                                ESP_LOGI(TAG, " Flag not match, Model need update");
+                                is_need_update = true;
+                            }
+
                         } else {
                             is_need_update = true;
                         }
@@ -947,21 +1006,38 @@ static void ai_camera_task(void *p_arg)
                         ESP_LOGI(TAG, "Url: %s", p_params->model.url);
                         ESP_LOGI(TAG, "Size:%d", p_params->model.size);
                         ESP_LOGI(TAG, "MD5:%s", p_params->model.checksum);
+                        __model_flag_clear();
                         ret = app_ota_ai_model_download(p_params->model.url, p_params->model.size);
                         if( ret != ESP_OK) {
                             ESP_LOGE(TAG, "Failed to download model:%d\n", ret);
                             err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL_OTA;
                         } else {
                             //TODO Himax will restart.
+
+                            struct tf_module_ai_camera_model_flag flag;
+                            memset(&flag, 0, sizeof(flag));
+                            strcpy(flag.model_id, p_params->model.model_id);
+                            strcpy(flag.version, p_params->model.version);
+                            __model_flag_set(&flag);
+
                             ESP_LOGI(TAG, "Download model success");
                             if(sscma_client_set_model(p_module_ins->sscma_client_handle, 4) != ESP_OK) {
                                 ESP_LOGE(TAG, "Failed to set model:%d\n", 4);
                                 err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL; //TODO 
                             } else {
                                 // set model info
-                                if (sscma_client_set_model_info(p_module_ins->sscma_client_handle, (const char *)p_params->model.p_info_all) != ESP_OK)
+                                int retry = 3;
+                                while (retry)
                                 {
-                                    ESP_LOGE(TAG, "Failed to set model info\n");
+                                    if (sscma_client_set_model_info(p_module_ins->sscma_client_handle, (const char *)p_params->model.p_info_all) != ESP_OK) {
+                                        ESP_LOGE(TAG, "Failed to set model info: %d\n", retry);
+                                    } else {
+                                        break;
+                                    }
+                                    retry-=1;
+                                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+                                }
+                                if( retry == 0 ) {
                                     err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL;
                                 }
                             }
@@ -1057,7 +1133,7 @@ static int __start(void *p_module)
     p_module_ins->start_flag = true;
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
     EventBits_t bits = 0;
-    bits = xEventGroupWaitBits(p_module_ins->event_group, EVENT_STATRT_DONE, 1, 1,  pdMS_TO_TICKS(60000));
+    bits = xEventGroupWaitBits(p_module_ins->event_group, EVENT_STATRT_DONE, 1, 1,  pdMS_TO_TICKS(60000 * 10)); // 10 min
     if( bits & EVENT_STATRT_DONE ) {
         int start_err_code = 0;
         if( p_module_ins->start_err_code != 0 ) {
