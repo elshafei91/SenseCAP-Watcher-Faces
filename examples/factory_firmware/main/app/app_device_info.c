@@ -846,7 +846,7 @@ void __app_device_info_task(void *pvParameter)
         vTaskDelay(100 / portTICK_PERIOD_MS);
         cnt++;
 
-        if (!atomic_load(&g_timeout_firstreport) && !himax_version_got) {
+        if (!himax_version_got && !atomic_load(&g_timeout_firstreport)) {
             char *himax_version = tf_module_ai_camera_himax_version_get();
 
             if (himax_version && strlen(himax_version) > 0) {
@@ -868,13 +868,15 @@ void __app_device_info_task(void *pvParameter)
         if ((cnt % 300) == 0)
         {
             batnow = bsp_battery_get_percent();
-            if (abs(g_device_status.battery_per - batnow) > 1 || batnow == 0) {
+            if (abs(g_device_status.battery_per - batnow) > 0 || batnow == 0) {
                 g_device_status.battery_per = batnow;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                                     &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
             }
             // mqtt pub
-            if (firstboot_reported && (abs(last_bat_level_report - batnow) > 10 || batnow == 0)) {
+            if (firstboot_reported && 
+                (abs(last_bat_level_report - batnow) > 10 || batnow == 0 || (batnow == 100 && abs(last_bat_level_report - batnow) > 0))) {
+                g_device_status.battery_per = batnow;
                 app_sensecraft_mqtt_report_device_status(&g_device_status);
                 last_bat_level_report = batnow;
             }
