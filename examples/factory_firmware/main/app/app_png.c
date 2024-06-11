@@ -304,7 +304,7 @@ void download_emoji_images(char *base_name, char *urls[], int url_count)
             continue;
         }
 
-        xTaskCreateStatic(download_task, "download_task", 8192, task_arg, 5, task_stack, task_buffer);
+        xTaskCreateStatic(download_task, "download_task", 8192, task_arg, 8, task_stack, task_buffer);
 
         free(emoji_name);
     }

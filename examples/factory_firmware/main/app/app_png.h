@@ -11,6 +11,8 @@ extern "C" {
 
 #define MAX_IMAGES 10
 
+
+#define MAX_URLS 5
 typedef struct
 {
     void *data;

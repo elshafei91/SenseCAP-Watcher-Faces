@@ -33,7 +33,6 @@
 #include "app_taskflow.h"
 #include "view.h"
 
-#include "app_png.h"
 
 #ifdef CONFIG_INTR_TRACKING
 #include "esp_intr_types.h"
@@ -156,7 +155,7 @@ void board_init(void)
     // audio_play_task("/spiffs/echo_en_wake.wav");
 }
 
-#define MAX_URLS 5
+
 void app_init(void)
 {
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -172,15 +171,6 @@ void app_init(void)
     app_at_cmd_init();
     app_ble_init();
     app_cmd_init();
-    char *emoji_name = "emoji_image";
-    
-    char *urls[MAX_URLS] = { 
-    "https://sensecraft-statics.seeed.cc/device/emoji/1CF7F1C862200081/speaking/01.png", 
-    "https://sensecraft-statics.seeed.cc/device/emoji/1CF7F1C862200081/speaking/02.png", 
-    "https://sensecraft-statics.seeed.cc/device/emoji/1CF7F1C862200081/speaking/03.png", 
-    "https://sensecraft-statics.seeed.cc/device/emoji/1CF7F1C862200081/speaking/04.png", 
-    "https://sensecraft-statics.seeed.cc/device/emoji/1CF7F1C862200081/speaking/05.png" };
-    download_emoji_images(emoji_name, urls, MAX_URLS);
     // app_sr_start(false);
 }
 
