@@ -47,7 +47,7 @@ const char local_taskflow_gesture[] = \
 			\"modes\": 0,    \
             \"model\": {    \
               \"arguments\": {  \
-                \"iou\":65,     \
+                \"iou\":45,     \
                 \"conf\":65     \
               }   \
             },    \  
@@ -121,7 +121,7 @@ const char local_taskflow_pet[] = \
 			\"modes\": 0,    \
             \"model\": {    \
               \"arguments\": {  \
-                \"iou\":65,     \
+                \"iou\":45,     \
                 \"conf\":65     \
               }   \
             },    \    
@@ -200,7 +200,7 @@ const char local_taskflow_human[] = \
             \"model\": {    \
               \"arguments\": {  \
                 \"iou\":45,     \
-                \"conf\":45     \
+                \"conf\":50     \
               }   \
             },    \    
 			\"conditions\": [{    \  
