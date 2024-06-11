@@ -261,7 +261,8 @@ static bool __silent_period_check(tf_module_ai_camera_t *p_module_ins)
     struct tm timeinfo = { 0 };
     double diff = 0.0;
     time(&now);
-
+    localtime_r(&now, &timeinfo);
+    
     if( p_params->silent_period.time_is_valid ) {
         
         //TODO check time valid
