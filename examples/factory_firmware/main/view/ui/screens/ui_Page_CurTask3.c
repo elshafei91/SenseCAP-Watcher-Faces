@@ -16,56 +16,13 @@ void ui_Page_CurTask3_screen_init(void)
     lv_obj_set_width(ui_revtext, 360);
     lv_obj_set_height(ui_revtext, 100);
     lv_obj_set_x(ui_revtext, 0);
-    lv_obj_set_y(ui_revtext, -20);
+    lv_obj_set_y(ui_revtext, 18);
     lv_obj_set_align(ui_revtext, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_revtext, "Task received, opening...");
+    lv_label_set_text(ui_revtext, "Receiving Task...");
     lv_obj_set_style_text_color(ui_revtext, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_revtext, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_revtext, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_revtext, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_revsec3 = lv_label_create(ui_Page_CurTask3);
-    lv_obj_set_width(ui_revsec3, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_revsec3, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_x(ui_revsec3, -220);
-    lv_obj_set_y(ui_revsec3, 45);
-    lv_obj_set_align(ui_revsec3, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_revsec3, "3");
-    lv_obj_set_style_text_color(ui_revsec3, lv_color_hex(0x91BF25), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_revsec3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_revsec3, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_revsec2 = lv_label_create(ui_Page_CurTask3);
-    lv_obj_set_width(ui_revsec2, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_revsec2, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_x(ui_revsec2, -220);
-    lv_obj_set_y(ui_revsec2, 45);
-    lv_obj_set_align(ui_revsec2, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_revsec2, "2");
-    lv_obj_set_style_text_color(ui_revsec2, lv_color_hex(0x91BF25), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_revsec2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_revsec2, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_revsec1 = lv_label_create(ui_Page_CurTask3);
-    lv_obj_set_width(ui_revsec1, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_revsec1, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_x(ui_revsec1, -220);
-    lv_obj_set_y(ui_revsec1, 45);
-    lv_obj_set_align(ui_revsec1, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_revsec1, "1");
-    lv_obj_set_style_text_color(ui_revsec1, lv_color_hex(0x91BF25), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_revsec1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_revsec1, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_revpress = lv_label_create(ui_Page_CurTask3);
-    lv_obj_set_width(ui_revpress, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_revpress, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_x(ui_revpress, 0);
-    lv_obj_set_y(ui_revpress, -212);
-    lv_obj_set_align(ui_revpress, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_revpress, "Click to continue");
-    lv_obj_set_style_text_color(ui_revpress, lv_color_hex(0x002FA7), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_revpress, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_revb = lv_btn_create(ui_Page_CurTask3);
     lv_obj_set_width(ui_revb, 60);
@@ -82,7 +39,19 @@ void ui_Page_CurTask3_screen_init(void)
     lv_obj_set_style_shadow_color(ui_revb, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_revb, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    ui_Spinner3 = lv_spinner_create(ui_Page_CurTask3, 1000, 90);
+    lv_obj_set_width(ui_Spinner3, 50);
+    lv_obj_set_height(ui_Spinner3, 50);
+    lv_obj_set_x(ui_Spinner3, 0);
+    lv_obj_set_y(ui_Spinner3, -100);
+    lv_obj_set_align(ui_Spinner3, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_Spinner3, LV_OBJ_FLAG_CLICKABLE);      /// Flags
+    lv_obj_set_style_arc_width(ui_Spinner3, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_set_style_arc_color(ui_Spinner3, lv_color_hex(0xA1D42A), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_opa(ui_Spinner3, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_width(ui_Spinner3, 8, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
     lv_obj_add_event_cb(ui_revb, ui_event_revb, LV_EVENT_ALL, NULL);
-    lv_obj_add_event_cb(ui_Page_CurTask3, ui_event_Page_CurTask3, LV_EVENT_ALL, NULL);
 
 }

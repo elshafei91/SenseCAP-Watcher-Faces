@@ -40,15 +40,11 @@ void viewac_cb(lv_event_t * e);
 void viewaf_cb(lv_event_t * e);
 void viewasl_cb(lv_event_t * e);
 void viewasul_cb(lv_event_t * e);
-void ava1c_cb(lv_event_t * e);
-void ava2c_cb(lv_event_t * e);
 void avagc_cb(lv_event_t * e);
 void viewlc_cb(lv_event_t * e);
 void viewlf_cb(lv_event_t * e);
 void viewlsl_cb(lv_event_t * e);
 void viewlsul_cb(lv_event_t * e);
-void liv1c_cb(lv_event_t * e);
-void liv2c_cb(lv_event_t * e);
 void vieback_cb(lv_event_t * e);
 void livgc_cb(lv_event_t * e);
 void lgesright_cb(lv_event_t * e);
@@ -139,14 +135,6 @@ void slpt4c_cb(lv_event_t * e);
 void slpt5c_cb(lv_event_t * e);
 void slpt6c_cb(lv_event_t * e);
 void slpt7c_cb(lv_event_t * e);
-
-void taskerrc_cb(lv_event_t *e);
-
-void waitForWifi();
-void waitForBinding();
-void waitForAddDev();
-void bindFinish();
-void wifiConnectFailed();
 
 #ifdef __cplusplus
 } /*extern "C"*/
