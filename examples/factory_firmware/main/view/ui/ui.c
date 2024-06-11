@@ -38,23 +38,6 @@ lv_obj_t * ui_Page_loading;
 lv_obj_t * ui_Arc1;
 lv_obj_t * ui_loadpert;
 
-lv_obj_t *ui_Left1;
-lv_obj_t *ui_Left2;
-lv_obj_t *ui_Left3;
-lv_obj_t *ui_Left4;
-lv_obj_t *ui_Left5;
-lv_obj_t *ui_Left6;
-lv_obj_t *ui_Left7;
-lv_obj_t *ui_Left8;
-lv_obj_t *ui_Right1;
-lv_obj_t *ui_Right2;
-lv_obj_t *ui_Right3;
-lv_obj_t *ui_Right4;
-lv_obj_t *ui_Right5;
-lv_obj_t *ui_Right6;
-lv_obj_t *ui_Right7;
-lv_obj_t *ui_Right8;
-
 
 // SCREEN: ui_Page_Vir
 void ui_Page_Vir_screen_init(void);
@@ -168,15 +151,11 @@ lv_obj_t * ui_otatsym;
 
 // SCREEN: ui_Page_CurTask3
 void ui_Page_CurTask3_screen_init(void);
-void ui_event_Page_CurTask3(lv_event_t * e);
 lv_obj_t * ui_Page_CurTask3;
 lv_obj_t * ui_revtext;
-lv_obj_t * ui_revsec3;
-lv_obj_t * ui_revsec2;
-lv_obj_t * ui_revsec1;
-lv_obj_t * ui_revpress;
 void ui_event_revb(lv_event_t * e);
 lv_obj_t * ui_revb;
+lv_obj_t * ui_Spinner3;
 
 
 // SCREEN: ui_Page_ViewAva
@@ -416,17 +395,6 @@ const lv_img_dsc_t * ui_imgset_wifi_[4] = {&ui_img_wifi_0_png, &ui_img_wifi_1_pn
 #endif
 
 ///////////////////// ANIMATIONS ////////////////////
-#include "esp_log.h"
-static bool animation_done = false;
-static uint8_t animation_count = 0;
-static void anim_ready_callback(lv_anim_t * a)
-{
-    animation_count ++;
-    if(animation_count == 3){
-        animation_done = true;
-        ESP_LOGI("animation_test", "Animation done for object %p", a->var);
-    }
-}
 void start_anim_Animation(lv_obj_t * TargetObject, int delay)
 {
     ui_anim_user_data_t * PropertyAnimation_0_user_data = lv_mem_alloc(sizeof(ui_anim_user_data_t));
@@ -547,7 +515,6 @@ void rec_task_Animation(lv_obj_t * TargetObject, int delay)
     lv_anim_set_repeat_delay(&PropertyAnimation_3, 0);
     lv_anim_set_early_apply(&PropertyAnimation_3, true);
     lv_anim_set_get_value_cb(&PropertyAnimation_3, &_ui_anim_callback_get_opacity);
-    lv_anim_set_ready_cb(&PropertyAnimation_3, anim_ready_callback);
     lv_anim_start(&PropertyAnimation_3);
 
 }
@@ -805,21 +772,6 @@ void ui_event_waitb(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
         waitbc_cb(e);
-    }
-}
-void ui_event_Page_CurTask3(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SCREEN_LOAD_START) {
-        rec_task_Animation(ui_revsec3, 1500);
-        rec_task_Animation(ui_revsec2, 2500);
-        rec_task_Animation(ui_revsec1, 3500);
-    }
-    if(animation_done){
-        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-        animation_count = 0;
-        animation_done = false;
     }
 }
 void ui_event_revb(lv_event_t * e)
@@ -1417,5 +1369,4 @@ void ui_init(void)
     ui_Page_Wakup_screen_init();
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_obj_add_event_cb(ui____initial_actions0, ui_event____initial_actions0, LV_EVENT_ALL, NULL);
-
 }

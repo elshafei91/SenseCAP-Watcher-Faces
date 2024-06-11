@@ -188,4 +188,5 @@ void lv_pm_init(void)
 #endif
 
     scroll_anim_enable();
+    loading_anim_init();
 }

@@ -39,23 +39,6 @@ void ui_event_Page_loading(lv_event_t * e);
 extern lv_obj_t * ui_Page_loading;
 extern lv_obj_t * ui_Arc1;
 extern lv_obj_t * ui_loadpert;
-
-extern lv_obj_t *ui_Left1;
-extern lv_obj_t *ui_Left2;
-extern lv_obj_t *ui_Left3;
-extern lv_obj_t *ui_Left4;
-extern lv_obj_t *ui_Left5;
-extern lv_obj_t *ui_Left6;
-extern lv_obj_t *ui_Left7;
-extern lv_obj_t *ui_Left8;
-extern lv_obj_t *ui_Right1;
-extern lv_obj_t *ui_Right2;
-extern lv_obj_t *ui_Right3;
-extern lv_obj_t *ui_Right4;
-extern lv_obj_t *ui_Right5;
-extern lv_obj_t *ui_Right6;
-extern lv_obj_t *ui_Right7;
-extern lv_obj_t *ui_Right8;
 // SCREEN: ui_Page_Vir
 void ui_Page_Vir_screen_init(void);
 void ui_event_Page_Vir(lv_event_t * e);
@@ -156,21 +139,15 @@ extern lv_obj_t * ui_otatper;
 extern lv_obj_t * ui_otatsym;
 // SCREEN: ui_Page_CurTask3
 void ui_Page_CurTask3_screen_init(void);
-void ui_event_Page_CurTask3(lv_event_t * e);
 extern lv_obj_t * ui_Page_CurTask3;
 extern lv_obj_t * ui_revtext;
-extern lv_obj_t * ui_revsec3;
-extern lv_obj_t * ui_revsec2;
-extern lv_obj_t * ui_revsec1;
-extern lv_obj_t * ui_revpress;
 void ui_event_revb(lv_event_t * e);
 extern lv_obj_t * ui_revb;
+extern lv_obj_t * ui_Spinner3;
 // SCREEN: ui_Page_ViewAva
 void ui_Page_ViewAva_screen_init(void);
 void ui_event_Page_ViewAva(lv_event_t * e);
 extern lv_obj_t * ui_Page_ViewAva;
-void ui_event_avabtn1(lv_event_t * e);
-void ui_event_avabtn2(lv_event_t * e);
 void ui_event_viewavap2(lv_event_t * e);
 extern lv_obj_t * ui_viewavap2;
 extern lv_obj_t * ui_guideimg1;
@@ -380,16 +357,16 @@ LV_IMG_DECLARE(ui_img_extension_png);    // assets/extension.png
 LV_IMG_DECLARE(ui_img_1722191473);    // assets/extension-2.png
 LV_IMG_DECLARE(ui_img_setting_png);    // assets/setting.png
 LV_IMG_DECLARE(ui_img_setting_f_png);    // assets/setting_f.png
-LV_IMG_DECLARE(ui_img_wifi_abnormal_png);    // assets/wifi_abnormal.png
+LV_IMG_DECLARE(ui_img_no_wifi_png);    // assets/no_wifi.png
 LV_IMG_DECLARE(ui_img_battery_frame_png);    // assets/battery frame.png
 LV_IMG_DECLARE(ui_img_ble_png);    // assets/ble.png
 LV_IMG_DECLARE(ui_img_button_cancel_png);    // assets/button_cancel.png
 LV_IMG_DECLARE(ui_img_arrow_png);    // assets/arrow.png
 LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets/wifi_3.png
 LV_IMG_DECLARE(ui_img_1067503588);    // assets/wifi-Instructions.png
-LV_IMG_DECLARE(ui_img_wifiok_png);    // assets/wifiok.png
+LV_IMG_DECLARE(ui_img_scroll_down_png);    // assets/scroll_down.png
 LV_IMG_DECLARE(ui_img_setback_png);    // assets/setback.png
-LV_IMG_DECLARE(ui_img_switch_group_png);    // assets/switch_group.png
+LV_IMG_DECLARE(ui_img_scroll_up_png);    // assets/scroll_up.png
 LV_IMG_DECLARE(ui_img_template1_png);    // assets/template1.png
 LV_IMG_DECLARE(ui_img_template1_f_png);    // assets/template1_f.png
 LV_IMG_DECLARE(ui_img_template2_png);    // assets/template2.png
@@ -407,6 +384,7 @@ LV_IMG_DECLARE(ui_img_30219097);    // assets/gesture-2.png
 LV_IMG_DECLARE(ui_img_human_d_png);    // assets/human_d.png
 LV_IMG_DECLARE(ui_img_volicon_png);    // assets/volicon.png
 LV_IMG_DECLARE(ui_img_swipe_png);    // assets/swipe.png
+LV_IMG_DECLARE(ui_img_wifiok_png);    // assets/wifiok.png
 LV_IMG_DECLARE(ui_img_smile1_png);    // assets/smile1.png
 LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets/wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets/wifi_1.png
@@ -417,10 +395,10 @@ LV_IMG_DECLARE(ui_img_gesture_d_png);
 LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_onboardclick_png);
 LV_IMG_DECLARE(ui_img_error_png);
-LV_IMG_DECLARE(ui_img_no_wifi_png);
 LV_IMG_DECLARE(ui_img_battery_charging_png);
-LV_IMG_DECLARE(ui_img_scroll_down_png);
-LV_IMG_DECLARE(ui_img_scroll_up_png);
+LV_IMG_DECLARE(ui_img_wifi_abnormal_png);    // assets/wifi_abnormal.png
+
+
 
 LV_FONT_DECLARE(ui_font_fbold16);
 LV_FONT_DECLARE(ui_font_fbold24);

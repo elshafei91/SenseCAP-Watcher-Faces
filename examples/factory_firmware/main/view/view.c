@@ -27,7 +27,7 @@ static int battery_flash_count = 0;
 static lv_obj_t * mbox1;
 extern uint8_t task_down;
 extern uint8_t swipe_id; // 0 for shutdown, 1 for factoryreset
-extern int first_use;
+extern int g_dev_binded;
 extern lv_obj_t * ui_taskerrt2;
 extern lv_obj_t * ui_task_error;
 
@@ -114,9 +114,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_USAGE_GUIDE_SWITCH:
             {
                 ESP_LOGI(TAG, "event: VIEW_EVENT_USAGE_GUIDE_SWITCH");
-                int *reset_st = (int *)event_data;
-                first_use = (*reset_st);
-                // ESP_LOGI(TAG, "first_use_value : %d", first_use);
+                int *usage_guide_st = (int *)event_data;
+                g_dev_binded = (*usage_guide_st);
+                // ESP_LOGI(TAG, "g_dev_binded : %d", g_dev_binded);
                 break;
             }
 
@@ -345,9 +345,20 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
+            //TODO
+            // case VIEW_EVENT_AI_CAMERA_READY:{
+            //     ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_READY");
+            //     if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+            //     break;
+            // }
+
             case VIEW_EVENT_OTA_STATUS:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
-                if(lv_scr_act() != ui_Page_OTA)_ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
+                if(lv_scr_act() != ui_Page_OTA)
+                {
+                    lv_group_remove_all_objs(g_main);
+                    _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
+                }
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 if(ota_st->status == 0)
                 {
@@ -433,9 +444,9 @@ int view_init(void)
                                                             VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, 
                                                             __view_event_handler, NULL, NULL)); 
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-                                                            VIEW_EVENT_BASE, VIEW_EVENT_USAGE_GUIDE_SWITCH, 
-                                                            __view_event_handler, NULL, NULL));
+    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_USAGE_GUIDE_SWITCH, 
+    //                                                         __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME, 
@@ -516,6 +527,11 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_ERROR, 
                                                             __view_event_handler, NULL, NULL)); 
+
+    //TODO
+    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_AI_CAMERA_READY, 
+    //                                                         __view_event_handler, NULL, NULL));
 
     if((bat_per < 1) && (! is_charging))
     {
