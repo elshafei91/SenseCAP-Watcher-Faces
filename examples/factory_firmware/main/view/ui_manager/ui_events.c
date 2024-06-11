@@ -1270,6 +1270,7 @@ void waitForBinding()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    lv_img_set_src(ui_wifilogo, &ui_img_wifi_3_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ui_wifitext3, "Waiting for binding...");
@@ -1279,6 +1280,7 @@ void waitForAddDev()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    lv_img_set_src(ui_wifilogo, &ui_img_wifi_3_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ui_wifitext3, "Binding device to your account");
