@@ -80,9 +80,15 @@ esp_err_t app_sensecraft_https_token_get(char *p_token, size_t len);
 
 esp_err_t app_sensecraft_https_token_gen(struct sensecraft_deviceinfo *p_deviceinfo, char *p_token, size_t len);
 
-esp_err_t app_sensecraft_mqtt_report_taskflow(char *p_str, size_t len);
+esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id,  
+                                                intmax_t taskflow_id,
+                                                int taskflow_status);
 
-esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id, char *p_str, size_t len);
+esp_err_t app_sensecraft_mqtt_report_taskflow_ack_status(intmax_t taskflow_id,
+                                                         int taskflow_status,
+                                                         char *p_module_name,
+                                                         int module_status,
+                                                         char *p_str, size_t len);
 
 esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t tasklist_id, int tf_status);
 

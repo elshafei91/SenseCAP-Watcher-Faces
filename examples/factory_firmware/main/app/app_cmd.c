@@ -240,11 +240,15 @@ static int taskflow_cmd(int argc, char **argv)
             snprintf(file, sizeof(file), "/sdcard/%s", taskflow_cfg_args.file->sval[0]);
         }
     } else if( taskflow_cfg_args.json->count ) {
-        int len = strlen(taskflow_cfg_args.json->sval[0]);
-        if( len > 0 ){
-            p_json = psram_malloc(len+1); 
-            strncpy( p_json, taskflow_cfg_args.json->sval[0], len);
-            p_json[len] = 0;
+
+        printf("Please input taskflow json:\n");
+        char *str = psram_malloc(102400); 
+        if( fgets(str, 102400, stdin) != NULL ) {
+            printf("%s\n", str);
+            p_json = str;
+        } else {
+            free(str);
+            printf("fgets fail\n");
         }
     }
 
@@ -315,7 +319,7 @@ static void register_cmd_taskflow(void)
     taskflow_cfg_args.import =  arg_lit0("i", "import", "import taskflow");
     taskflow_cfg_args.export = arg_lit0("e", "export", "export taskflow");
     taskflow_cfg_args.file =  arg_str0("f", "file", "<string>", "File path, import or export taskflow json string by SD, eg: test.json");
-    taskflow_cfg_args.json =  arg_str0("j", "json", "<string>", "import taskflow json string by stdio, json string needs to be escaped");
+    taskflow_cfg_args.json =  arg_lit0("j", "json", "import taskflow json string by stdin");
     taskflow_cfg_args.end = arg_end(4);
 
     const esp_console_cmd_t cmd = {

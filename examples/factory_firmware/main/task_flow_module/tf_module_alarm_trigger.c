@@ -55,8 +55,8 @@ static int __params_parse(struct tf_module_alarm_trigger_params *p_params, cJSON
         p_params->text.p_buf = (uint8_t *)tf_malloc(strlen(json_text->valuestring) + 1);
         if( p_params->text.p_buf ) {
             memcpy(p_params->text.p_buf, json_text->valuestring, strlen(json_text->valuestring));
-            p_params->text.len = strlen(json_text->valuestring);
-            p_params->text.p_buf[p_params->text.len] = '\0';
+            p_params->text.len = strlen(json_text->valuestring) + 1;
+            p_params->text.p_buf[p_params->text.len - 1] = '\0';
         }
 
     }
