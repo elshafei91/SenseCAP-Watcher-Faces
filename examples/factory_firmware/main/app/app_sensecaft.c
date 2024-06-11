@@ -255,7 +255,7 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
         esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_MQTT, 
                                     &tl_str,
                                     sizeof(void *), /* ptr size */
-                                    portMAX_DELAY);   
+                                    pdMS_TO_TICKS(10000));   
     }
     cJSON_Delete(json_root);
 }
@@ -277,7 +277,7 @@ static void __parse_mqtt_version_notify(char *mqtt_msg_buff, int msg_buff_len)
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_OTA_JSON,
                                     &tmp_cjson,
                                     sizeof(void *), /* ptr size */
-                                    portMAX_DELAY);
+                                    pdMS_TO_TICKS(10000));
 }
 
 static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
@@ -292,7 +292,7 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
             p_sensecraft->mqtt_connected_flag = true;
             esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, 
-                                NULL, 0, portMAX_DELAY);
+                                NULL, 0, pdMS_TO_TICKS(10000));
 
             // TODO maybe repeat subscribe ?
             msg_id = esp_mqtt_client_subscribe(client, p_sensecraft->topic_down_task_publish, 0);
