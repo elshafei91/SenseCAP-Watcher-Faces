@@ -200,6 +200,7 @@ typedef struct tf_module_ai_camera
     tf_data_dualimage_with_inference_t output_data;
     struct tf_module_ai_camera_preview_info preview_info_cache;
     bool start_flag;
+    int start_err_code;
 } tf_module_ai_camera_t;
 
 tf_module_t * tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins);

@@ -22,6 +22,7 @@ static tf_module_t *g_handle = NULL;
 #define EVENT_STOP_DONE       BIT2
 #define EVENT_SIMPLE_640_480  BIT3     
 #define EVENT_PRVIEW_416_416  BIT4 
+#define EVENT_STATRT_DONE     BIT5
 
 static int __time_to_seconds(struct tf_module_ai_camera_time *time) {
     if (!time) return -1;
@@ -897,7 +898,8 @@ static void ai_camera_task(void *p_arg)
             sscma_client_break(p_module_ins->sscma_client_handle);
 
             // reset catch information
-            __data_lock(p_module_ins); 
+            __data_lock(p_module_ins);
+            p_module_ins->start_err_code = 0;
             p_module_ins->shutter_trigger_flag = 0;
             p_module_ins->last_output_time = 0;
             p_module_ins->condition_trigger_buf_idx = 0;
@@ -1018,8 +1020,15 @@ static void ai_camera_task(void *p_arg)
                 // start preview
                 xEventGroupSetBits(p_module_ins->event_group, EVENT_PRVIEW_416_416);
                 run_flag = true;
+            } else {
+                __data_lock(p_module_ins);
+                p_module_ins->start_err_code = err_flag;
+                __data_unlock(p_module_ins);
             }
+
+            xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT_DONE);
         }
+
         if( err_flag != 0 ) {
             tf_module_status_set(TF_MODULE_AI_CAMERA_NAME, err_flag);
         }
@@ -1042,12 +1051,26 @@ static void ai_camera_task(void *p_arg)
  ************************************************************************/
 static int __start(void *p_module)
 {
+    esp_err_t ret = ESP_OK;
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)p_module;
 
     p_module_ins->start_flag = true;
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
-
-    return 0;
+    EventBits_t bits = 0;
+    bits = xEventGroupWaitBits(p_module_ins->event_group, EVENT_STATRT_DONE, 1, 1,  pdMS_TO_TICKS(60000));
+    if( bits & EVENT_STATRT_DONE ) {
+        int start_err_code = 0;
+        if( p_module_ins->start_err_code != 0 ) {
+            ESP_LOGE(TAG, "Start failed: %d", p_module_ins->start_err_code);
+            ret = ESP_FAIL;
+        } else {
+            ret = ESP_OK;
+        }
+    } else {
+        ESP_LOGE(TAG, "EVENT_STATRT_DONE timeout");
+        ret = ESP_FAIL;
+    }
+    return ret;
 }
 
 static int __stop(void *p_module)
@@ -1057,7 +1080,8 @@ static int __stop(void *p_module)
     app_ota_ai_model_download_abort();
 
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP);
-    xEventGroupWaitBits(p_module_ins->event_group, EVENT_STOP_DONE, 1, 1, portMAX_DELAY);
+    xEventGroupWaitBits(p_module_ins->event_group, EVENT_STOP_DONE, 1, 1, pdMS_TO_TICKS(60000));
+
     p_module_ins->start_flag = false;
 
     __data_lock(p_module_ins);
