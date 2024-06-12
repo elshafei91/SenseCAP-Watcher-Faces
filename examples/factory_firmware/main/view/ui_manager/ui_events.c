@@ -155,7 +155,7 @@ static void listen_timer_callback(lv_timer_t *timer)
 static void detected_timer_callback(lv_timer_t *timer)
 {
     current_img_index = (current_img_index + 1) % g_detected_image_count;
-    lv_img_dsc_t *current_img = g_detect_img_dsc[current_img_index];
+    lv_img_dsc_t *current_img = g_detected_img_dsc[current_img_index];
     if (emoticon_disp_id)
     {
         async_img_switch_viewava(current_img);
@@ -641,14 +641,12 @@ void loctask1c_cb(lv_event_t *e)
 void loctask1f_cb(lv_event_t *e)
 {
     lv_label_set_text(ui_Label1, "");
-    lv_obj_add_flag(ui_mimgp, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(ui_mtext, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_bg_img_src(ui_mimgp, &ui_img_backtomenu_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void loctask1df_cb(lv_event_t *e)
 {
     lv_obj_clear_flag(ui_mimgp, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_mtext, LV_OBJ_FLAG_HIDDEN);
 }
 
 void loctask2c_cb(lv_event_t *e)

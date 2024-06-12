@@ -400,7 +400,8 @@ LV_IMG_DECLARE(ui_img_dog_d_png);
 LV_IMG_DECLARE(ui_img_onboardclick_png);
 LV_IMG_DECLARE(ui_img_error_png);
 LV_IMG_DECLARE(ui_img_battery_charging_png);
-LV_IMG_DECLARE(ui_img_wifi_abnormal_png);    // assets/wifi_abnormal.png
+LV_IMG_DECLARE(ui_img_wifi_abnormal_png);
+LV_IMG_DECLARE(ui_img_backtomenu_png);
 
 
 LV_FONT_DECLARE(ui_font_fbold16);
