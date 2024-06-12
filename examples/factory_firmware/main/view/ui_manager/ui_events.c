@@ -525,7 +525,7 @@ void viewasl_cb(lv_event_t *e)
     }
     else
     {
-        create_timer(5); // Load timer for the "speak" animation when emoticon_disp_id is 0
+        create_timer(1); // Load timer for the "detecting" animation when emoticon_disp_id is 0
         if (!g_dev_binded)
         {
             if (g_guide_step == 2)
