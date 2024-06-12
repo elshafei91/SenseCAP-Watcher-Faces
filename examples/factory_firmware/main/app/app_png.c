@@ -69,28 +69,38 @@ void* read_png_to_psram(const char *path, size_t *out_size) {
     return png_buffer;
 }
 
-// Helper function to check if the file name matches any specified prefix and is a PNG file
-static int is_png_file_for_expressions(const char* filename, const char* prefixes[], int prefix_count) {
+// Function to create a black image buffer
+void* create_black_image(size_t size) {
+    void *black_buffer = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+    if (!black_buffer) {
+        ESP_LOGE("PSRAM", "Failed to allocate PSRAM for black image buffer");
+        return NULL;
+    }
+    memset(black_buffer, 0, size);
+    return black_buffer;
+}
+
+// Helper function to check if the file name matches the specified prefix and is a PNG file
+static int is_png_file_for_expression(const char* filename, const char* prefix) {
     const char *suffix = ".png";
     size_t len = strlen(filename);
     size_t suffix_len = strlen(suffix);
     if (len > suffix_len && strcmp(filename + len - suffix_len, suffix) == 0) {
-        for (int i = 0; i < prefix_count; ++i) {
-            if (strncmp(filename, prefixes[i], strlen(prefixes[i])) == 0) {
-                return 1;
-            }
+        if (strncmp(filename, prefix, strlen(prefix)) == 0) {
+            return 1;
         }
     }
     return 0;
 }
 
-// Function to read and store selected PNG files based on prefixes
-void read_and_store_selected_pngs(const char *prefixes[], int prefix_count, lv_img_dsc_t **img_dsc_array, int *image_count) {
+// Function to read and store selected PNG files based on prefix
+void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
     DIR *dir;
     struct dirent *ent;
+    bool image_loaded = false;
     if ((dir = opendir("/spiffs")) != NULL) {
         while ((ent = readdir(dir)) != NULL) {
-            if (is_png_file_for_expressions(ent->d_name, prefixes, prefix_count)) {
+            if (is_png_file_for_expression(ent->d_name, file_prefix)) {
                 if (*image_count >= MAX_IMAGES) {
                     ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
                     break;
@@ -105,6 +115,7 @@ void read_and_store_selected_pngs(const char *prefixes[], int prefix_count, lv_i
                     
                     create_img_dsc(&img_dsc_array[*image_count], data, size);
                     (*image_count)++;
+                    image_loaded = true;
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
                 }
             }
@@ -112,5 +123,15 @@ void read_and_store_selected_pngs(const char *prefixes[], int prefix_count, lv_i
         closedir(dir);
     } else {
         ESP_LOGE("SPIFFS", "Failed to open directory /spiffs");
+    }
+
+    if (!image_loaded && *image_count < MAX_IMAGES) {
+        ESP_LOGW("PNG Load", "No image found for prefix %s, creating a black image", file_prefix);
+        size_t size = 412 * 412 * 2; // Assuming the size for a 412x412 image with alpha channel
+        void *black_data = create_black_image(size);
+        if (black_data) {
+            create_img_dsc(&img_dsc_array[*image_count], black_data, size);
+            (*image_count)++;
+        }
     }
 }

@@ -265,7 +265,7 @@ void view_alarm_off(uint8_t task_down)
     lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
 
     // if the page is avatar when the alarm is triggered, turn the page back when the alarm is off
-    if(g_avarlive == 0 && task_down == 0 && g_alarm_p == 0)
+    if(g_avarlive == 1 && task_down == 0 && g_alarm_p == 0)
     {
         _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
         lv_group_focus_obj(ui_Page_ViewAva);
