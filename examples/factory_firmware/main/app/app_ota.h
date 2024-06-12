@@ -19,6 +19,7 @@ extern "C" {
 #endif
 
 
+// OTA state for CTRL_EVENT_OTA_*
 enum {
     OTA_STATUS_SUCCEED = 0,
     OTA_STATUS_DOWNLOADING,
@@ -26,7 +27,7 @@ enum {
 };
 
 // ota status for SenseCraft platform
-// !!! UI should use this status value as well
+// !!! UI should use this status value as well (VIEW_EVENT_OTA_STATUS)
 // this status value is merged for multiple OTA tasks, e.g. both himax and esp32
 // are going to be upgraded.
 enum {

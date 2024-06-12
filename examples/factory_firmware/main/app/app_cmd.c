@@ -54,7 +54,7 @@ static int wifi_cfg_set(int argc, char **argv)
             ESP_LOGE(TAG,  "out of 31 bytes :%s", wifi_cfg_args.ssid->sval[0]);
             return -1;
         }
-        strncpy( cfg.ssid, wifi_cfg_args.ssid->sval[0], max(len, 31) );
+        strncpy( cfg.ssid, wifi_cfg_args.ssid->sval[0], len );
     } else {
         ESP_LOGE(TAG,  "no ssid");
         return -1;
