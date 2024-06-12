@@ -345,12 +345,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            //TODO
-            // case VIEW_EVENT_AI_CAMERA_READY:{
-            //     ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_READY");
-            //     if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-            //     break;
-            // }
+            case VIEW_EVENT_AI_CAMERA_READY:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_READY");
+                if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+                break;
+            }
 
             case VIEW_EVENT_OTA_STATUS:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
@@ -528,10 +527,9 @@ int view_init(void)
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_ERROR, 
                                                             __view_event_handler, NULL, NULL)); 
 
-    //TODO
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_AI_CAMERA_READY, 
-    //                                                         __view_event_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_AI_CAMERA_READY, 
+                                                            __view_event_handler, NULL, NULL));
 
     if((bat_per < 1) && (! is_charging))
     {

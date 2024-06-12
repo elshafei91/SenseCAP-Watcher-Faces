@@ -99,6 +99,13 @@ menu "SenseCAP Watcher BSP Configuration"
             help
                 "Enable to use touchpad as LVGL input device"
 
+        config LVGL_INPUT_DEVICE_SENSITIVITY
+            int "LVGL INPUT DEVICE SENSITIVITY"
+            default -1
+            depends on LVGL_INPUT_DEVICE_USE_TP
+            help
+                "Set the sensitivity of LVGL input device"
+
     endmenu
 
 

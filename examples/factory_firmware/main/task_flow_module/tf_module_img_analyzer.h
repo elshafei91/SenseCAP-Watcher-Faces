@@ -40,11 +40,11 @@ extern "C"
 
 
 #if CONFIG_ENABLE_TEST_ENV
-#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST       "https://sensecap-watcher-demo.seeed.cc"
-#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH   "/testapi/v1/watcher/vision" 
+#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST       "https://sensecraft-aiservice-test-api.seeed.cc"
+#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH   "/v1/watcher/vision" 
 #else
-#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST       "https://sensecap-watcher-demo.seeed.cc"
-#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH   "/api/v1/watcher/vision"
+#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST       "https://sensecraft-aiservice-api.seeed.cc"
+#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH   "/v1/watcher/vision"
 #endif
 
 struct tf_module_img_analyzer_params
