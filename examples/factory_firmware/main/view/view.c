@@ -560,13 +560,13 @@ int view_init(void)
     vTaskDelay(pdMS_TO_TICKS(200));
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
 
-    read_and_store_selected_pngs("greeting", "smiling" , g_greet_img_dsc, &g_greet_image_count);
-    read_and_store_selected_pngs("detecting", "testing" , g_detect_img_dsc, &g_detect_image_count);
-    read_and_store_selected_pngs("detected", "testing" , g_detected_img_dsc, &g_detected_image_count);
-    read_and_store_selected_pngs("speaking", "testing" , g_speak_img_dsc, &g_speak_image_count);
-    read_and_store_selected_pngs("listening", "testing" , g_listen_img_dsc, &g_listen_image_count);
-    read_and_store_selected_pngs("analyzing", "loading" , g_anaylze_img_dsc, &g_analyze_image_count);
-    read_and_store_selected_pngs("standby", "sleeping" , g_standby_img_dsc, &g_standby_image_count);
+    read_and_store_selected_pngs("greeting", g_greet_img_dsc, &g_greet_image_count);
+    read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
+    read_and_store_selected_pngs("detected", g_detected_img_dsc, &g_detected_image_count);
+    read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
+    read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
+    read_and_store_selected_pngs("analyzing", g_anaylze_img_dsc, &g_analyze_image_count);
+    read_and_store_selected_pngs("standby", g_standby_img_dsc, &g_standby_image_count);
 
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, pdMS_TO_TICKS(10000));
                     

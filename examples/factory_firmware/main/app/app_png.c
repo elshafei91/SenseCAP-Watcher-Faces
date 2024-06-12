@@ -81,12 +81,12 @@ void* create_black_image(size_t size) {
 }
 
 // Helper function to check if the file name matches the specified prefix and is a PNG file
-static int is_png_file_for_expression(const char* filename, const char* prefix1, const char* prefix2) {
+static int is_png_file_for_expression(const char* filename, const char* prefix) {
     const char *suffix = ".png";
     size_t len = strlen(filename);
     size_t suffix_len = strlen(suffix);
     if (len > suffix_len && strcmp(filename + len - suffix_len, suffix) == 0) {
-        if (strncmp(filename, prefix1, strlen(prefix1)) == 0 || strncmp(filename, prefix2, strlen(prefix2)) == 0) {
+        if (strncmp(filename, prefix, strlen(prefix)) == 0) {
             return 1;
         }
     }
@@ -94,13 +94,13 @@ static int is_png_file_for_expression(const char* filename, const char* prefix1,
 }
 
 // Function to read and store selected PNG files based on prefix
-void read_and_store_selected_pngs(const char *file_prefix1, const char *file_prefix2, lv_img_dsc_t **img_dsc_array, int *image_count) {
+void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
     DIR *dir;
     struct dirent *ent;
     bool image_loaded = false;
     if ((dir = opendir("/spiffs")) != NULL) {
         while ((ent = readdir(dir)) != NULL) {
-            if (is_png_file_for_expression(ent->d_name, file_prefix1, file_prefix2)) {
+            if (is_png_file_for_expression(ent->d_name, file_prefix)) {
                 if (*image_count >= MAX_IMAGES) {
                     ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
                     break;
@@ -126,7 +126,7 @@ void read_and_store_selected_pngs(const char *file_prefix1, const char *file_pre
     }
 
     if (!image_loaded && *image_count < MAX_IMAGES) {
-        ESP_LOGW("PNG Load", "No image found for prefix %s or %s, creating a black image", file_prefix1, file_prefix2);
+        ESP_LOGW("PNG Load", "No image found for prefix %s, creating a black image", file_prefix);
         size_t size = 412 * 412 * 4; // Assuming the size for a 412x412 image with alpha channel
         void *black_data = create_black_image(size);
         if (black_data) {
