@@ -245,7 +245,9 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
     cJSON *tlid_json = cJSON_GetObjectItem(tl, "tlid");
     if (tlid_json == NULL || !cJSON_IsNumber(tlid_json))
     {
-        tid = (intmax_t)tlid_json->valuedouble; //TODO
+        ESP_LOGE(TAG, "tlid is not number");
+    } else {
+        tid = (intmax_t)tlid_json->valuedouble;
     }
 
     char *tl_str = cJSON_PrintUnformatted(tl);

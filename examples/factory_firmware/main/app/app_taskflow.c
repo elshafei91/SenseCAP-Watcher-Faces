@@ -601,8 +601,11 @@ static intmax_t __taskflow_tid_get(char *p_task_flow)
     cJSON *tlid_json = cJSON_GetObjectItem(json_root, "tlid");
     if (tlid_json == NULL || !cJSON_IsNumber(tlid_json))
     {
-        tid = (intmax_t)tlid_json->valuedouble; //TODO
+        ESP_LOGE(TAG, "tlid is not number");
+    } else {
+        tid = (intmax_t)tlid_json->valuedouble;
     }
+
     cJSON_Delete(json_root);
     return tid;
 }
