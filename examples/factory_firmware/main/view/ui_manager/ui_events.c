@@ -32,6 +32,7 @@ uint8_t task_down = 0;
 uint8_t g_guide_step = 0;
 uint8_t swipe_id = 0; // 0 for shutdown, 1 for factoryreset
 uint8_t g_alarm_p = 0;
+uint8_t g_avarlive = 0;
 static bool is_charging = 0;
 static uint8_t loading_flag = 0;
 static struct view_data_setting_volbri volbri;
@@ -49,7 +50,7 @@ extern uint8_t shutdown_state;
 extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
 extern lv_obj_t *ui_alarm_indicator;
 extern lv_obj_t * ui_task_error;
-extern uint8_t task_view_current;
+
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -485,18 +486,23 @@ void viewac_cb(lv_event_t *e)
         lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
         lv_obj_move_foreground(ui_viewavap);
         g_alarm_p = 1;
-        lv_group_remove_all_objs(g_main);
+        g_avarlive = 0;
     }
 }
 
 void viewaf_cb(lv_event_t *e)
 {
-    lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
-    _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+    if(g_alarm_p == 0)
+    {
+        lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+        _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        g_avarlive = 0;
+    }
 }
 
 void viewasl_cb(lv_event_t *e)
 {
+    g_avarlive = 0;
     if (emoticon_disp_id == 1)
     {
         create_timer(3); // Load timer for the "detected" animation when emoticon_disp_id is 1
@@ -553,18 +559,20 @@ void ava1c_cb(lv_event_t *e)
 void ava2c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "ava2c_cb");
+    ESP_LOGI(CLICK_TAG, "ava2c_cb, g_avarlive: %d", g_avarlive);
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
     g_alarm_p = 0;
-    lv_group_remove_all_objs(g_main);
-    lv_group_add_obj(g_main, ui_Page_ViewAva);
-    lv_group_add_obj(g_main, ui_Page_ViewLive);
-    if(task_view_current == 0)
-    {
-        lv_group_focus_obj(ui_Page_ViewAva);
-    }else
-    {
-        lv_group_focus_obj(ui_Page_ViewLive);    
-    }
+    // if(g_avarlive == 0)
+    // {
+    //     lv_group_add_obj(g_main, ui_Page_ViewAva);
+    //     lv_group_add_obj(g_main, ui_Page_ViewLive);
+    //     lv_event_send(ui_Page_ViewAva, LV_EVENT_FOCUSED, NULL);
+    // }else
+    // {
+    //     lv_group_add_obj(g_main, ui_Page_ViewAva);
+    //     lv_group_add_obj(g_main, ui_Page_ViewLive);
+    //     lv_event_send(ui_Page_ViewLive, LV_EVENT_FOCUSED, NULL);
+    // }
 }
 
 void avagc_cb(lv_event_t *e)
@@ -592,17 +600,21 @@ void viewlc_cb(lv_event_t *e)
         lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
         lv_obj_move_foreground(ui_viewavap);
         g_alarm_p = 1;
-        lv_group_remove_all_objs(g_main);
+        g_avarlive = 1;
     }
 }
 
 void viewlf_cb(lv_event_t *e)
 {
-    _ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+    if(g_alarm_p ==0){
+        _ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+        g_avarlive = 1;
+    }
 }
 
 void viewlsl_cb(lv_event_t *e)
 {
+    g_avarlive = 1;
     if ((!g_dev_binded) && (g_guide_step != 3))
     {
         g_guide_step = 2;

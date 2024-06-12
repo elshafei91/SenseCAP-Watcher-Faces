@@ -21,7 +21,7 @@ lv_obj_t * ui_avat1;
 lv_obj_t * ui_avabtn1;
 lv_obj_t * ui_avabtn2;
 
-uint8_t task_view_current = 0;
+extern uint8_t g_avarlive;
 
 extern uint8_t wifi_page_id;
 extern int g_dev_binded;
@@ -188,13 +188,9 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     alarm_timer_start(alarm_st->duration);
 
     // turn the page to view live
-    if ((lv_scr_act() != ui_Page_ViewLive) && g_alarm_p == 0){
-        task_view_current = 0;
+    if ((lv_scr_act() != ui_Page_ViewLive) && (g_alarm_p == 0) && (g_avarlive == 0)){
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
         lv_group_focus_obj(ui_Page_ViewLive);
-    }else
-    {
-        task_view_current = 1;
     }
     // clear alarm text
     lv_label_set_text(ui_viewtext, "");
@@ -269,7 +265,7 @@ void view_alarm_off(uint8_t task_down)
     lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
 
     // if the page is avatar when the alarm is triggered, turn the page back when the alarm is off
-    if(task_view_current == 0 && task_down == 0 && g_alarm_p == 0)
+    if(g_avarlive == 0 && task_down == 0 && g_alarm_p == 0)
     {
         _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
         lv_group_focus_obj(ui_Page_ViewAva);
