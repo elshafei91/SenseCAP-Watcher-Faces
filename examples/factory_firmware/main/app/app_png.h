@@ -32,7 +32,20 @@ typedef enum {
     DOWNLOAD_ERR_UNKNOWN = -4
 } download_status_t;
 
-void download_emoji_images(char *name, char *urls[], int url_count);
+
+
+typedef struct {
+    bool success;
+    int error_code;
+} download_result_t;
+typedef struct {
+    download_result_t *results;
+    int64_t total_time_us;
+    double download_speed;
+} download_summary_t;
+
+download_summary_t download_emoji_images(char *base_name, char *urls[], int url_count);
+
 #ifdef __cplusplus
 }
 #endif
