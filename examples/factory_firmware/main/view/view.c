@@ -373,9 +373,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 {
                     update_ota_progress(ota_st->percentage);
                     lv_label_set_text(ui_otatext, "Updating\nFirmware");
+                    lv_obj_add_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
                 }else{
                     ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
                     lv_label_set_text(ui_otatext, "Update Failed");
+                    lv_img_set_src(ui_otaicon, &ui_img_error_png);
+                    lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_clear_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
                 }
                 break;
             }
