@@ -69,26 +69,28 @@ void* read_png_to_psram(const char *path, size_t *out_size) {
     return png_buffer;
 }
 
-// Helper function to check if the file name matches the specified prefix and is a PNG file
-static int is_png_file_for_expression(const char* filename, const char* prefix) {
+// Helper function to check if the file name matches any specified prefix and is a PNG file
+static int is_png_file_for_expressions(const char* filename, const char* prefixes[], int prefix_count) {
     const char *suffix = ".png";
     size_t len = strlen(filename);
     size_t suffix_len = strlen(suffix);
     if (len > suffix_len && strcmp(filename + len - suffix_len, suffix) == 0) {
-        if (strncmp(filename, prefix, strlen(prefix)) == 0) {
-            return 1;
+        for (int i = 0; i < prefix_count; ++i) {
+            if (strncmp(filename, prefixes[i], strlen(prefixes[i])) == 0) {
+                return 1;
+            }
         }
     }
     return 0;
 }
 
-// Function to read and store selected PNG files based on prefix
-void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
+// Function to read and store selected PNG files based on prefixes
+void read_and_store_selected_pngs(const char *prefixes[], int prefix_count, lv_img_dsc_t **img_dsc_array, int *image_count) {
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir("/spiffs")) != NULL) {
         while ((ent = readdir(dir)) != NULL) {
-            if (is_png_file_for_expression(ent->d_name, file_prefix)) {
+            if (is_png_file_for_expressions(ent->d_name, prefixes, prefix_count)) {
                 if (*image_count >= MAX_IMAGES) {
                     ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
                     break;
