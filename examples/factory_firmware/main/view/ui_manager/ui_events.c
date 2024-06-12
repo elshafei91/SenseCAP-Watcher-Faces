@@ -1356,6 +1356,8 @@ static void settingInfoInit()
     lv_label_set_text(ui_snt2, (char *)about_sn);
     lv_label_set_text(ui_euit2, (char *)about_eui);
     lv_label_set_text(ui_blet2, (char *)about_btmac);
+    lv_label_set_text(ui_wifit2, about_wifimac);
+
 }
 
 void ui_event_alarm_panel(lv_event_t * e)
