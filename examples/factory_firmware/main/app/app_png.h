@@ -24,6 +24,13 @@ void *read_png_to_psram(const char *path, size_t *out_size);
 void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count);
 
 
+typedef enum {
+    DOWNLOAD_SUCCESS = 0,
+    DOWNLOAD_ERR_ALLOC = -1,
+    DOWNLOAD_ERR_HTTP = -2,
+    DOWNLOAD_ERR_TIMEOUT = -3,
+    DOWNLOAD_ERR_UNKNOWN = -4
+} download_status_t;
 
 void download_emoji_images(char *name, char *urls[], int url_count);
 #ifdef __cplusplus

@@ -397,11 +397,11 @@ void handle_emoji_command(char *params)
     cJSON *filename_item = cJSON_GetObjectItem(json, "filename");
     if (filename_item != NULL && cJSON_IsString(filename_item))
     {
-        *filename = strdup(filename_item->valuestring);
+        filename = strdup(filename_item->valuestring);
     }
     else
     {
-        *filename = NULL; // If "filename" is not found or not a string, set to NULL
+        filename = NULL; // If "filename" is not found or not a string, set to NULL
     }
 
     // Get the "urls" array from the JSON
@@ -440,6 +440,7 @@ void handle_emoji_command(char *params)
     {
         printf("URL %d: %s\n", i + 1, urls[i]);
         free(urls[i]); // Don't forget to free the allocated memory
+    }
         cJSON_Delete(json);
         // vTaskDelay(1000 / portTICK_PERIOD_MS);
         cJSON *root = cJSON_CreateObject();
@@ -453,7 +454,6 @@ void handle_emoji_command(char *params)
         send_at_response(json_string);
         cJSON_Delete(root);
         free(json_string);
-    }
 }
 
     /*-----------------------------------------------------------------------------------------------------------*/

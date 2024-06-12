@@ -24,7 +24,7 @@
 #include "util/util.h"
 
 #define TAG              "HTTP_EMOJI"
-#define HTTP_MOUNT_POINT "/sdcard"
+#define HTTP_MOUNT_POINT "/spiffs"
 
 #define EMOJI_HTTP_TIMEOUT_MS           30000
 #define EMOJI_HTTP_DOWNLOAD_RETRY_TIMES 5
@@ -189,25 +189,16 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         case HTTP_EVENT_ON_DATA:
             if (evt->data_len > 0)
             {
-                if (!task_arg->f)
+                esp_err_t err = storage_file_write(task_arg->file_path, evt->data, evt->data_len);
+                if (err != ESP_OK)
                 {
-                    task_arg->f = fopen(task_arg->file_path, "wb");
-                    if (!task_arg->f)
-                    {
-                        ESP_LOGE(TAG, "Failed to open file for writing");
-                        return ESP_FAIL;
-                    }
+                    ESP_LOGE(TAG, "Failed to write data to file using storage_file_write");
+                    return err;
                 }
-                fwrite(evt->data, 1, evt->data_len, task_arg->f);
             }
             break;
         case HTTP_EVENT_ON_FINISH:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
-            if (task_arg->f)
-            {
-                fclose(task_arg->f);
-                task_arg->f = NULL;
-            }
             task_arg->content_length = esp_http_client_get_content_length(evt->client);
             task_arg->download_complete = true;
             break;
@@ -251,7 +242,7 @@ static void download_task(void *arg)
     // Poll the download completion flag
     while (!task_arg->download_complete)
     {
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 
     esp_http_client_cleanup(client);
@@ -325,6 +316,7 @@ void download_emoji_images(char *base_name, char *urls[], int url_count)
     double download_speed = total_data_size / total_time_s;
 
     ESP_LOGI(TAG, "Total download size: %" PRId64 " bytes", total_data_size);
+    total_data_size =0;
     ESP_LOGI(TAG, "Total download time: %.2f seconds", total_time_s);
     ESP_LOGI(TAG, "Overall download speed: %.2f bytes/second", download_speed);
 
