@@ -560,21 +560,13 @@ int view_init(void)
     vTaskDelay(pdMS_TO_TICKS(200));
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
 
-    static const char *one_prefixes[]   = {"greeting", "smiling"};
-    static const char *two_prefixes[]   = {"detecting"};
-    static const char *three_prefixes[] = {"detected"};
-    static const char *four_prefixes[]  = {"speaking"};
-    static const char *five_prefixes[]  = {"listening"};
-    static const char *fix_prefixes[]   = {"analyzing", "loading"};
-    static const char *seven_prefixes[] = {"standby", "sleeping"};
-
-    read_and_store_selected_pngs(one_prefixes, 2, g_greet_img_dsc, &g_greet_image_count);
-    read_and_store_selected_pngs(two_prefixes, 1, g_detect_img_dsc, &g_detect_image_count);
-    read_and_store_selected_pngs(three_prefixes, 1, g_detected_img_dsc, &g_detected_image_count);
-    read_and_store_selected_pngs(four_prefixes, 1, g_speak_img_dsc, &g_speak_image_count);
-    read_and_store_selected_pngs(five_prefixes, 1, g_listen_img_dsc, &g_listen_image_count);
-    read_and_store_selected_pngs(fix_prefixes, 2, g_anaylze_img_dsc, &g_analyze_image_count);
-    read_and_store_selected_pngs(seven_prefixes, 2, g_standby_img_dsc, &g_standby_image_count);
+    read_and_store_selected_pngs("greeting", "smiling" , g_greet_img_dsc, &g_greet_image_count);
+    read_and_store_selected_pngs("detecting", "testing" , g_detect_img_dsc, &g_detect_image_count);
+    read_and_store_selected_pngs("detected", "testing" , g_detected_img_dsc, &g_detected_image_count);
+    read_and_store_selected_pngs("speaking", "testing" , g_speak_img_dsc, &g_speak_image_count);
+    read_and_store_selected_pngs("listening", "testing" , g_listen_img_dsc, &g_listen_image_count);
+    read_and_store_selected_pngs("analyzing", "loading" , g_anaylze_img_dsc, &g_analyze_image_count);
+    read_and_store_selected_pngs("standby", "sleeping" , g_standby_img_dsc, &g_standby_image_count);
 
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, pdMS_TO_TICKS(10000));
                     
