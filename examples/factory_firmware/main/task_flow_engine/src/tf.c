@@ -324,7 +324,7 @@ static void __tf_engine_task(void *p_arg)
             tf_free(flow.p_data);
             
             ESP_LOGI(TAG, "======= START ======");
-            ESP_LOGI(TAG, "tlid: %ld", p_engine->tf_info.tid);
+            ESP_LOGI(TAG, "tlid: %jd", p_engine->tf_info.tid);
             ESP_LOGI(TAG, "name: %s", p_engine->tf_info.p_tf_name);
             ESP_LOGI(TAG, "type: %ld", p_engine->tf_info.type);
             ESP_LOGI(TAG, "num:  %d", p_engine->module_item_num);
