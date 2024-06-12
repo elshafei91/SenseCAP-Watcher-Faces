@@ -282,6 +282,10 @@ void ui_event_aboutble(lv_event_t * e);
 extern lv_obj_t * ui_aboutble;
 extern lv_obj_t * ui_blet1;
 extern lv_obj_t * ui_blet2;
+void ui_event_aboutwifi(lv_event_t * e);
+extern lv_obj_t * ui_aboutwifi;
+extern lv_obj_t * ui_wifit1;
+extern lv_obj_t * ui_wifit2;
 void ui_event_Paboutb(lv_event_t * e);
 extern lv_obj_t * ui_Paboutb;
 extern lv_obj_t * ui_abtp;
@@ -397,7 +401,6 @@ LV_IMG_DECLARE(ui_img_onboardclick_png);
 LV_IMG_DECLARE(ui_img_error_png);
 LV_IMG_DECLARE(ui_img_battery_charging_png);
 LV_IMG_DECLARE(ui_img_wifi_abnormal_png);    // assets/wifi_abnormal.png
-
 
 
 LV_FONT_DECLARE(ui_font_fbold16);

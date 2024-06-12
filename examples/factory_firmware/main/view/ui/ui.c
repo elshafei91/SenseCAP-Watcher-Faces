@@ -306,6 +306,10 @@ void ui_event_aboutble(lv_event_t * e);
 lv_obj_t * ui_aboutble;
 lv_obj_t * ui_blet1;
 lv_obj_t * ui_blet2;
+void ui_event_aboutwifi(lv_event_t * e);
+lv_obj_t * ui_aboutwifi;
+lv_obj_t * ui_wifit1;
+lv_obj_t * ui_wifit2;
 void ui_event_Paboutb(lv_event_t * e);
 lv_obj_t * ui_Paboutb;
 lv_obj_t * ui_abtp;
@@ -1210,6 +1214,17 @@ void ui_event_abouteui(lv_event_t * e)
     }
 }
 void ui_event_aboutble(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        abblef_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        abbledf_cb(e);
+    }
+}
+void ui_event_aboutwifi(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
