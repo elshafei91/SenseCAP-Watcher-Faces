@@ -366,17 +366,25 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
                 }
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
-                if(ota_st->status == 0)
-                {
-                    ESP_LOGI(TAG, "OTA download succeeded");
-                }else if (ota_st->status == 1)
+                ESP_LOGI(TAG, "VIEW_EVENT_OTA_STATUS: %d", ota_st->status);
+                if(ota_st->status == 1)
                 {
                     update_ota_progress(ota_st->percentage);
                     lv_label_set_text(ui_otatext, "Updating\nFirmware");
                     lv_obj_add_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
-                }else{
+                    lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                }else if (ota_st->status == 2)
+                {
+                    ESP_LOGI(TAG, "OTA download succeeded");
+                    lv_label_set_text(ui_otatext, "Update\nSuccessful");
+                    lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
+                    lv_img_set_src(ui_otaicon, &ui_img_wifiok_png);
+                    lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                }else if (ota_st->status == 3){
                     ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
                     lv_label_set_text(ui_otatext, "Update Failed");
+                    lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_otaicon, &ui_img_error_png);
                     lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
