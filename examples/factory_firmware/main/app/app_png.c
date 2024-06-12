@@ -257,7 +257,7 @@ static void download_task(void *arg)
     // Poll the download completion flag
     while (!task_arg->download_complete)
     {
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
     }
 
     esp_http_client_cleanup(client);
@@ -310,7 +310,7 @@ void download_emoji_images(char *base_name, char *urls[], int url_count)
             continue;
         }
 
-        xTaskCreateStatic(download_task, "download_task", 8192, task_arg, 8, task_stack, task_buffer);
+        xTaskCreateStatic(download_task, "download_task", 8192, task_arg, 9, task_stack, task_buffer);
 
         free(emoji_name);
     }
@@ -330,10 +330,10 @@ void download_emoji_images(char *base_name, char *urls[], int url_count)
     double total_time_s = total_time_us / 1000000.0;
     double download_speed = total_data_size / total_time_s;
 
-    ESP_LOGI(TAG, "Total download size: %" PRId64 " bytes", total_data_size);
+    ESP_LOGD(TAG, "Total download size: %" PRId64 " bytes", total_data_size);
     total_data_size = 0;
-    ESP_LOGI(TAG, "Total download time: %.2f seconds", total_time_s);
-    ESP_LOGI(TAG, "Overall download speed: %.2f bytes/second", download_speed);
+    ESP_LOGD(TAG, "Total download time: %.2f seconds", total_time_s);
+    ESP_LOGD(TAG, "Overall download speed: %.2f bytes/second", download_speed);
 
     vEventGroupDelete(download_event_group);
     vSemaphoreDelete(download_mutex);
