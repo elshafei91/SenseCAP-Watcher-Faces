@@ -166,7 +166,7 @@ struct view_data_emoticon_display
 //OTA
 struct view_data_ota_status
 {
-    int     status;       //0:succeed, 1:downloading, 2:fail
+    int     status;       //different for CTRL_EVENT* and VIEW_EVENT*, refer to app_ota.h for detailed state define
     int     percentage;   //percentage progress, this is for download, not flash
     int     err_code;     //enum esp_err_t, refer to app_ota.h for detailed error code define
 };
@@ -237,6 +237,7 @@ enum {
 
     VIEW_EVENT_OTA_STATUS,  //struct view_data_ota_status, this is the merged status reporting, e.g. both himax and esp32 ota
 
+    VIEW_EVENT_AI_CAMERA_READY,
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
    

@@ -114,7 +114,7 @@ void ui_Page_Set_screen_init(void)
     lv_obj_set_x(ui_setwifit, 50);
     lv_obj_set_y(ui_setwifit, 0);
     lv_obj_set_align(ui_setwifit, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_setwifit, "Wifi");
+    lv_label_set_text(ui_setwifit, "Wi-Fi");
     lv_obj_set_style_text_color(ui_setwifit, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_setwifit, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_setwifit, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);

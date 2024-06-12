@@ -154,6 +154,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     const pca95xx_16bit_ex_config_t io_exp_config = {
 
         .int_gpio = BSP_IO_EXPANDER_INT,
+        .update_interval_us = 1000000, // 1s
         .isr_cb = NULL,
         .user_ctx = NULL,
     };
@@ -299,7 +300,7 @@ void bsp_system_deep_sleep(uint32_t time_in_sec)
     if (time_in_sec > 0)
         esp_sleep_enable_timer_wakeup(time_in_sec * 1000000);
 
-    uint32_t pin_mask_sleep = BSP_PWR_SDCARD | BSP_PWR_CODEC_PA | BSP_PWR_AUDIO | BSP_PWR_GROVE | BSP_PWR_BAT_ADC | BSP_PWR_LCD | BSP_PWR_AI_CHIP;
+    uint32_t pin_mask_sleep = BSP_PWR_SDCARD | BSP_PWR_CODEC_PA | BSP_PWR_GROVE | BSP_PWR_BAT_ADC | BSP_PWR_LCD | BSP_PWR_AI_CHIP;
     if (io_exp_handle != NULL)
         esp_io_expander_set_level(io_exp_handle, pin_mask_sleep, 0);
 
@@ -329,6 +330,11 @@ bool bsp_system_is_charging(void)
 bool bsp_system_is_standby(void)
 {
     return bsp_exp_io_get_level(BSP_PWR_STDBY_DET) == 0;
+}
+
+bool bsp_battery_is_present(void)
+{
+    return bsp_exp_io_get_level(BSP_PWR_BAT_DET) == 0;
 }
 
 #ifdef CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS
@@ -718,6 +724,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     BSP_ERROR_CHECK_RETURN_NULL(esp_lcd_touch_new_i2c_spd2010(tp_io_handle, &tp_cfg, &tp_handle));
 
     // Note: read once to initialize the touch panel
+    vTaskDelay(50 / portTICK_PERIOD_MS);
     esp_lcd_touch_read_data(tp_handle);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -725,6 +732,7 @@ static lv_indev_t *bsp_touch_indev_init(lv_disp_t *disp)
     const lvgl_port_touch_cfg_t touch = {
         .disp = disp,
         .handle = tp_handle,
+        .sensitivity = CONFIG_LVGL_INPUT_DEVICE_SENSITIVITY,
     };
     return lvgl_port_add_touch(&touch);
 }
@@ -1242,29 +1250,30 @@ sscma_client_flasher_handle_t bsp_sscma_flasher_init()
     if (bsp_io_expander_init() == NULL)
         return NULL;
 
-//     uart_config_t uart_config = {
-//         .baud_rate = BSP_SSCMA_FLASHER_UART_BAUD_RATE,
-//         .data_bits = UART_DATA_8_BITS,
-//         .parity = UART_PARITY_DISABLE,
-//         .stop_bits = UART_STOP_BITS_1,
-//         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-//         .source_clk = UART_SCLK_DEFAULT,
-//     };
-//     int intr_alloc_flags = 0;
+    //     uart_config_t uart_config = {
+    //         .baud_rate = BSP_SSCMA_FLASHER_UART_BAUD_RATE,
+    //         .data_bits = UART_DATA_8_BITS,
+    //         .parity = UART_PARITY_DISABLE,
+    //         .stop_bits = UART_STOP_BITS_1,
+    //         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+    //         .source_clk = UART_SCLK_DEFAULT,
+    //     };
+    //     int intr_alloc_flags = 0;
 
-// #if CONFIG_UART_ISR_IN_IRAM
-//     intr_alloc_flags = ESP_INTR_FLAG_IRAM;
-// #endif
+    // #if CONFIG_UART_ISR_IN_IRAM
+    //     intr_alloc_flags = ESP_INTR_FLAG_IRAM;
+    // #endif
 
-//     ESP_ERROR_CHECK(uart_driver_install(BSP_SSCMA_FLASHER_UART_NUM, 64 * 1024, 0, 0, NULL, intr_alloc_flags));
-//     ESP_ERROR_CHECK(uart_param_config(BSP_SSCMA_FLASHER_UART_NUM, &uart_config));
-//     ESP_ERROR_CHECK(uart_set_pin(BSP_SSCMA_FLASHER_UART_NUM, BSP_SSCMA_FLASHER_UART_TX, BSP_SSCMA_FLASHER_UART_RX, -1, -1));
+    //     ESP_ERROR_CHECK(uart_driver_install(BSP_SSCMA_FLASHER_UART_NUM, 64 * 1024, 0, 0, NULL, intr_alloc_flags));
+    //     ESP_ERROR_CHECK(uart_param_config(BSP_SSCMA_FLASHER_UART_NUM, &uart_config));
+    //     ESP_ERROR_CHECK(uart_set_pin(BSP_SSCMA_FLASHER_UART_NUM, BSP_SSCMA_FLASHER_UART_TX, BSP_SSCMA_FLASHER_UART_RX, -1, -1));
 
-//     sscma_client_io_uart_config_t io_uart_config = {
-//         .user_ctx = NULL,
-//     };
+    //     sscma_client_io_uart_config_t io_uart_config = {
+    //         .user_ctx = NULL,
+    //     };
 
-//     sscma_client_new_io_uart_bus((sscma_client_uart_bus_handle_t)BSP_SSCMA_FLASHER_UART_NUM, &io_uart_config, &sscma_flasher_io_handle);
+    //     sscma_client_new_io_uart_bus((sscma_client_uart_bus_handle_t)BSP_SSCMA_FLASHER_UART_NUM, &io_uart_config, &sscma_flasher_io_handle);
+    (void)sscma_flasher_io_handle;
 
     const sscma_client_flasher_we2_config_t flasher_config = {
         .reset_gpio_num = BSP_SSCMA_CLIENT_RST,

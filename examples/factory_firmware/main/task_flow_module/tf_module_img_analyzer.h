@@ -37,8 +37,15 @@ extern "C"
 #define TF_MODULE_IMG_ANALYZER_SERV_TYPE_SENSECRAFT   0
 #define TF_MODULE_IMG_ANALYZER_SERV_TYPE_PROXY        1
  
-#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST       "https://sensecap-watcher-demo.seeed.cc"
-#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH   "/tools/v1/watcher/vision"
+
+
+#if CONFIG_ENABLE_TEST_ENV
+#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST       "https://sensecraft-aiservice-test-api.seeed.cc"
+#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH   "/v1/watcher/vision" 
+#else
+#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST       "https://sensecraft-aiservice-api.seeed.cc"
+#define CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH   "/v1/watcher/vision"
+#endif
 
 struct tf_module_img_analyzer_params
 {

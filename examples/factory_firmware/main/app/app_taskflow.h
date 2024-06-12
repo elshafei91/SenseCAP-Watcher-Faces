@@ -24,10 +24,10 @@ struct app_taskflow
     StaticTask_t *p_task_buf;
     StackType_t *p_task_stack_buf;
     TaskHandle_t task_handle;
+    char *p_taskflow_json;
     struct view_data_taskflow_status status;
     bool status_need_report;
     bool mqtt_connect_flag;
-    bool taskflow_need_report;
 };
 
 

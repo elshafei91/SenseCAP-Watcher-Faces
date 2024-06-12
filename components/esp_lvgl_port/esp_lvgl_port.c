@@ -105,6 +105,7 @@ typedef struct
 {
     esp_lcd_touch_handle_t handle; /* LCD touch IO handle */
     lv_indev_drv_t indev_drv;      /* LVGL input device driver */
+    int16_t sensitivity;           /* Touch sensitivity (0 - 255) */
 } lvgl_port_touch_ctx_t;
 #endif
 
@@ -436,6 +437,7 @@ lv_indev_t *lvgl_port_add_touch(const lvgl_port_touch_cfg_t *touch_cfg)
         return NULL;
     }
     touch_ctx->handle = touch_cfg->handle;
+    touch_ctx->sensitivity = touch_cfg->sensitivity;
 
     /* Register a touchpad input device */
     lv_indev_drv_init(&touch_ctx->indev_drv);
@@ -946,15 +948,16 @@ static void lvgl_port_touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *
 
     uint16_t touchpad_x[1] = { 0 };
     uint16_t touchpad_y[1] = { 0 };
+    uint16_t touchpad_strength[1] = { 0 };
     uint8_t touchpad_cnt = 0;
 
     /* Read data from touch controller into memory */
     esp_lcd_touch_read_data(touch_ctx->handle);
 
     /* Read data from touch controller */
-    bool touchpad_pressed = esp_lcd_touch_get_coordinates(touch_ctx->handle, touchpad_x, touchpad_y, NULL, &touchpad_cnt, 1);
+    bool touchpad_pressed = esp_lcd_touch_get_coordinates(touch_ctx->handle, touchpad_x, touchpad_y, touchpad_strength, &touchpad_cnt, 1);
 
-    if (touchpad_pressed && touchpad_cnt > 0)
+    if (touchpad_pressed && touchpad_cnt > 0 && touchpad_strength[0] > touch_ctx->sensitivity)
     {
         data->point.x = touchpad_x[0];
         data->point.y = touchpad_y[0];

@@ -14,7 +14,7 @@ void ui_Page_Vir_screen_init(void)
 
     ui_virp = lv_obj_create(ui_Page_Vir);
     lv_obj_set_width(ui_virp, 416);
-    lv_obj_set_height(ui_virp, 512);
+    lv_obj_set_height(ui_virp, 516);
     lv_obj_set_x(ui_virp, 0);
     lv_obj_set_y(ui_virp, -50);
     lv_obj_set_align(ui_virp, LV_ALIGN_CENTER);

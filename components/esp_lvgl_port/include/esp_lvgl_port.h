@@ -93,6 +93,7 @@ typedef struct
 {
     lv_disp_t *disp;               /*!< LVGL display handle (returned from lvgl_port_add_disp) */
     esp_lcd_touch_handle_t handle; /*!< LCD touch IO handle */
+    int16_t sensitivity;           /*!< Touch sensitivity */
 } lvgl_port_touch_cfg_t;
 #endif
 

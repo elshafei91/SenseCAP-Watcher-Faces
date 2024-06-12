@@ -15,6 +15,7 @@
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
+#include "esp_wifi.h"
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
 #include "esp_timer.h"
@@ -43,9 +44,10 @@
 #define TIME_AUTOMATIC_SK         "time_auto"
 static const char *TAG = "deviceinfo";
 
-uint8_t SN[9] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
-uint8_t EUI[8]={0};
-uint8_t EUI_CODE[16] = { 0x00 };
+static uint8_t SN[9] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
+static uint8_t EUI[8] = { 0 };
+static uint8_t DEVCODE[8] = { 0 };
+static uint8_t QRCODE[67] = { 0 };
 
 int server_code = 1;
 int create_batch = 1000205;
@@ -131,9 +133,7 @@ void init_eui_from_nvs()
 
     uint8_t code[8];
     string_to_byte_array(eui_str, EUI, 8);
-    string_to_byte_array(code_str, code, 8);
-    memcpy(EUI_CODE, EUI, 8);
-    memcpy(EUI_CODE + 8, code, 8);
+    string_to_byte_array(code_str, DEVCODE, 8);
 }
 
 void init_batchid_from_nvs()
@@ -295,40 +295,39 @@ void init_usage_guide_switch_from_nvs()
     }
 }
 
+void init_qrcode_content()
+{
+    char str_platformid[4] = { 0 };
+    char str_batchid[20] = { 0 };
+    snprintf(str_platformid, sizeof(str_platformid), "%d", server_code);
+    snprintf(str_batchid, sizeof(str_batchid), "%d", create_batch);
+    char hexStringEUI[19] = { 0 };
+    char hexStringCode[19] = { 0 };
+    char hexStringSn[19] = { 0 };
+    byteArrayToHexString(EUI, sizeof(EUI), hexStringEUI);
+    byteArrayToHexString(DEVCODE, sizeof(DEVCODE), hexStringCode);
+    byteArrayToHexString(SN, sizeof(SN), hexStringSn);
+
+    snprintf((char *)QRCODE, sizeof(QRCODE), "w1:%s%s:%s:%s:%s", hexStringEUI, hexStringCode, str_platformid, str_batchid, hexStringSn);
+    //esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, QRCODE, sizeof(QRCODE), pdMS_TO_TICKS(10000));
+}
+
 /*----------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
 
 uint8_t *get_sn(int caller)
 {
-    uint8_t *result = NULL;
+    return SN;
+}
 
-    switch (caller)
-    {
-        case BLE_CALLER:
-            ESP_LOGI(TAG, "BLE get sn");
-            result = SN;
-            break;
-        case UI_CALLER:
-            ESP_LOGI(TAG, "UI get sn");
-            char storage_space_2[10];
-            char storage_space_3[20];
-            char storage_space_4[19];
-            snprintf(storage_space_2, sizeof(storage_space_2), "%d", server_code);
-            snprintf(storage_space_3, sizeof(storage_space_3), "%d", create_batch);
-            char hexString1[33] = { 0 };
-            char hexString4[19] = { 0 };
-            byteArrayToHexString(EUI_CODE, sizeof(EUI_CODE), hexString1);
-            byteArrayToHexString(SN, sizeof(SN), hexString4);
-            hexString1[32] = '\0';
-            hexString4[18] = '\0';
-            char final_string[150];
-            snprintf(final_string, sizeof(final_string), "w1:%s:%s:%s:%s", hexString1, storage_space_2, storage_space_3, hexString4);
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, final_string, sizeof(final_string), portMAX_DELAY);
-            result = SN;
-            break;
-    }
+uint8_t *get_eui()
+{
+    return EUI;
+}
 
-    return result;
+uint8_t *get_qrcode_content()
+{
+    return QRCODE;
 }
 
 uint8_t *get_bt_mac()
@@ -345,14 +344,15 @@ uint8_t *get_bt_mac()
     return bd_addr;
 }
 
-uint8_t *get_sn_code()
+uint8_t *get_wifi_mac()
 {
-    return SN;
-}
+    static uint8_t wifi_mac[6] = { 0 };
 
-uint8_t *get_eui()
-{
-    return EUI;
+    if (wifi_mac[0] == 0 && wifi_mac[1] == 0 && wifi_mac[2] == 0) {
+        esp_wifi_get_mac(WIFI_IF_STA, wifi_mac);
+        ESP_LOGI(TAG, "WiFi MAC Address: %02X:%02X:%02X:%02X:%02X:%02X", wifi_mac[0], wifi_mac[1], wifi_mac[2], wifi_mac[3], wifi_mac[4], wifi_mac[5]);
+    }
+    return wifi_mac;
 }
 
 /*---------------------------------------------version module--------------------------------------------------------------*/
@@ -411,7 +411,7 @@ int get_brightness(int caller)
             break;
         case UI_CALLER:
             ESP_LOGI(TAG, "UI get brightness");
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, &brightness2, sizeof(int), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, &brightness2, sizeof(int), pdMS_TO_TICKS(10000));
             break;
     }
 
@@ -456,7 +456,7 @@ int get_rgb_switch(int caller)
             break;
         case UI_CALLER:
             ESP_LOGI(TAG, "UI get rgb_switch");
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, &rgb_switch2, sizeof(int), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_RGB_SWITCH, &rgb_switch2, sizeof(int), pdMS_TO_TICKS(10000));
             break;
     }
 
@@ -501,7 +501,7 @@ int get_sound(int caller)
             break;
         case UI_CALLER:
             ESP_LOGI(TAG, "UI get sound");
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOUND, &sound2, sizeof(int), portMAX_DELAY);
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SOUND, &sound2, sizeof(int), pdMS_TO_TICKS(10000));
             break;
     }
 
@@ -698,7 +698,7 @@ static esp_err_t __check_reset_factory()
     {
         ESP_LOGI(TAG, "###########>>> start to reset factory <<<###########");
         storage_erase();
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
         atomic_store(&g_will_reset_factory, false);
     }
     return ESP_OK;
@@ -824,6 +824,7 @@ void __app_device_info_task(void *pvParameter)
     init_cloud_service_switch_from_nvs();
     init_ai_service_param_from_nvs();
     init_usage_guide_switch_from_nvs();
+    init_qrcode_content();
 
     // get spiffs and sdcard status
     __try_check_sdcard_flash();
@@ -846,7 +847,7 @@ void __app_device_info_task(void *pvParameter)
         vTaskDelay(100 / portTICK_PERIOD_MS);
         cnt++;
 
-        if (!atomic_load(&g_timeout_firstreport) && !himax_version_got) {
+        if (!himax_version_got && !atomic_load(&g_timeout_firstreport)) {
             char *himax_version = tf_module_ai_camera_himax_version_get();
 
             if (himax_version && strlen(himax_version) > 0) {
@@ -868,20 +869,22 @@ void __app_device_info_task(void *pvParameter)
         if ((cnt % 300) == 0)
         {
             batnow = bsp_battery_get_percent();
-            if (abs(g_device_status.battery_per - batnow) > 1 || batnow == 0) {
+            if (abs(g_device_status.battery_per - batnow) > 0 || batnow == 0) {
                 g_device_status.battery_per = batnow;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                                     &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
             }
             // mqtt pub
-            if (firstboot_reported && (abs(last_bat_level_report - batnow) > 10 || batnow == 0)) {
+            if (firstboot_reported && 
+                (abs(last_bat_level_report - batnow) > 10 || batnow == 0 || (batnow == 100 && abs(last_bat_level_report - batnow) > 0))) {
+                g_device_status.battery_per = batnow;
                 app_sensecraft_mqtt_report_device_status(&g_device_status);
                 last_bat_level_report = batnow;
             }
             if (batnow == 0) {
                 vTaskDelay(pdMS_TO_TICKS(2000)); //for mqtt pub
                 ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
             }
             //TODO: open this after problem fignured
             //bsp_rtc_set_timer(62);  // feed the watchdog, leave 2sec overhead for iteration cost
@@ -894,7 +897,7 @@ void __app_device_info_task(void *pvParameter)
             if (chg != last_charge_st)
             {
                 last_charge_st = chg;
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, &last_charge_st, 1, portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, &last_charge_st, 1, pdMS_TO_TICKS(10000));
                 if (!chg) {  //measure the battery immediately when unplug the usb-c charger
                     batnow = bsp_battery_get_percent();
                     if (abs(g_device_status.battery_per - batnow) > 1 || batnow == 0) {

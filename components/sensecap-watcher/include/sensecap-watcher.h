@@ -123,7 +123,7 @@
 #define BSP_PWR_SYSTEM      (IO_EXPANDER_PIN_NUM_10)
 #define BSP_PWR_AI_CHIP     (IO_EXPANDER_PIN_NUM_11)
 #define BSP_PWR_CODEC_PA    (IO_EXPANDER_PIN_NUM_12)
-#define BSP_PWR_AUDIO       (IO_EXPANDER_PIN_NUM_13)
+#define BSP_PWR_BAT_DET     (IO_EXPANDER_PIN_NUM_13)
 #define BSP_PWR_GROVE       (IO_EXPANDER_PIN_NUM_14)
 #define BSP_PWR_BAT_ADC     (IO_EXPANDER_PIN_NUM_15)
 
@@ -143,8 +143,8 @@
 #define DRV_LCD_LEDC_DUTY_RES (LEDC_TIMER_10_BIT)
 #define DRV_LCD_LEDC_CH       (1)
 
-#define DRV_IO_EXP_INPUT_MASK  (0x00ff) // P0.0 ~ P0.7
-#define DRV_IO_EXP_OUTPUT_MASK (0xff00) // P1.0 ~ P1.7
+#define DRV_IO_EXP_INPUT_MASK  (0x20ff) // P0.0 ~ P0.7 | P1.3
+#define DRV_IO_EXP_OUTPUT_MASK (0xDf00) // P1.0 ~ P1.7 & ~P1.3
 
 #define DRV_PCF8563_I2C_ADDR   (0x51)
 #define DRV_PCF8563_TIMEOUT_MS (1000)
@@ -172,7 +172,7 @@
 #define DRV_BASE_PATH_SD    "/sdcard"
 #define DRV_BASE_PATH_FLASH "/spiffs"
 
-#define BSP_PWR_START_UP (BSP_PWR_SDCARD | BSP_PWR_LCD | BSP_PWR_SYSTEM | BSP_PWR_AI_CHIP | BSP_PWR_CODEC_PA | BSP_PWR_AUDIO | BSP_PWR_GROVE | BSP_PWR_BAT_ADC)
+#define BSP_PWR_START_UP (BSP_PWR_SDCARD | BSP_PWR_LCD | BSP_PWR_SYSTEM | BSP_PWR_AI_CHIP | BSP_PWR_CODEC_PA | BSP_PWR_GROVE | BSP_PWR_BAT_ADC)
 
 #define DEC2BCD(d) (((((d) / 10) & 0x0f) << 4) + (((d) % 10) & 0x0f))
 #define BCD2DEC(b) (((((b) >> 4) & 0x0F) * 10) + ((b) & 0x0F))
@@ -290,6 +290,7 @@ void bsp_system_reboot(void);
 void bsp_system_shutdown(void);
 bool bsp_system_is_charging(void);
 bool bsp_system_is_standby(void);
+bool bsp_battery_is_present(void);
 
 esp_err_t bsp_rtc_init(void);
 esp_err_t bsp_rtc_get_time(struct tm *timeinfo);

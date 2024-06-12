@@ -54,7 +54,7 @@ static int wifi_cfg_set(int argc, char **argv)
             ESP_LOGE(TAG,  "out of 31 bytes :%s", wifi_cfg_args.ssid->sval[0]);
             return -1;
         }
-        strncpy( cfg.ssid, wifi_cfg_args.ssid->sval[0], max(len, 31) );
+        strncpy( cfg.ssid, wifi_cfg_args.ssid->sval[0], len );
     } else {
         ESP_LOGE(TAG,  "no ssid");
         return -1;
@@ -69,7 +69,7 @@ static int wifi_cfg_set(int argc, char **argv)
         cfg.have_password = true;
         strncpy( cfg.password, wifi_cfg_args.password->sval[0], len );
     }
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &cfg, sizeof(struct view_data_wifi_config), pdMS_TO_TICKS(10000));
     return 0;
 }
 //wifi_cfg -s ssid -p password
@@ -92,7 +92,7 @@ static void register_cmd_wifi_sta(void)
 /************* reboot **************/
 static int do_reboot(int argc, char **argv)
 {
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
     return 0;
 }
 
@@ -240,11 +240,15 @@ static int taskflow_cmd(int argc, char **argv)
             snprintf(file, sizeof(file), "/sdcard/%s", taskflow_cfg_args.file->sval[0]);
         }
     } else if( taskflow_cfg_args.json->count ) {
-        int len = strlen(taskflow_cfg_args.json->sval[0]);
-        if( len > 0 ){
-            p_json = psram_malloc(len+1); 
-            strncpy( p_json, taskflow_cfg_args.json->sval[0], len);
-            p_json[len] = 0;
+
+        printf("Please input taskflow json:\n");
+        char *str = psram_malloc(102400); 
+        if( fgets(str, 102400, stdin) != NULL ) {
+            printf("%s\n", str);
+            p_json = str;
+        } else {
+            free(str);
+            printf("fgets fail\n");
         }
     }
 
@@ -315,7 +319,7 @@ static void register_cmd_taskflow(void)
     taskflow_cfg_args.import =  arg_lit0("i", "import", "import taskflow");
     taskflow_cfg_args.export = arg_lit0("e", "export", "export taskflow");
     taskflow_cfg_args.file =  arg_str0("f", "file", "<string>", "File path, import or export taskflow json string by SD, eg: test.json");
-    taskflow_cfg_args.json =  arg_str0("j", "json", "<string>", "import taskflow json string by stdio, json string needs to be escaped");
+    taskflow_cfg_args.json =  arg_lit0("j", "json", "import taskflow json string by stdin");
     taskflow_cfg_args.end = arg_end(4);
 
     const esp_console_cmd_t cmd = {

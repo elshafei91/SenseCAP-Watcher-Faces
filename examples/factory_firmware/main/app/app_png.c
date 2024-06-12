@@ -1,24 +1,18 @@
-#include <stdio.h>
-#include <string.h>
-#include <sys/unistd.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <sys/param.h>
-
+#include "app_png.h"
 #include "esp_log.h"
 #include "data_defs.h"
 #include "event_loops.h"
 #include "esp_system.h"
 #include "esp_heap_caps.h"
 #include "nvs_flash.h"
-#include "esp_netif.h"
-#include "esp_tls.h"
+#include <stdio.h>
+#include <string.h>
+#include <sys/unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include "esp_timer.h"
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
-#include "esp_https_ota.h"
-#include "esp_timer.h"
-#include "esp_check.h"
-
 #include "storage.h"
 #include "app_png.h"
 #include "util/util.h"
@@ -34,25 +28,23 @@
 lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-lv_img_dsc_t *g_load_img_dsc[MAX_IMAGES];
-lv_img_dsc_t *g_sleep_img_dsc[MAX_IMAGES];
-lv_img_dsc_t *g_smile_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_anaylze_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 int g_detect_image_count = 0;
 int g_speak_image_count = 0;
 int g_listen_image_count = 0;
-int g_load_image_count = 0;
-int g_sleep_image_count = 0;
-int g_smile_image_count = 0;
+int g_analyze_image_count = 0;
+int g_standby_image_count = 0;
+int g_greet_image_count = 0;
 int g_detected_image_count = 0;
 
-void create_img_dsc(lv_img_dsc_t **img_dsc, void *data, size_t size)
-{
+void create_img_dsc(lv_img_dsc_t **img_dsc, void *data, size_t size) {
     *img_dsc = (lv_img_dsc_t *)heap_caps_malloc(sizeof(lv_img_dsc_t), MALLOC_CAP_SPIRAM);
 
-    if (*img_dsc == NULL)
-    {
+    if (*img_dsc == NULL) {
         ESP_LOGE("Image DSC", "Failed to allocate memory for image descriptor");
         return;
     }
@@ -66,11 +58,9 @@ void create_img_dsc(lv_img_dsc_t **img_dsc, void *data, size_t size)
 }
 
 // Function to read and store PNG files into PSRAM
-void *read_png_to_psram(const char *path, size_t *out_size)
-{
+void* read_png_to_psram(const char *path, size_t *out_size) {
     FILE *file = fopen(path, "rb");
-    if (!file)
-    {
+    if (!file) {
         ESP_LOGE("SPIFFS", "Failed to open file: %s", path);
         return NULL;
     }
@@ -80,8 +70,7 @@ void *read_png_to_psram(const char *path, size_t *out_size)
     fseek(file, 0, SEEK_SET);
 
     void *png_buffer = heap_caps_malloc(file_size, MALLOC_CAP_SPIRAM);
-    if (!png_buffer)
-    {
+    if (!png_buffer) {
         ESP_LOGE("PSRAM", "Failed to allocate PSRAM for image buffer");
         fclose(file);
         return NULL;
@@ -94,16 +83,24 @@ void *read_png_to_psram(const char *path, size_t *out_size)
     return png_buffer;
 }
 
+// Function to create a black image buffer
+void* create_black_image(size_t size) {
+    void *black_buffer = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+    if (!black_buffer) {
+        ESP_LOGE("PSRAM", "Failed to allocate PSRAM for black image buffer");
+        return NULL;
+    }
+    memset(black_buffer, 0, size);
+    return black_buffer;
+}
+
 // Helper function to check if the file name matches the specified prefix and is a PNG file
-static int is_png_file_for_expression(const char *filename, const char *prefix)
-{
+static int is_png_file_for_expression(const char* filename, const char* prefix) {
     const char *suffix = ".png";
     size_t len = strlen(filename);
     size_t suffix_len = strlen(suffix);
-    if (len > suffix_len && strcmp(filename + len - suffix_len, suffix) == 0)
-    {
-        if (strncmp(filename, prefix, strlen(prefix)) == 0)
-        {
+    if (len > suffix_len && strcmp(filename + len - suffix_len, suffix) == 0) {
+        if (strncmp(filename, prefix, strlen(prefix)) == 0) {
             return 1;
         }
     }
@@ -111,33 +108,29 @@ static int is_png_file_for_expression(const char *filename, const char *prefix)
 }
 
 // Function to read and store selected PNG files based on prefix
-void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count)
-{
+void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
     DIR *dir;
     struct dirent *ent;
-    if ((dir = opendir("/spiffs")) != NULL)
-    {
-        while ((ent = readdir(dir)) != NULL)
-        {
-            if (is_png_file_for_expression(ent->d_name, file_prefix))
-            {
-                if (*image_count >= MAX_IMAGES)
-                {
+    bool image_loaded = false;
+    if ((dir = opendir("/spiffs")) != NULL) {
+        while ((ent = readdir(dir)) != NULL) {
+            if (is_png_file_for_expression(ent->d_name, file_prefix)) {
+                if (*image_count >= MAX_IMAGES) {
                     ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
                     break;
                 }
-
+                
                 size_t size;
                 char filepath[256];
                 sprintf(filepath, "/spiffs/%s", ent->d_name);
                 void *data = read_png_to_psram(filepath, &size);
-                if (data)
-                {
+                if (data) {
                     ESP_LOGI("PNG Load", "Loaded %s into PSRAM", ent->d_name);
-
+                    
                     create_img_dsc(&img_dsc_array[*image_count], data, size);
                     (*image_count)++;
-                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, portMAX_DELAY);
+                    image_loaded = true;
+                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
                 }
             }
         }
@@ -150,8 +143,9 @@ void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_ds
 }
 
 static char *emoji_name = NULL;
-#define MAX_RETRY_COUNT 5
-#define MAX_URLS        5
+#define MAX_RETRY_COUNT      5
+#define MAX_URLS             5
+#define HTTP_MAX_BUFFER_SIZE (100 * 1024)
 
 static EventGroupHandle_t download_event_group;
 static const int DOWNLOAD_COMPLETE_BIT = BIT0;
@@ -165,6 +159,8 @@ typedef struct
     int64_t file_start_time;
     bool download_complete;
     int64_t content_length;
+    char *buffer;
+    int buffer_size;
 } download_task_arg_t;
 
 static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
@@ -179,6 +175,12 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         case HTTP_EVENT_ON_CONNECTED:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
             task_arg->file_start_time = esp_timer_get_time();
+            task_arg->buffer_size = 0;
+            task_arg->buffer = heap_caps_malloc(HTTP_MAX_BUFFER_SIZE, MALLOC_CAP_SPIRAM);
+            if (task_arg->buffer == NULL) {
+                ESP_LOGE(TAG, "Failed to allocate PSRAM buffer");
+                return ESP_FAIL;
+            }
             break;
         case HTTP_EVENT_HEADER_SENT:
             ESP_LOGI(TAG, "HTTP_EVENT_HEADER_SENT");
@@ -189,11 +191,12 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         case HTTP_EVENT_ON_DATA:
             if (evt->data_len > 0)
             {
-                esp_err_t err = storage_file_write(task_arg->file_path, evt->data, evt->data_len);
-                if (err != ESP_OK)
-                {
-                    ESP_LOGE(TAG, "Failed to write data to file using storage_file_write");
-                    return err;
+                if (task_arg->buffer_size + evt->data_len <= HTTP_MAX_BUFFER_SIZE) {
+                    memcpy(task_arg->buffer + task_arg->buffer_size, evt->data, evt->data_len);
+                    task_arg->buffer_size += evt->data_len;
+                } else {
+                    ESP_LOGE(TAG, "PSRAM buffer overflow");
+                    return ESP_FAIL;
                 }
             }
             break;
@@ -201,9 +204,21 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
             ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
             task_arg->content_length = esp_http_client_get_content_length(evt->client);
             task_arg->download_complete = true;
+            esp_err_t err = storage_file_write(task_arg->file_path, task_arg->buffer, task_arg->buffer_size);
+            if (err != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to write data to file using storage_file_write");
+                return err;
+            }
+            heap_caps_free(task_arg->buffer);
+            task_arg->buffer = NULL;
             break;
         case HTTP_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
+            if (task_arg->buffer != NULL) {
+                heap_caps_free(task_arg->buffer);
+                task_arg->buffer = NULL;
+            }
             break;
         case HTTP_EVENT_REDIRECT:
             ESP_LOGI(TAG, "HTTP_EVENT_REDIRECT");
@@ -268,7 +283,7 @@ void download_emoji_images(char *base_name, char *urls[], int url_count)
     for (int url_index = 0; url_index < url_count; url_index++)
     {
         char name_with_index[50];
-        snprintf(name_with_index, sizeof(name_with_index), "%s_%d", base_name, url_index);
+        snprintf(name_with_index, sizeof(name_with_index), "%s%d", base_name, url_index);
         emoji_name = strdup(name_with_index);
 
         download_task_arg_t *task_arg = (download_task_arg_t *)calloc(1, sizeof(download_task_arg_t));
@@ -316,7 +331,7 @@ void download_emoji_images(char *base_name, char *urls[], int url_count)
     double download_speed = total_data_size / total_time_s;
 
     ESP_LOGI(TAG, "Total download size: %" PRId64 " bytes", total_data_size);
-    total_data_size =0;
+    total_data_size = 0;
     ESP_LOGI(TAG, "Total download time: %.2f seconds", total_time_s);
     ESP_LOGI(TAG, "Overall download speed: %.2f bytes/second", download_speed);
 

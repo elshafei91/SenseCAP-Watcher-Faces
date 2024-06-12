@@ -73,6 +73,8 @@ struct tf_module_ai_camera_model
     int size;
     char checksum[129];
     int model_type;
+    int iou;
+    int confidence;
     char *p_info_all;
 };
 
@@ -130,11 +132,14 @@ struct tf_module_ai_camera_params
 
 #define CONFIG_TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_BUF_SIZE    10
 
+#define CONFIG_TF_MODULE_AI_CAMERA_MODEL_IOU_DEFAULT            45
+#define CONFIG_TF_MODULE_AI_CAMERA_MODEL_CONFIDENCE_DEFAULT     50
+
 // Must be less than or equal to TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_BUF_SIZE
 #define CONFIG_TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_THRESHOLD   8 
 
 // default silence duration(if not set)
-#define CONFIG_TF_MODULE_AI_CAMERA_SILENCE_DURATION_DEFAULT     1
+#define CONFIG_TF_MODULE_AI_CAMERA_SILENCE_DURATION_DEFAULT     60
 
 // classes max num
 #define CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM       20
@@ -195,6 +200,7 @@ typedef struct tf_module_ai_camera
     tf_data_dualimage_with_inference_t output_data;
     struct tf_module_ai_camera_preview_info preview_info_cache;
     bool start_flag;
+    int start_err_code;
 } tf_module_ai_camera_t;
 
 tf_module_t * tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins);

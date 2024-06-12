@@ -15,7 +15,7 @@ extern "C"
 
 #define TF_ENGINE_TASK_STACK_SIZE 1024 * 5
 #define TF_ENGINE_TASK_PRIO 5
-#define TF_ENGINE_QUEUE_SIZE 5
+#define TF_ENGINE_QUEUE_SIZE 3
 
 // task flow status
 #define TF_STATUS_RUNNING               0
@@ -27,7 +27,8 @@ extern "C"
 #define TF_STATUS_ERR_MODULES_PARAMS    6
 #define TF_STATUS_ERR_MODULES_WIRES     7
 #define TF_STATUS_ERR_MODULES_START     8
-#define TF_STATUS_ERR_MODULES_INTERNAL  9   // module runtime internal error 
+#define TF_STATUS_ERR_MODULES_INTERNAL  9   // module runtime internal error
+#define TF_STATUS_NULL                 (-1) 
 
 typedef struct
 {

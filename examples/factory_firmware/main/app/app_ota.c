@@ -55,7 +55,8 @@ static StaticTask_t g_task_tcb;
 static volatile atomic_bool g_ota_running = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_ignore_version_check = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_sscma_writer_abort = ATOMIC_VAR_INIT(false);
-static volatile atomic_bool network_connect_flag = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool g_network_connected_flag = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool g_mqtt_connected_flag = ATOMIC_VAR_INIT(false);
 
 static SemaphoreHandle_t g_sem_network;
 static SemaphoreHandle_t g_sem_ai_model_downloaded;
@@ -107,7 +108,7 @@ static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32
 static void worker_call(ota_worker_task_data_t *worker_data, int cmd)
 {
     esp_event_post_to(app_event_loop_handle, OTA_EVENT_BASE, cmd,
-                      &worker_data, sizeof(ota_worker_task_data_t *),  portMAX_DELAY);
+                      &worker_data, sizeof(ota_worker_task_data_t *),  pdMS_TO_TICKS(10000));
     xSemaphoreTake(g_sem_worker_done, portMAX_DELAY);
 }
 
@@ -204,7 +205,7 @@ static void esp32_ota_process(char *url)
         ota_status.err_code = ESP_ERR_OTA_CONNECTION_FAIL;
         esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                                     &ota_status, sizeof(struct view_data_ota_status),
-                                    portMAX_DELAY);
+                                    pdMS_TO_TICKS(10000));
         free(config);
         free(ota_config);
         return;
@@ -215,7 +216,7 @@ static void esp32_ota_process(char *url)
     ota_status.percentage = 0;
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                         &ota_status, sizeof(struct view_data_ota_status),
-                        portMAX_DELAY);
+                        pdMS_TO_TICKS(10000));
 
     esp_app_desc_t app_desc;
     worker_data.ota_handle = &https_ota_handle;
@@ -262,7 +263,7 @@ static void esp32_ota_process(char *url)
             ota_status.err_code = ESP_OK;
             esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                                 &ota_status, sizeof(struct view_data_ota_status),
-                                portMAX_DELAY);
+                                pdMS_TO_TICKS(10000));
             last_report_bytes += step_bytes;
             ESP_LOGI(TAG, "esp32 ota, image bytes read: %d, %d%%", read_bytes, ota_status.percentage);
         }
@@ -304,7 +305,7 @@ ota_end:
     }
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_ESP32_FW,
                         &ota_status, sizeof(struct view_data_ota_status),
-                        portMAX_DELAY);
+                        pdMS_TO_TICKS(10000));
     free(config);
     free(ota_config);
 }
@@ -434,15 +435,15 @@ static void __sscma_writer_task(void *p_arg)
         //sscma_client_ota_start
         if (sscma_client_ota_start(sscma_client, sscma_flasher, flash_addr) != ESP_OK) {
             ESP_LOGE(TAG, "sscma writer, sscma_client_ota_start failed");
-            g_result_err = ESP_ERR_OTA_SSCMA_START_FAIL;
-            ota_status.status = OTA_STATUS_FAIL;
-            ota_status.err_code = g_result_err;
-            esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
-                                            &ota_status, sizeof(struct view_data_ota_status),
-                                            portMAX_DELAY);
             userdata->err = ESP_ERR_OTA_SSCMA_START_FAIL;
             goto sscma_writer_end;
         }
+        ota_status.status = OTA_STATUS_DOWNLOADING;
+        ota_status.err_code = ESP_OK;
+        ota_status.percentage = 0;
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
+                                            &ota_status, sizeof(struct view_data_ota_status),
+                                            pdMS_TO_TICKS(10000));
 
         // drain the ringbuffer and write to himax
         int written_len = 0;
@@ -516,7 +517,7 @@ static void __sscma_writer_task(void *p_arg)
                     ota_status.err_code = ESP_OK;
                     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid,
                                         &ota_status, sizeof(struct view_data_ota_status),
-                                        portMAX_DELAY);
+                                        pdMS_TO_TICKS(10000));
                     last_report_bytes += step_bytes;
                     ESP_LOGI(TAG, "%s ota, bytes written: %d, %d%%", ota_type_str(ota_type), written_len, ota_status.percentage);
                 }
@@ -584,6 +585,11 @@ static esp_err_t __http_event_handler(esp_http_client_event_t *evt)
                 last_report_bytes = step_bytes;
             }
 
+            if (userdata->err != ESP_OK) {
+                ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, userdata->err != ESP_OK (0x%x), error happened in sscma writer", userdata->err);
+                break;  // don't waste time on ringbuffer send
+            }
+
             //push to ringbuffer
             //himax will move the written bytes into flash every 1MB, it will take pretty long.
             //we give it 1min?
@@ -643,6 +649,7 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
 
     g_sscma_writer_userdata.ota_type = ota_type;
     g_sscma_writer_userdata.http_client = http_client;
+    g_sscma_writer_userdata.err = ESP_OK;
 
     esp_err_t err = esp_http_client_perform(http_client);
     if (err == ESP_OK) {
@@ -659,6 +666,8 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
             ESP_LOGW(TAG, "sscma ota, HTTP finished but incompleted data received");
             // maybe network connection broken?
             ret = ESP_ERR_OTA_DOWNLOAD_FAIL;
+        } else {
+            ret = g_sscma_writer_userdata.err;  //there might be errors in sscma writer task.
         }
     } else {
         ESP_LOGE(TAG, "sscma ota, HTTP GET request failed: %s", esp_err_to_name(err));
@@ -679,9 +688,10 @@ sscma_ota_end:
 
     ota_status.status = g_result_err == ESP_OK ? OTA_STATUS_SUCCEED : OTA_STATUS_FAIL;
     ota_status.err_code = g_result_err;
+    ota_status.percentage = g_result_err == ESP_OK ? 100 : 0;
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
                                     &ota_status, sizeof(struct view_data_ota_status),
-                                    portMAX_DELAY);
+                                    pdMS_TO_TICKS(10000));
 }
 
 static void __app_ota_task(void *p_arg)
@@ -694,7 +704,7 @@ static void __app_ota_task(void *p_arg)
     while (1) {
         // wait for network connection
         xSemaphoreTake(g_sem_network, pdMS_TO_TICKS(10000));
-        if (!atomic_load(&network_connect_flag))
+        if (!atomic_load(&g_network_connected_flag))
         {
             continue;
         }
@@ -723,7 +733,7 @@ static void __app_ota_task(void *p_arg)
 
                 xQueueReceive(g_Q_ota_cmd, cmd, portMAX_DELAY);
             }
-        } while (atomic_load(&network_connect_flag));
+        } while (atomic_load(&g_network_connected_flag));
     }
 }
 
@@ -733,7 +743,7 @@ static void ota_status_report(struct view_data_ota_status *ota_status)
                                               ota_status->status, ota_status->err_code, ota_status->percentage);
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_OTA_STATUS, 
                             ota_status, sizeof(struct view_data_ota_status),
-                            portMAX_DELAY);
+                            pdMS_TO_TICKS(10000));
     // MQTT report
     const char *fmt = \
                 "\"3578\": %d,"
@@ -841,7 +851,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
 {
     ESP_LOGI(TAG, "starting mqtt ota executor task ...");
 
-    while (!atomic_load(&network_connect_flag)) {
+    while (!atomic_load(&g_network_connected_flag)) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
@@ -1039,7 +1049,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
             if (need_reboot) {
                 ESP_LOGW(TAG, "!!! WILL REBOOT IN 3 SEC !!!");
                 vTaskDelay(pdMS_TO_TICKS(3000));  // let the last mqtt msg sent
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, portMAX_DELAY);
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
             }
 
             //the json is used up
@@ -1105,7 +1115,7 @@ static void __app_event_handler(void *handler_args, esp_event_base_t event_base,
             {
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_ST");
                 struct view_data_wifi_st *p_st = (struct view_data_wifi_st *)event_data;
-                atomic_store(&network_connect_flag, p_st->is_network);
+                atomic_store(&g_network_connected_flag, p_st->is_network);
                 xSemaphoreGive(g_sem_network);
                 break;
             }
@@ -1121,6 +1131,10 @@ static void __app_event_handler(void *handler_args, esp_event_base_t event_base,
                     ESP_LOGW(TAG, "can not push to ota msg Q, maybe full? drop this item!");
                 }
                 break;
+            case CTRL_EVENT_MQTT_CONNECTED:
+                ESP_LOGI(TAG, "event: CTRL_EVENT_MQTT_CONNECTED");
+                atomic_store(&g_mqtt_connected_flag, true);
+                break;
             case CTRL_EVENT_OTA_HIMAX_FW:
             case CTRL_EVENT_OTA_ESP32_FW:
                 ESP_LOGD(TAG, "event: CTRL_EVENT_OTA_%s_FW", event_id == CTRL_EVENT_OTA_HIMAX_FW ? "HIMAX" : "ESP32");
@@ -1128,7 +1142,8 @@ static void __app_event_handler(void *handler_args, esp_event_base_t event_base,
                 ota_status_q_item_t *item = psram_calloc(1, sizeof(ota_status_q_item_t));
                 item->ota_src = event_id;
                 memcpy(&(item->ota_status), event_data, sizeof(struct view_data_ota_status));
-                ESP_LOGD(TAG, "ota_status.status=%d, .err_code=0x%x", item->ota_status.status, item->ota_status.err_code);
+                ESP_LOGD(TAG, "ota_status.status=%d, .err_code=0x%x, .percentage=%d%%", item->ota_status.status, item->ota_status.err_code,
+                                                                                        item->ota_status.percentage);
                 if (xQueueSend(g_Q_ota_status, item, 0) != pdPASS) {
                     ESP_LOGW(TAG, "can not push to ota status Q, maybe full? drop this item!");
                 }
@@ -1148,7 +1163,7 @@ static void __ota_test_timer_cb(void *arg)
 
 static void __ota_test_task(void *p_arg)
 {
-    while (!atomic_load(&network_connect_flag)) {
+    while (!atomic_load(&g_network_connected_flag)) {
         vTaskDelay(pdMS_TO_TICKS(3000));
     }
     // vTaskDelay(pdMS_TO_TICKS(3000));
@@ -1224,6 +1239,8 @@ esp_err_t app_ota_init(void)
     ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTP_CLIENT_EVENT, ESP_EVENT_ANY_ID, __sys_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST,
                                                     __app_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED,
+                                                    __app_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_OTA_JSON,
                                                     __app_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, OTA_EVENT_BASE, ESP_EVENT_ANY_ID,
@@ -1245,6 +1262,26 @@ esp_err_t app_ota_init(void)
 
 esp_err_t app_ota_ai_model_download(char *url, int size_bytes)
 {
+    //check network connection first
+    if (!atomic_load(&g_network_connected_flag)) {
+        //just booted or network reconnecting, ensure timing for all tasks depending on network
+        int i;
+        for (i = 0; i < 30; i++) {
+            if (atomic_load(&g_network_connected_flag)) break;
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        if (i == 30) return ESP_ERR_OTA_CONNECTION_FAIL;
+        
+        for (i = 0; i < 10; i++) {
+            if (atomic_load(&g_mqtt_connected_flag)) {
+                vTaskDelay(pdMS_TO_TICKS(2000));  //schedule this behind FW ota from MQTT
+                break;
+            }
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        //we'll start ai model download anyway, regardless of mqtt connection
+    }
+
     ota_cmd_q_item_t *cmd = psram_calloc(1, sizeof(ota_cmd_q_item_t));
     cmd->ota_type = OTA_TYPE_AI_MODEL;
     memcpy(cmd->url, url, strlen(url));

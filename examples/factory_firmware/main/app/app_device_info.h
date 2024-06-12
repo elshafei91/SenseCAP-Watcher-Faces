@@ -9,9 +9,10 @@
 enum { BLE_CONNECTED, BLE_DISCONNECTED, STATUS_WAITTING };
 
 uint8_t *get_sn(int caller);
-uint8_t *get_bt_mac();
-uint8_t *get_sn_code();
 uint8_t *get_eui();
+uint8_t *get_qrcode_content();
+uint8_t *get_bt_mac();
+uint8_t *get_wifi_mac();
 char *get_software_version(int caller);
 char *get_himax_software_version(int caller);
 

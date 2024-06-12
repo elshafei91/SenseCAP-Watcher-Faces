@@ -13,5 +13,6 @@ void shorttoptobottom_Animation( lv_obj_t *TargetObject, int delay);
 void shortbottomtotop_Animation( lv_obj_t *TargetObject, int delay);
 
 void scroll_anim_enable();
+void loading_anim_init();
 
 #endif
