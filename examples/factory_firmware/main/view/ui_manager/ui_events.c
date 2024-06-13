@@ -22,17 +22,18 @@
 #include "sensecap-watcher.h"
 
 #define VOLBRI_CFG "volbri-cfg"
+#define MAX_RETRIES 3
 
 static const char *TAG = "ui_event";
 static const char *CLICK_TAG = "Click_event";
 
 wifi_ap_record_t wifi_record;
 int g_dev_binded = 1;
-uint8_t task_down = 0;
-uint8_t g_guide_step = 0;
-uint8_t swipe_id = 0; // 0 for shutdown, 1 for factoryreset
-uint8_t g_alarm_p = 0;
-uint8_t g_avarlive = 0;
+uint8_t g_taskdown = 0;     // 0: task running, 1: task down
+uint8_t g_guide_step = 0;   // usage guide step : 0~3
+uint8_t g_swipeid = 0;      // 0: shutdown, 1: factoryreset
+uint8_t g_alarm_p = 0;      // 0: End Task panel display, 1: End_Task panel hidden 
+uint8_t g_avarlive = 0;     // 0: current page is avatar, 1: current page is live
 static bool is_charging = 0;
 static uint8_t loading_flag = 0;
 static struct view_data_setting_volbri volbri;
@@ -51,7 +52,6 @@ extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
 extern lv_obj_t *ui_alarm_indicator;
 extern lv_obj_t * ui_task_error;
 
-
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
@@ -67,7 +67,6 @@ extern int g_analyze_image_count;
 extern int g_standby_image_count;
 extern int g_greet_image_count;
 extern int g_detected_image_count;
-
 
 extern GroupInfo group_page_main;
 extern GroupInfo group_page_template;
@@ -1059,7 +1058,7 @@ void setwwc_cb(lv_event_t *e)
 void setdownc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setdownc_cb");
-    swipe_id = 0;
+    g_swipeid = 0;
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
     lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_shutdown();
@@ -1068,7 +1067,7 @@ void setdownc_cb(lv_event_t *e)
 void setfac_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setfac_cb");
-    swipe_id = 1;
+    g_swipeid = 1;
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
     lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_facreset();
@@ -1115,7 +1114,7 @@ void sliderr_cb(lv_event_t *e)
     slider_value = lv_slider_get_value(ui_spsilder);
     if (slider_value > 80)
     {
-        switch (swipe_id)
+        switch (g_swipeid)
         {
             case 0:
                 if (shutdown_state == 0)
@@ -1200,7 +1199,7 @@ void taskerrc_cb(lv_event_t *e)
     lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, 0, portMAX_DELAY);
 }
-/* Page status bundle
+/* Page device bundle
  *
  */
 static void Page_ConnAPP_Mate()
@@ -1249,9 +1248,9 @@ static void Page_ConnAPP_BLE()
 
 static void Task_end()
 {
-    task_down = 1;
+    g_taskdown = 1;
     g_alarm_p = 0;
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &task_down, sizeof(uint8_t), portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), portMAX_DELAY);
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
     
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
@@ -1330,14 +1329,36 @@ void wifiConnectFailed()
     lv_label_set_text(ui_wifitext3, "Wi-Fi Connection Failed");
 }
 
+uint8_t* retry_get_data(uint8_t* (*func)(int), int caller, int retries) {
+    uint8_t *data = NULL;
+    for (int i = 0; i < retries; ++i) {
+        data = func(caller);
+        if (data != NULL) {
+            break;
+        }
+    }
+    return data;
+}
+
+char* retry_get_char_data(char* (*func)(int), int caller, int retries) {
+    char *data = NULL;
+    for (int i = 0; i < retries; ++i) {
+        data = func(caller);
+        if (data != NULL) {
+            break;
+        }
+    }
+    return data;
+}
+
 static void settingInfoInit()
 {
     lv_slider_set_range(ui_bslider, 1, 100);
     lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
-    qrcode_content = (char *)get_qrcode_content();
-    get_brightness(UI_CALLER);
-    get_rgb_switch(UI_CALLER);
-    get_sound(UI_CALLER);
+    qrcode_content = (char *)retry_get_data((uint8_t* (*)(int))get_qrcode_content, UI_CALLER, MAX_RETRIES);
+    retry_get_data((uint8_t* (*)(int))get_brightness, UI_CALLER, MAX_RETRIES);
+    retry_get_data((uint8_t* (*)(int))get_rgb_switch, UI_CALLER, MAX_RETRIES);
+    retry_get_data((uint8_t* (*)(int))get_sound, UI_CALLER, MAX_RETRIES);
 
     // Update SN、EUI、BT-MAC to about device page
     static char about_sn[20];
@@ -1346,28 +1367,47 @@ static void settingInfoInit()
     static char about_wifimac[20];
     static char about_sw_version[20];
 
-    const uint8_t *sn_code = get_sn(UI_CALLER);
-    const uint8_t *eui_code = get_eui();
-    const uint8_t *bt_mac = get_bt_mac();
-    const uint8_t *wifi_mac = get_wifi_mac();
-    const char *sw_version = get_software_version(UI_CALLER);
+    const uint8_t *sn_code = retry_get_data(get_sn, UI_CALLER, MAX_RETRIES);
+    const uint8_t *eui_code = retry_get_data(get_eui, 0, MAX_RETRIES);
+    const uint8_t *bt_mac = retry_get_data(get_bt_mac, 0, MAX_RETRIES);
+    const uint8_t *wifi_mac = retry_get_data(get_wifi_mac, 0, MAX_RETRIES);
+    const char *sw_version = retry_get_char_data(get_software_version, UI_CALLER, MAX_RETRIES);
 
-    snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X", sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
+    if (sn_code != NULL) {
+        snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X", sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
+    } else {
+        snprintf(about_sn, sizeof(about_sn), "N/A");
+    }
 
-    snprintf(about_eui, sizeof(about_eui), "%02X%02X%02X%02X%02X%02X%02X%02X", eui_code[0], eui_code[1], eui_code[2], eui_code[3], eui_code[4], eui_code[5], eui_code[6], eui_code[7]);
+    if (eui_code != NULL) {
+        snprintf(about_eui, sizeof(about_eui), "%02X%02X%02X%02X%02X%02X%02X%02X", eui_code[0], eui_code[1], eui_code[2], eui_code[3], eui_code[4], eui_code[5], eui_code[6], eui_code[7]);
+    } else {
+        snprintf(about_eui, sizeof(about_eui), "N/A");
+    }
 
-    snprintf(about_btmac, sizeof(about_btmac), "%02X:%02X:%02X:%02X:%02X:%02X", bt_mac[0], bt_mac[1], bt_mac[2], bt_mac[3], bt_mac[4], bt_mac[5]);
+    if (bt_mac != NULL) {
+        snprintf(about_btmac, sizeof(about_btmac), "%02X:%02X:%02X:%02X:%02X:%02X", bt_mac[0], bt_mac[1], bt_mac[2], bt_mac[3], bt_mac[4], bt_mac[5]);
+    } else {
+        snprintf(about_btmac, sizeof(about_btmac), "N/A");
+    }
 
-    snprintf(about_wifimac, sizeof(about_wifimac), "%02X:%02X:%02X:%02X:%02X:%02X", wifi_mac[0], wifi_mac[1], wifi_mac[2], wifi_mac[3], wifi_mac[4], wifi_mac[5]);
+    if (wifi_mac != NULL) {
+        snprintf(about_wifimac, sizeof(about_wifimac), "%02X:%02X:%02X:%02X:%02X:%02X", wifi_mac[0], wifi_mac[1], wifi_mac[2], wifi_mac[3], wifi_mac[4], wifi_mac[5]);
+    } else {
+        snprintf(about_wifimac, sizeof(about_wifimac), "N/A");
+    }
 
-    snprintf(about_sw_version, sizeof(about_sw_version), "%s", sw_version);
+    if (sw_version != NULL) {
+        snprintf(about_sw_version, sizeof(about_sw_version), "%s", sw_version);
+    } else {
+        snprintf(about_sw_version, sizeof(about_sw_version), "N/A");
+    }
 
     lv_label_set_text(ui_svt2, about_sw_version);
     lv_label_set_text(ui_snt2, (char *)about_sn);
     lv_label_set_text(ui_euit2, (char *)about_eui);
     lv_label_set_text(ui_blet2, (char *)about_btmac);
     lv_label_set_text(ui_wifit2, about_wifimac);
-
 }
 
 void ui_event_alarm_panel(lv_event_t * e)

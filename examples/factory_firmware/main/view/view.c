@@ -25,8 +25,8 @@ static uint8_t battery_per = 0;
 static bool battery_timer_toggle = 0;
 static int battery_flash_count = 0;
 static lv_obj_t * mbox1;
-extern uint8_t task_down;
-extern uint8_t swipe_id; // 0 for shutdown, 1 for factoryreset
+extern uint8_t g_taskdown;
+extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_dev_binded;
 extern uint8_t g_avarlive;
 extern lv_obj_t * ui_taskerrt2;
@@ -146,7 +146,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 if(is_charging == 1)
                 {
                     shutdown_state = 0;
-                    if(swipe_id==0)
+                    if(g_swipeid==0)
                     {
                         lv_label_set_text(ui_setdownt, "Reboot");
                         lv_label_set_text(ui_sptext, "Swipe to reboot");
@@ -156,7 +156,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
                 }else if(is_charging == 0){
                     shutdown_state = 1;
-                    if(swipe_id==0)
+                    if(g_swipeid==0)
                     {
                         lv_label_set_text(ui_setdownt, "Shutdown");
                         lv_label_set_text(ui_sptext, "Swipe to shut down");
@@ -332,16 +332,17 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK");
+                lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
                 _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
                 break;
             }
 
             case VIEW_EVENT_TASK_FLOW_STOP:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
-                task_down = 1;
+                g_taskdown = 1;
                 lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 // event_post_to
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &task_down, sizeof(uint8_t), pdMS_TO_TICKS(10000));
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
                 break;
             }
