@@ -40,13 +40,11 @@ void viewac_cb(lv_event_t * e);
 void viewaf_cb(lv_event_t * e);
 void viewasl_cb(lv_event_t * e);
 void viewasul_cb(lv_event_t * e);
-void avagc_cb(lv_event_t * e);
 void viewlc_cb(lv_event_t * e);
 void viewlf_cb(lv_event_t * e);
 void viewlsl_cb(lv_event_t * e);
 void viewlsul_cb(lv_event_t * e);
 void vieback_cb(lv_event_t * e);
-void livgc_cb(lv_event_t * e);
 void lgesright_cb(lv_event_t * e);
 void lgesleft_cb(lv_event_t * e);
 void lclick_cb(lv_event_t * e);
@@ -112,8 +110,12 @@ void setfacdf_cb(lv_event_t * e);
 void preset_cb(lv_event_t * e);
 void volvc_cb(lv_event_t * e);
 void volre_cb(lv_event_t * e);
+void volfs_cb(lv_event_t * e);
+void voldf_cb(lv_event_t * e);
 void brivc_cb(lv_event_t * e);
 void brire_cb(lv_event_t * e);
+void brifs_cb(lv_event_t * e);
+void bridf_cb(lv_event_t * e);
 void abdnf_cb(lv_event_t * e);
 void abdndf_cb(lv_event_t * e);
 void absvf_cb(lv_event_t * e);
@@ -135,6 +137,8 @@ void slpt4c_cb(lv_event_t * e);
 void slpt5c_cb(lv_event_t * e);
 void slpt6c_cb(lv_event_t * e);
 void slpt7c_cb(lv_event_t * e);
+void avagc_cb(lv_event_t * e);
+void livgc_cb(lv_event_t * e);
 
 #ifdef __cplusplus
 } /*extern "C"*/
