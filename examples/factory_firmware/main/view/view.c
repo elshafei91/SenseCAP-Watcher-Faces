@@ -16,7 +16,6 @@
 
 static const char *TAG = "view";
 
-char sn_data[66];
 uint8_t wifi_page_id;
 lv_obj_t * view_show_img;
 uint8_t shutdown_state = 0;
@@ -29,6 +28,7 @@ extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_dev_binded;
 extern uint8_t g_avarlive;
+extern uint8_t g_tasktype;
 extern lv_obj_t * ui_taskerrt2;
 extern lv_obj_t * ui_task_error;
 
@@ -258,17 +258,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            case VIEW_EVENT_SN_CODE:{
-                ESP_LOGI(TAG, "event: VIEW_EVENT_SN_CODE");
-                const char* _sn_data = (const char*)event_data;
-                strncpy(sn_data, _sn_data, 66);
-                sn_data[66] = '\0';
-                ESP_LOGI(TAG, "Received SN data: %s", _sn_data);
-                ESP_LOGI(TAG, "sn_data: %s", sn_data);
-
-                break;
-            }
-
             case VIEW_EVENT_BLE_STATUS:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BLE_STATUS");
                 bool ble_connect_status = false;
@@ -332,6 +321,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK");
+                g_tasktype = 1;
                 lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
                 _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
                 break;
@@ -343,7 +333,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 // event_post_to
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
-                lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
+                if(g_tasktype == 0)
+                {
+                    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
+                }else{
+                    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+                    lv_group_focus_obj(ui_mainbtn2);
+                }
                 break;
             }
 
@@ -469,10 +465,6 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME, 
                                                             __view_event_handler, NULL, NULL)); 
-
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-                                                            VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, 
-                                                            __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BRIGHTNESS, 

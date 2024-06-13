@@ -34,6 +34,7 @@ uint8_t g_guide_step = 0;   // usage guide step : 0~3
 uint8_t g_swipeid = 0;      // 0: shutdown, 1: factoryreset
 uint8_t g_alarm_p = 0;      // 0: End Task panel display, 1: End_Task panel hidden 
 uint8_t g_avarlive = 0;     // 0: current page is avatar, 1: current page is live
+uint8_t g_tasktype = 0;     // 0: local task, 1: remote task
 static bool is_charging = 0;
 static uint8_t loading_flag = 0;
 static struct view_data_setting_volbri volbri;
@@ -652,6 +653,7 @@ void loctask2c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "loctask2c_cb");
     local_task_id = 2;
+    g_tasktype = 0;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
     lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
 }
@@ -666,6 +668,7 @@ void loctask3c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "loctask3c_cb");
     local_task_id = 1;
+    g_tasktype = 0;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
     lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
 }
@@ -680,6 +683,7 @@ void loctask4c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "loctask4c_cb");
     local_task_id = 0;
+    g_tasktype = 0;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
     lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
 }
