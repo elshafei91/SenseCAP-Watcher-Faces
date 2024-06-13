@@ -32,6 +32,7 @@
 #include "app_ota.h"
 #include "app_taskflow.h"
 #include "view.h"
+#include "ui_manager/event.h"
 #ifdef CONFIG_INTR_TRACKING
 #include "esp_intr_types.h"
 #endif
@@ -162,6 +163,7 @@ void app_init(void)
     app_at_cmd_init();
     app_ble_init();
     app_cmd_init();
+    app_view_info_init();
     //app_sr_start(false);
 }
 
