@@ -32,13 +32,16 @@
 #include "app_ota.h"
 #include "app_taskflow.h"
 #include "view.h"
+
+
 #ifdef CONFIG_INTR_TRACKING
 #include "esp_intr_types.h"
 #endif
 
 static const char *TAG = "app_main";
 
-#define SENSECAP "\n\
+#define SENSECAP                                                                                                                                                                                       \
+    "\n\
    _____                      _________    ____         \n\
   / ___/___  ____  ________  / ____/   |  / __ \\       \n\
   \\__ \\/ _ \\/ __ \\/ ___/ _ \\/ /   / /| | / /_/ /   \n\
@@ -54,8 +57,8 @@ ESP_EVENT_DEFINE_BASE(CTRL_EVENT_BASE);
 esp_event_loop_handle_t app_event_loop_handle;
 
 #ifdef CONFIG_HEAP_TASK_TRACKING
-#define MAX_TASK_NUM 30                         // Max number of per tasks info that it can store
-#define MAX_BLOCK_NUM 100                        // Max number of per block info that it can store
+#define MAX_TASK_NUM  30  // Max number of per tasks info that it can store
+#define MAX_BLOCK_NUM 100 // Max number of per block info that it can store
 
 static size_t s_prepopulated_num = 0;
 static heap_task_totals_t s_totals_arr[MAX_TASK_NUM];
@@ -72,50 +75,53 @@ static void __cJSON_free(void *ptr)
     free(ptr);
 }
 
-cJSON_Hooks cJSONHooks = {.malloc_fn = __cJSON_malloc, .free_fn = __cJSON_free};
+cJSON_Hooks cJSONHooks = { .malloc_fn = __cJSON_malloc, .free_fn = __cJSON_free };
 
 static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
 {
     switch (id)
     {
-    case VIEW_EVENT_SHUTDOWN:
-    {
-        ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
-        app_sensecraft_disconnect();
-        bsp_lcd_brightness_set(0);
-        for (int i = 0; i < 10; i++)
-        {
-            vTaskDelay(pdMS_TO_TICKS(200));
-            if (!app_sensecraft_is_connected()) break;
-        }        
-        fflush(stdout);
-        if (get_sdcard_total_size(MAX_CALLER) > 0) {
-            bsp_sdcard_deinit_default();
+        case VIEW_EVENT_SHUTDOWN: {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
+            app_sensecraft_disconnect();
+            bsp_lcd_brightness_set(0);
+            for (int i = 0; i < 10; i++)
+            {
+                vTaskDelay(pdMS_TO_TICKS(200));
+                if (!app_sensecraft_is_connected())
+                    break;
+            }
+            fflush(stdout);
+            if (get_sdcard_total_size(MAX_CALLER) > 0)
+            {
+                bsp_sdcard_deinit_default();
+            }
+            if (get_spiffs_total_size(MAX_CALLER) > 0)
+            {
+                esp_vfs_spiffs_unregister("storage");
+            }
+            bsp_system_shutdown();
+            break;
         }
-        if (get_spiffs_total_size(MAX_CALLER) > 0) {
-            esp_vfs_spiffs_unregister("storage");
+        case VIEW_EVENT_REBOOT: {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_REBOOT");
+            app_sensecraft_disconnect();
+            bsp_lcd_brightness_set(0);
+            fflush(stdout);
+            if (get_sdcard_total_size(MAX_CALLER) > 0)
+            {
+                bsp_sdcard_deinit_default();
+            }
+            if (get_spiffs_total_size(MAX_CALLER) > 0)
+            {
+                esp_vfs_spiffs_unregister("storage");
+            }
+            vTaskDelay(pdMS_TO_TICKS(20));
+            esp_restart();
+            break;
         }
-        bsp_system_shutdown();
-        break;
-    }
-    case VIEW_EVENT_REBOOT:
-    {
-        ESP_LOGI(TAG, "event: VIEW_EVENT_REBOOT");
-        app_sensecraft_disconnect();
-        bsp_lcd_brightness_set(0);
-        fflush(stdout);
-        if (get_sdcard_total_size(MAX_CALLER) > 0) {
-            bsp_sdcard_deinit_default();
-        }
-        if (get_spiffs_total_size(MAX_CALLER) > 0) {
-            esp_vfs_spiffs_unregister("storage");
-        }
-        vTaskDelay(pdMS_TO_TICKS(20));
-        esp_restart();
-        break;
-    }
-    default:
-        break;
+        default:
+            break;
     }
 }
 
@@ -123,12 +129,13 @@ void board_init(void)
 {
     sscma_client_handle_t sscma_client;
 
-    //nvs key-value storage
+    // nvs key-value storage
     storage_init();
     factory_info_init();
     bsp_spiffs_init(DRV_BASE_PATH_FLASH, 100);
     bsp_io_expander_init();
-    if (bsp_sdcard_is_inserted()) {
+    if (bsp_sdcard_is_inserted())
+    {
         bsp_sdcard_init_default();
     }
     lv_disp_t *lvgl_disp = bsp_lvgl_init();
@@ -137,15 +144,17 @@ void board_init(void)
     bsp_codec_init();
 
     sscma_client = bsp_sscma_client_init();
-    if (sscma_client) {
+    if (sscma_client)
+    {
         ESP_ERROR_CHECK_WITHOUT_ABORT(sscma_client_init(sscma_client));
     }
 
     bsp_rtc_init();
-    
+
     bsp_codec_volume_set(100, NULL);
     // audio_play_task("/spiffs/echo_en_wake.wav");
 }
+
 
 void app_init(void)
 {
@@ -162,20 +171,18 @@ void app_init(void)
     app_at_cmd_init();
     app_ble_init();
     app_cmd_init();
-    //app_sr_start(false);
+    // app_sr_start(false);
 }
 
 void task_app_init(void *p_arg)
 {
     board_init();
     view_init();
-    
+
     app_init();
 
-    esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
-                                    __app_event_loop_handler, NULL);
-    esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT,
-                                    __app_event_loop_handler, NULL);
+    esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, __app_event_loop_handler, NULL);
+    esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, __app_event_loop_handler, NULL);
 
     vTaskDelete(NULL);
 }
@@ -184,29 +191,28 @@ void task_app_init(void *p_arg)
 /**
  * IDF v5.2.1 has issue on this, should apply https://github.com/espressif/esp-idf/commit/26160a217e3a2953fd0b2eabbde1075e3bb46941
  * manually, we don't wanna upgrade IDF version for this only issue though.
-*/
+ */
 static void esp_dump_per_task_heap_info(void)
 {
-    heap_task_info_params_t heap_info = {0};
-    heap_info.caps[0] = MALLOC_CAP_INTERNAL;        // Gets heap with CAP_INTERNAL capabilities
+    heap_task_info_params_t heap_info = { 0 };
+    heap_info.caps[0] = MALLOC_CAP_INTERNAL; // Gets heap with CAP_INTERNAL capabilities
     heap_info.mask[0] = MALLOC_CAP_INTERNAL;
-    heap_info.caps[1] = MALLOC_CAP_SPIRAM;       // Gets heap info with CAP_SPIRAM capabilities
+    heap_info.caps[1] = MALLOC_CAP_SPIRAM; // Gets heap info with CAP_SPIRAM capabilities
     heap_info.mask[1] = MALLOC_CAP_SPIRAM;
-    heap_info.tasks = NULL;                     // Passing NULL captures heap info for all tasks
+    heap_info.tasks = NULL; // Passing NULL captures heap info for all tasks
     heap_info.num_tasks = 0;
-    heap_info.totals = s_totals_arr;            // Gets task wise allocation details
+    heap_info.totals = s_totals_arr; // Gets task wise allocation details
     heap_info.num_totals = &s_prepopulated_num;
-    heap_info.max_totals = MAX_TASK_NUM;        // Maximum length of "s_totals_arr"
-    heap_info.blocks = s_block_arr;             // Gets block wise allocation details. For each block, gets owner task, address and size
-    heap_info.max_blocks = MAX_BLOCK_NUM;       // Maximum length of "s_block_arr"
+    heap_info.max_totals = MAX_TASK_NUM;  // Maximum length of "s_totals_arr"
+    heap_info.blocks = s_block_arr;       // Gets block wise allocation details. For each block, gets owner task, address and size
+    heap_info.max_blocks = MAX_BLOCK_NUM; // Maximum length of "s_block_arr"
 
     heap_caps_get_per_task_info(&heap_info);
 
-    for (int i = 0 ; i < *heap_info.num_totals; i++) {
-        printf("Task: %s -> CAP_INTERNAL: %d CAP_SPIRAM: %d\n",
-                heap_info.totals[i].task ? pcTaskGetName(heap_info.totals[i].task) : "Pre-Scheduler allocs" ,
-                heap_info.totals[i].size[0],
-                heap_info.totals[i].size[1]);
+    for (int i = 0; i < *heap_info.num_totals; i++)
+    {
+        printf("Task: %s -> CAP_INTERNAL: %d CAP_SPIRAM: %d\n", heap_info.totals[i].task ? pcTaskGetName(heap_info.totals[i].task) : "Pre-Scheduler allocs", heap_info.totals[i].size[0],
+            heap_info.totals[i].size[1]);
     }
 
     printf("\n\n");
@@ -225,12 +231,11 @@ void app_main(void)
 
     cJSON_InitHooks(&cJSONHooks);
 
-    esp_event_loop_args_t app_event_loop_args = {
-        .queue_size = 64,
+    esp_event_loop_args_t app_event_loop_args = { .queue_size = 64,
         .task_name = "app_eventloop",
         .task_priority = 15, // uxTaskPriorityGet(NULL),
         .task_stack_size = 1024 * 4,
-        .task_core_id = 0};
+        .task_core_id = 0 };
     ESP_ERROR_CHECK(esp_event_loop_create(&app_event_loop_args, &app_event_loop_handle));
 
     // app modules init
@@ -239,44 +244,37 @@ void app_main(void)
     static char buffer[512];
     while (1)
     {
-        sprintf(buffer, "    Biggest /  Minimum /     Free /    Total\n"
-                        "\t  DRAM : [%8d / %8d / %8d / %8d]\n"
-                        "\t  PSRAM: [%8d / %8d / %8d / %8d]\n"
-                        "\t  DMA  : [%8d / %8d / %8d / %8d]",
-                heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
-                heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL),
-                heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
-                heap_caps_get_total_size(MALLOC_CAP_INTERNAL),
-                heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
-                heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM),
-                heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-                heap_caps_get_total_size(MALLOC_CAP_SPIRAM),
-                heap_caps_get_largest_free_block(MALLOC_CAP_DMA),
-                heap_caps_get_minimum_free_size(MALLOC_CAP_DMA),
-                heap_caps_get_free_size(MALLOC_CAP_DMA),
-                heap_caps_get_total_size(MALLOC_CAP_DMA));
+        sprintf(buffer,
+            "    Biggest /  Minimum /     Free /    Total\n"
+            "\t  DRAM : [%8d / %8d / %8d / %8d]\n"
+            "\t  PSRAM: [%8d / %8d / %8d / %8d]\n"
+            "\t  DMA  : [%8d / %8d / %8d / %8d]",
+            heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL), heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL), heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+            heap_caps_get_total_size(MALLOC_CAP_INTERNAL), heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM), heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM),
+            heap_caps_get_free_size(MALLOC_CAP_SPIRAM), heap_caps_get_total_size(MALLOC_CAP_SPIRAM), heap_caps_get_largest_free_block(MALLOC_CAP_DMA), heap_caps_get_minimum_free_size(MALLOC_CAP_DMA),
+            heap_caps_get_free_size(MALLOC_CAP_DMA), heap_caps_get_total_size(MALLOC_CAP_DMA));
 
         ESP_LOGI("MEM", "%s\n", buffer);
-        
+
 #ifdef CONFIG_INTR_TRACKING
         esp_intr_dump(stdout);
 #endif
 
-    /**
-     * requires configuration:
-     * Component config -> Heap memory debugging -> Heap corruption detection (Light Impact)
-     * Component config -> Heap memory debugging -> Enable heap task tracking (Yes)
-    */
+        /**
+         * requires configuration:
+         * Component config -> Heap memory debugging -> Heap corruption detection (Light Impact)
+         * Component config -> Heap memory debugging -> Enable heap task tracking (Yes)
+         */
 #ifdef CONFIG_HEAP_TASK_TRACKING
         vTaskDelay(pdMS_TO_TICKS(10));
         esp_dump_per_task_heap_info();
 #endif
 
-    /**
-     * requires configuration:
-     * Component config -> FreeRTOS -> Kernel -> configUSE_TRACE_FACILITY (Yes) 
-     *                                           configUSE_STATS_FORMATTING_FUNCTIONS (Yes)
-    */
+        /**
+         * requires configuration:
+         * Component config -> FreeRTOS -> Kernel -> configUSE_TRACE_FACILITY (Yes)
+         *                                           configUSE_STATS_FORMATTING_FUNCTIONS (Yes)
+         */
 #ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
         vTaskDelay(pdMS_TO_TICKS(1));
         vTaskList(buffer);
