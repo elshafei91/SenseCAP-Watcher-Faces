@@ -28,7 +28,7 @@ extern "C"
 #define TF_STATUS_ERR_MODULES_WIRES     7
 #define TF_STATUS_ERR_MODULES_START     8
 #define TF_STATUS_ERR_MODULES_INTERNAL  9   // module runtime internal error
-#define TF_STATUS_NULL                 (-1) 
+#define TF_STATUS_IDLE                 (-1) 
 
 typedef struct
 {
@@ -70,6 +70,7 @@ typedef struct tf_engine
     void * p_status_cb_arg;
     tf_module_status_cb_t  module_status_cb;
     void * p_module_status_cb_arg;
+    int status;
 } tf_engine_t;
 
 esp_err_t tf_engine_init(void);
@@ -89,6 +90,8 @@ esp_err_t tf_engine_type_get(int *p_type);
 
 // need free p_info->p_tf_name
 esp_err_t tf_engine_info_get(tf_info_t *p_info);
+
+esp_err_t tf_engine_status_get(int *p_status);
 
 esp_err_t tf_engine_status_cb_register(tf_engine_status_cb_t engine_status_cb, void *p_arg);
 

@@ -16,6 +16,7 @@
 #include "tf_module_alarm_trigger.h"
 #include "tf_module_sensecraft_alarm.h"
 #include "tf_module_uart_alarm.h"
+#include "app_ota.h"
 
 static const char *TAG = "taskflow";
 
@@ -342,7 +343,7 @@ static void  __task_flow_restore(struct app_taskflow * p_taskflow)
         p_taskflow->status_need_report = true;
         p_taskflow->p_taskflow_json = NULL;
         p_taskflow->status.tid = 0;
-        p_taskflow->status.engine_status = TF_STATUS_NULL;
+        p_taskflow->status.engine_status = TF_STATUS_IDLE;
         p_taskflow->status.module_status = 0;
         strncpy(p_taskflow->status.module_name, "unknown", sizeof(p_taskflow->status.module_name) - 1);
         __data_unlock(p_taskflow);
@@ -416,6 +417,7 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
                                                                 status.module_status,
                                                                 p_json, len);
             if( ret != ESP_OK ) {
+                need_report = true;
                 ESP_LOGW(TAG, "Failed to report taskflow ack status to MQTT server");
             }
             free(p_json);
@@ -423,6 +425,9 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
         }
     } else {
         need_report = true;
+    }
+
+    if(  need_report ) {
         p_json = tf_engine_flow_get();
         
         __data_lock(p_taskflow);
@@ -435,8 +440,6 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
         memcpy(&p_taskflow->status, &status, sizeof(struct view_data_taskflow_status));
         __data_unlock(p_taskflow);
     }
-
-
 
     memset(err_msg, 0, sizeof(err_msg));
     switch (engine_status)
@@ -575,7 +578,7 @@ static void __taskflow_task(void *p_arg)
 
                     char uuid[37];
                     UUIDGen(uuid);
-                    ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, 0, TF_STATUS_NULL);
+                    ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, 0, TF_STATUS_IDLE);
                     if( ret != ESP_OK ) {
                         ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
                     } else {
@@ -622,6 +625,9 @@ static void __view_event_handler(void* handler_args,
         case VIEW_EVENT_TASK_FLOW_STOP:
         {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
+            // int status = 0;
+            // tf_engine_status_get(&status);
+            app_ota_ai_model_download_abort(); // maybe donloading model, need to abort.
             tf_engine_stop();
             __task_flow_clean();
             break;

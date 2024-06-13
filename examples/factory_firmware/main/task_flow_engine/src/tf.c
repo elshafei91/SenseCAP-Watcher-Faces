@@ -39,6 +39,7 @@ static void __status_cb( tf_engine_t *p_engine, int status, const char *p_err_mo
     intmax_t tid = 0;
 
     __data_lock(p_engine);
+    p_engine->status = status;
     status_cb = p_engine->status_cb;
     p_status_cb_arg = p_engine->p_status_cb_arg;
     tid = p_engine->tf_info.tid;
@@ -399,6 +400,8 @@ esp_err_t tf_engine_init(void)
 
     SLIST_INIT(&(gp_engine->module_nodes));
 
+    gp_engine->status = TF_STATUS_IDLE;
+
     gp_engine->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != gp_engine->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
 
@@ -543,6 +546,15 @@ esp_err_t tf_engine_info_get(tf_info_t *p_info)
     __data_lock(gp_engine);
     memcpy(p_info, &gp_engine->tf_info, sizeof(tf_info_t));
     p_info->p_tf_name = strdup(gp_engine->tf_info.p_tf_name);
+    __data_unlock(gp_engine);
+    return ESP_OK;
+}
+
+esp_err_t tf_engine_status_get(int *p_status)
+{
+    assert(gp_engine);
+    __data_lock(gp_engine);
+    *p_status = gp_engine->status;
     __data_unlock(gp_engine);
     return ESP_OK;
 }

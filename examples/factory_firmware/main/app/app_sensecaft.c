@@ -1026,7 +1026,7 @@ esp_err_t app_sensecraft_mqtt_report_warn_event(intmax_t taskflow_id,
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_warn_event: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_warn_event_report, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        1, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
