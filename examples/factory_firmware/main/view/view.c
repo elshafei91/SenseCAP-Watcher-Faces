@@ -42,9 +42,11 @@ extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
-extern lv_obj_t * ui_avat1;
-extern lv_obj_t * ui_avabtn1;
-extern lv_obj_t * ui_avabtn2;
+extern lv_obj_t * ui_viewpbtn1;
+extern lv_obj_t * ui_viewpt1;
+extern lv_obj_t * ui_viewpbtn2;
+extern lv_obj_t * ui_viewpt2;
+extern lv_obj_t * ui_viewpbtn3;
 
 extern int g_detect_image_count;
 extern int g_speak_image_count;
@@ -133,6 +135,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_BAT_DRAIN_SHUTDOWN:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BAT_DRAIN_SHUTDOWN");
+                _ui_screen_change(&ui_Page_Battery, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Battery_screen_init);
                 lv_timer_t *timer = lv_timer_create(toggle_image_visibility, 500, NULL);
                 
                 break;
@@ -322,6 +325,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK");
                 g_tasktype = 1;
+                g_taskdown = 0;
                 lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
                 _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
                 break;
@@ -405,26 +409,29 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         {
             case CTRL_EVENT_OTA_AI_MODEL:{
                 ESP_LOGI(TAG, "event: CTRL_EVENT_OTA_AI_MODEL");
-                if(lv_scr_act() != ui_Page_CurTask2)
+                if(g_taskdown == 0) // if the task is running
                 {
-                    lv_group_remove_all_objs(g_main);
-                    _ui_screen_change(&ui_Page_CurTask2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask2_screen_init);
-                }
-                struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
-                lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
-                if(ota_st->status == 0)
-                {
-                    ESP_LOGI(TAG, "OTA download succeeded");
-                }else if (ota_st->status == 1)
-                {
-                    lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
-                    update_ai_ota_progress(ota_st->percentage);
-                }else{
-                    lv_label_set_text(ui_otatext, "Update Failed");
-                    lv_img_set_src(ui_otaicon, &ui_img_error_png);
-                    lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
-                    ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
+                    if(lv_scr_act() != ui_Page_CurTask2)
+                    {
+                        lv_group_remove_all_objs(g_main);
+                        _ui_screen_change(&ui_Page_CurTask2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask2_screen_init);
+                    }
+                    struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
+                    lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
+                    if(ota_st->status == 0)
+                    {
+                        ESP_LOGI(TAG, "OTA download succeeded");
+                    }else if (ota_st->status == 1)
+                    {
+                        lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                        update_ai_ota_progress(ota_st->percentage);
+                    }else{
+                        lv_label_set_text(ui_otatext, "Update Failed");
+                        lv_img_set_src(ui_otaicon, &ui_img_error_png);
+                        lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                        lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
+                        ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
+                    }
                 }
                 break;
             }
