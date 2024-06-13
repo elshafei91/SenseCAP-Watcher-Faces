@@ -5,8 +5,6 @@
 
 #include "ui.h"
 #include "ui_helpers.h"
-#include "ui_manager/pm.h"
-#include "sensecap-watcher.h"
 
 ///////////////////// VARIABLES ////////////////////
 void start_anim_Animation(lv_obj_t * TargetObject, int delay);
@@ -162,9 +160,6 @@ lv_obj_t * ui_Spinner3;
 void ui_Page_ViewAva_screen_init(void);
 void ui_event_Page_ViewAva(lv_event_t * e);
 lv_obj_t * ui_Page_ViewAva;
-void ui_event_viewavap2(lv_event_t * e);
-lv_obj_t * ui_viewavap2;
-lv_obj_t * ui_guideimg1;
 
 
 // SCREEN: ui_Page_ViewLive
@@ -175,9 +170,6 @@ lv_obj_t * ui_viewlivp2;
 lv_obj_t * ui_viewtext;
 void ui_event_viewback(lv_event_t * e);
 lv_obj_t * ui_viewback;
-void ui_event_viewlivp3(lv_event_t * e);
-lv_obj_t * ui_viewlivp3;
-lv_obj_t * ui_guideimg2;
 
 
 // SCREEN: ui_Page_LocTask
@@ -208,7 +200,6 @@ void ui_event_menubtn4(lv_event_t * e);
 lv_obj_t * ui_menubtn4;
 lv_obj_t * ui_Label1;
 lv_obj_t * ui_mimgp;
-lv_obj_t * ui_mtext;
 lv_obj_t * ui_lcontrolp;
 
 
@@ -379,6 +370,34 @@ lv_obj_t * ui_wakeupt1;
 lv_obj_t * ui_wakeupt2;
 lv_obj_t * ui_wakeupt3;
 lv_obj_t * ui_wakeupt4;
+
+
+// SCREEN: ui_Page_guide1
+void ui_Page_guide1_screen_init(void);
+lv_obj_t * ui_Page_guide1;
+void ui_event_guidep1(lv_event_t * e);
+lv_obj_t * ui_guidep1;
+lv_obj_t * ui_guideimg1;
+lv_obj_t * ui_guidet1;
+
+
+// SCREEN: ui_Page_guide2
+void ui_Page_guide2_screen_init(void);
+lv_obj_t * ui_Page_guide2;
+void ui_event_guidep2(lv_event_t * e);
+lv_obj_t * ui_guidep2;
+lv_obj_t * ui_guideimg2;
+lv_obj_t * ui_guidet2;
+
+
+// SCREEN: ui_Page_emoticon
+void ui_Page_emoticon_screen_init(void);
+lv_obj_t * ui_Page_emoticon;
+lv_obj_t * ui_facet;
+lv_obj_t * ui_facearc;
+lv_obj_t * ui_faceper;
+lv_obj_t * ui_facetper;
+lv_obj_t * ui_facetsym;
 void ui_event____initial_actions0(lv_event_t * e);
 lv_obj_t * ui____initial_actions0;
 const lv_img_dsc_t * ui_imgset_1328823148[1] = {&ui_img_1195720223};
@@ -803,14 +822,6 @@ void ui_event_Page_ViewAva(lv_event_t * e)
         viewasul_cb(e);
     }
 }
-void ui_event_viewavap2(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        avagc_cb(e);
-    }
-}
 void ui_event_Page_ViewLive(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -834,14 +845,6 @@ void ui_event_viewback(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
         vieback_cb(e);
-    }
-}
-void ui_event_viewlivp3(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        livgc_cb(e);
     }
 }
 void ui_event_Page_LocTask(lv_event_t * e)
@@ -1157,6 +1160,12 @@ void ui_event_vslider(lv_event_t * e)
     if(event_code == LV_EVENT_RELEASED) {
         volre_cb(e);
     }
+    if(event_code == LV_EVENT_FOCUSED) {
+        volfs_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        voldf_cb(e);
+    }
 }
 void ui_event_bslider(lv_event_t * e)
 {
@@ -1167,6 +1176,12 @@ void ui_event_bslider(lv_event_t * e)
     }
     if(event_code == LV_EVENT_RELEASED) {
         brire_cb(e);
+    }
+    if(event_code == LV_EVENT_FOCUSED) {
+        brifs_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        bridf_cb(e);
     }
 }
 void ui_event_aboutdn(lv_event_t * e)
@@ -1342,6 +1357,22 @@ void ui_event_slpback(lv_event_t * e)
         preset_cb(e);
     }
 }
+void ui_event_guidep1(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        avagc_cb(e);
+    }
+}
+void ui_event_guidep2(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        livgc_cb(e);
+    }
+}
 void ui_event____initial_actions0(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1382,6 +1413,9 @@ void ui_init(void)
     ui_Page_OTA_screen_init();
     ui_Page_Slpt_screen_init();
     ui_Page_Wakup_screen_init();
+    ui_Page_guide1_screen_init();
+    ui_Page_guide2_screen_init();
+    ui_Page_emoticon_screen_init();
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_obj_add_event_cb(ui____initial_actions0, ui_event____initial_actions0, LV_EVENT_ALL, NULL);
 }
