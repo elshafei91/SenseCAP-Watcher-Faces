@@ -625,8 +625,12 @@ static void __view_event_handler(void* handler_args,
         case VIEW_EVENT_TASK_FLOW_STOP:
         {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
-            // int status = 0;
-            // tf_engine_status_get(&status);
+            int status = 0;
+            tf_engine_status_get(&status);
+            if( status != TF_STATUS_RUNNING ) {
+                ESP_LOGI(TAG, "task flow already stopped");
+                //TODO  need report status？
+            }
             app_ota_ai_model_download_abort(); // maybe donloading model, need to abort.
             tf_engine_stop();
             __task_flow_clean();
