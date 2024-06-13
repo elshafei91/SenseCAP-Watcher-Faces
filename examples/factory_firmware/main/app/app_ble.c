@@ -31,6 +31,7 @@
 
 // Static and global variables
 static int ble_status = BLE_DISCONNECTED;
+static int ble_switch = BLE_SWITCH_ON;
 static uint8_t char1_str[] = { 0x11, 0x22, 0x33 };
 static uint8_t char2_str[] = { 0x44, 0x55, 0x66 };
 
@@ -98,6 +99,7 @@ struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = { [PROFILE_WATCHER_APP_I
                                                               .gatts_cb = gatts_profile_event_handler,
                                                               .gatts_if = ESP_GATT_IF_NONE,
                                                           } };
+static esp_bd_addr_t peer_device_id;
 // Prepare type environment struct
 typedef struct
 {
@@ -331,7 +333,7 @@ static void watcher_exec_write_tiny_event_env(esp_gatt_if_t gatts_if, prepare_ty
                     free(msg_at_response.response);
                     msg_at_response.response = NULL;
                 }
-                int offset =400;
+                int offset = 400;
                 int segments = msg_at_response.length / offset;
                 int remaining_bytes = msg_at_response.length % offset;
 
@@ -653,13 +655,17 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
             ESP_LOGI(GATTS_TAG, "ESP_GATTS_CONNECT_EVT, conn_id %d, remote %02x:%02x:%02x:%02x:%02x:%02x:", param->connect.conn_id, param->connect.remote_bda[0], param->connect.remote_bda[1],
                 param->connect.remote_bda[2], param->connect.remote_bda[3], param->connect.remote_bda[4], param->connect.remote_bda[5]);
             gl_profile_tab[PROFILE_WATCHER_APP_ID].conn_id = param->connect.conn_id;
+            memcpy(peer_device_id, param->connect.remote_bda, sizeof(esp_bd_addr_t));
             esp_ble_gap_update_conn_params(&conn_params);
             break;
         }
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TAG, "ESP_GATTS_DISCONNECT_EVT, disconnect reason 0x%x", param->disconnect.reason);
             AT_command_free();
-            esp_ble_gap_start_advertising(&adv_params);
+            if (ble_switch == BLE_SWITCH_ON)
+            {
+                esp_ble_gap_start_advertising(&adv_params);
+            }
             ble_status = BLE_DISCONNECTED;
             bool status = false;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, &status, 1, pdMS_TO_TICKS(10000));
@@ -821,11 +827,13 @@ void set_ble_status(int caller, int status)
     switch (caller)
     {
         case UI_CALLER:
-            ble_status = status;
+            ble_switch = status;
+            // ble_status = status;
             vTaskDelay(1000);
             break;
         case AT_CMD_CALLER:
-            ble_status = status;
+            ble_switch = status;
+            // ble_status = status;
             break;
     }
 }
@@ -848,7 +856,7 @@ void ble_config_entry(void)
 
     while (1)
     {
-        if (ble_status == BLE_DISCONNECTED)
+        if (ble_switch == BLE_SWITCH_ON)
         {
             ret = esp_ble_gap_start_advertising(&adv_params);
             if (ret)
@@ -859,9 +867,9 @@ void ble_config_entry(void)
             {
                 ESP_LOGI("BLE_BUTTON", "start advertising succeeded");
             }
-            ble_status = STATUS_WAITTING;
+            ble_switch =BLE_SWITCH_DANGLING;
         }
-        else if (ble_status == BLE_CONNECTED)
+        else if (ble_switch == BLE_SWITCH_OFF)
         {
             ret = esp_ble_gap_stop_advertising();
             if (ret)
@@ -872,6 +880,19 @@ void ble_config_entry(void)
             {
                 ESP_LOGI("BLE_BUTTON", "stop advertising succeeded");
             }
+            if (ble_status == BLE_CONNECTED)
+            {
+                ret = esp_ble_gap_disconnect(peer_device_id);
+                if (ret)
+                {
+                    ESP_LOGE("BLE_BUTTON", "disconnect failed: %s", esp_err_to_name(ret));
+                }
+                else
+                {
+                    ESP_LOGI("BLE_BUTTON", "disconnect succeeded");
+                }
+            }
+            ble_switch = BLE_SWITCH_DANGLING;
             ble_status = STATUS_WAITTING;
         }
         else
