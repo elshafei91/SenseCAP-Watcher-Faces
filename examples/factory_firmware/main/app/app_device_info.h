@@ -7,7 +7,7 @@
 #define DEVICEINFO_STORAGE  "deviceinfo"
 
 enum { BLE_CONNECTED, BLE_DISCONNECTED, STATUS_WAITTING };
-
+enum {BLE_SWITCH_OFF,BLE_SWITCH_ON,BLE_SWITCH_DANGLING};
 uint8_t *get_sn(int caller);
 uint8_t *get_eui();
 uint8_t *get_qrcode_content();
