@@ -32,6 +32,7 @@
 // Static and global variables
 static int ble_status = BLE_DISCONNECTED;
 static int ble_switch = BLE_SWITCH_ON;
+static int ble_switch_past =BLE_SWITCH_ON;
 static uint8_t char1_str[] = { 0x11, 0x22, 0x33 };
 static uint8_t char2_str[] = { 0x44, 0x55, 0x66 };
 
@@ -662,7 +663,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TAG, "ESP_GATTS_DISCONNECT_EVT, disconnect reason 0x%x", param->disconnect.reason);
             AT_command_free();
-            if (ble_switch == BLE_SWITCH_ON)
+            if (ble_switch_past == BLE_SWITCH_ON)
             {
                 esp_ble_gap_start_advertising(&adv_params);
             }
@@ -867,6 +868,7 @@ void ble_config_entry(void)
             {
                 ESP_LOGI("BLE_BUTTON", "start advertising succeeded");
             }
+            ble_switch_past =ble_switch;
             ble_switch =BLE_SWITCH_DANGLING;
         }
         else if (ble_switch == BLE_SWITCH_OFF)
@@ -892,6 +894,7 @@ void ble_config_entry(void)
                     ESP_LOGI("BLE_BUTTON", "disconnect succeeded");
                 }
             }
+            ble_switch_past =ble_switch;
             ble_switch = BLE_SWITCH_DANGLING;
             ble_status = STATUS_WAITTING;
         }
