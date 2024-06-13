@@ -792,14 +792,27 @@ static esp_err_t ota_status(int ota_event_type, int total_progress)
     esp_err_t ret = ESP_FAIL;
     ota_status_q_item_t ota_status_q_item;
     struct view_data_ota_status ota_status;
-    bool ever_processed = false;
-    int percentage = 0;
+    bool be_timeout = false;
+    int percentage = 0, timeout_cnt = 0;
 
-    int timeout = ota_event_type == CTRL_EVENT_OTA_ESP32_FW ? (60000 * 2) : 60000;  //chunk of esp32 may be larger
+    int timeout_max = ota_event_type == CTRL_EVENT_OTA_ESP32_FW ? (60 * 30) : (60 * 10);  //chunk of esp32 may be larger
 
-    while (xQueueReceive(g_Q_ota_status, &ota_status_q_item, pdMS_TO_TICKS(timeout/*long enough?*/))) {
-        if (ota_status_q_item.ota_src != ota_event_type) break;
-        else ever_processed = true;
+    while (1) {
+        BaseType_t res = xQueueReceive(g_Q_ota_status, &ota_status_q_item, pdMS_TO_TICKS(1000));
+        if (res != pdPASS) {
+            timeout_cnt++;
+            if (timeout_cnt > timeout_max) {
+                be_timeout = true;
+                break;
+            } else
+                continue;
+        }
+
+        timeout_cnt = 0;
+        if (ota_status_q_item.ota_src != ota_event_type) {
+            ESP_LOGW(TAG, "ota status process, wrong ota src, this should not happen!!!");
+            continue;
+        }
 
         if (ota_status_q_item.ota_status.status == OTA_STATUS_DOWNLOADING) {
             int progress = ota_status_q_item.ota_status.percentage;
@@ -829,11 +842,12 @@ static esp_err_t ota_status(int ota_event_type, int total_progress)
         }
     }
 
-    if (!ever_processed) {
+    if (be_timeout) {
         // timeout
         ota_status.status = SENSECRAFT_OTA_STATUS_FAIL;
         ota_status.err_code = ESP_ERR_OTA_TIMEOUT;
         ota_status.percentage = 0;
+        ESP_LOGW(TAG, "ota status, timeout happen, it was a really long waiting (%d sec)!!!", timeout_max);
     } else if (ret == ESP_OK) {
         // succeed
         ota_status.err_code = ESP_OK;
