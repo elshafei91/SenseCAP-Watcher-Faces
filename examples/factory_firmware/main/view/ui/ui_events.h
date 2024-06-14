@@ -71,6 +71,7 @@ void loctask4f_cb(lv_event_t * e);
 void sgesup_cb(lv_event_t * e);
 void sgesdown_cb(lv_event_t * e);
 void sclick_cb(lv_event_t * e);
+void setsl_cb(lv_event_t * e);
 void setbackf_cb(lv_event_t * e);
 void setbackdf_cb(lv_event_t * e);
 void setbackc_cb(lv_event_t * e);

@@ -352,8 +352,8 @@ void virtsl_cb(lv_event_t *e)
     lv_group_add_obj(g_main, ui_Page_Vir);
     create_timer(0);
     lv_group_set_wrap(g_main, false);
-    get_usage_guide(UI_CALLER);
     viewInfoInit();
+    view_info_obtain_early();
 }
 
 void virb1c_cb(lv_event_t *e)
@@ -733,10 +733,6 @@ void loctask4f_cb(lv_event_t *e)
     lv_obj_set_style_bg_img_src(ui_mimgp, &ui_img_gesture_d_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
-void locavac_cb(lv_event_t *e) { }
-
-void loclivc_cb(lv_event_t *e) { }
-
 void sgesup_cb(lv_event_t *e)
 {
     lv_group_focus_next(g_main);
@@ -752,6 +748,11 @@ void sclick_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "sclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
     lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
+}
+
+void setsl_cb(lv_event_t * e)
+{
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
 }
 
 void mgesup_cb(lv_event_t *e)
@@ -1420,10 +1421,16 @@ void viewInfoInit()
     ConnAPP_QR_Init();
 }
 
+void view_info_obtain_early()
+{
+    //TODO
+    // g_dev_binded = retry_get_data((uint8_t* (*)(int))get_usage_guide, UI_CALLER, MAX_RETRIES);
+    qrcode_content = (char *)retry_get_data((uint8_t* (*)(int))get_qrcode_content, UI_CALLER, MAX_RETRIES);
+}
+
 void view_info_obtain()
 {
     ESP_LOGI(TAG, "settingInfoInit");
-    qrcode_content = (char *)retry_get_data((uint8_t* (*)(int))get_qrcode_content, UI_CALLER, MAX_RETRIES);
     retry_get_data((uint8_t* (*)(int))get_brightness, UI_CALLER, MAX_RETRIES);
     retry_get_data((uint8_t* (*)(int))get_rgb_switch, UI_CALLER, MAX_RETRIES);
     retry_get_data((uint8_t* (*)(int))get_sound, UI_CALLER, MAX_RETRIES);
@@ -1480,6 +1487,7 @@ void view_info_obtain()
 
 void viewp1c_cb(lv_event_t *e)
 {
+    //TODO
     // ESP_LOGI(CLICK_TAG, "viewp1c_cb");
     // g_alarm_p = 0;
     // lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);

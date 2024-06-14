@@ -973,6 +973,9 @@ void ui_event_Page_Set(lv_event_t * e)
     if(event_code == LV_EVENT_CLICKED) {
         sclick_cb(e);
     }
+    if(event_code == LV_EVENT_SCREEN_LOADED) {
+        setsl_cb(e);
+    }
 }
 void ui_event_setback(lv_event_t * e)
 {

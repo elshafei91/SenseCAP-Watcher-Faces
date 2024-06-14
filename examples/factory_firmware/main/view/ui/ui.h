@@ -419,7 +419,6 @@ LV_IMG_DECLARE(ui_img_wifi_abnormal_png);
 LV_IMG_DECLARE(ui_img_backtomenu_png);
 
 
-
 LV_FONT_DECLARE(ui_font_fbold16);
 LV_FONT_DECLARE(ui_font_fbold24);
 LV_FONT_DECLARE(ui_font_Font1);
