@@ -32,7 +32,6 @@
 #include "app_ota.h"
 #include "app_taskflow.h"
 #include "view.h"
-#include "ui_manager/event.h"
 #ifdef CONFIG_INTR_TRACKING
 #include "esp_intr_types.h"
 #endif
@@ -163,7 +162,6 @@ void app_init(void)
     app_at_cmd_init();
     app_ble_init();
     app_cmd_init();
-    app_view_info_init();
     //app_sr_start(false);
 }
 
@@ -173,6 +171,8 @@ void task_app_init(void *p_arg)
     view_init();
     
     app_init();
+
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
 
     esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN,
                                     __app_event_loop_handler, NULL);

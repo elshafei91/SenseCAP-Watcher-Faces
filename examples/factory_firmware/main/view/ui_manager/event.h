@@ -34,6 +34,6 @@ void wifiConnectFailed();
 void ui_event_alarm_panel(lv_event_t * e);
 
 void viewInfoInit();
-void app_view_info_init();
+void view_info_obtain();
 
 #endif

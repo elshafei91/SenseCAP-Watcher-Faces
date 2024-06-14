@@ -1420,7 +1420,7 @@ void viewInfoInit()
     ConnAPP_QR_Init();
 }
 
-void app_view_info_init()
+void view_info_obtain()
 {
     ESP_LOGI(TAG, "settingInfoInit");
     qrcode_content = (char *)retry_get_data((uint8_t* (*)(int))get_qrcode_content, UI_CALLER, MAX_RETRIES);
