@@ -288,6 +288,8 @@ typedef struct ai_service_pack
 enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
     CTRL_EVENT_MQTT_CONNECTED,
+    CTRL_EVENT_MQTT_DISCONNECTED,
+
     CTRL_EVENT_MQTT_OTA_JSON,               //received ota json from MQTT
  
     CTRL_EVENT_TASK_FLOW_STATUS_REPORT,

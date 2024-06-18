@@ -623,7 +623,7 @@ static void __taskflow_task(void *p_arg)
                 }
                 cnt++;
             }
-        }
+        } 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
@@ -801,7 +801,10 @@ static void __ctrl_event_handler(void* handler_args,
             p_taskflow->mqtt_connect_flag = true;
             break;
         }
-
+        case CTRL_EVENT_MQTT_DISCONNECTED: {
+            p_taskflow->mqtt_connect_flag = false;
+            break;
+        }
         case CTRL_EVENT_TASK_FLOW_STATUS_REPORT: {
 
             char * p_json = NULL;
@@ -1015,6 +1018,14 @@ esp_err_t app_taskflow_init(void)
                                                         CTRL_EVENT_MQTT_CONNECTED, 
                                                         __ctrl_event_handler, 
                                                         p_taskflow));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    CTRL_EVENT_BASE, 
+                                                    CTRL_EVENT_MQTT_DISCONNECTED, 
+                                                    __ctrl_event_handler, 
+                                                    p_taskflow));
+
+    p_taskflow->mqtt_connect_flag = app_sensecraft_is_connected(); // Update connection flags.
 
 #if CONFIG_ENABLE_TASKFLOW_FROM_SPIFFS
     __taskflow_reload_from_spiffs(p_taskflow);
