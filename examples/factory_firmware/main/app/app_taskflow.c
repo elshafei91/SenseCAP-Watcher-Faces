@@ -415,7 +415,7 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
         if(  status.engine_status !=  TF_STATUS_STARTING && p_json != NULL ) {
             size_t len = 0;
             len = strlen(p_json);
-            ret = app_sensecraft_mqtt_report_taskflow_ack_status( tid, status.ctd,
+            ret = app_sensecraft_mqtt_report_taskflow_info( tid, status.ctd,
                                                                 status.engine_status,
                                                                 p_module_name,
                                                                 status.module_status,
@@ -566,11 +566,11 @@ static void __taskflow_task(void *p_arg)
                 memcpy(&status, &p_taskflow->status, sizeof(struct view_data_taskflow_status));
 
                 if( p_taskflow->p_taskflow_json != NULL ) {    
-                    ret = app_sensecraft_mqtt_report_taskflow_ack_status( status.tid, status.ctd,
-                                                                        status.engine_status,
-                                                                        status.module_name,
-                                                                        status.module_status,
-                                                                        p_taskflow->p_taskflow_json, strlen(p_taskflow->p_taskflow_json));
+                    ret = app_sensecraft_mqtt_report_taskflow_info( status.tid, status.ctd,
+                                                                    status.engine_status,
+                                                                    status.module_name,
+                                                                    status.module_status,
+                                                                    p_taskflow->p_taskflow_json, strlen(p_taskflow->p_taskflow_json));
                     if( ret != ESP_OK ) {
                         ESP_LOGW(TAG, "Failed to report taskflow ack status to MQTT server");
                     } else {
@@ -580,9 +580,8 @@ static void __taskflow_task(void *p_arg)
                     }
                 } else {
 
-                    char uuid[37];
-                    UUIDGen(uuid);
-                    ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, status.tid, status.ctd, status.engine_status);
+                    ret = app_sensecraft_mqtt_report_taskflow_status( status.tid, status.ctd, status.engine_status, 
+                                                                            status.module_name,status.module_status);
                     if( ret != ESP_OK ) {
                         ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
                     } else {
@@ -680,9 +679,7 @@ static void __view_event_handler(void* handler_args,
                 __task_flow_clean();
             } else {
                 ESP_LOGI(TAG, "task flow already stopped");
-                char uuid[37];
-                UUIDGen(uuid);
-                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, 0, 0, TF_STATUS_STOP);
+                ret = app_sensecraft_mqtt_report_taskflow_status( 0, 0, TF_STATUS_STOP, NULL, 0);
                 if( ret != ESP_OK ) {
                     ESP_LOGW(TAG, "Failed to report taskflow status to MQTT server");
                 }
@@ -724,7 +721,7 @@ static void __view_event_handler(void* handler_args,
                     intmax_t tid = 0;
                     intmax_t ctd = 0;
                     __taskflow_tid_get(p_task_flow, &tid, &ctd);
-                    ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, tid, ctd, TF_STATUS_STARTING);
+                    ret = app_sensecraft_mqtt_report_taskflow_status(tid, ctd, TF_STATUS_STARTING, NULL, 0);
                     if( ret != ESP_OK ) {
                         ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
                     }
@@ -783,7 +780,7 @@ static void __taskflow_start(struct app_taskflow * p_taskflow, char *p_task_flow
         intmax_t tid = 0;
         intmax_t ctd = 0;
         __taskflow_tid_get(p_task_flow, &tid, &ctd);
-        ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, tid, ctd, TF_STATUS_STARTING);
+        ret = app_sensecraft_mqtt_report_taskflow_status(tid, ctd, TF_STATUS_STARTING, NULL, 0);
         if( ret != ESP_OK ) {
             ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
         }

@@ -18,19 +18,20 @@ extern "C"
 #define TF_ENGINE_QUEUE_SIZE 3
 
 // task flow status
-#define TF_STATUS_IDLE                 (-1) 
 #define TF_STATUS_RUNNING               0
 #define TF_STATUS_STARTING              1
 #define TF_STATUS_STOP                  2
 #define TF_STATUS_STOPING               3
+#define TF_STATUS_IDLE                  4
 
-#define TF_STATUS_ERR_JSON_PARSE        100
-#define TF_STATUS_ERR_MODULE_NOT_FOUND  101
-#define TF_STATUS_ERR_MODULES_INSTANCE  102
-#define TF_STATUS_ERR_MODULES_PARAMS    103
-#define TF_STATUS_ERR_MODULES_WIRES     104
-#define TF_STATUS_ERR_MODULES_START     105
-#define TF_STATUS_ERR_MODULES_INTERNAL  106   // module runtime internal error
+#define TF_STATUS_ERR_GENERAL           100
+#define TF_STATUS_ERR_JSON_PARSE        101
+#define TF_STATUS_ERR_MODULE_NOT_FOUND  102
+#define TF_STATUS_ERR_MODULES_INSTANCE  103
+#define TF_STATUS_ERR_MODULES_PARAMS    104
+#define TF_STATUS_ERR_MODULES_WIRES     105
+#define TF_STATUS_ERR_MODULES_START     106
+#define TF_STATUS_ERR_MODULES_INTERNAL  107   // module runtime internal error
 
 
 typedef struct

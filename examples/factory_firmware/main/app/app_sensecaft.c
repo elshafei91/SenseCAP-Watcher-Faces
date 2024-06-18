@@ -265,14 +265,14 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
 
     if( need_stop) {
         ESP_LOGI(TAG, "STOP TASK FLOW");
-        ret = app_sensecraft_mqtt_report_taskflow_ack( requestid->valuestring, tid, ctd, TF_STATUS_STOPING);
+        ret = app_sensecraft_mqtt_taskflow_ack( requestid->valuestring, tid, ctd, TF_STATUS_STOPING);
         if( ret != ESP_OK ) {
             ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
         }
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
         free(tl_str);
     } else {
-        ret = app_sensecraft_mqtt_report_taskflow_ack( requestid->valuestring, tid, ctd, TF_STATUS_STARTING);
+        ret = app_sensecraft_mqtt_taskflow_ack( requestid->valuestring, tid, ctd, TF_STATUS_STARTING);
         if( ret != ESP_OK ) {
             ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
         }
@@ -344,6 +344,9 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
 
             msg_id = esp_mqtt_client_subscribe(client, p_sensecraft->topic_down_version_notify, 0);
             ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d, topic=%s", msg_id, p_sensecraft->topic_down_version_notify);
+
+            msg_id = esp_mqtt_client_subscribe(client, p_sensecraft->topic_down_task_report, 0);
+            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d, topic=%s", msg_id, p_sensecraft->topic_down_task_report);
 
             if( p_sensecraft->p_mqtt_recv_buf ) {
                 free(p_sensecraft->p_mqtt_recv_buf);
@@ -472,19 +475,21 @@ static void __sensecraft_task(void *p_arg)
     bool  is_need_update_token = false;
 
     sniprintf(p_sensecraft->topic_down_task_publish, MQTT_TOPIC_STR_LEN, 
-                "iot/ipnode/%s/get/order/task-publish", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/get/order/task-publish", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_down_version_notify, MQTT_TOPIC_STR_LEN, 
-                "iot/ipnode/%s/get/order/version-notify", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/get/order/version-notify", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_down_task_report, MQTT_TOPIC_STR_LEN, 
-                "iot/ipnode/%s/get/order/task-report", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/get/order/task-report", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_task_publish_ack, MQTT_TOPIC_STR_LEN, 
-                "iot/ipnode/%s/update/order/task-publish-ack", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/update/order/task-publish-ack", p_sensecraft->deviceinfo.eui);
+    sniprintf(p_sensecraft->topic_up_taskflow_report, MQTT_TOPIC_STR_LEN, 
+                "sensecraft/ipnode/%s/update/order/task-flow-report", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_change_device_status, MQTT_TOPIC_STR_LEN, 
-                "iot/ipnode/%s/update/event/change-device-status", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/update/event/change-device-status", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_warn_event_report, MQTT_TOPIC_STR_LEN, 
-                "iot/ipnode/%s/update/event/measure-sensor", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/update/event/measure-sensor", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_model_ota_status, MQTT_TOPIC_STR_LEN, 
-                "iot/ipnode/%s/update/event/task-ota-percent", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/update/event//model-ota-status", p_sensecraft->deviceinfo.eui);
 
     while (1) {
         
@@ -588,6 +593,7 @@ static void __event_loop_handler(void *handler_args, esp_event_base_t base, int3
  ************************************************************************/
 esp_err_t app_sensecraft_init(void)
 {
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
@@ -739,58 +745,10 @@ esp_err_t app_sensecraft_https_token_gen(struct sensecraft_deviceinfo *p_devicei
     return ESP_OK;
 }
 
-esp_err_t app_sensecraft_mqtt_report_taskflow(char *p_str, size_t len)
-{
-    int ret = ESP_OK;
-    struct app_sensecraft * p_sensecraft = gp_sensecraft;
-    if( p_sensecraft == NULL) {
-        return ESP_FAIL;
-    }
-    const char *json_fmt =  \
-    "{"
-        "\"requestId\": \"%s\","
-        "\"timestamp\": %jd,"
-        "\"intent\": \"event\","
-        "\"deviceEui\": \"%s\","
-        "\"events\":  [{"
-            "\"name\": \"change-device-status\","
-            "\"value\": {"
-                "\"3969\": %.*s"
-            "},"
-            "\"timestamp\": %jd"
-        "}]"
-    "}";
-
-    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle != NULL, ESP_FAIL, TAG, "mqtt_client is not inited yet");
-    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet");
-
-    size_t json_buf_len = len + 512;
-    char *json_buff = psram_malloc( json_buf_len );
-    ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
-
-    char uuid[37];
-    time_t timestamp_ms = util_get_timestamp_ms();
-
-    UUIDGen(uuid);
-    size_t json_len = sniprintf(json_buff, json_buf_len, json_fmt, uuid, timestamp_ms, \
-                                    p_sensecraft->deviceinfo.eui, len, p_str, timestamp_ms);
-
-    ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow: \r\n%s\r\nstrlen=%d", json_buff, json_len);
-
-    int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_change_device_status, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
-    
-    free(json_buff);
-    if (msg_id < 0) {
-        ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow enqueue failed, err=%d", msg_id);
-        ret = ESP_FAIL;
-    }
-    return ret;
-}
-esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id,  
-                                                intmax_t taskflow_id,
-                                                intmax_t taskflow_ctd,
-                                                int taskflow_status)
+esp_err_t app_sensecraft_mqtt_taskflow_ack(char *request_id,  
+                                           intmax_t taskflow_id,
+                                           intmax_t taskflow_ctd,
+                                           int taskflow_status)
 {
     int ret = ESP_OK;
     struct app_sensecraft * p_sensecraft = gp_sensecraft;
@@ -828,7 +786,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id,
     size_t json_len = sniprintf(json_buff, json_buf_len, json_fmt, request_id, timestamp_ms, \
                                     p_sensecraft->deviceinfo.eui, taskflow_id, taskflow_ctd, taskflow_status);
 
-    ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_ack: \r\n%s\r\nstrlen=%d", json_buff, json_len);
+    ESP_LOGD(TAG, "app_sensecraft_mqtt_taskflow_ack: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_task_publish_ack, json_buff, json_len,
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
@@ -836,20 +794,18 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id,
     free(json_buff);
 
     if (msg_id < 0) {
-        ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_ack enqueue failed, err=%d", msg_id);
+        ESP_LOGW(TAG, "app_sensecraft_mqtt_taskflow_ack enqueue failed, err=%d", msg_id);
         ret = ESP_FAIL;
     }
 
     return ret;
 }
 
-
-esp_err_t app_sensecraft_mqtt_report_taskflow_ack_status(intmax_t taskflow_id,
-                                                         intmax_t taskflow_ctd,
-                                                         int taskflow_status,
-                                                         char *p_module_name,
-                                                         int module_status,
-                                                         char *p_str, size_t len)
+esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t taskflow_id,
+                                                     intmax_t taskflow_ctd,
+                                                     int taskflow_status,
+                                                     char *p_module_name,
+                                                     int module_status)
 {
     int ret = ESP_OK;
     struct app_sensecraft * p_sensecraft = gp_sensecraft;
@@ -860,12 +816,79 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_ack_status(intmax_t taskflow_id,
     "{"
         "\"requestId\": \"%s\","
         "\"timestamp\": %jd,"
-        "\"intent\": \"order\","
-        "\"type\": \"response\","
+        "\"intent\": \"event\","
         "\"deviceEui\": \"%s\","
-        "\"order\":  ["
+        "\"events\":  ["
             "{"
-                "\"name\": \"task-publish-ack\","
+                "\"name\": \"task-flow-report\","
+                "\"value\": {"
+                    "\"tlid\": %jd,"
+                    "\"ctd\": %jd,"
+                    "\"status\": %d,"
+                    "\"module_name\": \"%s\","
+                    "\"err_code\": %d"
+                "}"
+            "}"
+        "]"
+    "}";
+
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle != NULL, ESP_FAIL, TAG, "mqtt_client is not inited yet");
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet");
+
+    size_t json_buf_len = 2048;
+    char *json_buff = psram_malloc( json_buf_len );
+    ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
+
+    char uuid[37];
+    time_t timestamp_ms = util_get_timestamp_ms();
+
+    UUIDGen(uuid);
+    
+    char *p_err_module = NULL;
+    if( p_module_name ) {
+        p_err_module = p_module_name;
+    } else {
+        p_err_module = "unknown";
+    }
+    size_t json_len = sniprintf(json_buff, json_buf_len, json_fmt, uuid, timestamp_ms, \
+                                    p_sensecraft->deviceinfo.eui, taskflow_id, taskflow_ctd, taskflow_status, p_err_module, module_status);
+
+    ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_status: \r\n%s\r\nstrlen=%d", json_buff, json_len);
+
+    int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_taskflow_report, json_buff, json_len,
+                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+
+    free(json_buff);
+
+    if (msg_id < 0) {
+        ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_status enqueue failed, err=%d", msg_id);
+        ret = ESP_FAIL;
+    }
+
+    return ret;
+}
+
+esp_err_t app_sensecraft_mqtt_report_taskflow_info(intmax_t taskflow_id,
+                                                    intmax_t taskflow_ctd,
+                                                    int taskflow_status,
+                                                    char *p_module_name,
+                                                    int module_status,
+                                                    char *p_str, size_t len)
+{
+    int ret = ESP_OK;
+    struct app_sensecraft * p_sensecraft = gp_sensecraft;
+    if( p_sensecraft == NULL) {
+        return ESP_FAIL;
+    }
+    const char *json_fmt =  \
+    "{"
+        "\"requestId\": \"%s\","
+        "\"timestamp\": %jd,"
+        "\"intent\": \"event\","
+        "\"deviceEui\": \"%s\","
+        "\"events\":  ["
+            "{"
+                "\"name\": \"task-flow-report\","
                 "\"value\": {"
                     "\"tlid\": %jd,"
                     "\"ctd\": %jd,"
@@ -889,23 +912,31 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_ack_status(intmax_t taskflow_id,
     time_t timestamp_ms = util_get_timestamp_ms();
 
     UUIDGen(uuid);
+    
+    char *p_err_module = NULL;
+    if( p_module_name ) {
+        p_err_module = p_module_name;
+    } else {
+        p_err_module = "unknown";
+    }
     size_t json_len = sniprintf(json_buff, json_buf_len, json_fmt, uuid, timestamp_ms, \
-                                    p_sensecraft->deviceinfo.eui, taskflow_id, taskflow_ctd, taskflow_status, p_module_name, module_status, len, p_str);
+                                    p_sensecraft->deviceinfo.eui, taskflow_id, taskflow_ctd, taskflow_status, p_err_module, module_status, len, p_str);
 
-    ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_ack_status: \r\n%s\r\nstrlen=%d", json_buff, json_len);
+    ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_info: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
-    int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_task_publish_ack, json_buff, json_len,
+    int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_taskflow_report, json_buff, json_len,
                                         MQTT_PUB_QOS, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
     if (msg_id < 0) {
-        ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_ack_status enqueue failed, err=%d", msg_id);
+        ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_info enqueue failed, err=%d", msg_id);
         ret = ESP_FAIL;
     }
 
     return ret;
 }
+
 
 esp_err_t app_sensecraft_mqtt_report_taskflow_model_ota_status(intmax_t taskflow_id,
                                                                 intmax_t taskflow_ctd,
@@ -922,12 +953,11 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_model_ota_status(intmax_t taskflow
     "{"
         "\"requestId\": \"%s\","
         "\"timestamp\": %jd,"
-        "\"intent\": \"order\","
-        "\"type\": \"response\","
+        "\"intent\": \"event\","
         "\"deviceEui\": \"%s\","
-        "\"order\":  ["
+        "\"events\":  ["
             "{"
-                "\"name\": \"task-ota-percent\","
+                "\"name\": \"model-ota-status\","
                 "\"value\": {"
                     "\"tlid\": %jd,"
                     "\"ctd\": %jd,"
@@ -967,121 +997,6 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_model_ota_status(intmax_t taskflow
 
     return ret;
 }
-
-
-esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t tasklist_id, int tf_status)
-{
-    int ret = ESP_OK;
-    struct app_sensecraft * p_sensecraft = gp_sensecraft;
-    if( p_sensecraft == NULL) {
-        return ESP_FAIL;
-    }
-    const char *json_fmt =  \
-    "{"
-        "\"requestId\": \"%s\","
-        "\"timestamp\": %jd,"
-        "\"intent\": \"event\","
-        "\"deviceEui\": \"%s\","
-        "\"events\":  [{"
-            "\"name\": \"change-device-status\","
-            "\"value\": {"
-                "\"3968\": {"
-                    "\"tlid\": %jd,"
-                    "\"status\": %d"
-                "}"
-            "},"
-            "\"timestamp\": %jd"
-        "}]"
-    "}";
-
-    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle, ESP_FAIL, TAG, "mqtt_client is not inited yet [2]");
-    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet [2]");
-
-    char *json_buff = psram_malloc(2048);
-    ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
-
-    char uuid[37];
-    time_t timestamp_ms = util_get_timestamp_ms();
-
-    UUIDGen(uuid);
-    size_t json_len = sniprintf(json_buff, 2048, json_fmt, uuid, timestamp_ms, p_sensecraft->deviceinfo.eui, tasklist_id, tf_status,
-                    timestamp_ms);
-
-    ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_status: \r\n%s\r\nstrlen=%d", json_buff, json_len);
-
-    int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_change_device_status, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
-
-    free(json_buff);
-
-    if (msg_id < 0) {
-        ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_status enqueue failed, err=%d", msg_id);
-        ret = ESP_FAIL;
-    }
-
-    return ret;
-}
-esp_err_t app_sensecraft_mqtt_report_taskflow_module_status(intmax_t tasklist_id, 
-                                                            int tf_status,  
-                                                            char *p_module_name, int module_status)
-{
-    int ret = ESP_OK;
-    struct app_sensecraft * p_sensecraft = gp_sensecraft;
-    if( p_sensecraft == NULL) {
-        return ESP_FAIL;
-    }
-    const char *json_fmt =  \
-    "{"
-        "\"requestId\": \"%s\","
-        "\"timestamp\": %jd,"
-        "\"intent\": \"event\","
-        "\"deviceEui\": \"%s\","
-        "\"events\":  [{"
-            "\"name\": \"change-device-status\","
-            "\"value\": {"
-                "\"3968\": {"
-                    "\"tlid\": %jd,"
-                    "\"status\": %d"
-                "},"
-                "\"3970\":["
-                    "{"
-                        "\"module_name\": \"%s\","
-                        "\"err_code\": %d"
-                    "}"
-                "]"
-            "},"
-            "\"timestamp\": %jd"
-        "}]"
-    "}";
-
-    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle, ESP_FAIL, TAG, "mqtt_client is not inited yet [2]");
-    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet [2]");
-
-    char *json_buff = psram_malloc(2048);
-    ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
-
-    char uuid[37];
-    time_t timestamp_ms = util_get_timestamp_ms();
-
-    UUIDGen(uuid);
-    size_t json_len = sniprintf(json_buff, 2048, json_fmt, uuid, timestamp_ms, p_sensecraft->deviceinfo.eui, tasklist_id, tf_status,
-                        p_module_name, module_status, timestamp_ms);
-
-    ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_module_status: \r\n%s\r\nstrlen=%d", json_buff, json_len);
-
-    int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_change_device_status, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
-
-    free(json_buff);
-
-    if (msg_id < 0) {
-        ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_module_status enqueue failed, err=%d", msg_id);
-        ret = ESP_FAIL;
-    }
-
-    return ret;
-}
-
 
 esp_err_t app_sensecraft_mqtt_report_warn_event(intmax_t taskflow_id, 
                                                 char *taskflow_name, 
