@@ -49,12 +49,10 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_clear_flag(ui_custbtn1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_custbtn1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_custbtn1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_custbtn1, &ui_img_template1_png, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_color(ui_custbtn1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_custbtn1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_custbtn1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_bg_opa(ui_custbtn1, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
-    lv_obj_set_style_bg_img_src(ui_custbtn1, &ui_img_template1_f_png, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_outline_width(ui_custbtn1, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_outline_pad(ui_custbtn1, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_color(ui_custbtn1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_FOCUSED);
@@ -81,12 +79,10 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_clear_flag(ui_custbtn2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_custbtn2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_custbtn2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_custbtn2, &ui_img_template2_png, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_color(ui_custbtn2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_custbtn2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_custbtn2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_bg_opa(ui_custbtn2, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
-    lv_obj_set_style_bg_img_src(ui_custbtn2, &ui_img_template2_f_png, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_outline_width(ui_custbtn2, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_outline_pad(ui_custbtn2, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_color(ui_custbtn2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_FOCUSED);
@@ -113,12 +109,10 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_clear_flag(ui_custbtn3, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_custbtn3, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_custbtn3, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_custbtn3, &ui_img_template3_png, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_color(ui_custbtn3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_custbtn3, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_custbtn3, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_bg_opa(ui_custbtn3, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
-    lv_obj_set_style_bg_img_src(ui_custbtn3, &ui_img_template3_f_png, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_outline_width(ui_custbtn3, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_outline_pad(ui_custbtn3, 0, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_shadow_color(ui_custbtn3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_FOCUSED);

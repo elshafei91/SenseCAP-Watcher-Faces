@@ -114,9 +114,6 @@ lv_obj_t * ui_wifip1;
 lv_obj_t * ui_wifiicon;
 lv_obj_t * ui_wifissid;
 lv_obj_t * ui_wifibtnt;
-lv_obj_t * ui_wifip2;
-lv_obj_t * ui_wifitext1;
-lv_obj_t * ui_wifiimg;
 lv_obj_t * ui_wifip3;
 lv_obj_t * ui_wifitext3;
 lv_obj_t * ui_wifilogo;
@@ -437,7 +434,6 @@ const lv_img_dsc_t * ui_imgset_800621560[1] = {&ui_img_30219097};
 const lv_img_dsc_t * ui_imgset_1225629734[1] = {&ui_img_631814683};
 const lv_img_dsc_t * ui_imgset_1798734462[1] = {&ui_img_578579305};
 const lv_img_dsc_t * ui_imgset_smile[1] = {&ui_img_smile1_png};
-const lv_img_dsc_t * ui_imgset_template[3] = {&ui_img_template1_png, &ui_img_template2_png, &ui_img_template3_png};
 const lv_img_dsc_t * ui_imgset_wifi_[4] = {&ui_img_wifi_0_png, &ui_img_wifi_1_png, &ui_img_wifi_2_png, &ui_img_wifi_3_png};
 
 ///////////////////// TEST LVGL SETTINGS ////////////////////

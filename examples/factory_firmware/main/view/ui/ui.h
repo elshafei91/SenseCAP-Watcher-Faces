@@ -110,9 +110,6 @@ extern lv_obj_t * ui_wifip1;
 extern lv_obj_t * ui_wifiicon;
 extern lv_obj_t * ui_wifissid;
 extern lv_obj_t * ui_wifibtnt;
-extern lv_obj_t * ui_wifip2;
-extern lv_obj_t * ui_wifitext1;
-extern lv_obj_t * ui_wifiimg;
 extern lv_obj_t * ui_wifip3;
 extern lv_obj_t * ui_wifitext3;
 extern lv_obj_t * ui_wifilogo;
@@ -411,14 +408,7 @@ LV_IMG_DECLARE(ui_img_ble_png);    // assets/ble.png
 LV_IMG_DECLARE(ui_img_button_cancel_png);    // assets/button_cancel.png
 LV_IMG_DECLARE(ui_img_arrow_png);    // assets/arrow.png
 LV_IMG_DECLARE(ui_img_wifi_3_png);    // assets/wifi_3.png
-LV_IMG_DECLARE(ui_img_1067503588);    // assets/wifi-Instructions.png
 LV_IMG_DECLARE(ui_img_setback_png);    // assets/setback.png
-LV_IMG_DECLARE(ui_img_template1_png);    // assets/template1.png
-LV_IMG_DECLARE(ui_img_template1_f_png);    // assets/template1_f.png
-LV_IMG_DECLARE(ui_img_template2_png);    // assets/template2.png
-LV_IMG_DECLARE(ui_img_template2_f_png);    // assets/template2_f.png
-LV_IMG_DECLARE(ui_img_template3_png);    // assets/template3.png
-LV_IMG_DECLARE(ui_img_template3_f_png);    // assets/template3_f.png
 LV_IMG_DECLARE(ui_img_back_png);    // assets/Back.png
 LV_IMG_DECLARE(ui_img_1195720223);    // assets/Back-2.png
 LV_IMG_DECLARE(ui_img_human_png);    // assets/human.png
@@ -432,20 +422,23 @@ LV_IMG_DECLARE(ui_img_volicon_png);    // assets/volicon.png
 LV_IMG_DECLARE(ui_img_swipe_png);    // assets/swipe.png
 LV_IMG_DECLARE(ui_img_wifiok_png);    // assets/wifiok.png
 LV_IMG_DECLARE(ui_img_scroll_down_png);    // assets/scroll_down.png
+LV_IMG_DECLARE(ui_img_fakelivecam_png);    // assets/fakelivecam.png
 LV_IMG_DECLARE(ui_img_scroll_up_png);    // assets/scroll_up.png
+LV_IMG_DECLARE(ui_img_backtomenu_png);    // assets/backtomenu.png
+LV_IMG_DECLARE(ui_img_battery_charging_png);    // assets/battery charging.png
+LV_IMG_DECLARE(ui_img_brighticon_png);    // assets/brighticon.png
+LV_IMG_DECLARE(ui_img_dog_d_png);    // assets/dog_d.png
+LV_IMG_DECLARE(ui_img_error_png);    // assets/error.png
+LV_IMG_DECLARE(ui_img_gesture_d_png);    // assets/gesture_d.png
+LV_IMG_DECLARE(ui_img_gradient_png);    // assets/gradient.png
+LV_IMG_DECLARE(ui_img_left_png);    // assets/left.png
+LV_IMG_DECLARE(ui_img_onboardclick_png);    // assets/onboardClick.png
 LV_IMG_DECLARE(ui_img_smile1_png);    // assets/smile1.png
 LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets/wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets/wifi_1.png
 LV_IMG_DECLARE(ui_img_wifi_2_png);    // assets/wifi_2.png
-LV_IMG_DECLARE(ui_img_gradient_png);
-LV_IMG_DECLARE(ui_img_brighticon_png);
-LV_IMG_DECLARE(ui_img_gesture_d_png);
-LV_IMG_DECLARE(ui_img_dog_d_png);
-LV_IMG_DECLARE(ui_img_onboardclick_png);
-LV_IMG_DECLARE(ui_img_error_png);
-LV_IMG_DECLARE(ui_img_battery_charging_png);
-LV_IMG_DECLARE(ui_img_wifi_abnormal_png);
-LV_IMG_DECLARE(ui_img_backtomenu_png);
+LV_IMG_DECLARE(ui_img_wifi_abnormal_png);    // assets/wifi_abnormal.png
+
 
 
 LV_FONT_DECLARE(ui_font_fbold16);

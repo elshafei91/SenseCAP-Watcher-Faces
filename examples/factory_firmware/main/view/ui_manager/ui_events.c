@@ -28,13 +28,15 @@ static const char *TAG = "ui_event";
 static const char *CLICK_TAG = "Click_event";
 
 wifi_ap_record_t wifi_record;
-int g_dev_binded = 1;
+int g_dev_binded = 0;
 uint8_t g_taskdown = 1;     // 0: task running, 1: task down
 uint8_t g_guide_step = 0;   // usage guide step : 0~3
 uint8_t g_swipeid = 0;      // 0: shutdown, 1: factoryreset
 uint8_t g_alarm_p = 0;      // 0: End Task panel display, 1: End_Task panel hidden 
 uint8_t g_avarlive = 0;     // 0: current page is avatar, 1: current page is live
 uint8_t g_tasktype = 0;     // 0: local task, 1: remote task
+uint8_t g_backpage = 0;
+uint8_t g_avalivjump = 0;
 static lv_obj_t *qr;
 static bool is_charging = 0;
 static uint8_t loading_flag = 0;
@@ -78,6 +80,7 @@ extern GroupInfo group_page_ha;
 extern GroupInfo group_page_brightness;
 extern GroupInfo group_page_volume;
 extern GroupInfo group_page_connectapp;
+extern GroupInfo group_page_guide;
 
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
@@ -92,6 +95,7 @@ static void Page_ConnAPP_Mate();
 static void Task_end();
 static void Page_shutdown();
 static void Page_facreset();
+static void view_info_obtain_early();
 
 static void async_img_switch_vir(void *arg)
 {
@@ -270,7 +274,7 @@ void startload_cb(lv_event_t *e)
     _ui_screen_change(&ui_Page_loading, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_loading_screen_init);
 }
 
-void loadsl_cb(lv_event_t *e)
+void loadscrload_cb(lv_event_t *e)
 {
     if (loading_flag == 0)
     {
@@ -333,7 +337,7 @@ void loadsl_cb(lv_event_t *e)
     }
 }
 
-void virtc_cb(lv_event_t *e)
+void virclick_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virtc_cb");
     if(!wifi_page_id)   // if the device is not wifi-configed, then appear Connect APP panel
@@ -346,7 +350,7 @@ void virtc_cb(lv_event_t *e)
     }
 }
 
-void virtsl_cb(lv_event_t *e)
+void virscrload_cb(lv_event_t *e)
 {
     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
     lv_group_add_obj(g_main, ui_Page_Vir);
@@ -391,7 +395,7 @@ void main2c_cb(lv_event_t *e)
     {
         lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask1, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask1_screen_init);
     }
-    if(g_taskdown == 0 && g_tasktype == 1)
+    if(g_taskdown == 0)
     {
         if(g_avarlive == 0)
         {
@@ -433,11 +437,25 @@ void main4f_cb(lv_event_t *e)
     lv_label_set_text(ui_maintitle, "Setting");
 }
 
-void connc_cb(lv_event_t *e)
+void backset_cb(lv_event_t * e)
 {
-    ESP_LOGI(CLICK_TAG, "connc_cb");
+    ESP_LOGI(CLICK_TAG, "backset_cb");
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+}
+
+void backmenu_cb(lv_event_t * e)
+{
+    ESP_LOGI(CLICK_TAG, "backmenu_cb");
+
+    if(g_backpage == 0){
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    }
+
+    if(g_backpage == 1)
+    {
+
+    }
 }
 
 void arr1c_cb(lv_event_t *e)
@@ -518,68 +536,20 @@ void viewaf_cb(lv_event_t *e)
 void viewasl_cb(lv_event_t *e)
 {
     g_avarlive = 0;
+    lv_group_focus_obj(ui_Page_ViewAva);
     if (emoticon_disp_id == 1)
     {
         create_timer(3); // Load timer for the "detected" animation when emoticon_disp_id is 1
-        if (!g_dev_binded)
-        {
-            // if (g_guide_step == 2)
-            // {
-            //     lv_img_set_src(ui_guideimg1, &ui_img_onboardclick_png);
-            //     lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
-            //     lv_group_remove_all_objs(g_main);
-            //     lv_group_add_obj(g_main, ui_viewavap2);
-            // }
-            // else if (g_guide_step == 0)
-            // {
-            //     g_guide_step = 1;
-            //     lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
-            //     lv_obj_move_foreground(ui_viewavap2);
-            // }
-        }
     }
     else
     {
         create_timer(1); // Load timer for the "detecting" animation when emoticon_disp_id is 0
-        if (!g_dev_binded)
-        {
-            // if (g_guide_step == 2)
-            // {
-            //     lv_img_set_src(ui_guideimg1, &ui_img_onboardclick_png);
-            //     lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_CLICKABLE);
-            //     lv_group_remove_all_objs(g_main);
-            //     lv_group_add_obj(g_main, ui_viewavap2);
-            // }
-            // else if (g_guide_step == 0)
-            // {
-            //     g_guide_step = 1;
-            //     lv_obj_clear_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
-            //     lv_obj_move_foreground(ui_viewavap2);
-            // }
-        }
     }
 }
 
 void viewasul_cb(lv_event_t *e)
 {
     create_timer(6);
-}
-
-void avagc_cb(lv_event_t *e)
-{
-    ESP_LOGI(CLICK_TAG, "avagc_cb");
-    if (g_guide_step == 2)
-    {
-        // lv_obj_add_flag(ui_viewavap2, LV_OBJ_FLAG_HIDDEN);
-        // lv_obj_add_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
-        // lv_event_send(ui_Page_ViewAva, LV_EVENT_CLICKED, NULL);
-        // g_guide_step = 3;
-        // set_usage_guide(UI_CALLER, 1);
-        // get_usage_guide(UI_CALLER);
-        // lv_group_remove_all_objs(g_main);
-        // lv_group_add_obj(g_main, ui_Page_ViewAva);
-        // lv_group_add_obj(g_main, ui_Page_ViewLive);
-    }
 }
 
 void viewlc_cb(lv_event_t *e)
@@ -606,12 +576,7 @@ void viewlf_cb(lv_event_t *e)
 void viewlsl_cb(lv_event_t *e)
 {
     g_avarlive = 1;
-    if ((!g_dev_binded) && (g_guide_step != 3))
-    {
-        // g_guide_step = 2;
-        // lv_obj_clear_flag(ui_viewlivp3, LV_OBJ_FLAG_HIDDEN);
-        // lv_obj_move_foreground(ui_viewlivp3);
-    }
+    lv_group_focus_obj(ui_Page_ViewLive);
 }
 
 void viewlsul_cb(lv_event_t *e) 
@@ -643,24 +608,29 @@ void loctask1df_cb(lv_event_t *e)
 void loctask2c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "loctask2c_cb");
-    if(g_tasktype == 0 && g_taskdown == 0)
+    local_task_id = 2;
+    g_tasktype = 0;
+
+    if(!g_dev_binded)
     {
-        if(g_avarlive == 0)
-        {
-            if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-            lv_group_focus_obj(ui_Page_ViewAva);
-        }else if(g_avarlive == 1)
-        {
-            if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
-            lv_group_focus_obj(ui_Page_ViewLive);
-        }
-        return;
+        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
     }
-    if(g_taskdown == 1){
-        local_task_id = 2;
-        g_tasktype = 0;
-        g_taskdown = 0;
+    //TODO
+    // if(g_dev_binded && g_tasktype == 0 && g_taskdown == 0)
+    // {
+    //     if(g_avarlive == 0)
+    //     {
+    //         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+    //         lv_group_focus_obj(ui_Page_ViewAva);
+    //     }else if(g_avarlive == 1)
+    //     {
+    //         if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+    //         lv_group_focus_obj(ui_Page_ViewLive);
+    //     }
+    // }
+    if(g_dev_binded){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
+        g_taskdown = 0;
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
     }
 }
@@ -674,24 +644,18 @@ void loctask2f_cb(lv_event_t *e)
 void loctask3c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "loctask3c_cb");
-    if(g_tasktype == 0 && g_taskdown == 0)
+    local_task_id = 1;
+    g_tasktype = 0;
+
+    if(!g_dev_binded)
     {
-        if(g_avarlive == 0)
-        {
-            if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-            lv_group_focus_obj(ui_Page_ViewAva);
-        }else if(g_avarlive == 1)
-        {
-            if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
-            lv_group_focus_obj(ui_Page_ViewLive);
-        }
+        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
         return;
     }
-    if(g_taskdown == 1){
-        local_task_id = 1;
-        g_tasktype = 0;
-        g_taskdown = 0;
+
+    if(g_dev_binded){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
+        g_taskdown = 0;
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
     }  
 }
@@ -705,24 +669,18 @@ void loctask3f_cb(lv_event_t *e)
 void loctask4c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "loctask4c_cb");
-    if(g_tasktype == 0 && g_taskdown == 0)
+    local_task_id = 0;
+    g_tasktype = 0;
+
+    if(!g_dev_binded)
     {
-        if(g_avarlive == 0)
-        {
-            if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-            lv_group_focus_obj(ui_Page_ViewAva);
-        }else if(g_avarlive == 1)
-        {
-            if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
-            lv_group_focus_obj(ui_Page_ViewLive);
-        }
+        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
         return;
     }
-    if(g_taskdown == 1){
-        local_task_id = 0;
-        g_tasktype = 0;
-        g_taskdown = 0;
+
+    if(g_dev_binded){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
+        g_taskdown = 0;
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
     } 
 }
@@ -755,12 +713,12 @@ void setsl_cb(lv_event_t * e)
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
 }
 
-void mgesup_cb(lv_event_t *e)
+void maingestureup_cb(lv_event_t *e)
 {
     lv_group_focus_next(g_main);
 }
 
-void mgesdown_cb(lv_event_t *e)
+void maingesturedown_cb(lv_event_t *e)
 {
     lv_group_focus_prev(g_main);
 }
@@ -770,6 +728,9 @@ void vieback_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "vieback_cb");
     lv_obj_add_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+
+    g_taskdown = 0;
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
 }
 
 void livgc_cb(lv_event_t *e)
@@ -787,9 +748,9 @@ void lgesright_cb(lv_event_t *e)
     lv_group_focus_prev(g_main);
 }
 
-void mclick_cb(lv_event_t *e)
+void mainclick_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "mclick_cb");
+    ESP_LOGI(CLICK_TAG, "mainclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
     lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
 }
@@ -1017,8 +978,13 @@ void setwific_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setwific_cb");
     current_wifi_get(&wifi_record);
+
     static char ssid_string[34];
-    strncpy(ssid_string, (const char *)wifi_record.ssid, sizeof(ssid_string) - 1);
+    if (strlen((const char *)wifi_record.ssid) < 1) {
+        strncpy(ssid_string, "None", sizeof(ssid_string) - 1);
+    } else {
+        strncpy(ssid_string, (const char *)wifi_record.ssid, sizeof(ssid_string) - 1);
+    }
     ssid_string[sizeof(ssid_string) - 1] = '\0';
     lv_label_set_text(ui_wifissid, ssid_string);
     // binded
@@ -1027,11 +993,6 @@ void setwific_cb(lv_event_t *e)
     lv_obj_move_foreground(ui_wifiicon);
     lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
-
-    if (!wifi_page_id)
-    {
-        lv_label_set_text(ui_wifissid, "None");
-    }
 }
 
 void setblec_cb(lv_event_t *e)
@@ -1183,6 +1144,10 @@ void sliderr_cb(lv_event_t *e)
                 break;
         }
     }
+    if(slider_value <=80)
+    {
+        lv_slider_set_value(ui_spsilder, 0, LV_ANIM_OFF);
+    }
 }
 
 void preset_cb(lv_event_t *e)
@@ -1250,19 +1215,183 @@ void hap_cb(lv_event_t *e)
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
-void slpt1c_cb(lv_event_t *e) { }
+void slpt1c_cb(lv_event_t *e) 
+{
 
-void slpt2c_cb(lv_event_t *e) { }
+}
 
-void slpt3c_cb(lv_event_t *e) { }
+void slpt2c_cb(lv_event_t *e) 
+{ 
 
-void slpt4c_cb(lv_event_t *e) { }
+}
 
-void slpt5c_cb(lv_event_t *e) { }
+void slpt3c_cb(lv_event_t *e) 
+{ 
 
-void slpt6c_cb(lv_event_t *e) { }
+}
 
-void slpt7c_cb(lv_event_t *e) { }
+void slpt4c_cb(lv_event_t *e) 
+{ 
+
+}
+
+void slpt5c_cb(lv_event_t *e) 
+{ 
+
+}
+
+void slpt6c_cb(lv_event_t *e) 
+{ 
+
+}
+
+void slpt7c_cb(lv_event_t *e) 
+{ 
+
+}
+
+void pageguideavaf_cb(lv_event_t * e)
+{
+    if(g_guide_step == 2)
+    {
+        _ui_screen_change(&ui_Page_guide1, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_guide1_screen_init);
+    }
+}
+
+void pageguideavascrload_cb(lv_event_t * e)
+{
+    if(g_guide_step == 0){
+        lv_obj_add_flag(ui_guide1p1, LV_OBJ_FLAG_CLICKABLE);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_Page_guide1);
+        lv_group_add_obj(g_main, ui_Page_guide2);
+        lv_group_add_obj(g_main, ui_guide1p1);
+
+        lv_group_focus_obj(ui_guide1p1);
+        lv_group_focus_freeze(g_main, true);
+    }
+}
+
+void guideavaclick_cb(lv_event_t * e)
+{
+    if(g_guide_step == 0)
+    {
+        g_guide_step = 1;
+
+        lv_obj_add_flag(ui_guide1t1, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_guide1p1, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(ui_guide1p2, LV_OBJ_FLAG_HIDDEN);
+
+        lv_group_focus_freeze(g_main, false);
+        lv_group_focus_obj(ui_Page_guide1);
+        lv_group_remove_obj(ui_guide1p1);
+    }
+}
+
+void guide2avaclick_cb(lv_event_t * e)
+{
+    if(g_guide_step == 2)
+    {
+        g_guide_step = 3;
+        lv_obj_add_flag(ui_guide1p2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_guide1p3, LV_OBJ_FLAG_HIDDEN);
+
+        set_usage_guide(UI_CALLER, 1);
+        g_dev_binded = get_usage_guide(UI_CALLER);
+    }
+}
+
+void guidebtn1click_cb(lv_event_t * e)
+{
+    lv_pm_open_page(g_main, &group_page_guide, PM_ADD_OBJS_TO_GROUP, &ui_Page_guide1, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_guide1_screen_init);
+}
+
+void guidebtn2click_cb(lv_event_t * e)
+{
+    set_usage_guide(UI_CALLER, 1);
+    g_dev_binded = get_usage_guide(UI_CALLER);
+
+    if(g_tasktype == 0)
+    {
+        if(local_task_id == 0 || local_task_id == 1 || local_task_id == 2)
+        {
+            g_taskdown = 0;
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
+            lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        }
+    }
+
+    if(g_tasktype == 1)
+    {
+        g_taskdown = 0;
+        if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+    }
+}
+
+void guide1btn2c_cb(lv_event_t * e)
+{
+    ESP_LOGI(CLICK_TAG, "guide1btn2c_cb");
+    Task_end();
+}
+
+void guide1btn3c_cb(lv_event_t * e)
+{
+    if(g_tasktype == 0)
+    {
+        if(local_task_id == 0 || local_task_id == 1 || local_task_id == 2)
+        {
+            g_taskdown = 0;
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
+            lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        }
+    }
+
+    if(g_tasktype == 1)
+    {
+        g_taskdown = 0;
+        if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+    }
+}
+
+void pageguidelivef_cb(lv_event_t * e)
+{
+    if(g_guide_step == 1)
+    {
+        _ui_screen_change(&ui_Page_guide2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_guide2_screen_init);
+        lv_obj_add_flag(ui_guide2p1, LV_OBJ_FLAG_CLICKABLE);
+
+        lv_group_add_obj(g_main, ui_guide2p1);
+        lv_group_focus_obj(ui_guide2p1);
+        lv_group_focus_freeze(g_main, true);
+    }
+}
+
+void pageguidelivescrload_cb(lv_event_t * e)
+{
+
+}
+
+void guideliveclick_cb(lv_event_t * e)
+{
+    g_guide_step = 2;
+
+    lv_img_set_src(ui_guide1img2, &ui_img_onboardclick_png);
+    lv_label_set_text(ui_guide1t2, "Click to manage task");
+    lv_obj_add_flag(ui_guide1p2, LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_add_flag(ui_guide2t1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_guide2p1, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(ui_guide2p2, LV_OBJ_FLAG_HIDDEN);
+
+    lv_group_focus_freeze(g_main, false);
+    lv_group_remove_obj(ui_guide2p1);
+    lv_group_focus_obj(ui_Page_guide2);
+}
+
+void guide2liveclick_cb(lv_event_t * e)
+{
+
+}
 
 void taskerrc_cb(lv_event_t *e)
 {
@@ -1315,8 +1444,8 @@ static void Task_end()
 {
     g_taskdown = 1;
     g_alarm_p = 0;
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), portMAX_DELAY);
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, portMAX_DELAY);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
     
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
 }
@@ -1421,10 +1550,10 @@ void viewInfoInit()
     ConnAPP_QR_Init();
 }
 
-void view_info_obtain_early()
+static void view_info_obtain_early()
 {
     //TODO
-    // g_dev_binded = retry_get_data((uint8_t* (*)(int))get_usage_guide, UI_CALLER, MAX_RETRIES);
+    g_dev_binded = retry_get_data((uint8_t* (*)(int))get_usage_guide, UI_CALLER, MAX_RETRIES);
     qrcode_content = (char *)retry_get_data((uint8_t* (*)(int))get_qrcode_content, UI_CALLER, MAX_RETRIES);
 }
 
@@ -1487,12 +1616,11 @@ void view_info_obtain()
 
 void viewp1c_cb(lv_event_t *e)
 {
-    //TODO
-    // ESP_LOGI(CLICK_TAG, "viewp1c_cb");
-    // g_alarm_p = 0;
-    // lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
-    // lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
-    // lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    ESP_LOGI(CLICK_TAG, "viewp1c_cb");
+    g_alarm_p = 0;
+    lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void viewp2c_cb(lv_event_t *e)

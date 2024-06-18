@@ -81,7 +81,7 @@ void ui_Page_guide1_screen_init(void)
     lv_obj_set_width(ui_guide1p3, 412);
     lv_obj_set_height(ui_guide1p3, 412);
     lv_obj_set_align(ui_guide1p3, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_guide1p3, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_guide1p3, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_guide1p3, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_guide1p3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_guide1p3, 200, LV_PART_MAIN | LV_STATE_DEFAULT);
