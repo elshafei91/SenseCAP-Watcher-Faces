@@ -182,12 +182,12 @@ int view_alarm_init(lv_obj_t *ui_screen)
 int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 {
     if((!g_dev_binded) && (g_guide_step != 3)){return 0;}
+    alarm_timer_start(alarm_st->duration);
     if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive)){return 0;}
     // for switch avatar emoticon
     emoticon_disp_id = 1;
     // send focused event to call function
     if(lv_scr_act() == ui_Page_ViewAva)lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
-    alarm_timer_start(alarm_st->duration);
 
     // turn the page to view live
     if ((lv_scr_act() != ui_Page_ViewLive) && (g_alarm_p == 0) && (g_avarlive == 0)){
