@@ -24,6 +24,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     screens/ui_Page_guide1.c
     screens/ui_Page_guide2.c
     screens/ui_Page_emoticon.c
+    screens/ui_Page_flag.c
     ui.c
     components/ui_comp_hook.c
     ui_helpers.c
@@ -80,7 +81,6 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_error_png.c
     images/ui_img_battery_charging_png.c
     images/ui_img_wifi_abnormal_png.c
-    images/ui_img_backtomenu_png.c
     fonts/ui_font_fbold16.c
     fonts/ui_font_fbold24.c
     fonts/ui_font_Font1.c

@@ -24,6 +24,7 @@ screens/ui_Page_Wakup.c
 screens/ui_Page_guide1.c
 screens/ui_Page_guide2.c
 screens/ui_Page_emoticon.c
+screens/ui_Page_flag.c
 ui.c
 components/ui_comp_hook.c
 ui_helpers.c
