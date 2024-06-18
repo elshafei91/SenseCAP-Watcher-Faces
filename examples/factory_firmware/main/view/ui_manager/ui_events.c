@@ -441,7 +441,7 @@ void backset_cb(lv_event_t * e)
 {
     ESP_LOGI(CLICK_TAG, "backset_cb");
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
-    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
 }
 
 void backmenu_cb(lv_event_t * e)
@@ -991,7 +991,7 @@ void setwific_cb(lv_event_t *e)
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
     lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(ui_wifiicon);
-    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -1474,7 +1474,7 @@ static void Page_facreset()
 void waitForWifi()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_wifi_3_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
@@ -1484,7 +1484,7 @@ void waitForWifi()
 void waitForBinding()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_wifi_3_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
@@ -1494,7 +1494,7 @@ void waitForBinding()
 void waitForAddDev()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_wifi_3_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
@@ -1504,7 +1504,7 @@ void waitForAddDev()
 void bindFinish()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_wifiok_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
@@ -1514,7 +1514,7 @@ void bindFinish()
 void wifiConnectFailed()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_error_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
