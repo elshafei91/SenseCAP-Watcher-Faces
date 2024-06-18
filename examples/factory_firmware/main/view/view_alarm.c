@@ -10,6 +10,7 @@
 #include "util.h"
 
 uint8_t emoticon_disp_id = 0;
+uint8_t view_alarm_status = 0;
 lv_anim_t a;
 lv_obj_t *ui_alarm_indicator;
 lv_obj_t * ui_taskerrt2;
@@ -29,6 +30,7 @@ extern uint8_t wifi_page_id;
 extern int g_dev_binded;
 extern uint8_t g_guide_step;
 extern uint8_t g_alarm_p;
+extern uint8_t g_avalivjump;
 
 static int16_t indicator_value = 0;
 static lv_obj_t * ui_image = NULL;
@@ -182,6 +184,16 @@ int view_alarm_init(lv_obj_t *ui_screen)
 int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 {
     if((!g_dev_binded) && (g_guide_step != 3)){return 0;}
+
+    if(lv_scr_act() == ui_Page_ViewAva)
+    {
+        if(view_alarm_status == 0)g_avalivjump = 0;
+    }
+    if(lv_scr_act() == ui_Page_ViewLive)
+    {
+        if(view_alarm_status == 0)g_avalivjump = 1;
+    }
+
     alarm_timer_start(alarm_st->duration);
     if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive)){return 0;}
     // for switch avatar emoticon
@@ -250,6 +262,7 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
         lv_anim_set_values(&a, 10, 100);
         lv_anim_start(&a);
     }
+    view_alarm_status = 1;
 
     return ESP_OK;
 }
@@ -271,11 +284,12 @@ void view_alarm_off(uint8_t task_down)
         lv_group_focus_obj(ui_Page_ViewLive);
     }
     // if the page is avatar when the alarm is triggered, turn the page back when the alarm is off
-    // if(g_avarlive == 1 && task_down == 0 && g_alarm_p == 0)
-    // {
-    //     _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-    //     lv_group_focus_obj(ui_Page_ViewAva);
-    // }
+    if(g_avalivjump == 0)
+    {
+        _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        lv_group_focus_obj(ui_Page_ViewAva);
+    }
+    view_alarm_status = 0;
 }
 
 void view_task_error_init()

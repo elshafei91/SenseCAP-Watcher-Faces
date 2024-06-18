@@ -29,6 +29,7 @@ extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_dev_binded;
 extern uint8_t g_avarlive;
 extern uint8_t g_tasktype;
+extern uint8_t g_backpage;
 extern lv_obj_t * ui_taskerrt2;
 extern lv_obj_t * ui_task_error;
 
@@ -332,6 +333,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK");
                 g_tasktype = 1;
                 g_taskdown = 0;
+                g_backpage = 1;
                 lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
                 _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
                 break;
