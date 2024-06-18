@@ -201,12 +201,13 @@ static bool __condition_check(tf_module_ai_camera_t                     *p_modul
             {
                 
                 if(  target_id < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM ) {
-                    int last_cnt = p_module_ins->classes_num_cache[target_id];
+                    int last_cnt = p_module_ins->classes_num[target_id];
                     // 0-N, N-0(N>=1): will be triggered
                     if( (!!cnt) ^ (!!last_cnt) ) {
-                        is_match =  true;  
+                        is_match =  true;
+                        p_module_ins->classes_num_cache[target_id] = cnt;
+                        p_module_ins->target_id_cache = target_id;  
                     }
-                    p_module_ins->classes_num_cache[target_id] = cnt;
                 }
                 break;
             }
@@ -246,12 +247,13 @@ static bool __condition_check(tf_module_ai_camera_t                     *p_modul
             case TF_MODULE_AI_CAMERA_CONDITION_MODE_NUM_CHANGE:
             {
                 if(  target_id < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM) {
-                    int last_cnt = p_module_ins->classes_num_cache[target_id];
+                    int last_cnt = p_module_ins->classes_num[target_id];
                     // when num change, will be triggered
                     if( cnt != last_cnt ) {
-                        is_match =  true;  
+                        is_match =  true;
+                        p_module_ins->classes_num_cache[target_id] = cnt;
+                        p_module_ins->target_id_cache = target_id;  
                     }
-                    p_module_ins->classes_num_cache[target_id] = cnt;
                 }
                 break;
             }
@@ -373,6 +375,10 @@ static bool __output_check(tf_module_ai_camera_t *p_module_ins, struct tf_module
         ESP_LOGI(TAG, "Shutter trigger");
     }
 
+    //update  classes num 
+    if( p_module_ins->target_id_cache < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM ) {
+        p_module_ins->classes_num[p_module_ins->target_id_cache] = p_module_ins->classes_num_cache[p_module_ins->target_id_cache];
+    }
     return true;
 }
 
@@ -953,6 +959,8 @@ static void ai_camera_task(void *p_arg)
             p_module_ins->condition_trigger_buf_idx = 0;
             memset(p_module_ins->condition_trigger_buf, false, sizeof(p_module_ins->condition_trigger_buf));
             memset(p_module_ins->classes_num_cache, 0, sizeof(p_module_ins->classes_num_cache));
+            memset(p_module_ins->classes_num, 0, sizeof(p_module_ins->classes_num));
+            p_module_ins->target_id_cache = 0;
             memset(p_module_ins->classes, NULL, sizeof(p_module_ins->classes));
             __data_unlock(p_module_ins);
 
