@@ -483,6 +483,8 @@ static void __sensecraft_task(void *p_arg)
                 "iot/ipnode/%s/update/event/change-device-status", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_warn_event_report, MQTT_TOPIC_STR_LEN, 
                 "iot/ipnode/%s/update/event/measure-sensor", p_sensecraft->deviceinfo.eui);
+    sniprintf(p_sensecraft->topic_up_model_ota_status, MQTT_TOPIC_STR_LEN, 
+                "iot/ipnode/%s/update/event/task-ota-percent", p_sensecraft->deviceinfo.eui);
 
     while (1) {
         
@@ -586,7 +588,6 @@ static void __event_loop_handler(void *handler_args, esp_event_base_t base, int3
  ************************************************************************/
 esp_err_t app_sensecraft_init(void)
 {
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
@@ -905,7 +906,69 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_ack_status(intmax_t taskflow_id,
 
     return ret;
 }
-                                                        
+
+esp_err_t app_sensecraft_mqtt_report_taskflow_model_ota_status(intmax_t taskflow_id,
+                                                                intmax_t taskflow_ctd,
+                                                                int ota_status,
+                                                                int ota_percent,
+                                                                int err_code)
+{
+    int ret = ESP_OK;
+    struct app_sensecraft * p_sensecraft = gp_sensecraft;
+    if( p_sensecraft == NULL) {
+        return ESP_FAIL;
+    }
+    const char *json_fmt =  \
+    "{"
+        "\"requestId\": \"%s\","
+        "\"timestamp\": %jd,"
+        "\"intent\": \"order\","
+        "\"type\": \"response\","
+        "\"deviceEui\": \"%s\","
+        "\"order\":  ["
+            "{"
+                "\"name\": \"task-ota-percent\","
+                "\"value\": {"
+                    "\"tlid\": %jd,"
+                    "\"ctd\": %jd,"
+                    "\"status\": %d,"
+                    "\"percent\": %d,"
+                    "\"err_code\": %d"
+                "}"
+            "}"
+        "]"
+    "}";
+
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle != NULL, ESP_FAIL, TAG, "mqtt_client is not inited yet");
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet");
+
+    size_t json_buf_len = 2048;
+    char *json_buff = psram_malloc( json_buf_len );
+    ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
+
+    char uuid[37];
+    time_t timestamp_ms = util_get_timestamp_ms();
+
+    UUIDGen(uuid);
+    size_t json_len = sniprintf(json_buff, json_buf_len, json_fmt, uuid, timestamp_ms, \
+                                    p_sensecraft->deviceinfo.eui, taskflow_id, taskflow_ctd, ota_status, ota_percent, err_code);
+
+    ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_model_ota_status: \r\n%s\r\nstrlen=%d", json_buff, json_len);
+
+    int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_model_ota_status, json_buff, json_len,
+                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+
+    free(json_buff);
+
+    if (msg_id < 0) {
+        ESP_LOGW(TAG, "app_sensecraft_mqtt_report_taskflow_model_ota_status enqueue failed, err=%d", msg_id);
+        ret = ESP_FAIL;
+    }
+
+    return ret;
+}
+
+
 esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t tasklist_id, int tf_status)
 {
     int ret = ESP_OK;

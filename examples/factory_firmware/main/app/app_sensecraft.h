@@ -62,6 +62,7 @@ struct app_sensecraft
     char topic_up_change_device_status[MQTT_TOPIC_STR_LEN];
     char topic_up_task_publish_ack[MQTT_TOPIC_STR_LEN];
     char topic_up_warn_event_report[MQTT_TOPIC_STR_LEN];
+    char topic_up_model_ota_status[MQTT_TOPIC_STR_LEN];
     char topic_cache[MQTT_TOPIC_STR_LEN];
     char *p_mqtt_recv_buf;
     bool net_flag;
@@ -92,6 +93,12 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_ack_status(intmax_t taskflow_id,
                                                          char *p_module_name,
                                                          int module_status,
                                                          char *p_str, size_t len);
+
+esp_err_t app_sensecraft_mqtt_report_taskflow_model_ota_status(intmax_t taskflow_id,
+                                                                intmax_t taskflow_ctd,
+                                                                int ota_status,
+                                                                int ota_percent,
+                                                                int err_code);
 
 esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t tasklist_id, int tf_status);
 

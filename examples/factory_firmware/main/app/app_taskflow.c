@@ -672,14 +672,21 @@ static void __view_event_handler(void* handler_args,
         {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
             int status = 0;
+            esp_err_t ret = ESP_OK;
             tf_engine_status_get(&status);
-            if( status != TF_STATUS_RUNNING ) {
+            if( status == TF_STATUS_RUNNING  || status ==  TF_STATUS_STARTING) {
+                app_ota_ai_model_download_abort(); // maybe donloading model, need to abort.
+                tf_engine_stop();
+                __task_flow_clean();
+            } else {
                 ESP_LOGI(TAG, "task flow already stopped");
-                //TODO  need report status？
+                char uuid[37];
+                UUIDGen(uuid);
+                ret = app_sensecraft_mqtt_report_taskflow_ack(uuid, 0, 0, TF_STATUS_STOP);
+                if( ret != ESP_OK ) {
+                    ESP_LOGW(TAG, "Failed to report taskflow status to MQTT server");
+                }
             }
-            app_ota_ai_model_download_abort(); // maybe donloading model, need to abort.
-            tf_engine_stop();
-            __task_flow_clean();
             break;
         }
         case VIEW_EVENT_TASK_FLOW_START_BY_LOCAL:
@@ -805,8 +812,29 @@ static void __ctrl_event_handler(void* handler_args,
             p_taskflow->mqtt_connect_flag = false;
             break;
         }
+        case CTRL_EVENT_OTA_AI_MODEL: {
+            ESP_LOGI(TAG, "event: CTRL_EVENT_OTA_AI_MODEL");
+            struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
+            esp_err_t ret = ESP_OK;
+            intmax_t tlid = 0;
+            intmax_t ctd = 0;
+            tf_engine_ctd_get( &ctd );
+            tf_engine_tid_get( &tlid );
+            if(ota_st->status == 0) {
+                ESP_LOGI(TAG, "model ota succeed.");
+            } else if (ota_st->status == 1) {
+                ESP_LOGI(TAG, "report model ota percentage: %d", ota_st->percentage);
+            } else {
+                ESP_LOGE(TAG, "model ota failed, error code: %d", ota_st->err_code);
+            }
+            ret = app_sensecraft_mqtt_report_taskflow_model_ota_status(tlid,ctd, ota_st->status, ota_st->percentage, ota_st->err_code );
+            if( ret != ESP_OK ) {
+                ESP_LOGW(TAG, "Failed to report taskflow model ota status to MQTT server");
+            }
+            break;
+        }
         case CTRL_EVENT_TASK_FLOW_STATUS_REPORT: {
-
+            ESP_LOGI(TAG, "event: CTRL_EVENT_TASK_FLOW_STATUS_REPORT");
             char * p_json = NULL;
             intmax_t tlid = 0;
             intmax_t ctd = 0;
@@ -1010,6 +1038,12 @@ esp_err_t app_taskflow_init(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                         CTRL_EVENT_BASE, 
                                                         CTRL_EVENT_TASK_FLOW_START_BY_CMD, 
+                                                        __ctrl_event_handler, 
+                                                        p_taskflow));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                        CTRL_EVENT_BASE, 
+                                                        CTRL_EVENT_OTA_AI_MODEL, 
                                                         __ctrl_event_handler, 
                                                         p_taskflow));
 
