@@ -339,9 +339,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_TASK_FLOW_STOP:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
-                g_taskdown = 1;
                 lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 // event_post_to
+                g_taskdown = 1;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 if(g_tasktype == 0)
                 {
@@ -355,12 +355,26 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_AI_CAMERA_READY:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_READY");
+                if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive) && (lv_scr_act() != ui_Page_CurTask2) && (lv_scr_act() != ui_Page_CurTask3))
+                {
+                    break;
+                }
                 if(g_avarlive == 0)
                 {
-                    if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+                    if(g_dev_binded)
+                    {
+                        if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+                    }else{
+                        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
+                    }
                 }else if(g_avarlive == 1)
                 {
-                    if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+                    if(g_dev_binded)
+                    {
+                        if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+                    }else{
+                        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
+                    }
                 }
                 break;
             }
