@@ -7,7 +7,7 @@
 #define DEVICEINFO_STORAGE  "deviceinfo"
 
 enum { BLE_CONNECTED, BLE_DISCONNECTED, STATUS_WAITTING };
-
+enum {BLE_SWITCH_OFF,BLE_SWITCH_ON,BLE_SWITCH_DANGLING};
 uint8_t *get_sn(int caller);
 uint8_t *get_eui();
 uint8_t *get_qrcode_content();
@@ -45,5 +45,6 @@ uint16_t get_spiffs_free_size(int caller);
 uint16_t get_sdcard_total_size(int caller);
 uint16_t get_sdcard_free_size(int caller);
 
+void app_device_info_init_early();
 void app_device_info_init();
 
