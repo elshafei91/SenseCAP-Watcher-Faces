@@ -127,7 +127,7 @@ void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_ds
 
     if (!image_loaded && *image_count < MAX_IMAGES) {
         ESP_LOGW("PNG Load", "No image found for prefix %s, creating a black image", file_prefix);
-        size_t size = 412 * 412 * 2; // Assuming the size for a 412x412 image with alpha channel
+        size_t size = 412 * 412 * 3; // Assuming the size for a 412x412 image with alpha channel
         void *black_data = create_black_image(size);
         if (black_data) {
             create_img_dsc(&img_dsc_array[*image_count], black_data, size);
