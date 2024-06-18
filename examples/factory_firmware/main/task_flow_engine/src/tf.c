@@ -532,6 +532,14 @@ esp_err_t tf_engine_tid_get(intmax_t *p_tid)
     __data_unlock(gp_engine);
     return ESP_OK; 
 }
+esp_err_t tf_engine_ctd_get(intmax_t *p_ctd)
+{
+    assert(gp_engine);
+    __data_lock(gp_engine);
+    *p_ctd = gp_engine->tf_info.ctd;
+    __data_unlock(gp_engine);
+    return ESP_OK; 
+}
 esp_err_t tf_engine_type_get(int *p_type)
 {
     assert(gp_engine);

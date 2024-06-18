@@ -174,6 +174,7 @@ struct view_data_ota_status
 struct view_data_taskflow_status
 {
     intmax_t tid;
+    intmax_t ctd;
     int      engine_status;
     char     module_name[32]; // error module
     int      module_status;
@@ -289,6 +290,7 @@ enum {
     CTRL_EVENT_MQTT_CONNECTED,
     CTRL_EVENT_MQTT_OTA_JSON,               //received ota json from MQTT
  
+    CTRL_EVENT_TASK_FLOW_STATUS_REPORT,
     CTRL_EVENT_TASK_FLOW_START_BY_MQTT, // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_BLE,  // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_SR,   // char * , taskflow json, There can only be one listener

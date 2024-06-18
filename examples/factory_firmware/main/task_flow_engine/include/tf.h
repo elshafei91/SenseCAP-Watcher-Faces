@@ -18,17 +18,20 @@ extern "C"
 #define TF_ENGINE_QUEUE_SIZE 3
 
 // task flow status
+#define TF_STATUS_IDLE                 (-1) 
 #define TF_STATUS_RUNNING               0
 #define TF_STATUS_STARTING              1
 #define TF_STATUS_STOP                  2
-#define TF_STATUS_ERR_JSON_PARSE        3
-#define TF_STATUS_ERR_MODULE_NOT_FOUND  4
-#define TF_STATUS_ERR_MODULES_INSTANCE  5
-#define TF_STATUS_ERR_MODULES_PARAMS    6
-#define TF_STATUS_ERR_MODULES_WIRES     7
-#define TF_STATUS_ERR_MODULES_START     8
-#define TF_STATUS_ERR_MODULES_INTERNAL  9   // module runtime internal error
-#define TF_STATUS_IDLE                 (-1) 
+#define TF_STATUS_STOPING               3
+
+#define TF_STATUS_ERR_JSON_PARSE        100
+#define TF_STATUS_ERR_MODULE_NOT_FOUND  101
+#define TF_STATUS_ERR_MODULES_INSTANCE  102
+#define TF_STATUS_ERR_MODULES_PARAMS    103
+#define TF_STATUS_ERR_MODULES_WIRES     104
+#define TF_STATUS_ERR_MODULES_START     105
+#define TF_STATUS_ERR_MODULES_INTERNAL  106   // module runtime internal error
+
 
 typedef struct
 {
@@ -85,6 +88,8 @@ esp_err_t tf_engine_flow_set(const char *p_str, size_t len);
 char* tf_engine_flow_get(void);
 
 esp_err_t tf_engine_tid_get(intmax_t *p_tid);
+
+esp_err_t tf_engine_ctd_get(intmax_t *p_ctd);
 
 esp_err_t tf_engine_type_get(int *p_type);
 

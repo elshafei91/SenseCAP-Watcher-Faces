@@ -58,6 +58,7 @@ struct app_sensecraft
     char mqtt_password[MQTT_TOKEN_LEN];
     char topic_down_task_publish[MQTT_TOPIC_STR_LEN];
     char topic_down_version_notify[MQTT_TOPIC_STR_LEN];
+    char topic_down_task_report[MQTT_TOPIC_STR_LEN];
     char topic_up_change_device_status[MQTT_TOPIC_STR_LEN];
     char topic_up_task_publish_ack[MQTT_TOPIC_STR_LEN];
     char topic_up_warn_event_report[MQTT_TOPIC_STR_LEN];
@@ -82,9 +83,11 @@ esp_err_t app_sensecraft_https_token_gen(struct sensecraft_deviceinfo *p_devicei
 
 esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id,  
                                                 intmax_t taskflow_id,
+                                                intmax_t taskflow_ctd,
                                                 int taskflow_status);
 
 esp_err_t app_sensecraft_mqtt_report_taskflow_ack_status(intmax_t taskflow_id,
+                                                         intmax_t taskflow_ctd,
                                                          int taskflow_status,
                                                          char *p_module_name,
                                                          int module_status,
