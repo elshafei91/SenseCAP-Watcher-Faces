@@ -345,7 +345,7 @@ void virclick_cb(lv_event_t *e)
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
         create_timer(6);    // stop timer
     }else{              // else the device is wifi-configed, then page jump to main page
-        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+        if(lv_scr_act() == ui_Page_Vir)lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
         create_timer(6);    // stop timer
     }
 }
@@ -358,6 +358,11 @@ void virscrload_cb(lv_event_t *e)
     lv_group_set_wrap(g_main, false);
     viewInfoInit();
     view_info_obtain_early();
+}
+
+void virscrunload_cb(lv_event_t * e)
+{
+
 }
 
 void virb1c_cb(lv_event_t *e)
