@@ -904,6 +904,7 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
                                 fetch_string_from_object(root, "url", &client->model.url);
                                 fetch_string_from_object(root, "checksum", &client->model.checksum);
                                 cJSON *classes = cJSON_GetObjectItem(root, "classes");
+                                
                                 if (classes != NULL && cJSON_IsArray(classes))
                                 {
                                     int classes_len = cJSON_GetArraySize(classes) > SSCMA_CLIENT_MODEL_MAX_CLASSES ? SSCMA_CLIENT_MODEL_MAX_CLASSES : cJSON_GetArraySize(classes);

@@ -47,7 +47,8 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
 static wifi_ap_record_t current_connected_wifi;
-static int task_flow_resp;
+// static int task_flow_resp;
+static struct view_data_taskflow_status taskflow_status;
 
 SemaphoreHandle_t semaphorewificonnected;
 SemaphoreHandle_t semaphorewifidisconnected;
@@ -70,6 +71,23 @@ Task *emoji_tasks = NULL;
 static int bind_index;
 
 /*----------------------------------------------------------------------------------------*/
+
+static SemaphoreHandle_t data_sem_handle = NULL;
+
+static void __data_lock(void)
+{
+    if( data_sem_handle == NULL ) {
+        return;
+    }
+    xSemaphoreTake(data_sem_handle, portMAX_DELAY);
+}
+static void __data_unlock(void)
+{
+    if( data_sem_handle == NULL ) {
+        return;
+    }
+    xSemaphoreGive(data_sem_handle);  
+}
 
 /**
  * @brief Initialize the Wi-Fi stack semaphore.
@@ -966,9 +984,19 @@ void handle_taskflow_query_command(char *params)
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "taskflow");
-    cJSON_AddNumberToObject(root, "code", task_flow_resp);
+
+    __data_lock();
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data_rep);
+    cJSON_AddNumberToObject(data_rep, "status", taskflow_status.engine_status);
+    cJSON_AddNumberToObject(data_rep, "tlid", taskflow_status.tid);
+    cJSON_AddNumberToObject(data_rep, "ctd", taskflow_status.ctd);
+    cJSON_AddStringToObject(data_rep, "module", taskflow_status.module_name);
+    cJSON_AddNumberToObject(data_rep, "module_err_code", taskflow_status.module_status);
+    __data_unlock();
+
     char *json_string = cJSON_Print(root);
-    ESP_LOGD(TAG, "JSON String: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON String: %s\n", json_string); //TODO
     send_at_response(json_string);
     cJSON_Delete(root);
     free(json_string);
@@ -1342,6 +1370,8 @@ void app_at_cmd_init()
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
+    data_sem_handle = xSemaphoreCreateMutex();
+
     AT_response_queue = xQueueCreate(10, sizeof(AT_Response));
     xBinarySemaphore_wifitable = xSemaphoreCreateBinary();
     initWiFiStack(&wifiStack_scanned, 5);
@@ -1401,8 +1431,10 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             break;
         case VIEW_EVENT_TASK_FLOW_STATUS: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STATUS");
-            struct view_data_taskflow_status *p_cfg = (struct view_data_taskflow_status *)event_data;
-            task_flow_resp = p_cfg->engine_status;
+            struct view_data_taskflow_status *p_status = (struct view_data_taskflow_status *)event_data;
+            __data_lock();
+            memcpy(&taskflow_status, p_status, sizeof(struct view_data_taskflow_status));
+            __data_unlock();
             break;
         }
         default:

@@ -58,9 +58,12 @@ struct app_sensecraft
     char mqtt_password[MQTT_TOKEN_LEN];
     char topic_down_task_publish[MQTT_TOPIC_STR_LEN];
     char topic_down_version_notify[MQTT_TOPIC_STR_LEN];
+    char topic_down_task_report[MQTT_TOPIC_STR_LEN];
     char topic_up_change_device_status[MQTT_TOPIC_STR_LEN];
     char topic_up_task_publish_ack[MQTT_TOPIC_STR_LEN];
+    char topic_up_taskflow_report[MQTT_TOPIC_STR_LEN];
     char topic_up_warn_event_report[MQTT_TOPIC_STR_LEN];
+    char topic_up_model_ota_status[MQTT_TOPIC_STR_LEN];
     char topic_cache[MQTT_TOPIC_STR_LEN];
     char *p_mqtt_recv_buf;
     bool net_flag;
@@ -80,21 +83,31 @@ esp_err_t app_sensecraft_https_token_get(char *p_token, size_t len);
 
 esp_err_t app_sensecraft_https_token_gen(struct sensecraft_deviceinfo *p_deviceinfo, char *p_token, size_t len);
 
-esp_err_t app_sensecraft_mqtt_report_taskflow_ack(char *request_id,  
+esp_err_t app_sensecraft_mqtt_taskflow_ack(char *request_id,  
                                                 intmax_t taskflow_id,
+                                                intmax_t taskflow_ctd,
                                                 int taskflow_status);
 
-esp_err_t app_sensecraft_mqtt_report_taskflow_ack_status(intmax_t taskflow_id,
-                                                         int taskflow_status,
-                                                         char *p_module_name,
-                                                         int module_status,
-                                                         char *p_str, size_t len);
+esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t taskflow_id,
+                                                     intmax_t taskflow_ctd,
+                                                     int taskflow_status,
+                                                     char *p_module_name,
+                                                     int module_status);
 
-esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t tasklist_id, int tf_status);
+esp_err_t app_sensecraft_mqtt_report_taskflow_info(intmax_t taskflow_id,
+                                                    intmax_t taskflow_ctd,
+                                                    int taskflow_status,
+                                                    char *p_module_name,
+                                                    int module_status,
+                                                    char *p_str, size_t len);
 
-esp_err_t app_sensecraft_mqtt_report_taskflow_module_status(intmax_t tasklist_id, 
-                                                            int tf_status,  
-                                                            char *p_module_name, int module_status);
+esp_err_t app_sensecraft_mqtt_report_taskflow_model_ota_status(intmax_t taskflow_id,
+                                                                intmax_t taskflow_ctd,
+                                                                int ota_status,
+                                                                int ota_percent,
+                                                                int err_code);
+
+                                                                         
 esp_err_t app_sensecraft_mqtt_report_warn_event(intmax_t taskflow_id, 
                                                 char *taskflow_name, 
                                                 char *p_img, size_t img_len, 

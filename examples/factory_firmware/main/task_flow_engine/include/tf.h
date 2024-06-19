@@ -21,14 +21,18 @@ extern "C"
 #define TF_STATUS_RUNNING               0
 #define TF_STATUS_STARTING              1
 #define TF_STATUS_STOP                  2
-#define TF_STATUS_ERR_JSON_PARSE        3
-#define TF_STATUS_ERR_MODULE_NOT_FOUND  4
-#define TF_STATUS_ERR_MODULES_INSTANCE  5
-#define TF_STATUS_ERR_MODULES_PARAMS    6
-#define TF_STATUS_ERR_MODULES_WIRES     7
-#define TF_STATUS_ERR_MODULES_START     8
-#define TF_STATUS_ERR_MODULES_INTERNAL  9   // module runtime internal error
-#define TF_STATUS_NULL                 (-1) 
+#define TF_STATUS_STOPING               3
+#define TF_STATUS_IDLE                  4
+
+#define TF_STATUS_ERR_GENERAL           100
+#define TF_STATUS_ERR_JSON_PARSE        101
+#define TF_STATUS_ERR_MODULE_NOT_FOUND  102
+#define TF_STATUS_ERR_MODULES_INSTANCE  103
+#define TF_STATUS_ERR_MODULES_PARAMS    104
+#define TF_STATUS_ERR_MODULES_WIRES     105
+#define TF_STATUS_ERR_MODULES_START     106
+#define TF_STATUS_ERR_MODULES_INTERNAL  107   // module runtime internal error
+
 
 typedef struct
 {
@@ -70,6 +74,7 @@ typedef struct tf_engine
     void * p_status_cb_arg;
     tf_module_status_cb_t  module_status_cb;
     void * p_module_status_cb_arg;
+    int status;
 } tf_engine_t;
 
 esp_err_t tf_engine_init(void);
@@ -85,10 +90,14 @@ char* tf_engine_flow_get(void);
 
 esp_err_t tf_engine_tid_get(intmax_t *p_tid);
 
+esp_err_t tf_engine_ctd_get(intmax_t *p_ctd);
+
 esp_err_t tf_engine_type_get(int *p_type);
 
 // need free p_info->p_tf_name
 esp_err_t tf_engine_info_get(tf_info_t *p_info);
+
+esp_err_t tf_engine_status_get(int *p_status);
 
 esp_err_t tf_engine_status_cb_register(tf_engine_status_cb_t engine_status_cb, void *p_arg);
 
