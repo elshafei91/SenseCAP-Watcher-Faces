@@ -17,6 +17,7 @@
 #include "esp_event.h"
 #include "esp_wifi.h"
 #include "cJSON.h"
+#include "esp_check.h"
 
 #include "data_defs.h"
 #include "event_loops.h"
@@ -26,6 +27,8 @@
 #include "at_cmd.h"
 #include "app_device_info.h"
 #include "util.h"
+#include "storage.h"
+#include "app_png.h"
 
 #define TAG "AT_CMD"
 /*------------------system basic DS-----------------------------------------------------*/
@@ -357,7 +360,7 @@ void handle_bind_command(char *params)
 
     cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "code");
     bind_index = data->valueint;
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONFIG_SYNC, &bind_index, sizeof(bind_index), pdMS_TO_TICKS(10000));
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONFIG_SYNC, &bind_index, sizeof(bind_index), portMAX_DELAY);
     ESP_LOGI(TAG, "bind_index: %d\n", bind_index);
 
     cJSON_Delete(json);
@@ -376,175 +379,102 @@ void handle_bind_command(char *params)
 }
 
 /*-----------------------------------------------------------------------------------------------------------*/
-static int emoji_index = 1;
-static char *emoji_name_prefix;
-static char *emoji_name_final;
-void parse_json_and_concatenate_emoji(char *json_string)
-{
-    cJSON *json = cJSON_Parse(json_string);
-    if (json == NULL)
-    {
-        ESP_LOGI(TAG, "Error parsing emoji JSON\n");
-    }
-
-    cJSON *name = cJSON_GetObjectItem(json, "name");
-    cJSON *package = cJSON_GetObjectItem(json, "package");
-    cJSON *sum = cJSON_GetObjectItem(json, "sum");
-    cJSON *data = cJSON_GetObjectItem(json, "data");
-    cJSON *total_size = cJSON_GetObjectItem(json, "totalsize");
-    cJSON *emoji_index_cjson = cJSON_GetObjectItem(json, "emoji_index");
-    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data) || !cJSON_IsNumber(total_size))
-    {
-        ESP_LOGI(TAG, "Invalid JSON format in parse_json_and_concatenate_emoji\n");
-        cJSON_Delete(json);
-    }
-
-    emoji_index = emoji_index_cjson->valueint;
-    int prefix_size = 256;
-    if (name && name->valuestring)
-    {
-        emoji_name_prefix[prefix_size - 1] = '\0';
-    }
-    else
-    {
-        fprintf(stderr, "name or name->valuestring is null\n");
-        emoji_name_prefix[0] = '\0';
-    }
-    int emoji_name_length = snprintf(NULL, 0, "emoji name is %s%d", emoji_name_prefix, emoji_index) + 1;
-    char *emoji_name_final = (char *)heap_caps_malloc(emoji_name_length, MALLOC_CAP_SPIRAM);
-    snprintf(emoji_name_final, emoji_name_length, "emoji name is %s%d", emoji_name_prefix, emoji_index);
-
-    total_size = total_size->valueint;
-    int index = package->valueint;
-
-    if (num_jsons == 0)
-    {
-        num_jsons = sum->valueint;
-        emoji_tasks = (Task *)heap_caps_malloc(num_jsons * sizeof(Task), MALLOC_CAP_SPIRAM);
-        if (emoji_tasks == NULL)
-        {
-            ESP_LOGI(TAG, "Failed to allocate memory for tasks\n");
-            cJSON_Delete(json);
-        }
-        for (int i = 0; i < num_jsons; i++)
-        {
-            emoji_tasks[i].data = NULL;
-        }
-    }
-
-    if (emoji_tasks == NULL || index < 0 || index >= num_jsons)
-    {
-        ESP_LOGI(TAG, "emoji Tasks array is not properly allocated or index out of range\n");
-        cJSON_Delete(json);
-    }
-
-    emoji_tasks[index].package = package->valueint;
-    emoji_tasks[index].sum = sum->valueint;
-    emoji_tasks[index].data = (char *)heap_caps_malloc(DATA_LENGTH + 1, MALLOC_CAP_SPIRAM);
-    if (emoji_tasks[index].data == NULL)
-    {
-        ESP_LOGI(TAG, "Failed to allocate memory for data\n");
-        cJSON_Delete(json);
-    }
-    strncpy(emoji_tasks[index].data, data->valuestring, DATA_LENGTH);
-    emoji_tasks[index].data[DATA_LENGTH] = '\0'; // end
-
-    cJSON_Delete(json);
-}
-void concatenate_data_emoji(char *result)
-{
-    // sort
-    for (int i = 0; i < num_jsons - 1; i++)
-    {
-        for (int j = 0; j < num_jsons - 1 - i; j++)
-        {
-            if (emoji_tasks[j].package > emoji_tasks[j + 1].package)
-            {
-                Task temp = emoji_tasks[j];
-                emoji_tasks[j] = emoji_tasks[j + 1];
-                emoji_tasks[j + 1] = temp;
-            }
-        }
-    }
-
-    // concatenate_data
-    result[0] = '\0';
-    for (int i = 0; i < num_jsons; i++)
-    {
-        strcat(result, emoji_tasks[i].data);
-        free(emoji_tasks[i].data);
-    }
-    num_jsons = 0;
-    free(emoji_tasks);
-    emoji_tasks = NULL;
-}
-
-void write_to_file(const char *file_path, const char *data)
-{
-    FILE *file = fopen(file_path, "w");
-    if (file == NULL)
-    {
-        ESP_LOGE("write to file", "Failed to open file for writing: %s", file_path);
-        return;
-    }
-
-    if (fputs(data, file) == EOF)
-    {
-        ESP_LOGE("write to file", "Failed to write data to file: %s", file_path);
-        fclose(file);
-        return;
-    }
-    fclose(file);
-    ESP_LOGI("write to file", "Successfully wrote data to file: %s", file_path);
-}
-
 void handle_emoji_command(char *params)
 {
     ESP_LOGI(TAG, "handle_emoji_command\n");
-    ESP_LOGI(TAG, "emoji Params: %s\n", params);
-    parse_json_and_concatenate_emoji(params);
 
-    int all_received = 1;
-    for (int j = 0; j < num_jsons; j++)
+    char *filename = NULL;
+    char *urls[MAX_URLS] = { 0 };
+    cJSON *json = cJSON_Parse(params);
+    if (json == NULL)
     {
-        if (emoji_tasks[j].data == NULL)
-        {
-            all_received = 0;
-            break;
-        }
-    }
-    if (all_received)
-    {
-        char *result = (char *)heap_caps_malloc(MEMORY_SIZE, MALLOC_CAP_SPIRAM);
-        if (result == NULL)
-        {
-            ESP_LOGE(TAG, "Failed to allocate memory for result in emoji handle\n");
-            for (int k = 0; k < num_jsons; k++)
-            {
-                free(emoji_tasks[k].data);
-            }
-            free(emoji_tasks);
-        }
-
-        concatenate_data_emoji(result);
-        char file_path[256];
-        snprintf(file_path, sizeof(file_path), "/spiffs/%s", emoji_name_final);
-        ESP_LOGI(TAG, "emoji Final data: %s\n", result);
-        // todo write to spiffs
-        write_to_file(file_path, result);
+        printf("Error parsing JSON\n");
     }
 
-    free(emoji_name_final);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // Get the "filename" from the JSON
+    cJSON *filename_item = cJSON_GetObjectItem(json, "filename");
+    if (filename_item != NULL && cJSON_IsString(filename_item))
+    {
+        filename = strdup(filename_item->valuestring);
+    }
+    else
+    {
+        filename = NULL; // If "filename" is not found or not a string, set to NULL
+    }
+
+    // Get the "urls" array from the JSON
+    cJSON *urls_array = cJSON_GetObjectItem(json, "urls");
+    if (urls_array == NULL || !cJSON_IsArray(urls_array))
+    {
+        printf("Error: 'urls' is not an array\n");
+        cJSON_Delete(json);
+    }
+
+    // Extract each URL and copy to the urls array
+    int url_count = cJSON_GetArraySize(urls_array);
+    for (int i = 0; i < url_count && i < MAX_URLS; i++)
+    {
+        cJSON *url_item = cJSON_GetArrayItem(urls_array, i);
+        if (cJSON_IsString(url_item))
+        {
+            urls[i] = strdup(url_item->valuestring); // Duplicate the string
+        }
+        else
+        {
+            urls[i] = NULL; // If it's not a string, set to NULL
+        }
+    }
+
+    download_summary_t summary = download_emoji_images(filename, urls, url_count);
+
+    // Print the extracted filename
+    if (filename != NULL)
+    {
+        printf("Filename: %s\n", filename);
+        free(filename); // Don't forget to free the allocated memory
+    }
+
+    // Create the root JSON object
     cJSON *root = cJSON_CreateObject();
     cJSON *data_rep = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "name", "emoji");
-    cJSON_AddNumberToObject(root, "code", 0);
     cJSON_AddItemToObject(root, "data", data_rep);
-    cJSON_AddStringToObject(data_rep, "emoji", "");
+
+    // Create a JSON array to store the result codes
+    cJSON *code_array = cJSON_CreateArray();
+
+    for (int i = 0; i < url_count; i++)
+    {
+        if (summary.results[i].success)
+        {
+            ESP_LOGI(TAG, "Emoji %d downloaded successfully", i);
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Failed to download emoji %d, error code: %d", i, summary.results[i].error_code);
+        }
+        // Add the result code to the JSON array
+        cJSON_AddItemToArray(code_array, cJSON_CreateNumber(summary.results[i].error_code));
+    }
+
+    // Add the code array to the data_rep object
+    cJSON_AddItemToObject(data_rep, "code", code_array);
+
+    // Print the extracted URLs
+    for (int i = 0; i < MAX_URLS && urls[i] != NULL; i++)
+    {
+        printf("URL %d: %s\n", i + 1, urls[i]);
+        free(urls[i]); // Don't forget to free the allocated memory
+    }
+    
+    cJSON_Delete(json);
+
+    // Convert the root JSON object to a string and send the response
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String: %s\n", json_string);
     send_at_response(json_string);
+
+    // Clean up
     cJSON_Delete(root);
     free(json_string);
 }
@@ -706,23 +636,27 @@ void handle_deviceinfo_cfg_command(char *params)
             }
         }
 
-        if ( timezone_valid || daylight_valid || timestamp_valid) {
+        if (timezone_valid || daylight_valid || timestamp_valid)
+        {
             struct view_data_time_cfg time_cfg;
             memset(&time_cfg, 0, sizeof(time_cfg));
             app_time_cfg_get(&time_cfg);
 
-            if( timezone_valid) {
+            if (timezone_valid)
+            {
                 time_cfg.zone = timezone;
             }
-            if( daylight_valid) {
+            if (daylight_valid)
+            {
                 time_cfg.daylight = daylight;
             }
-            if( timestamp_valid) {
+            if (timestamp_valid)
+            {
                 // auto_update flag don't change, device will update time automatically if it have network.
                 time_cfg.time = utc_timestamp;
                 time_cfg.set_time = true;
             }
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg, sizeof(time_cfg), pdMS_TO_TICKS(10000));
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TIME_CFG_APPLY, &time_cfg, sizeof(time_cfg), portMAX_DELAY);
         }
 
         // get brightness item
@@ -804,12 +738,9 @@ void handle_deviceinfo_command(char *params)
     int sound_value_resp = get_sound(AT_CMD_CALLER);
     int rgb_switch = get_rgb_switch(AT_CMD_CALLER);
     struct view_data_time_cfg cfg;
-    time_t timenow;
     app_time_cfg_get(&cfg);
-    time(&timenow);
-    if (timenow < cfg.time) timenow = cfg.time;
     char timestamp_str[20];
-    snprintf(timestamp_str, sizeof(timestamp_str), "%lld", timenow);
+    snprintf(timestamp_str, sizeof(timestamp_str), "%lld", cfg.time);
     ESP_LOGI(TAG, "Current time configuration:\n");
     ESP_LOGI(TAG, "zone: %d\n", cfg.zone);
 
@@ -942,18 +873,19 @@ void handle_wifi_set(char *params)
     config = NULL;
     vTaskDelay(5000 / portTICK_PERIOD_MS);
 
-    if((xSemaphoreTake(semaphorewificonnected, portMAX_DELAY)==pdTRUE)||(xSemaphoreTake(semaphorewifidisconnected, portMAX_DELAY)==pdTRUE)){
-    cJSON_AddStringToObject(root, "name", config->ssid);
-    cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
-    cJSON_AddItemToObject(root, "data", data);
-    cJSON_AddStringToObject(data, "ssid", ssid);
-    cJSON_AddStringToObject(data, "rssi", "2");
-    cJSON_AddStringToObject(data, "encryption", "WPA");
-    char *json_string = cJSON_Print(root);
-    ESP_LOGD(TAG, "JSON String: %s", json_string);
-    send_at_response(json_string);
-    cJSON_Delete(root);
-    free(json_string);
+    if ((xSemaphoreTake(semaphorewificonnected, portMAX_DELAY) == pdTRUE) || (xSemaphoreTake(semaphorewifidisconnected, portMAX_DELAY) == pdTRUE))
+    {
+        cJSON_AddStringToObject(root, "name", config->ssid);
+        cJSON_AddNumberToObject(root, "code", wifi_connect_failed_reason);
+        cJSON_AddItemToObject(root, "data", data);
+        cJSON_AddStringToObject(data, "ssid", ssid);
+        cJSON_AddStringToObject(data, "rssi", "2");
+        cJSON_AddStringToObject(data, "encryption", "WPA");
+        char *json_string = cJSON_Print(root);
+        ESP_LOGD(TAG, "JSON String: %s", json_string);
+        send_at_response(json_string);
+        cJSON_Delete(root);
+        free(json_string);
     }
 }
 
@@ -1237,7 +1169,7 @@ void handle_taskflow_command(char *params)
         base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
         free(result);
         printf("send task flow is %s", base64_output);
-        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, 4, pdMS_TO_TICKS(10000));
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, 4, portMAX_DELAY);
     }
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
