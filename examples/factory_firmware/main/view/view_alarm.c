@@ -183,6 +183,7 @@ int view_alarm_init(lv_obj_t *ui_screen)
 
 int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 {
+    alarm_timer_start(alarm_st->duration);
     if((!g_dev_binded) && (g_guide_step != 3)){return 0;}
 
     if(lv_scr_act() == ui_Page_ViewAva)
@@ -193,8 +194,6 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     {
         if(view_alarm_status == 0)g_avalivjump = 1;
     }
-
-    alarm_timer_start(alarm_st->duration);
     if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive)){return 0;}
     // for switch avatar emoticon
     emoticon_disp_id = 1;
