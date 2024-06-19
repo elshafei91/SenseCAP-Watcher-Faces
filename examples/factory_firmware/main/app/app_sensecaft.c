@@ -438,7 +438,7 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
                 __parse_mqtt_tasklist(p_data, len);
             } else if (strstr(p_sensecraft->topic_cache, "version-notify")) {
                 __parse_mqtt_version_notify(p_data, len);
-            } else if (strstr(p_sensecraft->topic_cache, "task-report")) {
+            } else if (strstr(p_sensecraft->topic_cache, "task-inquiry")) {
                 __parse_mqtt_task_report(p_data, len);
             }
 
@@ -479,17 +479,26 @@ static void __sensecraft_task(void *p_arg)
     sniprintf(p_sensecraft->topic_down_version_notify, MQTT_TOPIC_STR_LEN, 
                 "sensecraft/ipnode/%s/get/order/version-notify", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_down_task_report, MQTT_TOPIC_STR_LEN, 
-                "sensecraft/ipnode/%s/get/order/task-report", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/get/order/task-inquiry", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_task_publish_ack, MQTT_TOPIC_STR_LEN, 
                 "sensecraft/ipnode/%s/update/order/task-publish-ack", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_taskflow_report, MQTT_TOPIC_STR_LEN, 
-                "sensecraft/ipnode/%s/update/order/task-flow-report", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/update/event/task-flow-report", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_change_device_status, MQTT_TOPIC_STR_LEN, 
                 "sensecraft/ipnode/%s/update/event/change-device-status", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_warn_event_report, MQTT_TOPIC_STR_LEN, 
                 "sensecraft/ipnode/%s/update/event/measure-sensor", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_model_ota_status, MQTT_TOPIC_STR_LEN, 
-                "sensecraft/ipnode/%s/update/event//model-ota-status", p_sensecraft->deviceinfo.eui);
+                "sensecraft/ipnode/%s/update/event/model-ota-status", p_sensecraft->deviceinfo.eui);
+    
+    ESP_LOGI(TAG, "topic_down_task_publish=%s",p_sensecraft->topic_down_task_publish);
+    ESP_LOGI(TAG, "topic_down_version_notify=%s",p_sensecraft->topic_down_version_notify);
+    ESP_LOGI(TAG, "topic_down_task_report=%s",p_sensecraft->topic_down_task_report);
+    ESP_LOGI(TAG, "topic_up_task_publish_ack=%s",p_sensecraft->topic_up_task_publish_ack);
+    ESP_LOGI(TAG, "topic_up_taskflow_report=%s",p_sensecraft->topic_up_taskflow_report);
+    ESP_LOGI(TAG, "topic_up_change_device_status=%s",p_sensecraft->topic_up_change_device_status);
+    ESP_LOGI(TAG, "topic_up_warn_event_report=%s",p_sensecraft->topic_up_warn_event_report);
+    ESP_LOGI(TAG, "topic_up_model_ota_status=%s",p_sensecraft->topic_up_model_ota_status);
 
     while (1) {
         
