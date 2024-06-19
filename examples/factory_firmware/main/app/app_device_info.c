@@ -13,8 +13,6 @@
 #include "esp_check.h"
 #include "esp_system.h"
 #include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_bt_device.h"
 #include "esp_wifi.h"
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
@@ -30,6 +28,7 @@
 #include "app_audio.h"
 #include "audio_player.h"
 #include "app_sensecraft.h"
+#include "app_ble.h"
 #include "factory_info.h"
 #include "tf_module_ai_camera.h"
 #include "util.h"
@@ -332,7 +331,7 @@ uint8_t *get_qrcode_content()
 
 uint8_t *get_bt_mac()
 {
-    const uint8_t *bd_addr = esp_bt_dev_get_address();
+    const uint8_t *bd_addr = app_ble_get_mac_address();
     if (bd_addr)
     {
         ESP_LOGI(TAG, "Bluetooth MAC Address: %02X:%02X:%02X:%02X:%02X:%02X", bd_addr[0], bd_addr[1], bd_addr[2], bd_addr[3], bd_addr[4], bd_addr[5]);
