@@ -166,6 +166,15 @@ void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_ds
     {
         ESP_LOGE("SPIFFS", "Failed to open directory /spiffs");
     }
+    if (!image_loaded && *image_count < MAX_IMAGES) {
+        ESP_LOGW("PNG Load", "No image found for prefix %s, creating a black image", file_prefix);
+        size_t size = 412 * 412 * 3; // Assuming the size for a 412x412 image with alpha channel
+        void *black_data = create_black_image(size);
+        if (black_data) {
+            create_img_dsc(&img_dsc_array[*image_count], black_data, size);
+            (*image_count)++;
+        }
+    }
 }
 
 
@@ -321,14 +330,6 @@ download_summary_t download_emoji_images(char *base_name, char *urls[], int url_
         } else {
             results[i].success = false;
             results[i].error_code = ESP_FAIL;
-
-    if (!image_loaded && *image_count < MAX_IMAGES) {
-        ESP_LOGW("PNG Load", "No image found for prefix %s, creating a black image", file_prefix);
-        size_t size = 412 * 412 * 3; // Assuming the size for a 412x412 image with alpha channel
-        void *black_data = create_black_image(size);
-        if (black_data) {
-            create_img_dsc(&img_dsc_array[*image_count], black_data, size);
-            (*image_count)++;
 
         }
     }
