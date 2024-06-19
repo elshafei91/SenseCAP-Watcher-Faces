@@ -671,6 +671,9 @@ void ui_event_Page_Vir(lv_event_t * e)
     if(event_code == LV_EVENT_SCREEN_LOADED) {
         virscrload_cb(e);
     }
+    if(event_code == LV_EVENT_SCREEN_UNLOADED) {
+        virscrunload_cb(e);
+    }
 }
 void ui_event_virbtn1(lv_event_t * e)
 {

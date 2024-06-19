@@ -15,6 +15,7 @@ void startload_cb(lv_event_t * e);
 void loadscrload_cb(lv_event_t * e);
 void virclick_cb(lv_event_t * e);
 void virscrload_cb(lv_event_t * e);
+void virscrunload_cb(lv_event_t * e);
 void virb1c_cb(lv_event_t * e);
 void virb2c_cb(lv_event_t * e);
 void maingestureup_cb(lv_event_t * e);
