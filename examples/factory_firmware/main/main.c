@@ -243,7 +243,11 @@ void app_main(void)
     // app modules init
     xTaskCreatePinnedToCore(task_app_init, "task_app_init", 4096, NULL, 5, NULL, 1);
 
+#ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
+    static char buffer[1024];
+#else
     static char buffer[512];
+#endif
     while (1)
     {
         sprintf(buffer,
@@ -283,6 +287,9 @@ void app_main(void)
         ESP_LOGI("task stack", "\nTask Name       Status  Prio    HWM     Task#\n%s\n", buffer);
 #endif
 
+#ifdef CONFIG_ESP_EVENT_LOOP_PROFILING
+        esp_event_dump(stdout);
+#endif
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
