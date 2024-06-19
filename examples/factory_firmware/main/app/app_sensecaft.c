@@ -323,7 +323,8 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
             } 
             p_sensecraft->mqtt_connected_flag = false;
             ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
-
+            esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_DISCONNECTED, 
+                                NULL, 0, pdMS_TO_TICKS(10000));
             break;
 
         case MQTT_EVENT_SUBSCRIBED:

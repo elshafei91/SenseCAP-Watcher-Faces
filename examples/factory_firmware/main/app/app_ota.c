@@ -820,12 +820,12 @@ static esp_err_t ota_status(int ota_event_type, int total_progress)
     esp_err_t ret = ESP_FAIL;
     ota_status_q_item_t ota_status_q_item;
     struct view_data_ota_status ota_status;
-    bool be_timeout = false;
+    bool be_timeout = false, need_force_stop = false;
     int percentage = 0, timeout_cnt = 0;
 
     int timeout_max = ota_event_type == CTRL_EVENT_OTA_ESP32_FW ? (60 * 10) : (60 * 5);  //chunk of esp32 may be larger
 
-    while (1) {
+    while (atomic_load(&g_network_connected_flag)) {
         BaseType_t res = xQueueReceive(g_Q_ota_status, &ota_status_q_item, pdMS_TO_TICKS(1000));
         if (res != pdPASS) {
             timeout_cnt++;
@@ -876,6 +876,24 @@ static esp_err_t ota_status(int ota_event_type, int total_progress)
         ota_status.err_code = ESP_ERR_OTA_TIMEOUT;
         ota_status.percentage = 0;
         ESP_LOGW(TAG, "ota status, timeout happen, it was a really long waiting (%d sec)!!!", timeout_max);
+        need_force_stop = true;
+    } else if (!atomic_load(&g_network_connected_flag)) {
+        // network connection broken
+        ota_status.status = SENSECRAFT_OTA_STATUS_FAIL;
+        ota_status.err_code = ESP_ERR_OTA_CONNECTION_FAIL;
+        ota_status.percentage = 0;
+        ESP_LOGW(TAG, "ota status, network connection is broken");
+        need_force_stop = true;
+    } else if (ret == ESP_OK) {
+        // succeed
+        ota_status.err_code = ESP_OK;
+    } else {
+        ota_status.status = SENSECRAFT_OTA_STATUS_FAIL;
+        ota_status.err_code = ota_status_q_item.ota_status.err_code;
+        ota_status.percentage = 0;
+    }
+
+    if (need_force_stop) {
         if (ota_event_type == CTRL_EVENT_OTA_ESP32_FW) {
             xEventGroupSetBits(g_eg_globalsync, EVENT_OTA_STOP_BY_TOO_SLOW);
         } else if (ota_event_type == CTRL_EVENT_OTA_HIMAX_FW) {
@@ -887,14 +905,8 @@ static esp_err_t ota_status(int ota_event_type, int total_progress)
                 }
             }
         }
-    } else if (ret == ESP_OK) {
-        // succeed
-        ota_status.err_code = ESP_OK;
-    } else {
-        ota_status.status = SENSECRAFT_OTA_STATUS_FAIL;
-        ota_status.err_code = ota_status_q_item.ota_status.err_code;
-        ota_status.percentage = 0;
     }
+
     ota_status_report(&ota_status);
 
     return ret;
@@ -1039,6 +1051,10 @@ static void __mqtt_ota_executor_task(void *p_arg)
             //about to issue the ota call, clean up the ota status Q which might be filled
             //by the console ota cmd
             xQueueReset(g_Q_ota_status);
+
+            //wait a while for network detection
+            while (!atomic_load(&g_network_connected_flag))
+                vTaskDelay(pdMS_TO_TICKS(1000));
 
             bool need_reboot = false;
             //upgrade himax
