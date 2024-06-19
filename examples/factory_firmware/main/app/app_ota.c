@@ -918,6 +918,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
         if (xQueuePeek(g_Q_ota_msg, &ota_msg_cjson, portMAX_DELAY)) {
             if (atomic_load(&g_ota_running)) {
                 ESP_LOGW(TAG, "peek a mqtt ota request, but another ota is going, can't accept 2 ota job, drop this");
+                ota_status_report_error(ESP_ERR_OTA_ALREADY_RUNNING);
                 goto cleanup;  // an ota is under going, might be issued manually by console command, just drop
             }
 
