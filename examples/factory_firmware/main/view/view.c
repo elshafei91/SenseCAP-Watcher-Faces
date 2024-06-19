@@ -115,6 +115,30 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
+            case VIEW_EVENT_EMOJI_DOWLOAD_BAR:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_BAR");
+                int *emoji_download_per = (int *)event_data;
+                _ui_screen_change(&ui_Page_emoticon, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_emoticon_screen_init);
+                // ESP_LOGI(TAG, "emoji_download_per : %d", *emoji_download_per);
+                if(*emoji_download_per < 100){
+                    lv_obj_clear_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_add_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);
+                    lv_label_set_text(ui_facet, "Uploading\nface...");
+                    lv_arc_set_value(ui_facearc, *emoji_download_per);
+                    static char download_per[5];
+                    sprintf(download_per, "%d%%", *emoji_download_per);
+                    lv_label_set_text(ui_facetper,download_per);
+                }
+                if(*emoji_download_per>=100)
+                {
+                    lv_obj_add_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_clear_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);
+                    lv_arc_set_value(ui_facearc, 100);
+                    lv_label_set_text(ui_facet, "Upload Finish!");
+                }
+                break;
+            }
+
             case VIEW_EVENT_INFO_OBTAIN:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_INFO_OBTAIN");
                 view_info_obtain();
@@ -573,6 +597,10 @@ int view_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, 
                                                             __view_event_handler, NULL, NULL));
 
     if((bat_per < 1) && (! is_charging))

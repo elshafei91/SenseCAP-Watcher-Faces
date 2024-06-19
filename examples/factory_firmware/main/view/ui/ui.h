@@ -376,6 +376,8 @@ extern lv_obj_t * ui_facearc;
 extern lv_obj_t * ui_faceper;
 extern lv_obj_t * ui_facetper;
 extern lv_obj_t * ui_facetsym;
+void ui_event_emoticonok(lv_event_t * e);
+extern lv_obj_t * ui_emoticonok;
 // SCREEN: ui_Page_flag
 void ui_Page_flag_screen_init(void);
 extern lv_obj_t * ui_Page_flag;

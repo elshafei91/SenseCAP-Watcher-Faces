@@ -414,6 +414,8 @@ lv_obj_t * ui_facearc;
 lv_obj_t * ui_faceper;
 lv_obj_t * ui_facetper;
 lv_obj_t * ui_facetsym;
+void ui_event_emoticonok(lv_event_t * e);
+lv_obj_t * ui_emoticonok;
 
 
 // SCREEN: ui_Page_flag
@@ -1474,6 +1476,14 @@ void ui_event_guide2p2(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
         guide2liveclick_cb(e);
+    }
+}
+void ui_event_emoticonok(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        emoticonback_cb(e);
     }
 }
 void ui_event_guidebtn1(lv_event_t * e)

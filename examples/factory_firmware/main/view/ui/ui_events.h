@@ -147,6 +147,7 @@ void pageguidelivef_cb(lv_event_t * e);
 void pageguidelivescrload_cb(lv_event_t * e);
 void guideliveclick_cb(lv_event_t * e);
 void guide2liveclick_cb(lv_event_t * e);
+void emoticonback_cb(lv_event_t * e);
 void guidebtn1click_cb(lv_event_t * e);
 void guidebtn2click_cb(lv_event_t * e);
 

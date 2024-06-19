@@ -77,4 +77,21 @@ void ui_Page_emoticon_screen_init(void)
     lv_obj_set_style_text_opa(ui_facetsym, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_facetsym, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    ui_emoticonok = lv_btn_create(ui_Page_emoticon);
+    lv_obj_set_width(ui_emoticonok, 60);
+    lv_obj_set_height(ui_emoticonok, 60);
+    lv_obj_set_x(ui_emoticonok, 0);
+    lv_obj_set_y(ui_emoticonok, 128);
+    lv_obj_set_align(ui_emoticonok, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_clear_flag(ui_emoticonok, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_radius(ui_emoticonok, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_emoticonok, lv_color_hex(0xA1D42A), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_emoticonok, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_emoticonok, &ui_img_wifiok_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_recolor(ui_emoticonok, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_recolor_opa(ui_emoticonok, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_add_event_cb(ui_emoticonok, ui_event_emoticonok, LV_EVENT_ALL, NULL);
+
 }
