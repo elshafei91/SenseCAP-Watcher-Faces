@@ -1306,6 +1306,11 @@ void guide2avaclick_cb(lv_event_t * e)
     }
 }
 
+void emoticonback_cb(lv_event_t * e)
+{
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+}
+
 void guidebtn1click_cb(lv_event_t * e)
 {
     lv_pm_open_page(g_main, &group_page_guide, PM_ADD_OBJS_TO_GROUP, &ui_Page_guide1, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_guide1_screen_init);
