@@ -28,6 +28,7 @@ struct app_taskflow
     struct view_data_taskflow_status status;
     bool status_need_report;
     bool mqtt_connect_flag;
+    int report_cnt;
 };
 
 

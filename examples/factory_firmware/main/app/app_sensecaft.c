@@ -602,7 +602,6 @@ static void __event_loop_handler(void *handler_args, esp_event_base_t base, int3
  ************************************************************************/
 esp_err_t app_sensecraft_init(void)
 {
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
