@@ -174,6 +174,7 @@ struct view_data_ota_status
 struct view_data_taskflow_status
 {
     intmax_t tid;
+    intmax_t ctd;
     int      engine_status;
     char     module_name[32]; // error module
     int      module_status;
@@ -205,7 +206,11 @@ enum {
     VIEW_EVENT_USAGE_GUIDE_SWITCH,
     VIEW_EVENT_SOUND,
     VIEW_EVENT_CLOUD_SERVICE_SWITCH,
+
     VIEW_EVENT_EMOJI_DOWLOAD_BAR,       //Display the progress of emoticon downloads
+
+    VIEW_EVENT_INFO_OBTAIN,
+    
     VIEW_EVENT_WIFI_LIST,       //view_data_wifi_list_t
     VIEW_EVENT_WIFI_LIST_REQ,   // NULL
     VIEW_EVENT_WIFI_CONNECT,    // struct view_data_wifi_config
@@ -287,8 +292,10 @@ typedef struct ai_service_pack
 enum {
     CTRL_EVENT_SNTP_TIME_SYNCED = 0,        //time is synced with sntp server
     CTRL_EVENT_MQTT_CONNECTED,
+    CTRL_EVENT_MQTT_DISCONNECTED,
     CTRL_EVENT_MQTT_OTA_JSON,               //received ota json from MQTT
  
+    CTRL_EVENT_TASK_FLOW_STATUS_REPORT,
     CTRL_EVENT_TASK_FLOW_START_BY_MQTT, // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_BLE,  // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_SR,   // char * , taskflow json, There can only be one listener

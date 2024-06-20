@@ -1,4 +1,5 @@
-#include "string.h"
+#include <string.h>
+#include <stdatomic.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -27,6 +28,8 @@
 #define WIFI_CONFIG_ENTRY_STACK_SIZE 10240
 #define WIFI_CONNECTED_BIT           BIT0
 #define WIFI_FAIL_BIT                BIT1
+#define PING_PERIOD_MAX              60         // n * 5seconds, 60 means 5 minutes
+#define PING_PERIOD_DECAY_STEP       20         // time counting step when mqtt disconnect
 
 struct app_wifi
 {
@@ -39,6 +42,7 @@ static struct app_wifi _g_wifi_cfg;
 static SemaphoreHandle_t __g_wifi_mutex;
 static SemaphoreHandle_t __g_data_mutex;
 static SemaphoreHandle_t __g_net_check_sem;
+static volatile atomic_int __g_ping_period_cnt = ATOMIC_VAR_INIT(0);
 
 static int s_retry_num = 0;
 static int wifi_retry_max = 3;
@@ -535,6 +539,7 @@ static void __ping_end(esp_ping_handle_t hdl, void *args)
     {
         __wifi_st_get(&st);
         st.is_network = true;
+        atomic_store(&__g_ping_period_cnt, 0);  //reset the counter if network is good
         __wifi_st_set(&st);
     }
     else
@@ -584,7 +589,7 @@ static void __app_wifi_task(void *p_arg)
                 {
                     cnt++;
                     // 5min check network
-                    if (cnt > 60)
+                    if (cnt > PING_PERIOD_MAX)
                     {
                         cnt = 0;
                         ESP_LOGI(TAG, "Network normal last time, retry check network...");
@@ -593,9 +598,15 @@ static void __app_wifi_task(void *p_arg)
                     // uint8_t buf[32];
                     // int len = 32;
                     // app_https_upload_audio(buf, len);
+                    if (atomic_load(&__g_ping_period_cnt) > PING_PERIOD_MAX) {
+                        atomic_store(&__g_ping_period_cnt, 0);
+                        ESP_LOGW(TAG, "network seems to be down, sensed by MQTT, ping now ...");
+                        __ping_start();
+                    }
                 }
                 else
                 {
+                    cnt = 0;
                     ESP_LOGI(TAG, "Last network exception, check network...");
                     __ping_start();
                 }
@@ -651,6 +662,11 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
         case VIEW_EVENT_SHUTDOWN: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
             __wifi_shutdown();
+            break;
+        }
+        case CTRL_EVENT_MQTT_DISCONNECTED: {
+            ESP_LOGI(TAG, "event: CTRL_EVENT_MQTT_DISCONNECTED, speed up ping time counting ...");
+            atomic_fetch_add(&__g_ping_period_cnt, PING_PERIOD_DECAY_STEP);
             break;
         }
         default:
@@ -775,6 +791,8 @@ int app_wifi_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CFG_DELETE, __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_DISCONNECTED, __view_event_handler, NULL, NULL));
 
     wifi_config_t wifi_cfg;
     struct view_data_wifi_st wifi_table_element_connected;

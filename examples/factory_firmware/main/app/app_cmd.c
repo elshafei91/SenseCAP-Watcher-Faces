@@ -108,6 +108,26 @@ static void register_cmd_reboot(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* factory reset **************/
+static int do_factory_reset(int argc, char **argv)
+{
+    set_reset_factory();
+    return 0;
+}
+
+static void register_cmd_factory_reset(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "factory_reset",
+        .help = "factory reset and reboot the device",
+        .hint = NULL,
+        .func = &do_factory_reset,
+        .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+
 /************* force ota **************/
 static struct {
     struct arg_int *type;
@@ -351,6 +371,26 @@ static void register_cmd_factory_info(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* battery percent get  **************/
+static int battery_get_cmd(int argc, char **argv)
+{
+    uint8_t bat_per = bsp_battery_get_percent();
+    printf("battery percentage: %d%%\r\n",bat_per );
+    return 0;
+}
+
+static void register_cmd_battery(void)
+{
+    const esp_console_cmd_t cmd = {
+        .command = "battery",
+        .help = "get battery percent",
+        .hint = NULL,
+        .func = &battery_get_cmd,
+        .argtable = NULL
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
 /************* bsp function  **************/
 static struct {
     struct arg_rex0 *subcmd;
@@ -426,8 +466,10 @@ int app_cmd_init(void)
     register_cmd_force_ota();
     register_cmd_taskflow();
     register_cmd_factory_info();
+    register_cmd_battery();
     register_bsp_cmd();
     register_cmd_reboot();
+    register_cmd_factory_reset();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
     esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
