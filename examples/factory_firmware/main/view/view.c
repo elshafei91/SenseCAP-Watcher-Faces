@@ -145,6 +145,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
+            case VIEW_EVENT_MODE_STANDBY:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_MODE_STANDBY");
+                
+                break;
+            }
+
             case VIEW_EVENT_USAGE_GUIDE_SWITCH:
             {
                 ESP_LOGI(TAG, "event: VIEW_EVENT_USAGE_GUIDE_SWITCH");
@@ -601,6 +607,10 @@ int view_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_MODE_STANDBY, 
                                                             __view_event_handler, NULL, NULL));
 
     if((bat_per < 1) && (! is_charging))
