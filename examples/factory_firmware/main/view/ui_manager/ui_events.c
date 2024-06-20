@@ -447,7 +447,6 @@ void backset_cb(lv_event_t * e)
 {
     ESP_LOGI(CLICK_TAG, "backset_cb");
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
-    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
 }
 
 void backmenu_cb(lv_event_t * e)
@@ -530,7 +529,7 @@ void viewac_cb(lv_event_t *e)
 
 void viewaf_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "viewaf_cb");
+    // ESP_LOGI(CLICK_TAG, "viewaf_cb");
     if(g_alarm_p == 0)
     {
         lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
@@ -572,11 +571,9 @@ void viewlc_cb(lv_event_t *e)
 
 void viewlf_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "viewlf_cb");
-    // if(g_alarm_p ==0){
-        _ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
-        g_avarlive = 1;
-    // }
+    // ESP_LOGI(CLICK_TAG, "viewlf_cb");
+    _ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+    g_avarlive = 1;
 }
 
 void viewlsl_cb(lv_event_t *e)
