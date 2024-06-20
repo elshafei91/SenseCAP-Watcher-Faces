@@ -423,6 +423,8 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
             if( ret != ESP_OK ) {
                 need_report = true;
                 ESP_LOGW(TAG, "Failed to report taskflow ack status to MQTT server");
+            } else {
+                p_taskflow->report_cnt = 0;
             }
             free(p_json);
             p_json = NULL;
@@ -553,7 +555,8 @@ static void __taskflow_task(void *p_arg)
     struct app_taskflow * p_taskflow = ( struct app_taskflow *)p_arg;
     esp_err_t ret = ESP_OK;
     struct view_data_taskflow_status status;
-    int cnt = 0;
+    
+    p_taskflow->report_cnt = 0;
 
     while(1) {
         
@@ -590,12 +593,12 @@ static void __taskflow_task(void *p_arg)
                 }
                 __data_unlock(p_taskflow);
                 
-                cnt = 0; //reset cnt
+                p_taskflow->report_cnt = 0; //reset cnt
 
             } else {
                 
                 // 3 min
-                if ( cnt  > 180 ) {
+                if ( p_taskflow->report_cnt  > 180 ) {
                     ESP_LOGI(TAG, "need report taskflow status");
                     intmax_t tlid = 0;
                     intmax_t ctd = 0;
@@ -620,7 +623,7 @@ static void __taskflow_task(void *p_arg)
                     __data_unlock(p_taskflow);
 
                 }
-                cnt++;
+                p_taskflow->report_cnt++;
             }
         } 
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -682,6 +685,8 @@ static void __view_event_handler(void* handler_args,
                 ret = app_sensecraft_mqtt_report_taskflow_status( 0, 0, TF_STATUS_STOP, NULL, 0);
                 if( ret != ESP_OK ) {
                     ESP_LOGW(TAG, "Failed to report taskflow status to MQTT server");
+                } else {
+                    p_taskflow->report_cnt = 0; 
                 }
             }
             break;
@@ -724,6 +729,8 @@ static void __view_event_handler(void* handler_args,
                     ret = app_sensecraft_mqtt_report_taskflow_status(tid, ctd, TF_STATUS_STARTING, NULL, 0);
                     if( ret != ESP_OK ) {
                         ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+                    } else {
+                        p_taskflow->report_cnt = 0; 
                     }
                 }
 
@@ -783,6 +790,8 @@ static void __taskflow_start(struct app_taskflow * p_taskflow, char *p_task_flow
         ret = app_sensecraft_mqtt_report_taskflow_status(tid, ctd, TF_STATUS_STARTING, NULL, 0);
         if( ret != ESP_OK ) {
             ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
+        } else {
+            p_taskflow->report_cnt = 0; 
         }
     }
 
