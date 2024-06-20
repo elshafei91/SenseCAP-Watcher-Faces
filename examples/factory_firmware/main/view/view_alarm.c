@@ -183,9 +183,6 @@ int view_alarm_init(lv_obj_t *ui_screen)
 
 int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
 {
-    alarm_timer_start(alarm_st->duration);
-    if((!g_dev_binded) && (g_guide_step != 3)){return 0;}
-
     if(lv_scr_act() == ui_Page_ViewAva)
     {
         if(view_alarm_status == 0)g_avalivjump = 0;
@@ -194,6 +191,9 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     {
         if(view_alarm_status == 0)g_avalivjump = 1;
     }
+    view_alarm_status = 1;
+    alarm_timer_start(alarm_st->duration);
+    if((!g_dev_binded) && (g_guide_step != 3)){return 0;}
     if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive)){return 0;}
     // for switch avatar emoticon
     emoticon_disp_id = 1;
@@ -201,7 +201,7 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     if(lv_scr_act() == ui_Page_ViewAva)lv_event_send(ui_Page_ViewAva, LV_EVENT_SCREEN_LOADED, NULL);
 
     // turn the page to view live
-    if ((lv_scr_act() != ui_Page_ViewLive) && (g_alarm_p == 0) && (g_avarlive == 0)){
+    if ((lv_scr_act() != ui_Page_ViewLive) && (g_avarlive == 0)){
         lv_group_focus_obj(ui_Page_ViewLive);
     }
     // clear alarm text
@@ -246,28 +246,29 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     }
     // initial indicator and state
     if(lv_scr_act() == ui_Page_ViewLive){
-        indicator_value = 0;
-        lv_arc_set_value(ui_alarm_indicator, indicator_value);
         lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_background(ui_image);
-        lv_obj_move_foreground(ui_viewlivp2);
-
-        // alarm indicator animation start
-        lv_anim_init(&a);
-        lv_anim_set_var(&a, ui_alarm_indicator);
-        lv_anim_set_exec_cb(&a, set_angle);
-        lv_anim_set_time(&a, (alarm_st->duration) * 1000);
-        lv_anim_set_values(&a, 10, 100);
-        lv_anim_start(&a);
     }
-    view_alarm_status = 1;
+    indicator_value = 0;
+    lv_arc_set_value(ui_alarm_indicator, indicator_value);
+    
+    lv_obj_move_background(ui_image);
+    lv_obj_move_foreground(ui_viewlivp2);
+
+    // alarm indicator animation start
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, ui_alarm_indicator);
+    lv_anim_set_exec_cb(&a, set_angle);
+    lv_anim_set_time(&a, (alarm_st->duration) * 1000);
+    lv_anim_set_values(&a, 10, 100);
+    lv_anim_start(&a);
 
     return ESP_OK;
 }
 
 void view_alarm_off(uint8_t task_down)
 {    
+    view_alarm_status = 0;
     alarm_timer_stop();
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_image, LV_OBJ_FLAG_HIDDEN);
@@ -288,7 +289,6 @@ void view_alarm_off(uint8_t task_down)
         _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
         lv_group_focus_obj(ui_Page_ViewAva);
     }
-    view_alarm_status = 0;
 }
 
 void view_task_error_init()

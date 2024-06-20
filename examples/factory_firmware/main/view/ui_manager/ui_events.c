@@ -55,6 +55,7 @@ extern uint8_t shutdown_state;
 extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
 extern lv_obj_t *ui_alarm_indicator;
 extern lv_obj_t * ui_task_error;
+extern uint8_t view_alarm_status;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -572,16 +573,21 @@ void viewlc_cb(lv_event_t *e)
 void viewlf_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "viewlf_cb");
-    if(g_alarm_p ==0){
+    // if(g_alarm_p ==0){
         _ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
         g_avarlive = 1;
-    }
+    // }
 }
 
 void viewlsl_cb(lv_event_t *e)
 {
     g_avarlive = 1;
     lv_group_focus_obj(ui_Page_ViewLive);
+    if(view_alarm_status == 1)
+    {
+        lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void viewlsul_cb(lv_event_t *e) 
