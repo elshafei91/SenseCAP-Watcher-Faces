@@ -449,6 +449,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_ERROR");
                 const char* error_msg = (const char*)event_data;
                 lv_obj_clear_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(ui_task_error);
                 lv_label_set_text(ui_taskerrt2, error_msg);
                 break;
             }

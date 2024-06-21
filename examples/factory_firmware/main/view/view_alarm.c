@@ -173,8 +173,8 @@ int view_alarm_init(lv_obj_t *ui_screen)
     ui_image = lv_img_create(ui_viewlivp2);
     lv_obj_set_align(ui_image, LV_ALIGN_CENTER);
 
-    view_task_error_init();
     view_alarm_panel_init();
+    view_task_error_init();
 
     ESP_ERROR_CHECK(esp_timer_create(&alarm_timer_args, &alarm_timer));
 
