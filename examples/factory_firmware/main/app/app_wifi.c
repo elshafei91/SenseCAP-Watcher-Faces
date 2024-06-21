@@ -400,7 +400,7 @@ void addWiFiEntryToStack(WiFiStack *stack, uint8_t ssid[33], int8_t rssi, const 
 void wifi_scan(void)
 {
     esp_err_t ret;
-    const int max_cnt = 5;
+    const int max_cnt = WIFI_SCAN_RESULT_CNT_MAX;
     wifi_ap_record_t *ap_info = psram_calloc(1, sizeof(wifi_ap_record_t) * max_cnt);
     uint16_t ap_cnt = max_cnt;
 

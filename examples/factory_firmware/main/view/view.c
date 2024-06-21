@@ -328,6 +328,19 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
+            case VIEW_EVENT_BLE_SWITCH:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_BLE_SWITCH, %d", *(int *)event_data);
+                int *sw = (int *)event_data;
+                if((*sw))
+                {
+                    lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+                }else{
+                    lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
+                }
+
+                break;
+            }
+
             case VIEW_EVENT_SOUND:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_SOUND");
                 uint8_t * vol_st = (uint8_t *)event_data;
@@ -541,7 +554,11 @@ int view_init(void)
                                                             
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, 
-                                                            __view_event_handler, NULL, NULL));                                                                                                                 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_BLE_SWITCH, 
+                                                            __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, 
