@@ -202,6 +202,7 @@ esp_err_t bsp_spi_bus_init(void)
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .max_transfer_sz = 4095,
+        .isr_cpu_id = ESP_INTR_CPU_AFFINITY_1,
     };
     BSP_ERROR_CHECK_RETURN_ERR(spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO));
 
@@ -212,6 +213,7 @@ esp_err_t bsp_spi_bus_init(void)
         .data2_io_num = BSP_SPI3_HOST_DATA2,
         .data3_io_num = BSP_SPI3_HOST_DATA3,
         .max_transfer_sz = DRV_LCD_H_RES * DRV_LCD_V_RES * DRV_LCD_BITS_PER_PIXEL / 8 / CONFIG_BSP_LCD_SPI_DMA_SIZE_DIV,
+        .isr_cpu_id = ESP_INTR_CPU_AFFINITY_1,
     };
 
     BSP_ERROR_CHECK_RETURN_ERR(spi_bus_initialize(SPI3_HOST, &qspi_cfg, SPI_DMA_CH_AUTO));

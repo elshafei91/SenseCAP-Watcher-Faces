@@ -1043,7 +1043,7 @@ void app_device_info_init()
     const int stack_size = 10 * 1024;
     StackType_t *task_stack = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
     StaticTask_t *task_tcb = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
-    xTaskCreateStatic(__app_device_info_task, "app_device_info", stack_size, NULL, 5, task_stack, task_tcb);
+    xTaskCreateStaticPinnedToCore(__app_device_info_task, "app_device_info", stack_size, NULL, 5, task_stack, task_tcb, 1);
 
     esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, __event_loop_handler, NULL);
 
