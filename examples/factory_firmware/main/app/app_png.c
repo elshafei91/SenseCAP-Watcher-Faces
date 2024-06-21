@@ -287,7 +287,7 @@ download_summary_t download_emoji_images(char *base_name, char *urls[], int url_
 
     for (int url_index = 0; url_index < url_count; url_index++) {
         char name_with_index[50];
-        snprintf(name_with_index, sizeof(name_with_index), "%s%d", base_name, url_index);
+        snprintf(name_with_index, sizeof(name_with_index), "%s%d", base_name, url_index+1);
         char *emoji_name = strdup(name_with_index);
 
         download_task_arg_t *task_arg = (download_task_arg_t *)calloc(1, sizeof(download_task_arg_t));
