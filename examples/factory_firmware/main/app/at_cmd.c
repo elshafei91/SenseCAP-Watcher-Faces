@@ -5,6 +5,7 @@
 #include <regex.h>
 #include <time.h>
 #include <mbedtls/base64.h>
+#include <sys/param.h>
 
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
@@ -1056,8 +1057,10 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
     // Get the time configuration
     struct view_data_time_cfg cfg;
     app_time_cfg_get(&cfg);
+    time_t now;
+    time(&now);
     char timestamp_str[20];
-    snprintf(timestamp_str, sizeof(timestamp_str), "%lld", cfg.time);
+    snprintf(timestamp_str, sizeof(timestamp_str), "%lld", MAX(cfg.time, now));
     ESP_LOGI(TAG, "Current time configuration:\n");
     ESP_LOGI(TAG, "zone: %d\n", cfg.zone);
 
