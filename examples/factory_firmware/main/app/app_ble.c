@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <stdatomic.h>
+#include <sys/param.h>
 
 #include "freertos/FreeRTOS.h"
 #include "esp_check.h"
@@ -17,15 +18,16 @@
 #include "host/ble_hs.h"
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
+#include "services/gatt/ble_svc_gatt.h"
 
 #include "sensecap-watcher.h"
 
 #include "data_defs.h"
 #include "event_loops.h"
-#include "util.h"
 #include "app_ble.h"
 #include "factory_info.h"
-
+#include "at_cmd.h"
+#include "util.h"
 
 /*
 Bluetooth LE uses four association models depending on the I/O capabilities of the devices.
@@ -49,7 +51,7 @@ Passkey Entry: designed for the scenario where one device has input capability b
 
 static const char *TAG = "ble";
 
-
+/* GAP */
 static uint8_t adv_data[31] = {
     0x05, 0x03, 0x86, 0x28, 0x86, 0xA8,
     0x18, 0x09, '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', '0', '1', '-', 'W', 'A', 'C', 'H'
@@ -58,11 +60,215 @@ static uint8_t adv_data[31] = {
 static uint8_t ble_mac_addr[6] = {0};
 static uint8_t own_addr_type;
 static SemaphoreHandle_t g_sem_mac_addr;
+static volatile atomic_bool g_ble_synced = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool g_ble_adv = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool g_ble_connected = ATOMIC_VAR_INIT(false);
+static volatile atomic_int g_curr_mtu = ATOMIC_VAR_INIT(23);
+static uint16_t g_curr_ble_conn_handle = 0xffff;
 
 void ble_store_config_init(void);
 static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
 
+/* GATT */
+static const ble_uuid128_t gatt_svr_svc_uuid =
+    BLE_UUID128_INIT(0x55, 0xE4, 0x05, 0xD2, 0xAF, 0x9F, 0xA9, 0x8F, 0xE5, 0x4A, 0x7D, 0xFE, 0x43, 0x53, 0x53, 0x49);
 
+/* A characteristic that can be subscribed to */
+static uint16_t gatt_svr_chr_handle_write;
+static uint16_t gatt_svr_chr_handle_read;
+static const ble_uuid128_t gatt_svr_chr_uuid_write =
+    BLE_UUID128_INIT(0xB3, 0x9B, 0x72, 0x34, 0xBE, 0xEC, 0xD4, 0xA8, 0xF4, 0x43, 0x41, 0x88, 0x43, 0x53, 0x53, 0x49);
+static const ble_uuid128_t gatt_svr_chr_uuid_read =
+    BLE_UUID128_INIT(0x16, 0x96, 0x24, 0x47, 0xC6, 0x23, 0x61, 0xBA, 0xD9, 0x4B, 0x4D, 0x1E, 0x43, 0x53, 0x53, 0x49);
+
+static int gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
+
+static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
+    {
+        /*** Service ***/
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = &gatt_svr_svc_uuid.u,
+        .characteristics = (struct ble_gatt_chr_def[])
+        {
+            {
+                /*** This characteristic can be subscribed to by writing 0x00 and 0x01 to the CCCD ***/
+                .uuid = &gatt_svr_chr_uuid_write.u,
+                .access_cb = gatt_svc_access,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
+                .val_handle = &gatt_svr_chr_handle_write,
+            },
+            {
+                /*** This characteristic can be subscribed to by writing 0x00 and 0x01 to the CCCD ***/
+                .uuid = &gatt_svr_chr_uuid_read.u,
+                .access_cb = gatt_svc_access,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
+                .val_handle = &gatt_svr_chr_handle_read,
+            },
+            {
+                0, /* No more characteristics in this service. */
+            }
+        },
+    },
+
+    {
+        0, /* No more services. */
+    },
+};
+
+
+/**
+ * Access callback whenever a characteristic/descriptor is read or written to.
+ * Here reads and writes need to be handled.
+ * ctxt->op tells weather the operation is read or write and
+ * weather it is on a characteristic or descriptor,
+ * ctxt->dsc->uuid tells which characteristic/descriptor is accessed.
+ * attr_handle give the value handle of the attribute being accessed.
+ * Accordingly do:
+ *     Append the value to ctxt->om if the operation is READ
+ *     Write ctxt->om to the value if the operation is WRITE
+ **/
+static int gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
+                            struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    const ble_uuid_t *uuid;
+    int rc;
+
+    switch (ctxt->op) {
+    case BLE_GATT_ACCESS_OP_READ_CHR:
+        if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+            ESP_LOGI(TAG, "Characteristic read; conn_handle=%d attr_handle=%d\n", conn_handle, attr_handle);
+        } else {
+            ESP_LOGI(TAG, "Characteristic read by NimBLE stack; attr_handle=%d\n", attr_handle);
+        }
+        uuid = ctxt->chr->uuid;
+        if (attr_handle == gatt_svr_chr_handle_read) {
+            char dummy[4] = { 0 };
+            rc = os_mbuf_append(ctxt->om, &dummy, sizeof(dummy));
+            return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+        } else {
+            ESP_LOGE(TAG, "should not read on this chr");
+        }
+        goto unknown;
+
+    case BLE_GATT_ACCESS_OP_WRITE_CHR:
+        if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+            ESP_LOGI(TAG, "Characteristic write; conn_handle=%d attr_handle=%d", conn_handle, attr_handle);
+        } else {
+            ESP_LOGI(TAG, "Characteristic write by NimBLE stack; attr_handle=%d", attr_handle);
+        }
+        uuid = ctxt->chr->uuid;
+        if (attr_handle == gatt_svr_chr_handle_write) {
+            size_t ble_msg_len = OS_MBUF_PKTLEN(ctxt->om);
+            ble_msg_len += 1;
+            ble_msg_t ble_msg = {.size = ble_msg_len, .msg = psram_calloc(1, ble_msg_len)};
+            uint16_t real_len = 0;
+            rc = ble_hs_mbuf_to_flat(ctxt->om, ble_msg.msg, ble_msg_len, &real_len);
+            if (rc != 0) {
+                free(ble_msg.msg);
+                return BLE_ATT_ERR_UNLIKELY;
+            }
+            ESP_LOGI(TAG, "copied %d bytes from ble stack.", real_len);
+            ESP_LOGD(TAG, "ble msg: %s", ble_msg.msg);
+
+            if (xQueueSend(ble_msg_queue, &ble_msg, pdMS_TO_TICKS(10000)) != pdPASS) {
+                ESP_LOGW(TAG, "failed to send ble msg to queue, maybe at_cmd task stalled???");
+            } else {
+                ESP_LOGD(TAG, "ble msg enqueued");
+            }
+
+            // ble_gatts_chr_updated(attr_handle);
+            // ESP_LOGI(TAG, "Notification/Indication scheduled for all subscribed peers.\n");
+            return rc;
+        }
+        goto unknown;
+
+    case BLE_GATT_ACCESS_OP_READ_DSC:
+        if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+            ESP_LOGI(TAG, "Descriptor read; conn_handle=%d attr_handle=%d\n", conn_handle, attr_handle);
+        } else {
+            ESP_LOGI(TAG, "Descriptor read by NimBLE stack; attr_handle=%d\n", attr_handle);
+        }
+        // uuid = ctxt->dsc->uuid;
+        // if (ble_uuid_cmp(uuid, &gatt_svr_dsc_uuid.u) == 0) {
+        //     rc = os_mbuf_append(ctxt->om,
+        //                         &gatt_svr_dsc_val,
+        //                         sizeof(gatt_svr_chr_val));
+        //     return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+        // }
+        goto unknown;
+
+    case BLE_GATT_ACCESS_OP_WRITE_DSC:
+        if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+            ESP_LOGI(TAG, "Descriptor write; conn_handle=%d attr_handle=%d\n", conn_handle, attr_handle);
+        } else {
+            ESP_LOGI(TAG, "Descriptor write by NimBLE stack; attr_handle=%d\n", attr_handle);
+        }
+        goto unknown;
+
+    default:
+        goto unknown;
+    }
+
+unknown:
+    /* Unknown characteristic/descriptor;
+     * The NimBLE host should not have called this function;
+     */
+    ESP_LOGE(TAG, "this should not happen, op: %d", ctxt->op);
+    return BLE_ATT_ERR_UNLIKELY;
+}
+
+void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
+{
+    char buf[BLE_UUID_STR_LEN];
+
+    switch (ctxt->op) {
+    case BLE_GATT_REGISTER_OP_SVC:
+        ESP_LOGD(TAG, "registered service %s with handle=%d\n",
+                    ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
+                    ctxt->svc.handle);
+        break;
+
+    case BLE_GATT_REGISTER_OP_CHR:
+        ESP_LOGD(TAG, "registering characteristic %s with "
+                    "def_handle=%d val_handle=%d\n",
+                    ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
+                    ctxt->chr.def_handle,
+                    ctxt->chr.val_handle);
+        break;
+
+    case BLE_GATT_REGISTER_OP_DSC:
+        ESP_LOGD(TAG, "registering descriptor %s with handle=%d\n",
+                    ble_uuid_to_str(ctxt->dsc.dsc_def->uuid, buf),
+                    ctxt->dsc.handle);
+        break;
+
+    default:
+        break;
+    }
+}
+
+int gatt_svr_init(void)
+{
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+    int rc;
+
+    ble_svc_gap_init();
+    ble_svc_gatt_init();
+
+    rc = ble_gatts_count_cfg(gatt_svr_svcs);
+    if (rc != 0) {
+        return rc;
+    }
+
+    rc = ble_gatts_add_svcs(gatt_svr_svcs);
+    if (rc != 0) {
+        return rc;
+    }
+
+    return 0;
+}
 
 /**
  * Logs information about a connection to the console.
@@ -98,12 +304,11 @@ static void bleprph_print_conn_desc(struct ble_gap_conn_desc *desc)
 /**
  * Enables advertising with Seeed defined data
  */
-static void bleprph_advertise(void)
+static void bleprph_advertise_start(void)
 {
     struct ble_gap_adv_params adv_params;
     const char *name;
     int rc;
-
 
     rc = ble_gap_adv_set_data(adv_data, sizeof(adv_data));
     if (rc != 0) {
@@ -120,6 +325,11 @@ static void bleprph_advertise(void)
         ESP_LOGE(TAG, "error enabling advertisement; rc=%d", rc);
         return;
     }
+}
+
+static void bleprph_advertise_stop(void)
+{
+    ble_gap_adv_stop();
 }
 
 /**
@@ -152,11 +362,15 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
             rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
             assert(rc == 0);
             bleprph_print_conn_desc(&desc);
+            atomic_store(&g_ble_connected, true);
+            g_curr_ble_conn_handle = event->connect.conn_handle;
+            bool status = true;
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, &status, sizeof(bool), pdMS_TO_TICKS(10000));
         }
 
-        if (event->connect.status != 0) {
+        if (event->connect.status != 0 && atomic_load(&g_ble_adv)) {
             /* Connection failed; resume advertising. */
-            bleprph_advertise();
+            bleprph_advertise_start();
         }
 
         return 0;
@@ -164,9 +378,14 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
     case BLE_GAP_EVENT_DISCONNECT:
         ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
         bleprph_print_conn_desc(&event->disconnect.conn);
-
+        atomic_store(&g_ble_connected, false);
+        g_curr_ble_conn_handle = 0xffff;
+        bool status = false;
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, &status, sizeof(bool), pdMS_TO_TICKS(10000));
+        
         /* Connection terminated; resume advertising. */
-        bleprph_advertise();
+        if (atomic_load(&g_ble_adv))
+            bleprph_advertise_start();
         return 0;
 
     case BLE_GAP_EVENT_CONN_UPDATE:
@@ -181,7 +400,8 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
     case BLE_GAP_EVENT_ADV_COMPLETE:
         ESP_LOGI(TAG, "advertise complete; reason=%d",
                     event->adv_complete.reason);
-        bleprph_advertise();
+        if (atomic_load(&g_ble_adv))
+            bleprph_advertise_start();
         return 0;
 
     case BLE_GAP_EVENT_ENC_CHANGE:
@@ -219,6 +439,10 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
                     event->mtu.conn_handle,
                     event->mtu.channel_id,
                     event->mtu.value);
+        if (event->mtu.value < 20) {
+            ESP_LOGW(TAG, "mtu become less than 20??? really?");
+        }
+        atomic_store(&g_curr_mtu, event->mtu.value);
         return 0;
 
     case BLE_GAP_EVENT_REPEAT_PAIRING:
@@ -299,6 +523,7 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 static void __bleprph_on_reset(int reason)
 {
     ESP_LOGI(TAG, ">>> on_reset, reason=%d\n", reason);
+    atomic_store(&g_ble_synced, false);
 }
 
 static void __bleprph_on_sync(void)
@@ -331,8 +556,7 @@ static void __bleprph_on_sync(void)
     ESP_LOGI(TAG, "BLE Address: %02X:%02X:%02X:%02X:%02X:%02X", 
                     addr_val[5], addr_val[4], addr_val[3], addr_val[2], addr_val[1], addr_val[0]);
 
-    /* Begin advertising. */
-    bleprph_advertise();
+    atomic_store(&g_ble_synced, true);
 }
 
 static void __bleprph_host_task(void *param)
@@ -342,6 +566,23 @@ static void __bleprph_host_task(void *param)
     nimble_port_run();
 
     nimble_port_freertos_deinit();
+}
+
+static void __ble_monitor_task(void *p_arg)
+{
+    while (1) {
+        if (atomic_load(&g_ble_adv)) {
+            if (!ble_gap_adv_active() && atomic_load(&g_ble_synced) && !atomic_load(&g_ble_connected))
+                bleprph_advertise_start();
+        } else {
+            if (ble_gap_adv_active() && atomic_load(&g_ble_synced))
+                bleprph_advertise_stop();
+
+            if (atomic_load(&g_ble_connected))
+                ble_gap_terminate(g_curr_ble_conn_handle, BLE_HS_EDISABLED);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }
 
 esp_err_t app_ble_init(void)
@@ -376,12 +617,13 @@ esp_err_t app_ble_init(void)
 
     nimble_port_freertos_init(__bleprph_host_task);
 
+    //create a side task to monitor the ble switch
+    const uint32_t stack_size = 10 * 1024;
+    StackType_t *task_stack1 = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
+    StaticTask_t *task_tcb1 = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+    xTaskCreateStatic(__ble_monitor_task, "app_ble_monitor", stack_size, NULL, 4, task_stack1, task_tcb1);
+
     return ret;
-}
-
-void set_ble_status(int caller, int status)
-{
-
 }
 
 uint8_t *app_ble_get_mac_address(void)
@@ -394,4 +636,43 @@ uint8_t *app_ble_get_mac_address(void)
     xSemaphoreGive(g_sem_mac_addr);
 
     return btaddr;
+}
+
+esp_err_t app_ble_adv_switch(bool switch_on)
+{
+    atomic_store(&g_ble_adv, true);
+    return ESP_OK;
+}
+
+int app_ble_get_current_mtu(void)
+{
+    int mtu = atomic_load(&g_curr_mtu);
+    return mtu;
+}
+
+/**
+ * Send an indicate to NimBLE stack, normally from the at cmd task context.
+*/
+esp_err_t app_ble_send_indicate(uint8_t *data, int len)
+{
+    if (!atomic_load(&g_ble_connected)) return BLE_HS_ENOTCONN;
+    int rc = ESP_FAIL;
+    struct os_mbuf *txom;
+
+    int mtu = app_ble_get_current_mtu();
+    int txlen = 0, txed_len = 0;
+    while (len > 0) {
+        txlen = MIN(len, mtu - 3);
+        txom = ble_hs_mbuf_from_flat(data + txed_len, txlen);
+        rc = ble_gatts_indicate_custom(g_curr_ble_conn_handle, gatt_svr_chr_handle_read, txom);
+        txed_len += txlen;
+        len -= txlen;
+        if (rc == 0) {
+            ESP_LOGI(TAG, "indication sent successfully, mtu=%d, txlen=%d, remain_len=%d", mtu, txlen, len);
+        } else {
+            ESP_LOGW(TAG, "Error in sending indication rc = %d", rc);
+        }
+    }
+    
+    return rc;
 }

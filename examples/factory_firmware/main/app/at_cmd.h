@@ -82,26 +82,10 @@ typedef struct {
 typedef struct {
     uint8_t *msg;
     int size;
-} message_event_t;
+} ble_msg_t;
 
+extern QueueHandle_t ble_msg_queue;
 
-typedef struct {
-    char *response;
-    int length;
-} AT_Response;
-
-
-
-
-extern QueueHandle_t AT_response_queue;
-extern QueueHandle_t message_queue;
-
-
-
-//extern esp_event_base_t const AT_EVENTS;
-static const char *AT_EVENTS_TAG = "AT_EVENTS";
-extern StreamBufferHandle_t xStreamBuffer;
-extern TaskHandle_t xTaskToNotify_AT;
 
 void AT_command_reg();  // Function to register the AT commands
 void AT_command_free();  // Function to free the memory allocated for the commands

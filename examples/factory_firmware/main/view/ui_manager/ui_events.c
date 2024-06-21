@@ -1010,12 +1010,12 @@ void setblec_cb(lv_event_t *e)
         case 0:
             ESP_LOGI(TAG, "ble_btn_status: on");
             lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
-            set_ble_status(UI_CALLER, 1);
+            set_ble_switch(UI_CALLER, 1);
             break;
         case 1:
             ESP_LOGI(TAG, "ble_btn_status: off");
             lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
-            set_ble_status(UI_CALLER, 0);
+            set_ble_switch(UI_CALLER, 0);
             break;
 
         default:
@@ -1573,6 +1573,7 @@ void view_info_obtain()
     retry_get_data((uint8_t* (*)(int))get_brightness, UI_CALLER, MAX_RETRIES);
     retry_get_data((uint8_t* (*)(int))get_rgb_switch, UI_CALLER, MAX_RETRIES);
     retry_get_data((uint8_t* (*)(int))get_sound, UI_CALLER, MAX_RETRIES);
+    retry_get_data((uint8_t* (*)(int))get_ble_switch, UI_CALLER, MAX_RETRIES);
 
     // Update SN、EUI、BT-MAC to about device page
     static char about_sn[20];

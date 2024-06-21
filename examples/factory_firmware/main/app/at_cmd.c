@@ -23,6 +23,7 @@
 #include "event_loops.h"
 #include "app_time.h"
 #include "app_wifi.h"
+#include "app_ble.h"
 #include "uhash.h"
 #include "at_cmd.h"
 #include "app_device_info.h"
@@ -30,19 +31,17 @@
 #include "storage.h"
 #include "app_png.h"
 
+
 #define TAG "AT_CMD"
+
 /*------------------system basic DS-----------------------------------------------------*/
-StreamBufferHandle_t xStreamBuffer;
-
-QueueHandle_t AT_response_queue;
-TaskHandle_t xTaskToNotify_AT = NULL;
-
 const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=(\\{.*\\}))?\r\n$";
 command_entry *commands = NULL; // Global variable to store the commands
 static StaticTask_t at_task_buffer;
 static StackType_t *at_task_stack = NULL;
 static void hex_to_string(uint8_t *hex, int hex_size, char *output);
 static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data);
+
 /*------------------network DS----------------------------------------------------------*/
 SemaphoreHandle_t wifi_stack_semaphore;
 static int network_connect_flag;
@@ -68,7 +67,7 @@ static int num_jsons = 0;
 
 static size_t total_size;
 
-QueueHandle_t message_queue;
+QueueHandle_t ble_msg_queue;
 /*------------------------------------emoji DS---------------------------------------------*/
 Task *emoji_tasks = NULL;
 
@@ -253,27 +252,30 @@ cJSON *create_wifi_stack_json(WiFiStack *stack_scnned_wifi, WiFiStack *stack_con
  */
 esp_err_t send_at_response(const char *message)
 {
-    AT_Response response = { .response = NULL, .length = 0 };
+    esp_err_t ret = ESP_FAIL;
+    char *response = NULL;
+
     if (message)
     {
         const char *suffix = "\r\nok\r\n";
-        size_t total_length = strlen(message) + strlen(suffix) + 1; // +1 for null terminator
-        response.response = psram_calloc(1, total_length);
-        if (response.response)
+        size_t total_length = strlen(message) + strlen(suffix) + 10; // a few bytes more
+        response = psram_calloc(1, total_length);
+        if (response)
         {
-            strcpy(response.response, message);
-            strcat(response.response, suffix);
-            response.length = strlen(response.response);
+            strcpy(response, message);
+            strcat(response, suffix);
+            size_t newlen = strlen(response);
+
+            ret = app_ble_send_indicate((uint8_t *)response, newlen);
+            if (ret != ESP_OK) {
+                ESP_LOGW(TAG, "Failed to send AT response, ret=%d", ret);
+            }
         }
     }
 
-    if (xQueueSend(AT_response_queue, &response, 0) != pdTRUE)
-    {
-        ESP_LOGW(TAG, "Failed to send AT response, maybe the queue is full?");
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
+    if (response)
+        free(response);
+    return ret;
 }
 
 /**
@@ -312,6 +314,7 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     command_entry *entry;
     char full_command[128];
     snprintf(full_command, sizeof(full_command), "%s%c", name, query); // Append the query character to the command name
+    // ESP_LOGD(TAG, "full_command: %s", full_command);
     HASH_FIND_STR(*commands, full_command, entry);
     if (entry)
     {
@@ -370,6 +373,22 @@ void AT_command_reg()
     add_command(&commands, "cloudservice?", handle_cloud_service_query_command);
     add_command(&commands, "emoji=", handle_emoji_command);
     add_command(&commands, "bind=", handle_bind_command);
+}
+
+/**
+ * @brief Frees all allocated memory for AT command entries in the hash table.
+ *
+ * This function iterates over all command entries in the hash table, deletes each entry from the hash table,
+ * and frees the allocated memory for each command entry.
+ */
+void AT_command_free()
+{
+    command_entry *current_command, *tmp;
+    HASH_ITER(hh, commands, current_command, tmp)
+    {
+        HASH_DEL(commands, current_command); // Delete the entry from the hash table
+        free(current_command);
+    }
 }
 
 /**
@@ -1669,15 +1688,14 @@ static void hex_to_string(uint8_t *in_data, int Size, char *out_data)
  * This task is declared static, indicating that it is intended to be used only within the file it is defined in,and placed in PSRAM
  */
 
-void task_handle_AT_command()
+void __at_cmd_proc_task(void *arg)
 {
     while (1)
     {
-        message_event_t msg_at;
-        if (xQueueReceive(message_queue, &msg_at, portMAX_DELAY) == pdPASS) { }
-        else
-        {
-            ESP_LOGE(TAG, "Failed to receive message from queue\n");
+        ble_msg_t msg_at;
+        if (xQueueReceive(ble_msg_queue, &msg_at, portMAX_DELAY) != pdPASS) {
+            ESP_LOGE(TAG, "Failed to receive ble message from queue");
+            continue;
         }
 
         char *test_strings = (char *)heap_caps_malloc(msg_at.size + 1, MALLOC_CAP_SPIRAM);
@@ -1688,15 +1706,15 @@ void task_handle_AT_command()
 
         if (test_strings == NULL)
         {
-            ESP_LOGE(TAG, "Memory allocation failed\n");
+            ESP_LOGE(TAG, "Memory allocation failed");
         }
-        ESP_LOGI(TAG, "AT command received\n");
+        ESP_LOGI(TAG, "AT command received");
         regex_t regex;
         int ret;
         ret = regcomp(&regex, pattern, REG_EXTENDED);
         if (ret)
         {
-            ESP_LOGI(TAG, "Could not compile regex\n");
+            ESP_LOGI(TAG, "Could not compile regex");
             cJSON *root = cJSON_CreateObject();
             cJSON_AddStringToObject(root, "name", "compile_regex_failed");
             cJSON_AddNumberToObject(root, "code", ERROR_CMD_REGEX_FAIL);
@@ -1714,15 +1732,15 @@ void task_handle_AT_command()
             char command_type[20];
             snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
 
-            size_t data_size = 10320;
-            char *params = (char *)heap_caps_malloc(data_size + 1, MALLOC_CAP_SPIRAM);
+            char *params = (char *)psram_calloc(1, 1024 * 10);
             if (matches[3].rm_so != -1)
             {
                 int length = (int)(matches[3].rm_eo - matches[3].rm_so);
                 snprintf(params, length + 1, "%.*s", (int)(matches[3].rm_eo - matches[3].rm_so), test_strings + matches[3].rm_so);
-                printf("Matched string: %.50s... (total length: %d)\n", params, length);
+                ESP_LOGD(TAG, "Matched string: %.50s... (total length: %d)\n", params, length);
             }
             char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
+            // ESP_LOGD(TAG, "regex, command_type=%s, params=%s, query_type=%c", command_type, params, query_type);
             exec_command(&commands, command_type, params, query_type);
             free(params);
             params = NULL;
@@ -1755,8 +1773,6 @@ void task_handle_AT_command()
         }
         free(test_strings);
         regfree(&regex);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-        xTaskNotifyGive(xTaskToNotify_AT);
     }
 }
 
@@ -1769,8 +1785,8 @@ void task_handle_AT_command()
 
 void init_at_cmd_task(void)
 {
-    message_queue = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(message_event_t));
-    if (message_queue == NULL)
+    ble_msg_queue = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(ble_msg_t));
+    if (ble_msg_queue == NULL)
     {
         ESP_LOGI(TAG, "Failed to create queue\n");
         return;
@@ -1781,7 +1797,7 @@ void init_at_cmd_task(void)
         ESP_LOGE(TAG, "Failed to allocate memory for WiFi task stack\n");
         return;
     }
-    TaskHandle_t at_task_handle = xTaskCreateStatic(task_handle_AT_command, "wifi_config_entry", 10240, NULL, 9, at_task_stack, &at_task_buffer);
+    TaskHandle_t at_task_handle = xTaskCreateStatic(__at_cmd_proc_task, "at_cmd", 10240, NULL, 9, at_task_stack, &at_task_buffer);
 
     if (at_task_handle == NULL)
     {
@@ -1804,33 +1820,17 @@ void app_at_cmd_init()
 #endif
 
     data_sem_handle = xSemaphoreCreateMutex();
-
-    AT_response_queue = xQueueCreate(10, sizeof(AT_Response));
     xBinarySemaphore_wifitable = xSemaphoreCreateBinary();
-    initWiFiStack(&wifiStack_scanned, 5);
-    initWiFiStack(&wifiStack_connected, 5);
+
+    initWiFiStack(&wifiStack_scanned, WIFI_SCAN_RESULT_CNT_MAX);
+    initWiFiStack(&wifiStack_connected, WIFI_SCAN_RESULT_CNT_MAX);
     wifi_stack_semaphore_init();
+    AT_command_reg();
     init_at_cmd_task();
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STATUS, __view_event_handler, NULL));
-}
-
-/**
- * @brief Frees all allocated memory for AT command entries in the hash table.
- *
- * This function iterates over all command entries in the hash table, deletes each entry from the hash table,
- * and frees the allocated memory for each command entry.
- */
-void AT_command_free()
-{
-    command_entry *current_command, *tmp;
-    HASH_ITER(hh, commands, current_command, tmp)
-    {
-        HASH_DEL(commands, current_command); // Delete the entry from the hash table
-        free(current_command);
-    }
 }
 
 /**
