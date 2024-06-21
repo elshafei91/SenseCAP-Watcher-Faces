@@ -31,6 +31,7 @@ extern int g_dev_binded;
 extern uint8_t g_guide_step;
 extern uint8_t g_alarm_p;
 extern uint8_t g_avalivjump;
+extern uint8_t g_taskdown;
 
 static int16_t indicator_value = 0;
 static lv_obj_t * ui_image = NULL;
@@ -284,7 +285,7 @@ void view_alarm_off(uint8_t task_down)
         lv_group_focus_obj(ui_Page_ViewLive);
     }
     // if the page is avatar when the alarm is triggered, turn the page back when the alarm is off
-    if(g_avalivjump == 0)
+    if(g_avalivjump == 0 && g_taskdown == 0)
     {
         _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
         lv_group_focus_obj(ui_Page_ViewAva);
