@@ -640,7 +640,7 @@ uint8_t *app_ble_get_mac_address(void)
 
 esp_err_t app_ble_adv_switch(bool switch_on)
 {
-    atomic_store(&g_ble_adv, true);
+    atomic_store(&g_ble_adv, switch_on);
     return ESP_OK;
 }
 
