@@ -1150,7 +1150,7 @@ void sliderr_cb(lv_event_t *e)
 void preset_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "preset_cb");
-    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void volvc_cb(lv_event_t *e)
