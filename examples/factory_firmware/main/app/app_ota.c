@@ -790,7 +790,7 @@ static void ota_status_report(struct view_data_ota_status *ota_status)
         sniprintf(buff + len, buffsz - len, ",\"3577\": \"%s\"", g_cur_ota_version_himax);
     }
 
-    app_sensecraft_mqtt_report_device_status_generic(buff);
+    app_sensecraft_mqtt_report_firmware_ota_status_generic(buff);
 
     free(buff);
 }
@@ -1056,6 +1056,17 @@ static void __mqtt_ota_executor_task(void *p_arg)
             while (!atomic_load(&g_network_connected_flag))
                 vTaskDelay(pdMS_TO_TICKS(1000));
 
+            //already up-to-date? report to cloud as well
+            if (!(order_value_himax && new_himax) && !(order_value_esp32 && new_esp32)) {
+                ESP_LOGW(TAG, "the firmwares are both up-to-date! skip this MQTT msg ...");
+                struct view_data_ota_status ota_status;
+                ota_status.status = SENSECRAFT_OTA_STATUS_UP_TO_DATE;
+                ota_status.err_code = ESP_OK;
+                ota_status.percentage = 100;
+                ota_status_report(&ota_status);
+                goto cleanup;
+            }
+
             bool need_reboot = false;
             //upgrade himax
             if (order_value_himax && new_himax) {
@@ -1122,11 +1133,10 @@ static void __mqtt_ota_executor_task(void *p_arg)
                 vTaskDelay(pdMS_TO_TICKS(3000));  // let the last mqtt msg sent
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
             }
-
-            //the json is used up
 cleanup:
             //delete the item from Q
             xQueueReceive(g_Q_ota_msg, &ota_msg_cjson, portMAX_DELAY);
+            //the json is used up
             cJSON_Delete(ota_msg_cjson);
         }
     }
