@@ -13,8 +13,6 @@
 #include "esp_check.h"
 #include "esp_system.h"
 #include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_bt_device.h"
 #include "esp_wifi.h"
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
@@ -30,6 +28,7 @@
 #include "app_audio.h"
 #include "audio_player.h"
 #include "app_sensecraft.h"
+#include "app_ble.h"
 #include "factory_info.h"
 #include "tf_module_ai_camera.h"
 #include "util.h"
@@ -42,6 +41,8 @@
 #define AI_SERVICE_STORAGE_KEY    "aiservice"
 #define USAGE_GUIDE_SK            "usage_guide"
 #define TIME_AUTOMATIC_SK         "time_auto"
+#define BLE_STORAGE_KEY           "ble_switch"
+
 static const char *TAG = "deviceinfo";
 
 static uint8_t SN[9] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };
@@ -67,6 +68,9 @@ int cloud_service_switch_past = 1;
 int usage_guide_switch = 0;
 int usage_guide_switch_past = 0;
 
+int ble_switch = 1;
+int ble_switch_past = 1;
+
 
 static sscma_client_info_t *g_himax_info;
 
@@ -81,6 +85,7 @@ SemaphoreHandle_t MUTEX_ai_service;
 SemaphoreHandle_t MUTEX_cloud_service_switch;
 SemaphoreHandle_t MUTEX_usage_guide;
 SemaphoreHandle_t MUTEX_sdcard_flash_status;
+SemaphoreHandle_t MUTEX_ble_switch;
 
 static StackType_t *app_device_info_task_stack = NULL;
 static StaticTask_t app_device_info_task_buffer;
@@ -176,32 +181,18 @@ void init_rgb_switch_from_nvs()
     if (ret == ESP_OK)
     {
         ESP_LOGI(TAG, "rgb_switch value loaded from NVS: %d", rgb_switch);
-        rgb_switch_past = rgb_switch;
-        if (rgb_switch == 1)
-        {
-            set_rgb_with_priority(UI_CALLER, on);
-        }
-        else
-        {
-            set_rgb_with_priority(UI_CALLER, off);
-        }
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
         ESP_LOGW(TAG, "No rgb_switch value found in NVS. Using default: %d", rgb_switch);
-        if (rgb_switch == 1)
-        {
-            set_rgb_with_priority(UI_CALLER, on);
-        }
-        else
-        {
-            set_rgb_with_priority(UI_CALLER, off);
-        }
     }
     else
     {
         ESP_LOGE(TAG, "Error reading rgb_switch from NVS: %s", esp_err_to_name(ret));
     }
+
+    set_rgb_with_priority(UI_CALLER, rgb_switch == 1 ? on : off);
+    rgb_switch_past = rgb_switch;
 }
 
 void init_brightness_from_nvs()
@@ -211,26 +202,23 @@ void init_brightness_from_nvs()
     if (ret == ESP_OK)
     {
         ESP_LOGI(TAG, "Brightness value loaded from NVS: %d", brightness);
-        ret = bsp_lcd_brightness_set(brightness);
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE(TAG, "LCD brightness set err:%d", ret);
-        }
-        brightness_past = brightness;
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
         ESP_LOGI(TAG, "No brightness value found in NVS. Using default: %d", brightness);
-        ret = bsp_lcd_brightness_set(brightness);
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE(TAG, "LCD brightness set err:%d", ret);
-        }
     }
     else
     {
         ESP_LOGE(TAG, "Error reading brightness from NVS: %s", esp_err_to_name(ret));
     }
+
+    ret = bsp_lcd_brightness_set(brightness);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "LCD brightness set err:%d", ret);
+    } else 
+        brightness_past = brightness;
+
 }
 
 void init_sound_from_nvs()
@@ -240,12 +228,6 @@ void init_sound_from_nvs()
     if (ret == ESP_OK)
     {
         ESP_LOGI(TAG, "Sound value loaded from NVS: %d", sound_value);
-        ret = bsp_codec_volume_set(sound_value, NULL);
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE(TAG, "sound value set err:%d", ret);
-        }
-        sound_value_past = sound_value;
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
@@ -255,6 +237,14 @@ void init_sound_from_nvs()
     {
         ESP_LOGE(TAG, "Error reading sound value from NVS: %s", esp_err_to_name(ret));
     }
+
+    ret = bsp_codec_volume_set(sound_value, NULL);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "sound value set err:%d", ret);
+    } else 
+        sound_value_past = sound_value;
+
 }
 
 void init_cloud_service_switch_from_nvs()
@@ -312,6 +302,32 @@ void init_qrcode_content()
     //esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, QRCODE, sizeof(QRCODE), pdMS_TO_TICKS(10000));
 }
 
+void init_ble_switch_from_nvs()
+{
+    size_t size = sizeof(ble_switch);
+    esp_err_t ret = storage_read(BLE_STORAGE_KEY, &ble_switch, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI(TAG, "BLE switch loaded from NVS: %d", ble_switch);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGW(TAG, "No ble switch found in NVS. Using default: %d", ble_switch);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Error reading ble switch from NVS: %s", esp_err_to_name(ret));
+    }
+
+    ret = app_ble_adv_switch((ble_switch != 0));
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "BLE switch set err:%d", ret);
+    } else {
+        ble_switch_past = ble_switch;
+    }
+}
+
 /*----------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
 
@@ -332,7 +348,7 @@ uint8_t *get_qrcode_content()
 
 uint8_t *get_bt_mac()
 {
-    const uint8_t *bd_addr = esp_bt_dev_get_address();
+    const uint8_t *bd_addr = app_ble_get_mac_address();
     if (bd_addr)
     {
         ESP_LOGI(TAG, "Bluetooth MAC Address: %02X:%02X:%02X:%02X:%02X:%02X", bd_addr[0], bd_addr[1], bd_addr[2], bd_addr[3], bd_addr[4], bd_addr[5]);
@@ -704,6 +720,51 @@ static esp_err_t __check_reset_factory()
     return ESP_OK;
 }
 
+/*----------------------------------------------------ble switch--------------------------------------------------------*/
+
+int get_ble_switch(int caller)
+{
+    int sw = ble_switch;
+
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI(TAG, "BLE get ble switch");
+            break;
+        case UI_CALLER:
+            ESP_LOGI(TAG, "UI get ble switch");
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_SWITCH, &sw, sizeof(int), pdMS_TO_TICKS(10000));
+            break;
+    }
+
+    return sw;
+}
+
+esp_err_t set_ble_switch(int caller, int value)
+{
+    ESP_LOGI(TAG, "set_ble_switch: %d", value);
+    xSemaphoreTake(MUTEX_ble_switch, portMAX_DELAY);
+    ble_switch_past = ble_switch;
+    ble_switch = value;
+    xSemaphoreGive(MUTEX_ble_switch);
+    return ESP_OK;
+
+}
+
+static esp_err_t __set_ble_switch()
+{
+    xSemaphoreTake(MUTEX_ble_switch, portMAX_DELAY);
+    if (ble_switch_past != ble_switch)
+    {
+        ESP_RETURN_ON_ERROR(storage_write(BLE_STORAGE_KEY, &ble_switch, sizeof(ble_switch)), TAG, "set_ble_switch cfg write err");
+        app_ble_adv_switch((ble_switch != 0));
+        ble_switch_past = ble_switch;
+        ESP_LOGD(TAG, "set_ble_switch done: %d", ble_switch);
+    }
+    xSemaphoreGive(MUTEX_ble_switch);
+
+    return ESP_OK;
+}
 
 /*-----------------------------------------------------time_auto_update-----------------------------------------------*/
 /**
@@ -813,12 +874,14 @@ void __app_device_info_task(void *pvParameter)
     MUTEX_ai_service = xSemaphoreCreateMutex();
     MUTEX_usage_guide = xSemaphoreCreateMutex();
     MUTEX_sdcard_flash_status = xSemaphoreCreateMutex();
+    MUTEX_ble_switch = xSemaphoreCreateMutex();
 
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
     init_sound_from_nvs();
     init_cloud_service_switch_from_nvs();
     init_ai_service_param_from_nvs();
+    init_ble_switch_from_nvs();
 
     // get spiffs and sdcard status
     __try_check_sdcard_flash();
@@ -838,6 +901,7 @@ void __app_device_info_task(void *pvParameter)
         __set_usage_guide();
         __check_reset_factory();
         //__set_ai_service();
+        __set_ble_switch();
         vTaskDelay(100 / portTICK_PERIOD_MS);
         cnt++;
 

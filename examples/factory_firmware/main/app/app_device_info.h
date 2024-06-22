@@ -18,15 +18,23 @@ char *get_himax_software_version(int caller);
 
 int get_brightness(int caller);
 esp_err_t set_brightness(int caller, int value);
+
 int get_rgb_switch(int caller);
 esp_err_t set_rgb_switch(int caller, int value);
+
 int get_sound(int caller);
 esp_err_t set_sound(int caller, int value);
+
 int get_cloud_service_switch(int caller);
 esp_err_t set_cloud_service_switch(int caller, int value);
+
 int get_usage_guide(int caller);
 esp_err_t set_usage_guide(int caller, int value);
+
 esp_err_t set_reset_factory();
+
+esp_err_t set_ble_switch(int caller, int status);
+int get_ble_switch(int caller);
 
 /**
  * will be deprecated!
