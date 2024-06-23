@@ -201,6 +201,7 @@ esp_err_t bsp_spi_bus_init(void)
         .sclk_io_num = BSP_SPI2_HOST_SCLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
+        .isr_cpu_id = CONFIG_SSCMA_PROCESS_TASK_AFFINITY + 1,
         .max_transfer_sz = 4095,
     };
     BSP_ERROR_CHECK_RETURN_ERR(spi_bus_initialize(SPI2_HOST, &spi_cfg, SPI_DMA_CH_AUTO));
@@ -211,6 +212,7 @@ esp_err_t bsp_spi_bus_init(void)
         .data1_io_num = BSP_SPI3_HOST_DATA1,
         .data2_io_num = BSP_SPI3_HOST_DATA2,
         .data3_io_num = BSP_SPI3_HOST_DATA3,
+        .isr_cpu_id = CONFIG_LVGL_PORT_TASK_AFFINITY + 1,
         .max_transfer_sz = DRV_LCD_H_RES * DRV_LCD_V_RES * DRV_LCD_BITS_PER_PIXEL / 8 / CONFIG_BSP_LCD_SPI_DMA_SIZE_DIV,
     };
 
