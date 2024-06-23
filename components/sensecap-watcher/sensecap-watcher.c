@@ -390,7 +390,7 @@ uint16_t bsp_battery_get_voltage(void)
 
 uint8_t bsp_battery_get_percent(void)
 {
-    uint32_t voltage = 0;
+    int32_t voltage = 0;
     for (uint8_t i = 0; i < 10; i++)
     {
         voltage += bsp_battery_get_voltage();
