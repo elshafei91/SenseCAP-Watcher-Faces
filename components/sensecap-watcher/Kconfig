@@ -129,14 +129,14 @@ menu "SenseCAP Watcher BSP Configuration"
         config SSCMA_TX_BUFFER_SIZE
             int "SSCMA Client TX Buffer Size"
             range 4096 10240
-            default 4096
+            default 8192
             help
                 Config SSCMA TX buffer size
 
         config SSCMA_RX_BUFFER_SIZE
             int "SSCMA Client RX Buffer Size"
             range 32768 131072
-            default 65536
+            default 98304
             help
                 Config SSCMA RX buffer size
 

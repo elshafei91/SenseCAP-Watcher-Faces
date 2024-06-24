@@ -6,29 +6,28 @@ extern "C" {
 #endif
 
 typedef enum {
-    breath_red,
-    breath_green,
-    breath_blue,
-    breath_white,
+    RGB_BREATH_RED,
+    RGB_BREATH_GREEN,
+    RGB_BREATH_BLUE,
+    RGB_BREATH_WHITE,
 
-    glint_red,
-    glint_green,
-    glint_blue,
-    glint_white,
+    RGB_BLINK_RED,
+    RGB_BLINK_GREEN,
+    RGB_BLINK_BLUE,
+    RGB_BLINK_WHITE,
 
-    flare_red,
-    flare_green,
-    flare_white,
-    flare_blue,
-    off,
-    on
+    RGB_FLARE_RED,
+    RGB_FLARE_GREEN,
+    RGB_FLARE_WHITE,
+    RGB_FLARE_BLUE,
+    RGB_OFF,
+    RGB_ON
 }rgb_service_t;
 
 
 
 int app_rgb_init(void);
-void set_rgb_with_priority(int caller, int service);
-void release_rgb(int caller);
+void app_rgb_set(int caller, rgb_service_t service);
 
 #ifdef __cplusplus
 }

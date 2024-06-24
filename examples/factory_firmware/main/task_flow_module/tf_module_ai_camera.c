@@ -1310,13 +1310,15 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     p_module_ins->p_task_buf =  heap_caps_malloc(sizeof(StaticTask_t),  MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     ESP_GOTO_ON_FALSE(p_module_ins->p_task_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task TCB");
 
-    p_module_ins->task_handle = xTaskCreateStatic(ai_camera_task,
+    p_module_ins->task_handle = xTaskCreateStaticPinnedToCore(
+                                                ai_camera_task,
                                                 "ai_camera_task",
                                                 TF_MODULE_AI_CAMERA_TASK_STACK_SIZE,
                                                 (void *)p_module_ins,
                                                 TF_MODULE_AI_CAMERA_TASK_PRIO,
                                                 p_module_ins->p_task_stack_buf,
-                                                p_module_ins->p_task_buf);
+                                                p_module_ins->p_task_buf,
+                                                1);
     ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
 
     p_module_ins->sscma_client_handle = bsp_sscma_client_init();
