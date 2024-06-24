@@ -1310,7 +1310,7 @@ esp_err_t app_ota_init(void)
     // task for sscma writer
     StackType_t *task_stack2 = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
     StaticTask_t *task_tcb2 = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
-    g_task_sscma_writer = xTaskCreateStatic(__sscma_writer_task, "ota_sscma_writer", stack_size, NULL, 9, task_stack2, task_tcb2);
+    g_task_sscma_writer = xTaskCreateStaticPinnedToCore(__sscma_writer_task, "ota_sscma_writer", stack_size, NULL, 9, task_stack2, task_tcb2, 1);
 
     ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, __sys_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(ESP_HTTP_CLIENT_EVENT, ESP_EVENT_ANY_ID, __sys_event_handler, NULL));
