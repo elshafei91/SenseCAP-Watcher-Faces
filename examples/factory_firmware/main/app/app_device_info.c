@@ -191,7 +191,7 @@ void init_rgb_switch_from_nvs()
         ESP_LOGE(TAG, "Error reading rgb_switch from NVS: %s", esp_err_to_name(ret));
     }
 
-    set_rgb_with_priority(UI_CALLER, rgb_switch == 1 ? on : off);
+    app_rgb_set(UI_CALLER, rgb_switch == 1 ? RGB_ON : RGB_OFF);
     rgb_switch_past = rgb_switch;
 }
 
@@ -495,7 +495,7 @@ static esp_err_t __set_rgb_switch()
     if (rgb_switch_past != rgb_switch)
     {
         ESP_RETURN_ON_ERROR(storage_write(RGB_SWITCH_STORAGE_KEY, &rgb_switch, sizeof(rgb_switch)), TAG, "set_rgb_switch cfg write err");
-        set_rgb_with_priority(UI_CALLER, rgb_switch == 1 ? on : off);
+        app_rgb_set(UI_CALLER, rgb_switch == 1 ? RGB_ON : RGB_OFF);
         rgb_switch_past = rgb_switch;
         ESP_LOGD(TAG, "set_rgb_switch done: %d", rgb_switch);
     }
