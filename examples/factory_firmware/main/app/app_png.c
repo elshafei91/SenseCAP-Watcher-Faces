@@ -16,6 +16,7 @@
 #include "storage.h"
 #include "app_png.h"
 #include "util/util.h"
+#include "cJSON.h"
 
 #define TAG              "HTTP_EMOJI"
 #define HTTP_MOUNT_POINT "/spiffs"
@@ -23,9 +24,6 @@
 #define EMOJI_HTTP_TIMEOUT_MS           30000
 #define EMOJI_HTTP_DOWNLOAD_RETRY_TIMES 5
 #define EMOJI_HTTP_RX_CHUNK_SIZE        512
-
-
-
 
 #define MAX_RETRY_COUNT      5
 #define HTTP_MAX_BUFFER_SIZE (100 * 1024)
@@ -50,11 +48,14 @@ static SemaphoreHandle_t download_mutex;
 static int64_t total_data_size = 0;
 
 
-// // define global image data store and count variable
+// Function declarations
+void create_black_image_and_store(lv_img_dsc_t **img_dsc_array, int *image_count, size_t size);
+bool validate_image(const char *name, size_t size, cJSON *expressions);
+
 lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-lv_img_dsc_t *g_anaylze_img_dsc[MAX_IMAGES];
+lv_img_dsc_t *g_analyze_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
@@ -83,6 +84,46 @@ void create_img_dsc(lv_img_dsc_t **img_dsc, void *data, size_t size) {
     (*img_dsc)->data = data;
 }
 
+char* read_json_file(const char *path) {
+    FILE *file = fopen(path, "r");
+    if (!file) {
+        ESP_LOGE("SPIFFS", "Failed to open JSON file: %s", path);
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char *content = (char *)malloc(length + 1);
+    if (!content) {
+        ESP_LOGE("SPIFFS", "Failed to allocate memory for JSON content");
+        fclose(file);
+        return NULL;
+    }
+
+    fread(content, 1, length, file);
+    content[length] = '\0';
+
+    fclose(file);
+    return content;
+}
+
+bool validate_image(const char *name, size_t size, cJSON *expression) {
+    cJSON *image;
+    cJSON_ArrayForEach(image, expression) {
+        cJSON *img_name = cJSON_GetObjectItemCaseSensitive(image, "name");
+        cJSON *img_size = cJSON_GetObjectItemCaseSensitive(image, "size");
+
+        if (cJSON_IsString(img_name) && (strcmp(img_name->valuestring, name) == 0) &&
+            cJSON_IsNumber(img_size) && (img_size->valueint == size)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Function to read and store PNG files into PSRAM
 void* read_png_to_psram(const char *path, size_t *out_size) {
     FILE *file = fopen(path, "rb");
@@ -106,6 +147,9 @@ void* read_png_to_psram(const char *path, size_t *out_size) {
     fclose(file);
 
     *out_size = file_size;
+
+    ESP_LOGI("Image Size", "Loaded %s, size: %.2f KB", path, file_size / 1024.0);
+
     return png_buffer;
 }
 
@@ -120,61 +164,81 @@ void* create_black_image(size_t size) {
     return black_buffer;
 }
 
-// Helper function to check if the file name matches the specified prefix and is a PNG file
-static int is_png_file_for_expression(const char* filename, const char* prefix) {
-    const char *suffix = ".png";
-    size_t len = strlen(filename);
-    size_t suffix_len = strlen(suffix);
-    if (len > suffix_len && strcmp(filename + len - suffix_len, suffix) == 0) {
-        if (strncmp(filename, prefix, strlen(prefix)) == 0) {
-            return 1;
-        }
+// Function to create a black image buffer and store it
+void create_black_image_and_store(lv_img_dsc_t **img_dsc_array, int *image_count, size_t size) {
+    ESP_LOGW("PNG Load", "Creating a black image due to validation failure");
+    void *black_data = create_black_image(size);
+    if (black_data) {
+        create_img_dsc(&img_dsc_array[*image_count], black_data, size);
+        (*image_count)++;
     }
-    return 0;
 }
 
 // Function to read and store selected PNG files based on prefix
 void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
-    DIR *dir;
-    struct dirent *ent;
-    bool image_loaded = false;
-    if ((dir = opendir("/spiffs")) != NULL) {
-        while ((ent = readdir(dir)) != NULL) {
-            if (is_png_file_for_expression(ent->d_name, file_prefix)) {
-                if (*image_count >= MAX_IMAGES) {
-                    ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
-                    break;
-                }
-                
-                size_t size;
-                char filepath[256];
-                sprintf(filepath, "/spiffs/%s", ent->d_name);
-                void *data = read_png_to_psram(filepath, &size);
-                if (data) {
-                    ESP_LOGI("PNG Load", "Loaded %s into PSRAM", ent->d_name);
-                    
-                    create_img_dsc(&img_dsc_array[*image_count], data, size);
-                    (*image_count)++;
-                    image_loaded = true;
-                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
-                }
+    char json_filepath[256];
+    sprintf(json_filepath, "/spiffs/%s.json", file_prefix);
+    char *json_content = read_json_file(json_filepath);
+    if (!json_content) {
+        ESP_LOGE("JSON", "Failed to read JSON file: %s", json_filepath);
+        return;
+    }
+
+    cJSON *json = cJSON_Parse(json_content);
+    if (!json) {
+        ESP_LOGE("JSON", "Failed to parse JSON content");
+        free(json_content);
+        return;
+    }
+
+    cJSON *expressions = cJSON_GetObjectItemCaseSensitive(json, "expressions");
+    if (!cJSON_IsObject(expressions)) {
+        ESP_LOGE("JSON", "Invalid JSON format");
+        cJSON_Delete(json);
+        free(json_content);
+        return;
+    }
+
+    cJSON *expression = cJSON_GetObjectItemCaseSensitive(expressions, file_prefix);
+    if (!cJSON_IsArray(expression)) {
+        ESP_LOGE("JSON", "Invalid JSON format for expression %s", file_prefix);
+        cJSON_Delete(json);
+        free(json_content);
+        return;
+    }
+
+    cJSON *image;
+    cJSON_ArrayForEach(image, expression) {
+        cJSON *img_name = cJSON_GetObjectItemCaseSensitive(image, "name");
+        cJSON *img_size = cJSON_GetObjectItemCaseSensitive(image, "size");
+
+        if (!cJSON_IsString(img_name) || !cJSON_IsNumber(img_size)) {
+            ESP_LOGE("JSON", "Invalid image format in JSON for expression %s", file_prefix);
+            continue;
+        }
+
+        char filepath[256];
+        sprintf(filepath, "/spiffs/%s", img_name->valuestring);
+        size_t size;
+        void *data = read_png_to_psram(filepath, &size);
+        if (data) {
+            if (validate_image(img_name->valuestring, size, expression)) {
+                ESP_LOGI("PNG Load", "Loaded %s into PSRAM", img_name->valuestring);
+                create_img_dsc(&img_dsc_array[*image_count], data, size);
+                (*image_count)++;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, 0, pdMS_TO_TICKS(10000));
+            } else {
+                ESP_LOGE("Validation", "Image %s failed validation, creating black image", img_name->valuestring);
+                create_black_image_and_store(img_dsc_array, image_count, img_size->valueint);
             }
-        }
-        closedir(dir);
-    }
-    else
-    {
-        ESP_LOGE("SPIFFS", "Failed to open directory /spiffs");
-    }
-    if (!image_loaded && *image_count < MAX_IMAGES) {
-        ESP_LOGW("PNG Load", "No image found for prefix %s, creating a black image", file_prefix);
-        size_t size = 412 * 412 * 3; // Assuming the size for a 412x412 image with alpha channel
-        void *black_data = create_black_image(size);
-        if (black_data) {
-            create_img_dsc(&img_dsc_array[*image_count], black_data, size);
-            (*image_count)++;
+        } else {
+            ESP_LOGE("PNG Load", "Failed to load image %s, creating black image", img_name->valuestring);
+            create_black_image_and_store(img_dsc_array, image_count, img_size->valueint);
         }
     }
+
+    cJSON_Delete(json);
+    free(json_content);
 }
 
 

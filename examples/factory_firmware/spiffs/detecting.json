@@ -1,0 +1,28 @@
+{
+    "type_id": 0,
+    "resource_version": "9.5",
+    "expressions": {
+        "detecting": [
+            {
+                "name": "detecting1.png",
+                "size": 24828
+            },
+            {
+                "name": "detecting2.png",
+                "size": 30668
+            },
+            {
+                "name": "detecting3.png",
+                "size": 41195
+            },
+            {
+                "name": "detecting4.png",
+                "size": 30320
+            },
+            {
+                "name": "detecting5.png",
+                "size": 26572
+            }
+        ]
+    }
+}

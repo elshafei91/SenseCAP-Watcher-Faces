@@ -1,0 +1,16 @@
+{
+    "type_id": 0,
+    "resource_version": "9.5",
+    "expressions": {
+        "listening": [
+            {
+                "name": "listening1.png",
+                "size": 22670
+            },
+            {
+                "name": "listening2.png",
+                "size": 21698
+            }
+        ]
+    }
+}

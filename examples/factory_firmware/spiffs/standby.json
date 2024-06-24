@@ -1,0 +1,24 @@
+{
+    "type_id": 0,
+    "resource_version": "9.5",
+    "expressions": {
+        "standby": [
+            {
+                "name": "standby1.png",
+                "size": 25354
+            },
+            {
+                "name": "standby2.png",
+                "size": 29218
+            },
+            {
+                "name": "standby3.png",
+                "size": 34889
+            },
+            {
+                "name": "standby4.png",
+                "size": 40102
+            }
+        ]
+    }
+}

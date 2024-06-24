@@ -1,0 +1,14 @@
+{
+    "type_id": 1,
+    "resource_version": "9.5",
+    "resources": [
+        {
+            "name": "fixed1.png",
+            "size": 12345
+        },
+        {
+            "name": "fixed2.png",
+            "size": 67890
+        }
+    ]
+}
