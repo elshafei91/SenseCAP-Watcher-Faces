@@ -209,6 +209,9 @@ void ui_event_setback(lv_event_t * e);
 lv_obj_t * ui_setback;
 lv_obj_t * ui_Image1;
 lv_obj_t * ui_setbackt;
+void ui_event_setdown(lv_event_t * e);
+lv_obj_t * ui_setdown;
+lv_obj_t * ui_setdownt;
 void ui_event_setapp(lv_event_t * e);
 lv_obj_t * ui_setapp;
 lv_obj_t * ui_setappt;
@@ -239,9 +242,6 @@ lv_obj_t * ui_setwwsw;
 void ui_event_setdev(lv_event_t * e);
 lv_obj_t * ui_setdev;
 lv_obj_t * ui_setdevt;
-void ui_event_setdown(lv_event_t * e);
-lv_obj_t * ui_setdown;
-lv_obj_t * ui_setdownt;
 void ui_event_setfac(lv_event_t * e);
 lv_obj_t * ui_setfac;
 lv_obj_t * ui_setfact;
@@ -435,7 +435,6 @@ const lv_img_dsc_t * ui_imgset_590839094[1] = {&ui_img_1722191473};
 const lv_img_dsc_t * ui_imgset_800621560[1] = {&ui_img_30219097};
 const lv_img_dsc_t * ui_imgset_1225629734[1] = {&ui_img_631814683};
 const lv_img_dsc_t * ui_imgset_1798734462[1] = {&ui_img_578579305};
-const lv_img_dsc_t * ui_imgset_smile[1] = {&ui_img_smile1_png};
 const lv_img_dsc_t * ui_imgset_wifi_[4] = {&ui_img_wifi_0_png, &ui_img_wifi_1_png, &ui_img_wifi_2_png, &ui_img_wifi_3_png};
 
 ///////////////////// TEST LVGL SETTINGS ////////////////////
@@ -1023,6 +1022,20 @@ void ui_event_setback(lv_event_t * e)
         setbackc_cb(e);
     }
 }
+void ui_event_setdown(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        setdownc_cb(e);
+    }
+    if(event_code == LV_EVENT_FOCUSED) {
+        setdownf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        setdowndf_cb(e);
+    }
+}
 void ui_event_setapp(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1147,20 +1160,6 @@ void ui_event_setdev(lv_event_t * e)
     }
     if(event_code == LV_EVENT_CLICKED) {
         setdevc_cb(e);
-    }
-}
-void ui_event_setdown(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        setdownc_cb(e);
-    }
-    if(event_code == LV_EVENT_FOCUSED) {
-        setdownf_cb(e);
-    }
-    if(event_code == LV_EVENT_DEFOCUSED) {
-        setdowndf_cb(e);
     }
 }
 void ui_event_setfac(lv_event_t * e)
@@ -1325,7 +1324,7 @@ void ui_event_otaback(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
-        preset_cb(e);
+        otaback_cb(e);
     }
 }
 void ui_event_slpt1(lv_event_t * e)
