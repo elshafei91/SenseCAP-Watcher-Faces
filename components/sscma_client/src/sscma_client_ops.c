@@ -1630,12 +1630,14 @@ esp_err_t sscma_client_ota_start(sscma_client_handle_t client, const sscma_clien
     }
     client->flasher = flasher;
 
+    sscma_client_reset(client);
+
     sscma_client_break(client);
 
     vTaskSuspend(client->process_task.handle);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
-
+    
     ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_OTA CMD_SUFFIX, NULL, false, CMD_WAIT_DELAY), TAG, "request failed");
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
