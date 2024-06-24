@@ -333,7 +333,6 @@ download_summary_t download_emoji_images(char *base_name, char *urls[], int url_
             results[i].error_code = ESP_FAIL;
 
         }
-        //TODO
         emoticon_download_per = (i + 1) * 100 / url_count;
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, &emoticon_download_per, sizeof(int), pdMS_TO_TICKS(10000));
     }

@@ -134,7 +134,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_obj_add_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);
                     lv_arc_set_value(ui_facearc, 100);
-                    lv_label_set_text(ui_facet, "Upload Finish!");
+                    lv_label_set_text(ui_facet, "Please reboot to update new faces");
                 }
                 break;
             }
