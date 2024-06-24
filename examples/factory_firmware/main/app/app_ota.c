@@ -409,6 +409,7 @@ static void __sscma_writer_task(void *p_arg)
         assert(sscma_client != NULL);
 
         bool use_spi_flasher = false;
+        bool is_abort = false;
 
         sscma_client_info_t *info;
         if (sscma_client_get_info(sscma_client, &info, true) == ESP_OK)
@@ -546,7 +547,7 @@ static void __sscma_writer_task(void *p_arg)
         }  //while
 
         if (atomic_load(&g_sscma_writer_abort)) {
-            sscma_client_ota_abort(sscma_client);
+            is_abort = true;
             ESP_LOGW(TAG, "%s sscma writer, abort, take %lld us", ota_type_str(ota_type), esp_timer_get_time() - start);
         } else {
             ESP_LOGD(TAG, "%s sscma writer, write done, take %lld us", ota_type_str(ota_type), esp_timer_get_time() - start);
@@ -557,8 +558,11 @@ static void __sscma_writer_task(void *p_arg)
 sscma_writer_end0:
         free(chunk);
 sscma_writer_end:
+        if (is_abort || userdata->err != ESP_OK) {
+            sscma_client_ota_abort(sscma_client);
+        }
         xSemaphoreGive(g_sem_sscma_writer_done);
-    }
+    }  //while(1)
 }
 
 static esp_err_t __http_event_handler(esp_http_client_event_t *evt)
