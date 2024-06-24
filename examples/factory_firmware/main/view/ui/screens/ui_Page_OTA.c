@@ -24,13 +24,13 @@ void ui_Page_OTA_screen_init(void)
 
     ui_otatext = lv_label_create(ui_otapanel);
     lv_obj_set_width(ui_otatext, 200);
-    lv_obj_set_height(ui_otatext, 50);
+    lv_obj_set_height(ui_otatext, 80);
     lv_obj_set_align(ui_otatext, LV_ALIGN_CENTER);
     lv_label_set_text(ui_otatext, "Updating\nFirmware");
     lv_obj_set_style_text_color(ui_otatext, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_otatext, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_otatext, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_otatext, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_otatext, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_otaspinner = lv_spinner_create(ui_otapanel, 1000, 90);
     lv_obj_set_width(ui_otaspinner, 40);
