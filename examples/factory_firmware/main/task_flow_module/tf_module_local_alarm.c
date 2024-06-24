@@ -68,7 +68,7 @@ static void __alarm_off( tf_module_local_alarm_t *p_module_ins )
     if( p_params->rgb && p_module_ins->is_rgb_on) {
         ESP_LOGI(TAG, "RGB OFF");
         p_module_ins->is_rgb_on = false;
-        set_rgb_with_priority(ALARM, off);
+        app_rgb_set(ALARM, RGB_OFF);
     }
     if( p_params->sound) {
         // TODO SOUND OFF
@@ -151,7 +151,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         // TODO RGB ON
         ESP_LOGI(TAG, "RGB ON");
         p_module_ins->is_rgb_on = true;
-        set_rgb_with_priority(ALARM, glint_red);
+        app_rgb_set(ALARM, RGB_BLINK_RED);
     }
 
     if(p_params->sound) {
