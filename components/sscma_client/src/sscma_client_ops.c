@@ -136,7 +136,23 @@ static void sscma_client_monitor(void *arg)
     while (true)
     {
         xQueueReceive(client->reply_queue, &reply, portMAX_DELAY);
+        if (client->on_connect)
+        {
+            cJSON *name = cJSON_GetObjectItem(reply.payload, "name");
+            if (name != NULL && strnstr(name->valuestring, EVENT_STARTUP, strlen(name->valuestring)) != NULL)
+            {
+                client->on_connect(client, &reply, client->user_ctx);
+                sscma_client_reply_clear(&reply);
+                continue;
+            }
+        }
+
         cJSON *type = cJSON_GetObjectItem(reply.payload, "type");
+        if (type == NULL)
+        {
+            sscma_client_reply_clear(&reply);
+            continue;
+        }
         if (type->valueint == CMD_TYPE_EVENT)
         {
             if (client->on_event)
@@ -158,6 +174,7 @@ static void sscma_client_monitor(void *arg)
                 client->on_response(client, &reply, client->user_ctx);
             }
         }
+
         sscma_client_reply_clear(&reply);
     }
 }
@@ -345,6 +362,7 @@ static void sscma_client_process(void *arg)
                 else
                 {
                     // discard this reply
+                    ESP_LOGW(TAG, "Invalid reply: %d/%d", client->rx_buffer.pos, client->rx_buffer.len);
                     memmove(client->rx_buffer.data, suffix + RESPONSE_SUFFIX_LEN, client->rx_buffer.pos - (suffix - client->rx_buffer.data) - RESPONSE_PREFIX_LEN);
                     client->rx_buffer.pos -= suffix - client->rx_buffer.data + RESPONSE_SUFFIX_LEN;
                     client->rx_buffer.data[client->rx_buffer.pos] = 0;
@@ -468,6 +486,8 @@ esp_err_t sscma_client_new(const sscma_client_io_handle_t io, const sscma_client
     ESP_GOTO_ON_FALSE(res == pdPASS, ESP_FAIL, err, TAG, "create monitor task failed");
 #endif
 
+    client->on_connect = NULL;
+    client->on_disconnect = NULL;
     client->on_response = NULL;
     client->on_event = NULL;
     client->on_log = NULL;
@@ -733,6 +753,8 @@ esp_err_t sscma_client_register_callback(sscma_client_handle_t client, const ssc
         ESP_LOGW(TAG, "callback on_log already registered, overriding it");
     }
 
+    client->on_connect = callback->on_connect;
+    client->on_disconnect = callback->on_disconnect;
     client->on_response = callback->on_response;
     client->on_event = callback->on_event;
     client->on_log = callback->on_log;
@@ -1636,7 +1658,7 @@ esp_err_t sscma_client_ota_start(sscma_client_handle_t client, const sscma_clien
     vTaskSuspend(client->process_task.handle);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
-    
+
     ESP_RETURN_ON_ERROR(sscma_client_request(client, CMD_PREFIX CMD_AT_OTA CMD_SUFFIX, NULL, false, CMD_WAIT_DELAY), TAG, "request failed");
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
