@@ -36,7 +36,7 @@ extern lv_obj_t * ui_task_error;
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_anaylze_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_analyze_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
@@ -134,7 +134,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_obj_add_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);
                     lv_arc_set_value(ui_facearc, 100);
-                    lv_label_set_text(ui_facet, "Upload Finish!");
+                    lv_label_set_text(ui_facet, "Please reboot to update new faces");
                 }
                 break;
             }
@@ -142,6 +142,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_INFO_OBTAIN:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_INFO_OBTAIN");
                 view_info_obtain();
+                break;
+            }
+
+            case VIEW_EVENT_MODE_STANDBY:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_MODE_STANDBY");
+                
                 break;
             }
 
@@ -389,6 +395,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
                     lv_group_focus_obj(ui_mainbtn2);
                 }
+                lv_group_set_wrap(g_main, true);
                 break;
             }
 
@@ -455,6 +462,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_ERROR");
                 const char* error_msg = (const char*)event_data;
                 lv_obj_clear_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(ui_task_error);
                 lv_label_set_text(ui_taskerrt2, error_msg);
                 break;
             }
@@ -619,6 +627,10 @@ int view_init(void)
                                                             VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, 
                                                             __view_event_handler, NULL, NULL));
 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_MODE_STANDBY, 
+                                                            __view_event_handler, NULL, NULL));
+
     if((bat_per < 1) && (! is_charging))
     {
         lv_disp_load_scr(ui_Page_Battery);
@@ -647,7 +659,7 @@ int view_init(void)
     read_and_store_selected_pngs("detected", g_detected_img_dsc, &g_detected_image_count);
     read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
     read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
-    read_and_store_selected_pngs("analyzing", g_anaylze_img_dsc, &g_analyze_image_count);
+    read_and_store_selected_pngs("analyzing", g_analyze_img_dsc, &g_analyze_image_count);
     read_and_store_selected_pngs("standby", g_standby_img_dsc, &g_standby_image_count);
 
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, pdMS_TO_TICKS(10000));

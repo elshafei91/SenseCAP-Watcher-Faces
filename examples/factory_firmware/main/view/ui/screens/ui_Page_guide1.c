@@ -23,7 +23,7 @@ void ui_Page_guide1_screen_init(void)
     lv_obj_set_style_border_opa(ui_guide1p1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_guide1img1 = lv_img_create(ui_guide1p1);
-    lv_img_set_src(ui_guide1img1, &ui_img_start_smile_png);
+    lv_img_set_src(ui_guide1img1, &ui_img_guideimg_png);
     lv_obj_set_width(ui_guide1img1, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_guide1img1, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_guide1img1, 0);
