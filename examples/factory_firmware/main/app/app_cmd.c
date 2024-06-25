@@ -486,6 +486,9 @@ int app_cmd_init(void)
 #else
 #error Unsupported console type
 #endif
+    // Since we have SD card access in console cmd, it might trigger the SPI core-conflict issue
+    // we can't control the core on which the console runs, so 
+    // TODO: narrow the SD card access code into another task which runs on Core 1.
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
     return 0;
 }

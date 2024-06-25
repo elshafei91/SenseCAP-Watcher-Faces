@@ -244,7 +244,7 @@ void app_main(void)
     xTaskCreatePinnedToCore(task_app_init, "task_app_init", 4096, NULL, 5, NULL, 1);
 
 #ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
-    static char buffer[1024];
+    char *buffer = psram_calloc(1, 3096);
 #else
     static char buffer[512];
 #endif
@@ -284,7 +284,11 @@ void app_main(void)
 #ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
         vTaskDelay(pdMS_TO_TICKS(1));
         vTaskList(buffer);
+#ifdef CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
+        ESP_LOGI("task stack", "\nTask Name       Status  Prio    Core    HWM     Task#\n%s\n", buffer);
+#else
         ESP_LOGI("task stack", "\nTask Name       Status  Prio    HWM     Task#\n%s\n", buffer);
+#endif
 #endif
 
 #ifdef CONFIG_ESP_EVENT_LOOP_PROFILING

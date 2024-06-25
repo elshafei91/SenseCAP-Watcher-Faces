@@ -191,7 +191,7 @@ void init_rgb_switch_from_nvs()
         ESP_LOGE(TAG, "Error reading rgb_switch from NVS: %s", esp_err_to_name(ret));
     }
 
-    set_rgb_with_priority(UI_CALLER, rgb_switch == 1 ? on : off);
+    app_rgb_set(UI_CALLER, rgb_switch == 1 ? RGB_ON : RGB_OFF);
     rgb_switch_past = rgb_switch;
 }
 
@@ -495,7 +495,7 @@ static esp_err_t __set_rgb_switch()
     if (rgb_switch_past != rgb_switch)
     {
         ESP_RETURN_ON_ERROR(storage_write(RGB_SWITCH_STORAGE_KEY, &rgb_switch, sizeof(rgb_switch)), TAG, "set_rgb_switch cfg write err");
-        set_rgb_with_priority(UI_CALLER, rgb_switch == 1 ? on : off);
+        app_rgb_set(UI_CALLER, rgb_switch == 1 ? RGB_ON : RGB_OFF);
         rgb_switch_past = rgb_switch;
         ESP_LOGD(TAG, "set_rgb_switch done: %d", rgb_switch);
     }
@@ -1043,7 +1043,7 @@ void app_device_info_init()
     const int stack_size = 10 * 1024;
     StackType_t *task_stack = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
     StaticTask_t *task_tcb = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
-    xTaskCreateStatic(__app_device_info_task, "app_device_info", stack_size, NULL, 5, task_stack, task_tcb);
+    xTaskCreateStaticPinnedToCore(__app_device_info_task, "app_device_info", stack_size, NULL, 5, task_stack, task_tcb, 1);
 
     esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, __event_loop_handler, NULL);
 

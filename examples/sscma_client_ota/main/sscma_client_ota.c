@@ -152,66 +152,66 @@ void app_main(void)
         printf("get info failed\n");
     }
     int64_t start = esp_timer_get_time();
-    ESP_LOGI(TAG, "Flash Firmware ...");
-    if (sscma_client_ota_start(client, flasher, 0x000000) != ESP_OK)
-    {
-        ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
-    }
-    else
-    {
-        ESP_LOGI(TAG, "sscma_client_ota_start success\n");
-        FILE *f = fopen("/spiffs/firmware.img", "r");
-        if (f == NULL)
-        {
-            ESP_LOGE(TAG, "open firmware.img failed\n");
-        }
-        else
-        {
-            ESP_LOGI(TAG, "open firmware.img success\n");
-            size_t len = 0;
-            char buf[256] = { 0 };
-            do
-            {
-                memset(buf, 0, sizeof(buf));
-                if (fread(buf, 1, sizeof(buf), f) <= 0)
-                {
-                    printf("\n");
-                    break;
-                }
-                else
-                {
-                    len += sizeof(buf);
-                    if (sscma_client_ota_write(client, buf, sizeof(buf)) != ESP_OK)
-                    {
-                        ESP_LOGI(TAG, "sscma_client_ota_write failed\n");
-                        break;
-                    }
-                }
-            }
-            while (true);
-            fclose(f);
-        }
-        sscma_client_ota_finish(client);
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-        ESP_LOGI(TAG, "sscma_client_ota_finish success, take %lld us\n", esp_timer_get_time() - start);
-    }
+    // ESP_LOGI(TAG, "Flash Firmware ...");
+    // if (sscma_client_ota_start(client, flasher, 0x000000) != ESP_OK)
+    // {
+    //     ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
+    // }
+    // else
+    // {
+    //     ESP_LOGI(TAG, "sscma_client_ota_start success\n");
+    //     FILE *f = fopen("/spiffs/firmware.img", "r");
+    //     if (f == NULL)
+    //     {
+    //         ESP_LOGE(TAG, "open firmware.img failed\n");
+    //     }
+    //     else
+    //     {
+    //         ESP_LOGI(TAG, "open firmware.img success\n");
+    //         size_t len = 0;
+    //         char buf[256] = { 0 };
+    //         do
+    //         {
+    //             memset(buf, 0, sizeof(buf));
+    //             if (fread(buf, 1, sizeof(buf), f) <= 0)
+    //             {
+    //                 printf("\n");
+    //                 break;
+    //             }
+    //             else
+    //             {
+    //                 len += sizeof(buf);
+    //                 if (sscma_client_ota_write(client, buf, sizeof(buf)) != ESP_OK)
+    //                 {
+    //                     ESP_LOGI(TAG, "sscma_client_ota_write failed\n");
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //         while (true);
+    //         fclose(f);
+    //     }
+    //     sscma_client_ota_finish(client);
+    //     vTaskDelay(50 / portTICK_PERIOD_MS);
+    //     ESP_LOGI(TAG, "sscma_client_ota_finish success, take %lld us\n", esp_timer_get_time() - start);
+    // }
 
-    if (sscma_client_get_info(client, &info, false) == ESP_OK)
-    {
-        printf("ID: %s\n", (info->id != NULL) ? info->id : "NULL");
-        printf("Name: %s\n", (info->name != NULL) ? info->name : "NULL");
-        printf("Hardware Version: %s\n", (info->hw_ver != NULL) ? info->hw_ver : "NULL");
-        printf("Software Version: %s\n", (info->sw_ver != NULL) ? info->sw_ver : "NULL");
-        printf("Firmware Version: %s\n", (info->fw_ver != NULL) ? info->fw_ver : "NULL");
-    }
-    else
-    {
-        printf("get info failed\n");
-    }
-
+    // if (sscma_client_get_info(client, &info, false) == ESP_OK)
+    // {
+    //     printf("ID: %s\n", (info->id != NULL) ? info->id : "NULL");
+    //     printf("Name: %s\n", (info->name != NULL) ? info->name : "NULL");
+    //     printf("Hardware Version: %s\n", (info->hw_ver != NULL) ? info->hw_ver : "NULL");
+    //     printf("Software Version: %s\n", (info->sw_ver != NULL) ? info->sw_ver : "NULL");
+    //     printf("Firmware Version: %s\n", (info->fw_ver != NULL) ? info->fw_ver : "NULL");
+    // }
+    // else
+    // {
+    //     printf("get info failed\n");
+    // }
+    sscma_client_set_model(client, 4);
     ESP_LOGI(TAG, "Flash gesture.tflite ...");
     start = esp_timer_get_time();
-    if (sscma_client_ota_start(client, flasher, 0x800000) != ESP_OK)
+    if (sscma_client_ota_start(client, flasher, 0xA00000) != ESP_OK)
     {
         ESP_LOGI(TAG, "sscma_client_ota_start failed\n");
     }
@@ -262,7 +262,7 @@ void app_main(void)
     sscma_client_set_sensor(client, 1, 1, true);
     vTaskDelay(50 / portTICK_PERIOD_MS);
 
-    if (sscma_client_set_model(client, 3) != ESP_OK)
+    if (sscma_client_set_model(client, 4) != ESP_OK)
     {
         ESP_LOGI(TAG, "set model failed\n");
         sscma_client_sample(client, -1);
