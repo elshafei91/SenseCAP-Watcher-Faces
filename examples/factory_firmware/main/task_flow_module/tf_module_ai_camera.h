@@ -203,6 +203,8 @@ typedef struct tf_module_ai_camera
     struct tf_module_ai_camera_preview_info preview_info_cache;
     bool start_flag;
     int start_err_code;
+    bool ai_model_downloading;
+    bool ai_model_download_exit;
 } tf_module_ai_camera_t;
 
 tf_module_t * tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins);

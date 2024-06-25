@@ -93,6 +93,35 @@ static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32
         xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
     }
 }
+static void __view_event_handler(void* handler_args, 
+                                 esp_event_base_t base, 
+                                 int32_t id, 
+                                 void* event_data)
+{
+    switch (id)
+    {
+        case VIEW_EVENT_TASK_FLOW_STOP:
+        {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
+            tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)handler_args;
+
+            __data_lock(p_module_ins);
+            if( p_module_ins->ai_model_downloading ) {
+                ESP_LOGI(TAG, "AI Model Downloading, abort");
+                app_ota_ai_model_download_abort();
+            } else {
+                p_module_ins->ai_model_download_exit = true; // maybe ready download
+            }
+            __data_unlock(p_module_ins);
+
+            break;
+        }
+        default:
+            break;
+    }
+
+}
+
 
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
@@ -1004,6 +1033,8 @@ static void ai_camera_task(void *p_arg)
 
                     if(is_need_update ) {
                         
+                        bool ota_exit_flag = false;
+
                         if( model_info ) {
                             ESP_LOGI(TAG, "Model updating... %s,%s --> %s,%s", \
                                 (model_info->uuid != NULL) ? model_info->uuid : "NULL", (model_info->ver != NULL) ? model_info->ver : "NULL", p_params->model.model_id, p_params->model.version);
@@ -1014,8 +1045,26 @@ static void ai_camera_task(void *p_arg)
                         ESP_LOGI(TAG, "Url: %s", p_params->model.url);
                         ESP_LOGI(TAG, "Size:%d", p_params->model.size);
                         ESP_LOGI(TAG, "MD5:%s", p_params->model.checksum);
+                        
                         __model_flag_clear();
-                        ret = app_ota_ai_model_download(p_params->model.url, p_params->model.size);
+                        
+                        __data_lock(p_module_ins);
+                        if ( p_module_ins->ai_model_download_exit ) {
+                            ESP_LOGI(TAG, "AI Model Download abort");
+                            ota_exit_flag = true;
+                        } else {
+                            ota_exit_flag = false;
+                            p_module_ins->ai_model_downloading = true;
+                        }
+                        __data_unlock(p_module_ins);
+
+                        if( !ota_exit_flag ){
+                            ret = app_ota_ai_model_download(p_params->model.url, p_params->model.size);
+                            p_module_ins->ai_model_downloading = false;
+                        } else {
+                            ret = ESP_FAIL;
+                        }
+                        
                         if( ret != ESP_OK) {
                             ESP_LOGE(TAG, "Failed to download model:%d\n", ret);
                             err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL_OTA;
@@ -1043,7 +1092,7 @@ static void ai_camera_task(void *p_arg)
                                         break;
                                     }
                                     retry-=1;
-                                    vTaskDelay(1000 / portTICK_PERIOD_MS);
+                                    vTaskDelay(pdMS_TO_TICKS(100));
                                 }
                                 if( retry == 0 ) {
                                     err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL;
@@ -1138,7 +1187,10 @@ static int __start(void *p_module)
     esp_err_t ret = ESP_OK;
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)p_module;
 
+    p_module_ins->ai_model_download_exit = false; //clear flag
+    p_module_ins->ai_model_downloading = false;
     p_module_ins->start_flag = true;
+    
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
     EventBits_t bits = 0;
     bits = xEventGroupWaitBits(p_module_ins->event_group, EVENT_STATRT_DONE, 1, 1,  pdMS_TO_TICKS(60000 * 10)); // 10 min
@@ -1161,7 +1213,10 @@ static int __stop(void *p_module)
 {
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)p_module;
     
-    app_ota_ai_model_download_abort();
+    if( p_module_ins->ai_model_downloading ) {
+        ESP_LOGI(TAG, "Abort model download");
+        app_ota_ai_model_download_abort();
+    }
 
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP);
     xEventGroupWaitBits(p_module_ins->event_group, EVENT_STOP_DONE, 1, 1, pdMS_TO_TICKS(60000));
@@ -1293,9 +1348,10 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     p_module_ins->p_output_evt_id = NULL;
     p_module_ins->output_evt_num = 0;
     p_module_ins->shutter_trigger_flag = 0;
-
     p_module_ins->condition_trigger_buf_idx = 0;
     memset(p_module_ins->condition_trigger_buf, false, sizeof(p_module_ins->condition_trigger_buf));
+    p_module_ins->ai_model_downloading = false;
+    p_module_ins->ai_model_download_exit = false;
 
     p_module_ins->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
@@ -1352,6 +1408,13 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     ret = esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_HIMAX_FW,
                                                     __ota_event_handler, p_module_ins);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "ota esp_event_handler_register failed");
+
+    ret = esp_event_handler_register_with(  app_event_loop_handle, 
+                                            VIEW_EVENT_BASE, 
+                                            VIEW_EVENT_TASK_FLOW_STOP, 
+                                            __view_event_handler, 
+                                            p_module_ins);
+    ESP_GOTO_ON_ERROR(ret, err, TAG, "view esp_event_handler_register failed");
 
     return &p_module_ins->module_serv;
 
