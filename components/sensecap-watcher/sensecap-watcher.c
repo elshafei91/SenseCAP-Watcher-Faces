@@ -164,6 +164,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
     esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
+    esp_io_expander_set_level(io_exp_handle, BSP_PWR_LCD, 1); // OPTIMIZE: Implement Workaround for LCD Chip Lockup Due to Incomplete Power Down
     vTaskDelay(50 / portTICK_PERIOD_MS);
     esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
     vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -315,7 +316,6 @@ void bsp_system_deep_sleep(uint32_t time_in_sec)
 
 void bsp_system_reboot(void)
 {
-    bsp_exp_io_set_level(BSP_PWR_LCD, 0);
     esp_restart();
 }
 

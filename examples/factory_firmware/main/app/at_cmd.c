@@ -22,6 +22,7 @@
 
 #include "data_defs.h"
 #include "event_loops.h"
+#include "tf.h"
 #include "app_time.h"
 #include "app_wifi.h"
 #include "app_ble.h"
@@ -33,15 +34,17 @@
 #include "app_png.h"
 
 
-#define TAG "AT_CMD"
+#define AT_CMD_BUFFER_LEN_STEP   (1024 * 100)  // the growing step of the size of at cmd buffer
+#define AT_CMD_BUFFER_MAX_LEN    (1024 * 500)  // top limit of the at cmd buffer size, don't be too huge
+#define BLE_MSG_Q_SIZE            10
+
 
 /*------------------system basic DS-----------------------------------------------------*/
+const char *TAG = "at_cmd";
 const char *pattern = "^AT\\+([a-zA-Z0-9]+)(\\?|=(\\{.*\\}))?\r\n$";
 command_entry *commands = NULL; // Global variable to store the commands
-static StaticTask_t at_task_buffer;
-static StackType_t *at_task_stack = NULL;
-static void hex_to_string(uint8_t *hex, int hex_size, char *output);
-static void __view_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data);
+static at_cmd_buffer_t g_at_cmd_buffer = {.buff = NULL, .cap = AT_CMD_BUFFER_LEN_STEP, .wr_ptr = 0};
+QueueHandle_t ble_msg_queue;
 
 /*------------------network DS----------------------------------------------------------*/
 SemaphoreHandle_t wifi_stack_semaphore;
@@ -54,23 +57,6 @@ SemaphoreHandle_t semaphorewificonnected;
 SemaphoreHandle_t semaphorewifidisconnected;
 
 SemaphoreHandle_t xBinarySemaphore_wifitable;
-/*------------------critical DS for task_flow-------------------------------------------*/
-
-typedef struct
-{
-    int package;
-    int sum;
-    char *data;
-} Task;
-
-Task *tasks = NULL;
-static int num_jsons = 0;
-
-static size_t total_size;
-
-QueueHandle_t ble_msg_queue;
-/*------------------------------------emoji DS---------------------------------------------*/
-Task *emoji_tasks = NULL;
 
 /*-----------------------------------bind index--------------------------------------------*/
 static int bind_index;
@@ -412,8 +398,8 @@ at_cmd_error_code handle_bind_command(char *params)
         if (error_ptr != NULL)
         {
             ESP_LOGE(TAG, "Error before: %s\n", error_ptr);
-            return ERROR_CMD_JSON_PARSE;
         }
+        return ERROR_CMD_JSON_PARSE;
     }
 
     cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "code");
@@ -436,17 +422,8 @@ at_cmd_error_code handle_bind_command(char *params)
         ESP_LOGE(TAG, "Failed to create JSON object\n");
         return ERROR_CMD_JSON_CREATE;
     }
-    cJSON *data_rep = cJSON_CreateObject();
-    if (data_rep == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to create JSON object\n");
-        cJSON_Delete(root);
-        return ERROR_CMD_JSON_CREATE;
-    }
     cJSON_AddStringToObject(root, "name", "bind");
     cJSON_AddNumberToObject(root, "code", 0);
-    cJSON_AddItemToObject(root, "data", data_rep);
-    cJSON_AddStringToObject(data_rep, "bind", "");
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String: %s\n", json_string);
     esp_err_t send_result = send_at_response(json_string);
@@ -476,9 +453,8 @@ at_cmd_error_code handle_emoji_command(char *params)
         if (error_ptr != NULL)
         {
             ESP_LOGE(TAG, "Error before: %s\n", error_ptr);
-
-            return ERROR_CMD_JSON_PARSE;
         }
+        return ERROR_CMD_JSON_PARSE;
     }
 
     // Get the "filename" from the JSON
@@ -720,17 +696,8 @@ at_cmd_error_code handle_cloud_service_command(char *params)
         ESP_LOGE(TAG, "Failed to create JSON object\n");
         return ERROR_CMD_JSON_CREATE;
     }
-    cJSON *data_rep = cJSON_CreateObject();
-    if (data_rep == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to create JSON object\n");
-        cJSON_Delete(root);
-        return ERROR_CMD_JSON_CREATE;
-    }
     cJSON_AddStringToObject(root, "name", "cloudservice");
     cJSON_AddNumberToObject(root, "code", 0);
-    cJSON_AddItemToObject(root, "data", data_rep);
-    cJSON_AddStringToObject(data_rep, "remotecontrol", "");
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String: %s\n", json_string);
     esp_err_t send_result = send_at_response(json_string);
@@ -768,8 +735,8 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
         if (error_ptr != NULL)
         {
             ESP_LOGE(TAG, "Error before: %s\n", error_ptr);
-            return ERROR_CMD_JSON_PARSE;
         }
+        return ERROR_CMD_JSON_PARSE;
     }
 
     cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
@@ -1073,9 +1040,9 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
     cJSON *data = cJSON_CreateObject();
 
     char eui_rsp[17] = { 0 };
-    hex_to_string(get_eui(), 8, (const char *)eui_rsp);
+    byte_array_to_hex_string(get_eui(), 8, (const char *)eui_rsp);
     char bt_mac_rsp[13] = { 0 };
-    hex_to_string(get_bt_mac(), 6, (const char *)bt_mac_rsp);
+    byte_array_to_hex_string(get_bt_mac(), 6, (const char *)bt_mac_rsp);
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "eui", (const char *)eui_rsp);
     cJSON_AddStringToObject(data, "blemac", (const char *)bt_mac_rsp);
@@ -1092,7 +1059,7 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
 
     char *json_string = cJSON_Print(root);
 
-    ESP_LOGD(TAG, "JSON Stringin handle_deviceinfo_command: %s\n", json_string);
+    ESP_LOGD(TAG, "JSON String in handle_deviceinfo_command: %s\n", json_string);
     esp_err_t send_result = send_at_response(json_string);
     if (send_result != ESP_OK)
     {
@@ -1138,8 +1105,8 @@ at_cmd_error_code handle_wifi_set(char *params)
         if (error_ptr != NULL)
         {
             ESP_LOGE(TAG, "Error before: %s\n", error_ptr);
-            return ERROR_CMD_JSON_PARSE;
         }
+        return ERROR_CMD_JSON_PARSE;
     }
     cJSON *json_ssid = cJSON_GetObjectItemCaseSensitive(json, "ssid");
     cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
@@ -1395,7 +1362,7 @@ at_cmd_error_code handle_taskflow_query_command(char *params)
     free(json_string);
     return AT_CMD_SUCCESS;
 }
-
+#if 0
 /**
  * @brief Parses a JSON string and concatenates task information into an array of Task structures.
  *
@@ -1466,15 +1433,15 @@ at_cmd_error_code parse_json_and_concatenate(char *json_string)
 
     tasks[index].package = package->valueint;
     tasks[index].sum = sum->valueint;
-    tasks[index].data = (char *)heap_caps_malloc(DATA_LENGTH + 1, MALLOC_CAP_SPIRAM);
+    tasks[index].data = (char *)heap_caps_malloc(AT_CMD_SLICE_LEN + 1, MALLOC_CAP_SPIRAM);
     if (tasks[index].data == NULL)
     {
         ESP_LOGI(TAG, "Failed to allocate memory for data\n");
         cJSON_Delete(json);
         return ERROR_CMD_MEM_ALLOC;
     }
-    strncpy(tasks[index].data, data->valuestring, DATA_LENGTH);
-    tasks[index].data[DATA_LENGTH] = '\0'; // end
+    strncpy(tasks[index].data, data->valuestring, AT_CMD_SLICE_LEN);
+    tasks[index].data[AT_CMD_SLICE_LEN] = '\0'; // end
 
     cJSON_Delete(json);
     return AT_CMD_SUCCESS;
@@ -1563,55 +1530,35 @@ at_cmd_error_code base64_decode(const unsigned char *input, size_t input_len, un
     }
     return AT_CMD_SUCCESS; // success
 }
-
+#endif
 at_cmd_error_code handle_taskflow_command(char *params)
 {
     esp_err_t code = ESP_OK;
     ESP_LOGI(TAG, "Handling taskflow command\n");
-    at_cmd_error_code parse_json_and_concatenate_err = parse_json_and_concatenate(params);
-    if (parse_json_and_concatenate_err != AT_CMD_SUCCESS)
+    cJSON *json = cJSON_Parse(params);
+    if (json == NULL)
     {
-        ESP_LOGE(TAG, "Failed to parse JSON and concatenate\n");
-        return parse_json_and_concatenate_err;
-    }
-    int all_received = 1;
-    for (int j = 0; j < num_jsons; j++)
-    {
-        if (tasks[j].data == NULL)
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
         {
-            all_received = 0;
-            break;
+            ESP_LOGE(TAG, "Error before: %s\n", error_ptr);
         }
+        return ERROR_CMD_JSON_PARSE;
     }
-    if (all_received)
-    {
-        char *result = (char *)heap_caps_malloc(MEMORY_SIZE, MALLOC_CAP_SPIRAM);
-        if (result == NULL)
-        {
-            ESP_LOGE(TAG, "Failed to allocate memory for result\n");
-            for (int k = 0; k < num_jsons; k++)
-            {
-                free(tasks[k].data);
-            }
-            free(tasks);
-            return ERROR_CMD_MEM_ALLOC;
-        }
+    char *taskflow_data_str = NULL;
+    cJSON *json_data = cJSON_GetObjectItem(json, "data");
+    if (json_data && cJSON_IsObject(json_data))
+        taskflow_data_str = cJSON_PrintUnformatted(json_data);
+    cJSON_Delete(json);
 
-        // try to make base64 decode
-        concatenate_data(result);
-        unsigned char *base64_output;
-        size_t output_len;
-        at_cmd_error_code base64_decode_err = base64_decode((const unsigned char *)result, strlen(result), &base64_output, &output_len);
-        if (base64_decode_err != AT_CMD_SUCCESS)
-        {
-            ESP_LOGE(TAG, "Failed to base64 decode\n");
-            free(result);
-            return base64_decode_err;
-        }
-        free(result);
-        printf("send task flow is %s", base64_output);
-        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, &base64_output, 4, portMAX_DELAY);
+    if (taskflow_data_str == NULL) {
+        return ERROR_CMD_JSON_PARSE;
     }
+
+    ESP_LOGI(TAG, "will send to taskflow, strlen=%d", strlen(taskflow_data_str));
+
+    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, 
+                        &taskflow_data_str, sizeof(void *), pdMS_TO_TICKS(10000));
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
@@ -1657,35 +1604,35 @@ at_cmd_error_code handle_taskflow_command(char *params)
  * @param output A pointer to the output buffer where the resulting string will be stored.
  *               The buffer should be large enough to hold the converted string and a null terminator.
  */
-static void hex_to_string(uint8_t *in_data, int Size, char *out_data)
-{
-    for (unsigned char i = 0; i < Size; i++)
-    {
-        out_data[2 * i] = (in_data[i] >> 4);
-        out_data[2 * i + 1] = (in_data[i] & 0x0F);
-    }
-    for (unsigned char i = 0; i < 2 * Size; i++)
-    {
-        if ((out_data[i] >= 0) && (out_data[i] <= 9))
-        {
-            out_data[i] = '0' + out_data[i];
-        }
-        else if ((out_data[i] >= 0x0A) && (out_data[i] <= 0x0F))
-        {
-            out_data[i] = 'A' - 10 + out_data[i];
-        }
-        else
-        {
-            return;
-        }
-    }
-}
+// static void byte_array_to_hex_string(uint8_t *in_data, int Size, char *out_data)
+// {
+//     for (unsigned char i = 0; i < Size; i++)
+//     {
+//         out_data[2 * i] = (in_data[i] >> 4);
+//         out_data[2 * i + 1] = (in_data[i] & 0x0F);
+//     }
+//     for (unsigned char i = 0; i < 2 * Size; i++)
+//     {
+//         if ((out_data[i] >= 0) && (out_data[i] <= 9))
+//         {
+//             out_data[i] = '0' + out_data[i];
+//         }
+//         else if ((out_data[i] >= 0x0A) && (out_data[i] <= 0x0F))
+//         {
+//             out_data[i] = 'A' - 10 + out_data[i];
+//         }
+//         else
+//         {
+//             return;
+//         }
+//     }
+// }
 /**
  * @brief A static task that handles incoming AT commands, parses them, and executes the corresponding actions.
  *
  * This function runs in an infinite loop, receiving messages from a stream buffer within bluetooth. It parses the received AT commands,
  * converts the hex data to a string, and uses regular expressions to match and extract command details.
- * The extracted command is then executed. The function relies on auxiliary functions like `hex_to_string` to process
+ * The extracted command is then executed. The function relies on auxiliary functions like `byte_array_to_hex_string` to process
  * the received data.
  *
  * This task is declared static, indicating that it is intended to be used only within the file it is defined in,and placed in PSRAM
@@ -1693,25 +1640,53 @@ static void hex_to_string(uint8_t *in_data, int Size, char *out_data)
 
 void __at_cmd_proc_task(void *arg)
 {
+    at_cmd_buffer_t *cmd_buff = &g_at_cmd_buffer;
+
     while (1)
     {
-        ble_msg_t msg_at;
-        if (xQueueReceive(ble_msg_queue, &msg_at, portMAX_DELAY) != pdPASS) {
+        ble_msg_t ble_msg;
+        if (xQueueReceive(ble_msg_queue, &ble_msg, portMAX_DELAY) != pdPASS) {
             ESP_LOGE(TAG, "Failed to receive ble message from queue");
             continue;
         }
 
-        char *test_strings = (char *)heap_caps_malloc(msg_at.size + 1, MALLOC_CAP_SPIRAM);
-        memcpy(test_strings, msg_at.msg, msg_at.size);
-        free(msg_at.msg);
-        msg_at.msg = NULL;
-        test_strings[msg_at.size] = '\0';
-
-        if (test_strings == NULL)
-        {
-            ESP_LOGE(TAG, "Memory allocation failed");
+        // grow the buffer
+        __data_lock();
+        while ((cmd_buff->cap - cmd_buff->wr_ptr - 1/* \0 */) < ble_msg.size && cmd_buff->cap < AT_CMD_BUFFER_MAX_LEN) {
+            cmd_buff->cap += AT_CMD_BUFFER_LEN_STEP;
+            if (cmd_buff->cap > AT_CMD_BUFFER_MAX_LEN) {
+                ESP_LOGE(TAG, "at cmd buffer can't grow anymore, max_size=%d, want=%d", AT_CMD_BUFFER_MAX_LEN, cmd_buff->cap);
+                cmd_buff->cap = AT_CMD_BUFFER_MAX_LEN;
+            }
+            cmd_buff->buff = psram_realloc(cmd_buff->buff, cmd_buff->cap);
+            if (cmd_buff->buff == NULL) {
+                ESP_LOGE(TAG, "at cmd buffer mem alloc failed!!!");
+                __data_unlock();
+                vTaskDelay(portMAX_DELAY);
+            }
+            ESP_LOGI(TAG, "at cmd buffer grow to size %d", cmd_buff->cap);
         }
-        ESP_LOGI(TAG, "AT command received");
+
+        // copy msg into buffer
+        int wr_len = MIN(ble_msg.size, (cmd_buff->cap - cmd_buff->wr_ptr - 1/* \0 */));
+        memcpy(cmd_buff->buff + cmd_buff->wr_ptr, ble_msg.msg, wr_len);
+        cmd_buff->wr_ptr += wr_len;
+        cmd_buff->buff[cmd_buff->wr_ptr] = '\0';
+        __data_unlock();
+        ESP_LOGD(TAG, "at cmd buffer write_pointer=%d", cmd_buff->wr_ptr);
+
+        // if this msg is the last slice ( ending with "\r\n")
+        if (!strstr((char *)ble_msg.msg, "\r\n")) {  //app_ble.c ensures there's null-terminator in ble_msg.msg
+            free(ble_msg.msg);
+            continue;
+        }
+        free(ble_msg.msg);
+
+        ESP_LOGI(TAG, "at cmd buffer recv the \\r\\n, process the buffer...");
+        cmd_buff->wr_ptr = 0;
+        char *test_strings = (char *)cmd_buff->buff;
+        ESP_LOGD(TAG, "%s", test_strings);
+        
         regex_t regex;
         int ret;
         ret = regcomp(&regex, pattern, REG_EXTENDED);
@@ -1726,6 +1701,7 @@ void __at_cmd_proc_task(void *arg)
             send_at_response(json_string);
             cJSON_Delete(root);
             free(json_string);
+            continue;
         }
         regmatch_t matches[4];
         ret = regexec(&regex, test_strings, 4, matches, 0);
@@ -1735,18 +1711,16 @@ void __at_cmd_proc_task(void *arg)
             char command_type[20];
             snprintf(command_type, sizeof(command_type), "%.*s", (int)(matches[1].rm_eo - matches[1].rm_so), test_strings + matches[1].rm_so);
 
-            char *params = (char *)psram_calloc(1, 1024 * 10);
+            char *params = test_strings;
             if (matches[3].rm_so != -1)
             {
                 int length = (int)(matches[3].rm_eo - matches[3].rm_so);
-                snprintf(params, length + 1, "%.*s", (int)(matches[3].rm_eo - matches[3].rm_so), test_strings + matches[3].rm_so);
+                params = test_strings + matches[3].rm_so;
                 ESP_LOGD(TAG, "Matched string: %.50s... (total length: %d)\n", params, length);
             }
             char query_type = test_strings[matches[1].rm_eo] == '?' ? '?' : '=';
             // ESP_LOGD(TAG, "regex, command_type=%s, params=%s, query_type=%c", command_type, params, query_type);
             exec_command(&commands, command_type, params, query_type);
-            free(params);
-            params = NULL;
         }
         else if (ret == REG_NOMATCH)
         {
@@ -1774,66 +1748,8 @@ void __at_cmd_proc_task(void *arg)
             cJSON_Delete(root);
             free(json_string);
         }
-        free(test_strings);
         regfree(&regex);
     }
-}
-
-/**
- * @brief Initializes the AT command handling task by creating a stream buffer and the associated task.
- *
- * This function sets up the necessary resources for handling AT commands. It creates a stream buffer for
- * receiving messages and starts the `task_handle_AT_command` task to process these messages.
- */
-
-void init_at_cmd_task(void)
-{
-    ble_msg_queue = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(ble_msg_t));
-    if (ble_msg_queue == NULL)
-    {
-        ESP_LOGI(TAG, "Failed to create queue\n");
-        return;
-    }
-    at_task_stack = (StackType_t *)heap_caps_malloc(10240 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
-    if (at_task_stack == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to allocate memory for WiFi task stack\n");
-        return;
-    }
-    TaskHandle_t at_task_handle = xTaskCreateStatic(__at_cmd_proc_task, "at_cmd", 10240, NULL, 9, at_task_stack, &at_task_buffer);
-
-    if (at_task_handle == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to create WiFi task\n");
-        free(at_task_handle);
-        at_task_handle = NULL;
-    }
-}
-
-/**
- * @brief Initializes the AT command handling system.
- *
- * This function sets up the necessary components for handling AT commands, including creating the response queue,
- * initializing semaphores, and initializing tasks and WiFi stacks.
- */
-void app_at_cmd_init()
-{
-#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
-#endif
-
-    data_sem_handle = xSemaphoreCreateMutex();
-    xBinarySemaphore_wifitable = xSemaphoreCreateBinary();
-
-    initWiFiStack(&wifiStack_scanned, WIFI_SCAN_RESULT_CNT_MAX);
-    initWiFiStack(&wifiStack_connected, WIFI_SCAN_RESULT_CNT_MAX);
-    wifi_stack_semaphore_init();
-    AT_command_reg();
-    init_at_cmd_task();
-
-    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, __view_event_handler, NULL));
-
-    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STATUS, __view_event_handler, NULL));
 }
 
 /**
@@ -1871,9 +1787,63 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             __data_lock();
             memcpy(&taskflow_status, p_status, sizeof(struct view_data_taskflow_status));
             __data_unlock();
+            ESP_LOGI(TAG, "taskflow status = %d", taskflow_status.engine_status);
             break;
         }
+        case VIEW_EVENT_BLE_STATUS:
+            bool status = *(bool *)event_data;
+            ESP_LOGI(TAG, "event: VIEW_EVENT_BLE_STATUS, status=%d", status);
+            __data_lock();
+            if (!status) g_at_cmd_buffer.wr_ptr = 0;  //reset buffer when ble disconnect
+            __data_unlock();
+            break;
         default:
             break;
     }
 }
+
+/**
+ * @brief Initializes the AT command handling system.
+ *
+ * This function sets up the necessary components for handling AT commands, including creating the response queue,
+ * initializing semaphores, and initializing tasks and WiFi stacks.
+ */
+void app_at_cmd_init()
+{
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
+
+    data_sem_handle = xSemaphoreCreateMutex();
+    xBinarySemaphore_wifitable = xSemaphoreCreateBinary();
+
+    g_at_cmd_buffer.cap = AT_CMD_BUFFER_LEN_STEP;
+    g_at_cmd_buffer.wr_ptr = 0;
+    g_at_cmd_buffer.buff = psram_calloc(1, g_at_cmd_buffer.cap);
+
+    taskflow_status.engine_status = TF_STATUS_IDLE;
+
+    initWiFiStack(&wifiStack_scanned, WIFI_SCAN_RESULT_CNT_MAX);
+    initWiFiStack(&wifiStack_connected, WIFI_SCAN_RESULT_CNT_MAX);
+    wifi_stack_semaphore_init();
+    AT_command_reg();
+
+    // init at cmd msg Q
+    ble_msg_queue = xQueueCreate(BLE_MSG_Q_SIZE, sizeof(ble_msg_t));
+
+    // init at cmd processing task
+    const uint32_t stack_size = 10 * 1024;
+    StackType_t *task_stack1 = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
+    StaticTask_t *task_tcb1 = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+    xTaskCreateStatic(__at_cmd_proc_task, "at_cmd", stack_size, NULL, 9, task_stack1, task_tcb1);
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_ST, 
+                                                    __view_event_handler, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STATUS,
+                                                    __view_event_handler, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS,
+                                                    __view_event_handler, NULL));
+}
+
