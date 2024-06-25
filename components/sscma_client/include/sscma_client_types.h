@@ -124,6 +124,8 @@ typedef void (*sscma_client_reply_cb_t)(sscma_client_handle_t client, const sscm
  */
 typedef struct
 {
+    sscma_client_reply_cb_t on_connect;
+    sscma_client_reply_cb_t on_disconnect; // TODO
     sscma_client_reply_cb_t on_response;
     sscma_client_reply_cb_t on_event;
     sscma_client_reply_cb_t on_log;
@@ -138,6 +140,8 @@ struct sscma_client_t
     bool inited;                           /* !< Whether inited */
     sscma_client_info_t info;              /* !< Info */
     sscma_client_model_t model;            /* !< Model */
+    sscma_client_reply_cb_t on_connect;    /* !< Callback function */
+    sscma_client_reply_cb_t on_disconnect; /* !< Callback function */
     sscma_client_reply_cb_t on_response;   /* !< Callback function */
     sscma_client_reply_cb_t on_event;      /* !< Callback function */
     sscma_client_reply_cb_t on_log;        /* !< Callback function */
