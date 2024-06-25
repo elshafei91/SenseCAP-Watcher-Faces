@@ -59,6 +59,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_volicon_png.c
     images/ui_img_swipe_png.c
     images/ui_img_wifiok_png.c
+    images/ui_img_guideimg_png.c
     images/ui_img_scroll_down_png.c
     images/ui_img_fakelivecam_png.c
     images/ui_img_scroll_up_png.c
@@ -71,7 +72,6 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_gradient_png.c
     images/ui_img_left_png.c
     images/ui_img_onboardclick_png.c
-    images/ui_img_smile1_png.c
     images/ui_img_wifi_0_png.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c

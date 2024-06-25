@@ -48,6 +48,7 @@
 #define EVENT_WIFI       "WIFI"
 #define EVENT_MQTT       "MQTT"
 #define EVENT_SUPERVISOR "SUPERVISOR"
+#define EVENT_STARTUP    "INIT"
 
 #define LOG_AT  "AT"
 #define LOG_LOG "LOG"

@@ -64,6 +64,7 @@ struct app_sensecraft
     char topic_up_taskflow_report[MQTT_TOPIC_STR_LEN];
     char topic_up_warn_event_report[MQTT_TOPIC_STR_LEN];
     char topic_up_model_ota_status[MQTT_TOPIC_STR_LEN];
+    char topic_up_firmware_ota_status[MQTT_TOPIC_STR_LEN];
     char topic_cache[MQTT_TOPIC_STR_LEN];
     char *p_mqtt_recv_buf;
     bool net_flag;
@@ -116,6 +117,7 @@ esp_err_t app_sensecraft_mqtt_report_warn_event(intmax_t taskflow_id,
 esp_err_t app_sensecraft_mqtt_report_device_status_generic(char *event_value_fields);
 esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_status *dev_status);
 
+esp_err_t app_sensecraft_mqtt_report_firmware_ota_status_generic(char *ota_status_fields_str);
 
 #ifdef __cplusplus
 }

@@ -794,7 +794,7 @@ static void ota_status_report(struct view_data_ota_status *ota_status)
         sniprintf(buff + len, buffsz - len, ",\"3577\": \"%s\"", g_cur_ota_version_himax);
     }
 
-    app_sensecraft_mqtt_report_device_status_generic(buff);
+    app_sensecraft_mqtt_report_firmware_ota_status_generic(buff);
 
     free(buff);
 }
@@ -947,7 +947,13 @@ static void __mqtt_ota_executor_task(void *p_arg)
                 if (!intent || !cJSON_IsString(intent) || strcmp(intent->valuestring, "order") != 0) break;
 
                 cJSON *order = cJSONUtils_GetPointer(ota_msg_cjson, "/order");
-                if (!order || !cJSON_IsArray(order) || cJSON_GetArraySize(order) == 0 || cJSON_GetArraySize(order) > 2) break;
+                if (!order || !cJSON_IsArray(order) || cJSON_GetArraySize(order) == 0) break;
+
+                if (cJSON_GetArraySize(order) > 2) {
+                    char *order_str = cJSON_PrintUnformatted(order);
+                    ESP_LOGW(TAG, "incoming ota json invalid, num of order array items > 2!!!\n%s", order_str);
+                    free(order_str);
+                }
 
                 cJSON *order_name = cJSONUtils_GetPointer(ota_msg_cjson, "/order/0/name");
                 if (!order_name || !cJSON_IsString(order_name) || strcmp(order_name->valuestring, "version-notify") != 0) break;
@@ -978,7 +984,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                 cJSON *order_value = cJSON_GetObjectItem(one_order, "value");
                 cJSON *order_value_sku = cJSON_GetObjectItem(order_value, "sku");
                 if (order_value_sku && cJSON_IsString(order_value_sku)) {
-                    if (strstr(order_value_sku->valuestring, "himax")) {
+                    if (strstr(order_value_sku->valuestring, "himax") && !order_value_himax) {
                         found++;
                         order_value_himax = order_value;
                         cJSON *fwv = cJSON_GetObjectItem(order_value_himax, "fwv");
@@ -1007,7 +1013,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                             goto cleanup;
                         }
                     }
-                    else if (strstr(order_value_sku->valuestring, "esp32")) {
+                    else if (strstr(order_value_sku->valuestring, "esp32") && !order_value_esp32) {
                         found++;
                         order_value_esp32 = order_value;
                         cJSON *fwv = cJSON_GetObjectItem(order_value_esp32, "fwv");
@@ -1046,7 +1052,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                     }
                 }
             }
-            if (found != num_orders) {
+            if (!(found == 1 || found == 2)) {
                 ESP_LOGW(TAG, "incoming ota cjson invalid [2]!");
                 ota_status_report_error(ESP_ERR_OTA_JSON_INVALID);
                 goto cleanup;
@@ -1059,6 +1065,17 @@ static void __mqtt_ota_executor_task(void *p_arg)
             //wait a while for network detection
             while (!atomic_load(&g_network_connected_flag))
                 vTaskDelay(pdMS_TO_TICKS(1000));
+
+            //already up-to-date? report to cloud as well
+            if (!(order_value_himax && new_himax) && !(order_value_esp32 && new_esp32)) {
+                ESP_LOGW(TAG, "the firmwares are both up-to-date! skip this MQTT msg ...");
+                struct view_data_ota_status ota_status;
+                ota_status.status = SENSECRAFT_OTA_STATUS_UP_TO_DATE;
+                ota_status.err_code = ESP_OK;
+                ota_status.percentage = 100;
+                ota_status_report(&ota_status);
+                goto cleanup;
+            }
 
             bool need_reboot = false;
             //upgrade himax
@@ -1126,11 +1143,10 @@ static void __mqtt_ota_executor_task(void *p_arg)
                 vTaskDelay(pdMS_TO_TICKS(3000));  // let the last mqtt msg sent
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
             }
-
-            //the json is used up
 cleanup:
             //delete the item from Q
             xQueueReceive(g_Q_ota_msg, &ota_msg_cjson, portMAX_DELAY);
+            //the json is used up
             cJSON_Delete(ota_msg_cjson);
         }
     }

@@ -191,6 +191,9 @@ void ui_event_setback(lv_event_t * e);
 extern lv_obj_t * ui_setback;
 extern lv_obj_t * ui_Image1;
 extern lv_obj_t * ui_setbackt;
+void ui_event_setdown(lv_event_t * e);
+extern lv_obj_t * ui_setdown;
+extern lv_obj_t * ui_setdownt;
 void ui_event_setapp(lv_event_t * e);
 extern lv_obj_t * ui_setapp;
 extern lv_obj_t * ui_setappt;
@@ -221,9 +224,6 @@ extern lv_obj_t * ui_setwwsw;
 void ui_event_setdev(lv_event_t * e);
 extern lv_obj_t * ui_setdev;
 extern lv_obj_t * ui_setdevt;
-void ui_event_setdown(lv_event_t * e);
-extern lv_obj_t * ui_setdown;
-extern lv_obj_t * ui_setdownt;
 void ui_event_setfac(lv_event_t * e);
 extern lv_obj_t * ui_setfac;
 extern lv_obj_t * ui_setfact;
@@ -260,6 +260,10 @@ void ui_event_aboutsv(lv_event_t * e);
 extern lv_obj_t * ui_aboutsv;
 extern lv_obj_t * ui_svt1;
 extern lv_obj_t * ui_svt2;
+void ui_event_abouthimaxver(lv_event_t * e);
+extern lv_obj_t * ui_abouthimaxver;
+extern lv_obj_t * ui_hv1;
+extern lv_obj_t * ui_hv2;
 void ui_event_aboutsn(lv_event_t * e);
 extern lv_obj_t * ui_aboutsn;
 extern lv_obj_t * ui_snt1;
@@ -423,6 +427,7 @@ LV_IMG_DECLARE(ui_img_human_d_png);    // assets/human_d.png
 LV_IMG_DECLARE(ui_img_volicon_png);    // assets/volicon.png
 LV_IMG_DECLARE(ui_img_swipe_png);    // assets/swipe.png
 LV_IMG_DECLARE(ui_img_wifiok_png);    // assets/wifiok.png
+LV_IMG_DECLARE(ui_img_guideimg_png);    // assets/guideimg.png
 LV_IMG_DECLARE(ui_img_scroll_down_png);    // assets/scroll_down.png
 LV_IMG_DECLARE(ui_img_fakelivecam_png);    // assets/fakelivecam.png
 LV_IMG_DECLARE(ui_img_scroll_up_png);    // assets/scroll_up.png
@@ -435,7 +440,6 @@ LV_IMG_DECLARE(ui_img_gesture_d_png);    // assets/gesture_d.png
 LV_IMG_DECLARE(ui_img_gradient_png);    // assets/gradient.png
 LV_IMG_DECLARE(ui_img_left_png);    // assets/left.png
 LV_IMG_DECLARE(ui_img_onboardclick_png);    // assets/onboardClick.png
-LV_IMG_DECLARE(ui_img_smile1_png);    // assets/smile1.png
 LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets/wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets/wifi_1.png
 LV_IMG_DECLARE(ui_img_wifi_2_png);    // assets/wifi_2.png

@@ -260,6 +260,11 @@ void on_log(sscma_client_handle_t client, const sscma_client_reply_t *reply, voi
     printf("log: %s\n", reply->data);
 }
 
+void on_connect(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
+{
+    printf("on_connect\n");
+}
+
 void app_main(void)
 {
     io_expander = bsp_io_expander_init();
@@ -286,6 +291,7 @@ void app_main(void)
     lv_obj_set_align(image, LV_ALIGN_CENTER);
 
     const sscma_client_callback_t callback = {
+        .on_connect = on_connect,
         .on_event = on_event,
         .on_log = on_log,
     };
