@@ -23,7 +23,8 @@ static const char *TAG = "sensecaft";
 
 struct app_sensecraft *gp_sensecraft = NULL;
 
-const int MQTT_PUB_QOS = 0;
+const int MQTT_PUB_QOS0 = 0;
+const int MQTT_PUB_QOS1 = 1;
 
 static void __data_lock(struct app_sensecraft  *p_sensecraft)
 {
@@ -800,7 +801,7 @@ esp_err_t app_sensecraft_mqtt_taskflow_ack(char *request_id,
     ESP_LOGD(TAG, "app_sensecraft_mqtt_taskflow_ack: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_task_publish_ack, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS1, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -867,7 +868,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t taskflow_id,
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_status: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_taskflow_report, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS1, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -936,7 +937,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_info(intmax_t taskflow_id,
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_info: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_taskflow_report, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS1, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -997,7 +998,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_model_ota_status(intmax_t taskflow
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_model_ota_status: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_model_ota_status, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS1, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -1061,7 +1062,7 @@ esp_err_t app_sensecraft_mqtt_report_warn_event(intmax_t taskflow_id,
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_warn_event: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_warn_event_report, json_buff, json_len,
-                                        1, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS0, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -1107,7 +1108,7 @@ esp_err_t app_sensecraft_mqtt_report_device_status_generic(char *event_value_fie
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_device_status: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_change_device_status, json_buff, strlen(json_buff),
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS0, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -1196,7 +1197,7 @@ esp_err_t app_sensecraft_mqtt_report_firmware_ota_status_generic(char *ota_statu
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_firmware_ota_status_generic: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_firmware_ota_status, json_buff,
-                                            strlen(json_buff), MQTT_PUB_QOS, false /*retain*/, true /*store*/);
+                                            strlen(json_buff), MQTT_PUB_QOS1, false /*retain*/, true /*store*/);
 
     free(json_buff);
 

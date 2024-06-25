@@ -12,7 +12,7 @@ static const char *TAG = "tf.engine";
 
 static tf_engine_t *gp_engine = NULL;
 
-#define EVENT_STATRT          BIT0
+#define EVENT_START          BIT0
 #define EVENT_STOP            BIT1
 #define EVENT_ERR_EXIT        BIT2
 
@@ -281,10 +281,10 @@ static void __tf_engine_task(void *p_arg)
     while (1)
     { 
         bits = xEventGroupWaitBits(p_engine->event_group, \
-                EVENT_STATRT | EVENT_STOP | EVENT_ERR_EXIT, pdTRUE, pdFALSE, ( TickType_t ) 10);
+                EVENT_START | EVENT_STOP | EVENT_ERR_EXIT, pdTRUE, pdFALSE, ( TickType_t ) 10);
 
-        if( ( bits & EVENT_STATRT ) != 0  &&  run_flag) {
-            ESP_LOGI(TAG, "EVENT_STATRT");
+        if( ( bits & EVENT_START ) != 0  &&  run_flag) {
+            ESP_LOGI(TAG, "EVENT_START");
             //TODO
         }
         
@@ -475,7 +475,7 @@ err:
 esp_err_t tf_engine_run(void)
 {
     assert(gp_engine);
-    xEventGroupSetBits(gp_engine->event_group, EVENT_STATRT); //TODO
+    xEventGroupSetBits(gp_engine->event_group, EVENT_START); //TODO
     return ESP_OK;
 }
 
