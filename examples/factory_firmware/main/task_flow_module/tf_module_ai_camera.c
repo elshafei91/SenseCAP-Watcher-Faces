@@ -18,12 +18,12 @@ static const char *TAG = "tfm.ai_camera";
 
 static tf_module_t *g_handle = NULL;
 
-#define EVENT_STATRT          BIT0
+#define EVENT_START          BIT0
 #define EVENT_STOP            BIT1
 #define EVENT_STOP_DONE       BIT2
 #define EVENT_SIMPLE_640_480  BIT3     
 #define EVENT_PRVIEW_416_416  BIT4 
-#define EVENT_STATRT_DONE     BIT5
+#define EVENT_START_DONE     BIT5
 
 #define AI_CAMERA_MODEL_FLAG_STORAGE  "model-flag"
 
@@ -90,7 +90,7 @@ static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32
     // if ota success,  will restart device. so don't  restart sscma.
     if( p_status->status == OTA_STATUS_FAIL && p_module_ins->start_flag) {
         ESP_LOGI(TAG, "Himax FW Download fail, start sscma client");
-        xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
+        xEventGroupSetBits(p_module_ins->event_group, EVENT_START);
     }
 }
 static void __view_event_handler(void* handler_args, 
@@ -461,7 +461,7 @@ static void sscma_on_connect(sscma_client_handle_t client, const sscma_client_re
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)user_ctx;
     if ( p_module_ins->start_flag  && !p_module_ins->sscma_starting_flag ) {
         ESP_LOGI(TAG, "restart sscma");
-        xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
+        xEventGroupSetBits(p_module_ins->event_group, EVENT_START);
     }
 }
 static void sscma_on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
@@ -934,7 +934,7 @@ static void ai_camera_task(void *p_arg)
         
         err_flag = 0;
         bits = xEventGroupWaitBits(p_module_ins->event_group, \
-                EVENT_STATRT | EVENT_STOP | \
+                EVENT_START | EVENT_STOP | \
                 EVENT_SIMPLE_640_480 | EVENT_PRVIEW_416_416, pdTRUE, pdFALSE, portMAX_DELAY);
 
         if( ( bits & EVENT_SIMPLE_640_480 ) != 0  && run_flag ) {
@@ -982,11 +982,11 @@ static void ai_camera_task(void *p_arg)
             }
         }
 
-        if( ( bits & EVENT_STATRT ) != 0 ) {
+        if( ( bits & EVENT_START ) != 0 ) {
             bool is_use_model = true;
             bool is_need_update = false;
 
-            ESP_LOGI(TAG, "EVENT_STATRT");
+            ESP_LOGI(TAG, "EVENT_START");
             p_module_ins->sscma_starting_flag = true;
             
             sscma_client_break(p_module_ins->sscma_client_handle);
@@ -1171,7 +1171,7 @@ static void ai_camera_task(void *p_arg)
             }
 
             p_module_ins->sscma_starting_flag = false;
-            xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT_DONE);
+            xEventGroupSetBits(p_module_ins->event_group, EVENT_START_DONE);
         }
 
         if( err_flag != 0 ) {
@@ -1185,7 +1185,7 @@ static void ai_camera_task(void *p_arg)
             run_flag = false;
 
             xEventGroupClearBits(p_module_ins->event_group, \
-                EVENT_STATRT | EVENT_STOP | \
+                EVENT_START | EVENT_STOP | \
                 EVENT_SIMPLE_640_480 | EVENT_PRVIEW_416_416);
             xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP_DONE);
         }
@@ -1204,10 +1204,10 @@ static int __start(void *p_module)
     p_module_ins->start_flag = true;
     p_module_ins->sscma_starting_flag = false;
     
-    xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
+    xEventGroupSetBits(p_module_ins->event_group, EVENT_START);
     EventBits_t bits = 0;
-    bits = xEventGroupWaitBits(p_module_ins->event_group, EVENT_STATRT_DONE, 1, 1,  pdMS_TO_TICKS(60000 * 10)); // 10 min
-    if( bits & EVENT_STATRT_DONE ) {
+    bits = xEventGroupWaitBits(p_module_ins->event_group, EVENT_START_DONE, 1, 1,  pdMS_TO_TICKS(60000 * 10)); // 10 min
+    if( bits & EVENT_START_DONE ) {
         int start_err_code = 0;
         if( p_module_ins->start_err_code != 0 ) {
             ESP_LOGE(TAG, "Start failed: %d", p_module_ins->start_err_code);
@@ -1216,7 +1216,7 @@ static int __start(void *p_module)
             ret = ESP_OK;
         }
     } else {
-        ESP_LOGE(TAG, "EVENT_STATRT_DONE timeout");
+        ESP_LOGE(TAG, "EVENT_START_DONE timeout");
         ret = ESP_FAIL;
     }
     return ret;
