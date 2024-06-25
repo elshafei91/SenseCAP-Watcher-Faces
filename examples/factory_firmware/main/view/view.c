@@ -395,6 +395,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
                     lv_group_focus_obj(ui_mainbtn2);
                 }
+                lv_group_set_wrap(g_main, true);
                 break;
             }
 

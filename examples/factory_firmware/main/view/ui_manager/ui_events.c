@@ -333,7 +333,6 @@ void virscrload_cb(lv_event_t *e)
     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
     lv_group_add_obj(g_main, ui_Page_Vir);
     create_timer(0);
-    lv_group_set_wrap(g_main, false);
     viewInfoInit();
     view_info_obtain_early();
 }
@@ -519,6 +518,7 @@ void viewasl_cb(lv_event_t *e)
 {
     g_avarlive = 0;
     lv_group_focus_obj(ui_Page_ViewAva);
+    if(lv_scr_act() == ui_Page_ViewAva || lv_scr_act() == ui_Page_ViewLive)lv_group_set_wrap(g_main, false);
     if (emoticon_disp_id == 1)
     {
         create_timer(3); // Load timer for the "detected" animation when emoticon_disp_id is 1
@@ -559,6 +559,7 @@ void viewlsl_cb(lv_event_t *e)
 {
     g_avarlive = 1;
     lv_group_focus_obj(ui_Page_ViewLive);
+    if(lv_scr_act() == ui_Page_ViewAva || lv_scr_act() == ui_Page_ViewLive)lv_group_set_wrap(g_main, false);
     if(view_alarm_status == 1)
     {
         lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
@@ -1607,6 +1608,7 @@ void viewp1c_cb(lv_event_t *e)
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_group_set_wrap(g_main, true);
 }
 
 void viewp2c_cb(lv_event_t *e)
