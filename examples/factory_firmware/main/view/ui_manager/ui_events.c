@@ -445,14 +445,13 @@ void main4f_cb(lv_event_t *e)
 
 void backset_cb(lv_event_t * e)
 {
-    ESP_LOGI(CLICK_TAG, "backset_cb");
+    // ESP_LOGI(CLICK_TAG, "backset_cb");
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
 }
 
 void backmenu_cb(lv_event_t * e)
 {
-    ESP_LOGI(CLICK_TAG, "backmenu_cb");
-
+    // ESP_LOGI(CLICK_TAG, "backmenu_cb");
     if(g_backpage == 0){
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
     }
@@ -465,27 +464,27 @@ void backmenu_cb(lv_event_t * e)
 
 void arr1c_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "arr1c_cb");
+    // ESP_LOGI(CLICK_TAG, "arr1c_cb");
     lv_group_focus_obj(ui_connp2);
     Page_ConnAPP_BLE();
 }
 
 void arr1f_cb(lv_event_t *e) 
 {
-    ESP_LOGI(CLICK_TAG, "arr1f_cb");
+    // ESP_LOGI(CLICK_TAG, "arr1f_cb");
     Page_ConnAPP_Mate();
 }
 
 void arr2c_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "arr2c_cb");
+    // ESP_LOGI(CLICK_TAG, "arr2c_cb");
     lv_group_focus_obj(ui_connp1);
     Page_ConnAPP_Mate();
 }
 
 void arr2f_cb(lv_event_t *e) 
 { 
-    ESP_LOGI(CLICK_TAG, "arr2f_cb");
+    // ESP_LOGI(CLICK_TAG, "arr2f_cb");
     Page_ConnAPP_BLE();
 }
 
@@ -503,14 +502,14 @@ void ntaskb2c_cb(lv_event_t *e)
 
 void waitbc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "waitbc_cb");
+    // ESP_LOGI(CLICK_TAG, "waitbc_cb");
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void revbc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "revbc_cb");
+    // ESP_LOGI(CLICK_TAG, "revbc_cb");
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
@@ -1147,9 +1146,9 @@ void sliderr_cb(lv_event_t *e)
     }
 }
 
-void preset_cb(lv_event_t *e)
+void otaback_cb(lv_event_t * e)
 {
-    ESP_LOGI(CLICK_TAG, "preset_cb");
+    ESP_LOGI(CLICK_TAG, "otaback_cb");
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
