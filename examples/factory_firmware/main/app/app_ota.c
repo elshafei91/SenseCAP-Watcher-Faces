@@ -947,7 +947,13 @@ static void __mqtt_ota_executor_task(void *p_arg)
                 if (!intent || !cJSON_IsString(intent) || strcmp(intent->valuestring, "order") != 0) break;
 
                 cJSON *order = cJSONUtils_GetPointer(ota_msg_cjson, "/order");
-                if (!order || !cJSON_IsArray(order) || cJSON_GetArraySize(order) == 0 || cJSON_GetArraySize(order) > 2) break;
+                if (!order || !cJSON_IsArray(order) || cJSON_GetArraySize(order) == 0) break;
+
+                if (cJSON_GetArraySize(order) > 2) {
+                    char *order_str = cJSON_PrintUnformatted(order);
+                    ESP_LOGW(TAG, "incoming ota json invalid, num of order array items > 2!!!\n%s", order_str);
+                    free(order_str);
+                }
 
                 cJSON *order_name = cJSONUtils_GetPointer(ota_msg_cjson, "/order/0/name");
                 if (!order_name || !cJSON_IsString(order_name) || strcmp(order_name->valuestring, "version-notify") != 0) break;
@@ -978,7 +984,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                 cJSON *order_value = cJSON_GetObjectItem(one_order, "value");
                 cJSON *order_value_sku = cJSON_GetObjectItem(order_value, "sku");
                 if (order_value_sku && cJSON_IsString(order_value_sku)) {
-                    if (strstr(order_value_sku->valuestring, "himax")) {
+                    if (strstr(order_value_sku->valuestring, "himax") && !order_value_himax) {
                         found++;
                         order_value_himax = order_value;
                         cJSON *fwv = cJSON_GetObjectItem(order_value_himax, "fwv");
@@ -1007,7 +1013,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                             goto cleanup;
                         }
                     }
-                    else if (strstr(order_value_sku->valuestring, "esp32")) {
+                    else if (strstr(order_value_sku->valuestring, "esp32") && !order_value_esp32) {
                         found++;
                         order_value_esp32 = order_value;
                         cJSON *fwv = cJSON_GetObjectItem(order_value_esp32, "fwv");
@@ -1046,7 +1052,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
                     }
                 }
             }
-            if (found != num_orders) {
+            if (!(found == 1 || found == 2)) {
                 ESP_LOGW(TAG, "incoming ota cjson invalid [2]!");
                 ota_status_report_error(ESP_ERR_OTA_JSON_INVALID);
                 goto cleanup;
