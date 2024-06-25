@@ -454,6 +454,16 @@ static int __get_camera_mode_get(cJSON *payload)
     return mode;
 }
 
+
+static void sscma_on_connect(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
+{
+    ESP_LOGI(TAG, "on connect");
+    tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)user_ctx;
+    if ( p_module_ins->start_flag  && !p_module_ins->sscma_starting_flag ) {
+        ESP_LOGI(TAG, "restart sscma");
+        xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
+    }
+}
 static void sscma_on_event(sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx)
 {
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)user_ctx;
@@ -977,7 +987,8 @@ static void ai_camera_task(void *p_arg)
             bool is_need_update = false;
 
             ESP_LOGI(TAG, "EVENT_STATRT");
-
+            p_module_ins->sscma_starting_flag = true;
+            
             sscma_client_break(p_module_ins->sscma_client_handle);
 
             // reset catch information
@@ -1159,6 +1170,7 @@ static void ai_camera_task(void *p_arg)
                 __data_unlock(p_module_ins);
             }
 
+            p_module_ins->sscma_starting_flag = false;
             xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT_DONE);
         }
 
@@ -1190,6 +1202,7 @@ static int __start(void *p_module)
     p_module_ins->ai_model_download_exit = false; //clear flag
     p_module_ins->ai_model_downloading = false;
     p_module_ins->start_flag = true;
+    p_module_ins->sscma_starting_flag = false;
     
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STATRT);
     EventBits_t bits = 0;
@@ -1352,6 +1365,7 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     memset(p_module_ins->condition_trigger_buf, false, sizeof(p_module_ins->condition_trigger_buf));
     p_module_ins->ai_model_downloading = false;
     p_module_ins->ai_model_download_exit = false;
+    p_module_ins->sscma_starting_flag = false;
 
     p_module_ins->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
@@ -1382,6 +1396,7 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
 
     const sscma_client_callback_t callback = {
         .on_event = sscma_on_event,
+        .on_connect = sscma_on_connect,
         .on_log = NULL,
     };
 
