@@ -30,7 +30,7 @@ void ui_Page_CurTask3_screen_init(void)
     lv_obj_set_x(ui_revb, 0);
     lv_obj_set_y(ui_revb, 120);
     lv_obj_set_align(ui_revb, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_revb, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_add_flag(ui_revb, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_revb, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_revb, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_revb, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);

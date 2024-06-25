@@ -40,6 +40,7 @@ uint8_t g_avalivjump = 0;
 static lv_obj_t *qr;
 static bool is_charging = 0;
 static uint8_t loading_flag = 0;
+static uint8_t emoji_switch_scr = NULL;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
 static struct view_data_emoticon_display emo_disp;
@@ -55,6 +56,7 @@ extern uint8_t shutdown_state;
 extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
 extern lv_obj_t *ui_alarm_indicator;
 extern lv_obj_t * ui_task_error;
+extern uint8_t view_alarm_status;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -97,34 +99,41 @@ static void Page_shutdown();
 static void Page_facreset();
 static void view_info_obtain_early();
 
-static void async_img_switch_vir(void *arg)
+enum
+{
+    SCREEN_VIRTUAL, // display emoticon on virtual page
+    SCREEN_AVATAR,  // display emoticon on avatar page
+    SCREEN_GUIDE    // display emoticon on guide page
+};
+
+static void async_emoji_switch_scr(void *arg)
 {
     lv_img_dsc_t *current_img = (lv_img_dsc_t *)arg;
-    lv_obj_set_style_bg_img_src(ui_Page_Vir, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+    if(emoji_switch_scr == SCREEN_VIRTUAL)
+    {
+        lv_obj_set_style_bg_img_src(ui_Page_Vir, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+    if(emoji_switch_scr == SCREEN_AVATAR)
+    {
+        lv_obj_set_style_bg_img_src(ui_Page_ViewAva, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+    if(emoji_switch_scr == SCREEN_GUIDE)
+    {
+        lv_obj_set_style_bg_img_src(ui_Page_flag, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
 }
 
-static void async_img_switch_viewava(void *arg)
-{
-    lv_img_dsc_t *current_img = (lv_img_dsc_t *)arg;
-    lv_obj_set_style_bg_img_src(ui_Page_ViewAva, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
-}
 
 static uint8_t vir_load_count = 0;
 static void greet_timer_callback(lv_timer_t *timer)
 {
+    emoji_switch_scr = SCREEN_VIRTUAL;
     current_img_index = (current_img_index + 1) % g_greet_image_count;
     lv_img_dsc_t *current_img = g_greet_img_dsc[current_img_index];
-    if (emoticon_disp_id)
-    {
-        async_img_switch_vir(current_img);
-    }
-    else
-    {
-        lv_async_call(async_img_switch_vir, current_img);
-    }
+    lv_async_call(async_emoji_switch_scr, current_img);
     vir_load_count ++;
     // if delay 2s and the device is not wifi-configed
-    if(vir_load_count>6)
+    if(vir_load_count > 8)
     {
         lv_event_send(ui_Page_Vir, LV_EVENT_CLICKED, NULL);
     }
@@ -134,70 +143,39 @@ static void detect_timer_callback(lv_timer_t *timer)
 {
     current_img_index = (current_img_index + 1) % g_detect_image_count;
     lv_img_dsc_t *current_img = g_detect_img_dsc[current_img_index];
-    if (emoticon_disp_id)
-    {
-        async_img_switch_viewava(current_img);
-    }
-    else
-    {
-        lv_async_call(async_img_switch_viewava, current_img);
-    }
+    lv_async_call(async_emoji_switch_scr, current_img);
 }
 
 static void listen_timer_callback(lv_timer_t *timer)
 {
+    emoji_switch_scr = SCREEN_AVATAR;
     current_img_index = (current_img_index + 1) % g_listen_image_count;
     lv_img_dsc_t *current_img = g_listen_img_dsc[current_img_index];
-    if (emoticon_disp_id)
-    {
-        async_img_switch_viewava(current_img);
-    }
-    else
-    {
-        lv_async_call(async_img_switch_viewava, current_img);
-    }
+    lv_async_call(async_emoji_switch_scr, current_img);
 }
 
 static void detected_timer_callback(lv_timer_t *timer)
 {
+    emoji_switch_scr = SCREEN_AVATAR;
     current_img_index = (current_img_index + 1) % g_detected_image_count;
     lv_img_dsc_t *current_img = g_detected_img_dsc[current_img_index];
-    if (emoticon_disp_id)
-    {
-        async_img_switch_viewava(current_img);
-    }
-    else
-    {
-        lv_async_call(async_img_switch_viewava, current_img);
-    }
+    lv_async_call(async_emoji_switch_scr, current_img);
 }
 
 static void standby_timer_callback(lv_timer_t *timer)
 {
+    emoji_switch_scr = SCREEN_AVATAR;
     current_img_index = (current_img_index + 1) % g_standby_image_count;
     lv_img_dsc_t *current_img = g_standby_img_dsc[current_img_index];
-    if (emoticon_disp_id)
-    {
-        async_img_switch_viewava(current_img);
-    }
-    else
-    {
-        lv_async_call(async_img_switch_viewava, current_img);
-    }
+    lv_async_call(async_emoji_switch_scr, current_img);
 }
 
 static void speak_timer_callback(lv_timer_t *timer)
 {
+    emoji_switch_scr = SCREEN_AVATAR;
     current_img_index = (current_img_index + 1) % g_speak_image_count;
     lv_img_dsc_t *current_img = g_speak_img_dsc[current_img_index];
-    if (emoticon_disp_id)
-    {
-        async_img_switch_viewava(current_img);
-    }
-    else
-    {
-        lv_async_call(async_img_switch_viewava, current_img);
-    }
+    lv_async_call(async_emoji_switch_scr, current_img);
 }
 
 static void create_timer(uint8_t det_task)
@@ -355,7 +333,6 @@ void virscrload_cb(lv_event_t *e)
     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
     lv_group_add_obj(g_main, ui_Page_Vir);
     create_timer(0);
-    lv_group_set_wrap(g_main, false);
     viewInfoInit();
     view_info_obtain_early();
 }
@@ -367,7 +344,7 @@ void virscrunload_cb(lv_event_t * e)
 
 void virb1c_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "virb1c_cb");
+    // ESP_LOGI(CLICK_TAG, "virb1c_cb");
     create_timer(6);
     lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
@@ -375,7 +352,7 @@ void virb1c_cb(lv_event_t *e)
 
 void virb2c_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "virb2c_cb");
+    // ESP_LOGI(CLICK_TAG, "virb2c_cb");
     create_timer(6);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
@@ -444,48 +421,46 @@ void main4f_cb(lv_event_t *e)
 
 void backset_cb(lv_event_t * e)
 {
-    ESP_LOGI(CLICK_TAG, "backset_cb");
+    // ESP_LOGI(CLICK_TAG, "backset_cb");
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
-    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
 }
 
 void backmenu_cb(lv_event_t * e)
 {
-    ESP_LOGI(CLICK_TAG, "backmenu_cb");
-
+    // ESP_LOGI(CLICK_TAG, "backmenu_cb");
     if(g_backpage == 0){
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
     }
 
     if(g_backpage == 1)
     {
-
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
     }
 }
 
 void arr1c_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "arr1c_cb");
+    // ESP_LOGI(CLICK_TAG, "arr1c_cb");
     lv_group_focus_obj(ui_connp2);
     Page_ConnAPP_BLE();
 }
 
 void arr1f_cb(lv_event_t *e) 
 {
-    ESP_LOGI(CLICK_TAG, "arr1f_cb");
+    // ESP_LOGI(CLICK_TAG, "arr1f_cb");
     Page_ConnAPP_Mate();
 }
 
 void arr2c_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "arr2c_cb");
+    // ESP_LOGI(CLICK_TAG, "arr2c_cb");
     lv_group_focus_obj(ui_connp1);
     Page_ConnAPP_Mate();
 }
 
 void arr2f_cb(lv_event_t *e) 
 { 
-    ESP_LOGI(CLICK_TAG, "arr2f_cb");
+    // ESP_LOGI(CLICK_TAG, "arr2f_cb");
     Page_ConnAPP_BLE();
 }
 
@@ -503,25 +478,26 @@ void ntaskb2c_cb(lv_event_t *e)
 
 void waitbc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "waitbc_cb");
+    // ESP_LOGI(CLICK_TAG, "waitbc_cb");
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void revbc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "revbc_cb");
+    // ESP_LOGI(CLICK_TAG, "revbc_cb");
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void viewac_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "viewac_cb");
-    if(g_dev_binded || g_guide_step == 2)
+    // ESP_LOGI(CLICK_TAG, "viewac_cb");
+    if(g_dev_binded)
     {
-        lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+        if(g_taskdown == 0)lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
         lv_obj_move_foreground(ui_viewavap);
+        lv_group_remove_all_objs(g_main);
         g_alarm_p = 1;
         g_avarlive = 0;
     }
@@ -529,11 +505,11 @@ void viewac_cb(lv_event_t *e)
 
 void viewaf_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "viewaf_cb");
+    // ESP_LOGI(CLICK_TAG, "viewaf_cb");
     if(g_alarm_p == 0)
     {
         lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
-        _ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        if(lv_scr_act() != ui_Page_ViewAva)_ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
         g_avarlive = 0;
     }
 }
@@ -542,12 +518,14 @@ void viewasl_cb(lv_event_t *e)
 {
     g_avarlive = 0;
     lv_group_focus_obj(ui_Page_ViewAva);
+    if(lv_scr_act() == ui_Page_ViewAva || lv_scr_act() == ui_Page_ViewLive)lv_group_set_wrap(g_main, false);
     if (emoticon_disp_id == 1)
     {
         create_timer(3); // Load timer for the "detected" animation when emoticon_disp_id is 1
     }
     else
     {
+        emoji_switch_scr = SCREEN_AVATAR;
         create_timer(1); // Load timer for the "detecting" animation when emoticon_disp_id is 0
     }
 }
@@ -562,8 +540,9 @@ void viewlc_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "viewlc_cb");
     if(g_dev_binded)
     {
-        lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+        if(g_taskdown == 0)lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
         lv_obj_move_foreground(ui_viewavap);
+        lv_group_remove_all_objs(g_main);
         g_alarm_p = 1;
         g_avarlive = 1;
     }
@@ -571,17 +550,21 @@ void viewlc_cb(lv_event_t *e)
 
 void viewlf_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "viewlf_cb");
-    if(g_alarm_p ==0){
-        _ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
-        g_avarlive = 1;
-    }
+    // ESP_LOGI(CLICK_TAG, "viewlf_cb");
+    if(lv_scr_act() != ui_Page_ViewLive)_ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+    g_avarlive = 1;
 }
 
 void viewlsl_cb(lv_event_t *e)
 {
     g_avarlive = 1;
     lv_group_focus_obj(ui_Page_ViewLive);
+    if(lv_scr_act() == ui_Page_ViewAva || lv_scr_act() == ui_Page_ViewLive)lv_group_set_wrap(g_main, false);
+    if(view_alarm_status == 1)
+    {
+        lv_obj_clear_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void viewlsul_cb(lv_event_t *e) 
@@ -619,20 +602,10 @@ void loctask2c_cb(lv_event_t *e)
     if(!g_dev_binded)
     {
         _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
+        emoji_switch_scr = SCREEN_GUIDE;
+        create_timer(1);
     }
-    //TODO
-    // if(g_dev_binded && g_tasktype == 0 && g_taskdown == 0)
-    // {
-    //     if(g_avarlive == 0)
-    //     {
-    //         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
-    //         lv_group_focus_obj(ui_Page_ViewAva);
-    //     }else if(g_avarlive == 1)
-    //     {
-    //         if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
-    //         lv_group_focus_obj(ui_Page_ViewLive);
-    //     }
-    // }
+    
     if(g_dev_binded){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
         g_taskdown = 0;
@@ -708,7 +681,7 @@ void sgesdown_cb(lv_event_t *e)
 
 void sclick_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "sclick_cb");
+    // ESP_LOGI(CLICK_TAG, "sclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
     lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
 }
@@ -740,7 +713,7 @@ void vieback_cb(lv_event_t *e)
 
 void livgc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "livgc_cb");
+    // ESP_LOGI(CLICK_TAG, "livgc_cb");
 }
 
 void lgesleft_cb(lv_event_t *e)
@@ -1101,7 +1074,8 @@ void setappc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setappc_cb");
     lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
-    Page_ConnAPP_Mate();
+    lv_group_focus_obj(ui_connp1);
+    // Page_ConnAPP_Mate();
 }
 
 void slidervc_cb(lv_event_t *e)
@@ -1155,10 +1129,10 @@ void sliderr_cb(lv_event_t *e)
     }
 }
 
-void preset_cb(lv_event_t *e)
+void otaback_cb(lv_event_t * e)
 {
-    ESP_LOGI(CLICK_TAG, "preset_cb");
-    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+    ESP_LOGI(CLICK_TAG, "otaback_cb");
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
 void volvc_cb(lv_event_t *e)
@@ -1216,7 +1190,7 @@ void bridf_cb(lv_event_t * e)
 
 void hap_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "hap_cb");
+    // ESP_LOGI(CLICK_TAG, "hap_cb");
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
 }
 
@@ -1456,7 +1430,7 @@ static void Task_end()
     g_alarm_p = 0;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
-    
+
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
 }
 
@@ -1484,7 +1458,6 @@ static void Page_facreset()
 void waitForWifi()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_wifi_3_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
@@ -1494,7 +1467,6 @@ void waitForWifi()
 void waitForBinding()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_wifi_3_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
@@ -1504,7 +1476,6 @@ void waitForBinding()
 void waitForAddDev()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_wifi_3_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
@@ -1514,7 +1485,6 @@ void waitForAddDev()
 void bindFinish()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_wifiok_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
@@ -1524,7 +1494,6 @@ void bindFinish()
 void wifiConnectFailed()
 {
     lv_obj_add_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
-    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_wifitext2, LV_OBJ_FLAG_HIDDEN);
     lv_img_set_src(ui_wifilogo, &ui_img_error_png);
     lv_obj_clear_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
@@ -1562,7 +1531,6 @@ void viewInfoInit()
 
 static void view_info_obtain_early()
 {
-    //TODO
     g_dev_binded = retry_get_data((uint8_t* (*)(int))get_usage_guide, UI_CALLER, MAX_RETRIES);
     qrcode_content = (char *)retry_get_data((uint8_t* (*)(int))get_qrcode_content, UI_CALLER, MAX_RETRIES);
 }
@@ -1581,12 +1549,14 @@ void view_info_obtain()
     static char about_btmac[20];
     static char about_wifimac[20];
     static char about_sw_version[20];
+    static char about_himax_version[20];
 
     const uint8_t *sn_code = retry_get_data(get_sn, UI_CALLER, MAX_RETRIES);
     const uint8_t *eui_code = retry_get_data(get_eui, 0, MAX_RETRIES);
     const uint8_t *bt_mac = retry_get_data(get_bt_mac, 0, MAX_RETRIES);
     const uint8_t *wifi_mac = retry_get_data(get_wifi_mac, 0, MAX_RETRIES);
     const char *sw_version = retry_get_char_data(get_software_version, UI_CALLER, MAX_RETRIES);
+    const char *himax_version = retry_get_char_data(get_himax_software_version, UI_CALLER, MAX_RETRIES);
 
     if (sn_code != NULL) {
         snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X", sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
@@ -1618,6 +1588,13 @@ void view_info_obtain()
         snprintf(about_sw_version, sizeof(about_sw_version), "N/A");
     }
 
+    if (himax_version != NULL) {
+        snprintf(about_himax_version, sizeof(about_himax_version), "%s", himax_version);
+    } else {
+        snprintf(about_himax_version, sizeof(about_himax_version), "N/A");
+    }
+
+    lv_label_set_text(ui_hv2, about_himax_version);
     lv_label_set_text(ui_svt2, about_sw_version);
     lv_label_set_text(ui_snt2, (char *)about_sn);
     lv_label_set_text(ui_euit2, (char *)about_eui);
@@ -1627,23 +1604,23 @@ void view_info_obtain()
 
 void viewp1c_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "viewp1c_cb");
     g_alarm_p = 0;
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_group_set_wrap(g_main, true);
 }
 
 void viewp2c_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "viewp2c_cb");
     Task_end();
 }
 
 void viewp3c_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "viewp3c_cb");
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
+    lv_group_add_obj(g_main, ui_Page_ViewAva);
+    lv_group_add_obj(g_main, ui_Page_ViewLive);
     g_alarm_p = 0;
 }
 

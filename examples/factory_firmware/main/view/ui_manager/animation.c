@@ -32,7 +32,7 @@ void main_scroll_cb(lv_event_t *e)
     // ESP_LOGI(TAG, "cont_y_center: %d", cont_y_center);
 
     // int32_t r = lv_obj_get_height(cont);
-    int32_t r = 250;
+    int32_t r = 245;
     uint32_t i;
     uint32_t child_cnt = lv_obj_get_child_cnt(cont);
 
