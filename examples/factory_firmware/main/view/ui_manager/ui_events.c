@@ -498,6 +498,7 @@ void viewac_cb(lv_event_t *e)
     {
         if(g_taskdown == 0)lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
         lv_obj_move_foreground(ui_viewavap);
+        lv_group_remove_all_objs(g_main);
         g_alarm_p = 1;
         g_avarlive = 0;
     }
@@ -541,6 +542,7 @@ void viewlc_cb(lv_event_t *e)
     {
         if(g_taskdown == 0)lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
         lv_obj_move_foreground(ui_viewavap);
+        lv_group_remove_all_objs(g_main);
         g_alarm_p = 1;
         g_avarlive = 1;
     }
@@ -1592,7 +1594,6 @@ void view_info_obtain()
 
 void viewp1c_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "viewp1c_cb");
     g_alarm_p = 0;
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
@@ -1601,14 +1602,14 @@ void viewp1c_cb(lv_event_t *e)
 
 void viewp2c_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "viewp2c_cb");
     Task_end();
 }
 
 void viewp3c_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "viewp3c_cb");
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
+    lv_group_add_obj(g_main, ui_Page_ViewAva);
+    lv_group_add_obj(g_main, ui_Page_ViewLive);
     g_alarm_p = 0;
 }
 
