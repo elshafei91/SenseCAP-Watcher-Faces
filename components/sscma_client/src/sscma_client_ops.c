@@ -1192,6 +1192,25 @@ esp_err_t sscma_client_set_model_info(sscma_client_handle_t client, const char *
     ESP_RETURN_ON_FALSE(model_info != NULL, ESP_ERR_INVALID_ARG, TAG, "model_info is NULL");
     char *cmd = heap_caps_calloc(1, 4000, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 
+    // clear info first
+    for (int i = 0; i < 3; i++)
+    {
+        sscma_client_request(client, CMD_PREFIX CMD_AT_INFO CMD_SET "\"\"" CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY);
+        if (reply.payload != NULL)
+        {
+            int code = get_int_from_object(reply.payload, "code");
+            sscma_client_reply_clear(&reply);
+            if (code == 0)
+            {
+                break;
+            }
+            else
+            {
+                ESP_LOGW(TAG, "clear info failed %d", code);
+            }
+        }
+    }
+
     snprintf(cmd, 4000, CMD_PREFIX CMD_AT_INFO CMD_SET "\"");
 
     if (mbedtls_base64_encode((unsigned char *)&cmd[strlen(cmd)], sizeof(cmd) - strlen(cmd) - CMD_SUFFIX_LEN, &length, (const unsigned char *)model_info, strlen(model_info)) != 0)
