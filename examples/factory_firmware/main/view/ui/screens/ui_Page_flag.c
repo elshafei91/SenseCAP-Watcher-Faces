@@ -18,9 +18,9 @@ void ui_Page_flag_screen_init(void)
     lv_obj_set_align(ui_guideflagp, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_guideflagp, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_guideflagp, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_guideflagp, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_guideflagp, 180, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_guideflagp, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_guideflagp, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_guideflagp, 180, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_guidebtn1 = lv_btn_create(ui_guideflagp);
     lv_obj_set_width(ui_guidebtn1, 270);
