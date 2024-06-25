@@ -1248,6 +1248,7 @@ void pageguideavascrload_cb(lv_event_t * e)
 
         lv_group_focus_obj(ui_guide1p1);
         lv_group_focus_freeze(g_main, true);
+        lv_group_set_wrap(g_main, false);
     }
 }
 
@@ -1277,6 +1278,7 @@ void guide2avaclick_cb(lv_event_t * e)
 
         set_usage_guide(UI_CALLER, 1);
         g_dev_binded = get_usage_guide(UI_CALLER);
+        lv_group_set_wrap(g_main, true);
     }
 }
 
