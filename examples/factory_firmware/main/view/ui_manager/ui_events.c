@@ -1548,12 +1548,14 @@ void view_info_obtain()
     static char about_btmac[20];
     static char about_wifimac[20];
     static char about_sw_version[20];
+    static char about_himax_version[20];
 
     const uint8_t *sn_code = retry_get_data(get_sn, UI_CALLER, MAX_RETRIES);
     const uint8_t *eui_code = retry_get_data(get_eui, 0, MAX_RETRIES);
     const uint8_t *bt_mac = retry_get_data(get_bt_mac, 0, MAX_RETRIES);
     const uint8_t *wifi_mac = retry_get_data(get_wifi_mac, 0, MAX_RETRIES);
     const char *sw_version = retry_get_char_data(get_software_version, UI_CALLER, MAX_RETRIES);
+    const char *himax_version = retry_get_char_data(get_himax_software_version, UI_CALLER, MAX_RETRIES);
 
     if (sn_code != NULL) {
         snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X", sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
@@ -1585,6 +1587,13 @@ void view_info_obtain()
         snprintf(about_sw_version, sizeof(about_sw_version), "N/A");
     }
 
+    if (himax_version != NULL) {
+        snprintf(about_himax_version, sizeof(about_himax_version), "%s", himax_version);
+    } else {
+        snprintf(about_himax_version, sizeof(about_himax_version), "N/A");
+    }
+
+    lv_label_set_text(ui_hv2, about_himax_version);
     lv_label_set_text(ui_svt2, about_sw_version);
     lv_label_set_text(ui_snt2, (char *)about_sn);
     lv_label_set_text(ui_euit2, (char *)about_eui);

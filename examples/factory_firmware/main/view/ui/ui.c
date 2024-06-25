@@ -282,6 +282,10 @@ void ui_event_aboutsv(lv_event_t * e);
 lv_obj_t * ui_aboutsv;
 lv_obj_t * ui_svt1;
 lv_obj_t * ui_svt2;
+void ui_event_abouthimaxver(lv_event_t * e);
+lv_obj_t * ui_abouthimaxver;
+lv_obj_t * ui_hv1;
+lv_obj_t * ui_hv2;
 void ui_event_aboutsn(lv_event_t * e);
 lv_obj_t * ui_aboutsn;
 lv_obj_t * ui_snt1;
@@ -1230,6 +1234,17 @@ void ui_event_aboutdn(lv_event_t * e)
     }
 }
 void ui_event_aboutsv(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        absvf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        absvdf_cb(e);
+    }
+}
+void ui_event_abouthimaxver(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
