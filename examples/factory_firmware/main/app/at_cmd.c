@@ -22,6 +22,7 @@
 
 #include "data_defs.h"
 #include "event_loops.h"
+#include "tf.h"
 #include "app_time.h"
 #include "app_wifi.h"
 #include "app_ble.h"
@@ -33,8 +34,8 @@
 #include "app_png.h"
 
 
-#define AT_CMD_BUFFER_LEN_STEP   100  //(1024 * 100)  // the growing step of the size of at cmd buffer
-#define AT_CMD_BUFFER_MAX_LEN    5120  //(1024 * 500)  // top limit of the at cmd buffer size, don't be too huge
+#define AT_CMD_BUFFER_LEN_STEP   (1024 * 100)  // the growing step of the size of at cmd buffer
+#define AT_CMD_BUFFER_MAX_LEN    (1024 * 500)  // top limit of the at cmd buffer size, don't be too huge
 #define BLE_MSG_Q_SIZE            10
 
 
@@ -421,17 +422,8 @@ at_cmd_error_code handle_bind_command(char *params)
         ESP_LOGE(TAG, "Failed to create JSON object\n");
         return ERROR_CMD_JSON_CREATE;
     }
-    cJSON *data_rep = cJSON_CreateObject();
-    if (data_rep == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to create JSON object\n");
-        cJSON_Delete(root);
-        return ERROR_CMD_JSON_CREATE;
-    }
     cJSON_AddStringToObject(root, "name", "bind");
     cJSON_AddNumberToObject(root, "code", 0);
-    cJSON_AddItemToObject(root, "data", data_rep);
-    cJSON_AddStringToObject(data_rep, "bind", "");
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String: %s\n", json_string);
     esp_err_t send_result = send_at_response(json_string);
@@ -704,17 +696,8 @@ at_cmd_error_code handle_cloud_service_command(char *params)
         ESP_LOGE(TAG, "Failed to create JSON object\n");
         return ERROR_CMD_JSON_CREATE;
     }
-    cJSON *data_rep = cJSON_CreateObject();
-    if (data_rep == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to create JSON object\n");
-        cJSON_Delete(root);
-        return ERROR_CMD_JSON_CREATE;
-    }
     cJSON_AddStringToObject(root, "name", "cloudservice");
     cJSON_AddNumberToObject(root, "code", 0);
-    cJSON_AddItemToObject(root, "data", data_rep);
-    cJSON_AddStringToObject(data_rep, "remotecontrol", "");
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String: %s\n", json_string);
     esp_err_t send_result = send_at_response(json_string);
@@ -1562,15 +1545,20 @@ at_cmd_error_code handle_taskflow_command(char *params)
         }
         return ERROR_CMD_JSON_PARSE;
     }
-    cJSON_Delete(json);  //only for test the validation of input
+    char *taskflow_data_str = NULL;
+    cJSON *json_data = cJSON_GetObjectItem(json, "data");
+    if (json_data && cJSON_IsObject(json_data))
+        taskflow_data_str = cJSON_PrintUnformatted(json_data);
+    cJSON_Delete(json);
 
+    if (taskflow_data_str == NULL) {
+        return ERROR_CMD_JSON_PARSE;
+    }
 
-    int len = MIN(strlen(params), AT_CMD_BUFFER_MAX_LEN);
-    char *taskflow_str = psram_calloc(1, len + 1);
-    memcpy(taskflow_str, params, len);
+    ESP_LOGI(TAG, "will send to taskflow, strlen=%d", strlen(taskflow_data_str));
 
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_BLE, 
-                        &taskflow_str, sizeof(void *), portMAX_DELAY);
+                        &taskflow_data_str, sizeof(void *), pdMS_TO_TICKS(10000));
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
     cJSON *root = cJSON_CreateObject();
@@ -1663,6 +1651,7 @@ void __at_cmd_proc_task(void *arg)
         }
 
         // grow the buffer
+        __data_lock();
         while ((cmd_buff->cap - cmd_buff->wr_ptr - 1/* \0 */) < ble_msg.size && cmd_buff->cap < AT_CMD_BUFFER_MAX_LEN) {
             cmd_buff->cap += AT_CMD_BUFFER_LEN_STEP;
             if (cmd_buff->cap > AT_CMD_BUFFER_MAX_LEN) {
@@ -1672,6 +1661,7 @@ void __at_cmd_proc_task(void *arg)
             cmd_buff->buff = psram_realloc(cmd_buff->buff, cmd_buff->cap);
             if (cmd_buff->buff == NULL) {
                 ESP_LOGE(TAG, "at cmd buffer mem alloc failed!!!");
+                __data_unlock();
                 vTaskDelay(portMAX_DELAY);
             }
             ESP_LOGI(TAG, "at cmd buffer grow to size %d", cmd_buff->cap);
@@ -1682,6 +1672,7 @@ void __at_cmd_proc_task(void *arg)
         memcpy(cmd_buff->buff + cmd_buff->wr_ptr, ble_msg.msg, wr_len);
         cmd_buff->wr_ptr += wr_len;
         cmd_buff->buff[cmd_buff->wr_ptr] = '\0';
+        __data_unlock();
         ESP_LOGD(TAG, "at cmd buffer write_pointer=%d", cmd_buff->wr_ptr);
 
         // if this msg is the last slice ( ending with "\r\n")
@@ -1796,8 +1787,16 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             __data_lock();
             memcpy(&taskflow_status, p_status, sizeof(struct view_data_taskflow_status));
             __data_unlock();
+            ESP_LOGI(TAG, "taskflow status = %d", taskflow_status.engine_status);
             break;
         }
+        case VIEW_EVENT_BLE_STATUS:
+            bool status = *(bool *)event_data;
+            ESP_LOGI(TAG, "event: VIEW_EVENT_BLE_STATUS, status=%d", status);
+            __data_lock();
+            if (!status) g_at_cmd_buffer.wr_ptr = 0;  //reset buffer when ble disconnect
+            __data_unlock();
+            break;
         default:
             break;
     }
@@ -1822,6 +1821,8 @@ void app_at_cmd_init()
     g_at_cmd_buffer.wr_ptr = 0;
     g_at_cmd_buffer.buff = psram_calloc(1, g_at_cmd_buffer.cap);
 
+    taskflow_status.engine_status = TF_STATUS_IDLE;
+
     initWiFiStack(&wifiStack_scanned, WIFI_SCAN_RESULT_CNT_MAX);
     initWiFiStack(&wifiStack_connected, WIFI_SCAN_RESULT_CNT_MAX);
     wifi_stack_semaphore_init();
@@ -1840,6 +1841,9 @@ void app_at_cmd_init()
                                                     __view_event_handler, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STATUS,
+                                                    __view_event_handler, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS,
                                                     __view_event_handler, NULL));
 }
 
