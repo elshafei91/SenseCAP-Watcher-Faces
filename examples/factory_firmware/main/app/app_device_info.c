@@ -103,6 +103,11 @@ static esp_timer_handle_t g_timer_firstreport;
 void init_sn_from_nvs()
 {
     const char *sn_str = factory_info_sn_get();
+    if (sn_str == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to get factory information of SN \n");
+        return;
+    }
     string_to_byte_array(sn_str, SN, 9);
 }
 
@@ -124,6 +129,10 @@ void init_eui_from_nvs()
 void init_batchid_from_nvs()
 {
     const char *batchid = factory_info_batchid_get();
+    if (batchid == NULL) {
+        ESP_LOGE(TAG, "Failed to get factory information of batchid \n");
+        return;
+    }
     create_batch = atoi(batchid);
     return;
 }
