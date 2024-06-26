@@ -28,9 +28,9 @@ Please visit our [WiKi page](https://seeedstudio.com) to figure out how to use i
 
 ## Call for Contribution
 
-We warmly welcome contributions from community. Come and checkout the code to have your first build. Please find the build guide from the upper README file of this repository. You can get involved by submittign an issue, pulling a request or participating the discussions for new features.
+We warmly welcome contributions from community. Come and checkout the code to have your first build. You can get involved by submittign an issue, pulling a request or participating the discussions for new features.
 
-You can also participate with your demo shows at SNS, at Seeed staff there.
+You can also participate with your demo shows at SNS, at Seeed Studio hashtag there.
 
 - X: @seeedstudio
 - Instagram: @seeedstudio
