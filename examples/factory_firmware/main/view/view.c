@@ -95,7 +95,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         switch (id)
         {
             case VIEW_EVENT_SCREEN_START: {
-                _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Vir_screen_init);
+                _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Vir_screen_init);
                 break;
             }
 
@@ -118,7 +118,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_EMOJI_DOWLOAD_BAR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_BAR");
                 int *emoji_download_per = (int *)event_data;
-                _ui_screen_change(&ui_Page_emoticon, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_emoticon_screen_init);
+                _ui_screen_change(&ui_Page_emoticon, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_emoticon_screen_init);
                 // ESP_LOGI(TAG, "emoji_download_per : %d", *emoji_download_per);
                 if(*emoji_download_per < 100){
                     lv_obj_clear_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
@@ -172,7 +172,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_BAT_DRAIN_SHUTDOWN:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BAT_DRAIN_SHUTDOWN");
-                _ui_screen_change(&ui_Page_Battery, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Battery_screen_init);
+                _ui_screen_change(&ui_Page_Battery, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Battery_screen_init);
                 lv_timer_t *timer = lv_timer_create(toggle_image_visibility, 500, NULL);
                 
                 break;
@@ -272,7 +272,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_WIFI_CONFIG_SYNC:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONFIG_SYNC");
                 int * wifi_config_sync = (int*)event_data;
-                if(lv_scr_act() != ui_Page_Wifi)_ui_screen_change(&ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+                if(lv_scr_act() != ui_Page_Wifi)_ui_screen_change(&ui_Page_Wifi, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Wifi_screen_init);
                 if(* wifi_config_sync == 0)
                 {
                     waitForWifi();
@@ -287,13 +287,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     bindFinish();
                     wifi_page_id = 1;
                     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
-                    _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_Vir_screen_init);
+                    _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_NONE, 0, 3000, &ui_Page_Vir_screen_init);
                 }else if(* wifi_config_sync == 4)
                 {
                     wifiConnectFailed();
                 }else if (* wifi_config_sync == 5)
                 {
-                    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+                    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Set_screen_init);
                 }
                 break;
             }
@@ -390,9 +390,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 if(g_tasktype == 0)
                 {
-                    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
+                    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_LocTask_screen_init);
                 }else{
-                    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+                    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
                     lv_group_focus_obj(ui_mainbtn2);
                 }
                 lv_group_set_wrap(g_main, true);
@@ -409,17 +409,17 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 {
                     if(g_dev_binded)
                     {
-                        if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+                        if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
                     }else{
-                        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
+                        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_flag_screen_init);
                     }
                 }else if(g_avarlive == 1)
                 {
                     if(g_dev_binded)
                     {
-                        if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+                        if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewLive_screen_init);
                     }else{
-                        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
+                        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_flag_screen_init);
                     }
                 }
                 break;
@@ -430,7 +430,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 if(lv_scr_act() != ui_Page_OTA)
                 {
                     lv_group_remove_all_objs(g_main);
-                    _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_OTA_screen_init);
+                    _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_OTA_screen_init);
                 }
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 ESP_LOGI(TAG, "VIEW_EVENT_OTA_STATUS: %d", ota_st->status);
@@ -481,7 +481,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     if(lv_scr_act() != ui_Page_CurTask2)
                     {
                         lv_group_remove_all_objs(g_main);
-                        _ui_screen_change(&ui_Page_CurTask2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask2_screen_init);
+                        _ui_screen_change(&ui_Page_CurTask2, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_CurTask2_screen_init);
                     }
                     struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                     lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
