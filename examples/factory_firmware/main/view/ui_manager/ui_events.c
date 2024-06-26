@@ -45,6 +45,10 @@ static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
 static struct view_data_emoticon_display emo_disp;
 
+static lv_obj_t *avatar_image = NULL;
+static lv_obj_t *virtual_image = NULL;
+static lv_obj_t *flag_image = NULL;
+
 static int file_idx = 0;
 static int current_img_index = 0;
 static uint32_t local_task_id;
@@ -111,15 +115,15 @@ static void async_emoji_switch_scr(void *arg)
     lv_img_dsc_t *current_img = (lv_img_dsc_t *)arg;
     if(emoji_switch_scr == SCREEN_VIRTUAL)
     {
-        lv_obj_set_style_bg_img_src(ui_Page_Vir, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_img_set_src(virtual_image, current_img);
     }
     if(emoji_switch_scr == SCREEN_AVATAR)
     {
-        lv_obj_set_style_bg_img_src(ui_Page_ViewAva, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_img_set_src(avatar_image, current_img);
     }
     if(emoji_switch_scr == SCREEN_GUIDE)
     {
-        lv_obj_set_style_bg_img_src(ui_Page_flag, current_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_img_set_src(flag_image, current_img);
     }
 }
 
@@ -249,7 +253,7 @@ static void set_obj_style_focused(lv_obj_t *obj, lv_obj_t *obj_text)
 
 void startload_cb(lv_event_t *e)
 {
-    _ui_screen_change(&ui_Page_loading, LV_SCR_LOAD_ANIM_FADE_ON, 100, 3000, &ui_Page_loading_screen_init);
+    _ui_screen_change(&ui_Page_loading, LV_SCR_LOAD_ANIM_NONE, 0, 3000, &ui_Page_loading_screen_init);
 }
 
 void loadscrload_cb(lv_event_t *e)
@@ -323,7 +327,7 @@ void virclick_cb(lv_event_t *e)
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
         create_timer(6);    // stop timer
     }else{              // else the device is wifi-configed, then page jump to main page
-        if(lv_scr_act() == ui_Page_Vir)lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+        if(lv_scr_act() == ui_Page_Vir)lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
         create_timer(6);    // stop timer
     }
 }
@@ -335,6 +339,14 @@ void virscrload_cb(lv_event_t *e)
     create_timer(0);
     viewInfoInit();
     view_info_obtain_early();
+    if(avatar_image == NULL)avatar_image = lv_img_create(ui_Page_ViewAva);
+    if(virtual_image == NULL)virtual_image = lv_img_create(ui_Page_Vir);
+    if(flag_image == NULL)flag_image = lv_img_create(ui_Page_flag);
+    lv_obj_set_align(avatar_image, LV_ALIGN_CENTER);
+    lv_obj_set_align(virtual_image, LV_ALIGN_CENTER);
+    lv_obj_set_align(flag_image, LV_ALIGN_CENTER);
+    lv_obj_move_background(flag_image);
+    lv_obj_move_background(virtual_image);
 }
 
 void virscrunload_cb(lv_event_t * e)
@@ -346,7 +358,7 @@ void virb1c_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virb1c_cb");
     create_timer(6);
-    lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
+    lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
 }
 
@@ -354,13 +366,13 @@ void virb2c_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virb2c_cb");
     create_timer(6);
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
 }
 
 void main1c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "main1c_cb");
-    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_LocTask_screen_init);
+    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_LocTask_screen_init);
     lv_group_focus_obj(ui_menubtn2);
 }
 
@@ -375,16 +387,16 @@ void main2c_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "main2c_cb");
     if(g_taskdown == 1)
     {
-        lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask1, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask1_screen_init);
+        lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask1, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_CurTask1_screen_init);
     }
     if(g_taskdown == 0)
     {
         if(g_avarlive == 0)
         {
-            if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+            if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
         }else if(g_avarlive == 1)
         {
-            if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+            if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewLive_screen_init);
         }
     }
 }
@@ -398,7 +410,7 @@ void main2f_cb(lv_event_t *e)
 void main3c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "main3c_cb");
-    lv_pm_open_page(g_main, &group_page_ha, PM_ADD_OBJS_TO_GROUP, &ui_Page_HA, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_HA_screen_init);
+    lv_pm_open_page(g_main, &group_page_ha, PM_ADD_OBJS_TO_GROUP, &ui_Page_HA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_HA_screen_init);
 }
 
 void main3f_cb(lv_event_t *e)
@@ -410,7 +422,7 @@ void main3f_cb(lv_event_t *e)
 void main4c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "main4c_cb");
-    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Set_screen_init);
 }
 
 void main4f_cb(lv_event_t *e)
@@ -422,14 +434,14 @@ void main4f_cb(lv_event_t *e)
 void backset_cb(lv_event_t * e)
 {
     // ESP_LOGI(CLICK_TAG, "backset_cb");
-    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Set_screen_init);
 }
 
 void backmenu_cb(lv_event_t * e)
 {
     // ESP_LOGI(CLICK_TAG, "backmenu_cb");
     if(g_backpage == 0){
-        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
     }
 
     if(g_backpage == 1)
@@ -467,39 +479,46 @@ void arr2f_cb(lv_event_t *e)
 void ntaskb1c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "ntaskb1c_cb");
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask2_screen_init);
+    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_CurTask2, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_CurTask2_screen_init);
 }
 
 void ntaskb2c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "ntaskb2c_cb");
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
 }
 
 void waitbc_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "waitbc_cb");
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
 }
 
 void revbc_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "revbc_cb");
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
 }
 
 void viewac_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "viewac_cb");
+    ESP_LOGI(CLICK_TAG, "viewac_cb");
     if(g_dev_binded)
     {
-        if(g_taskdown == 0)lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
-        lv_obj_move_foreground(ui_viewavap);
-        lv_group_remove_all_objs(g_main);
-        g_alarm_p = 1;
-        g_avarlive = 0;
+        if(g_taskdown == 0)
+        {
+            ESP_LOGI(CLICK_TAG, "testtest");
+            lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+            lv_obj_move_foreground(ui_viewavap);
+            lv_group_remove_all_objs(g_main);
+            lv_group_add_obj(g_main, ui_viewpbtn1);
+            lv_group_add_obj(g_main, ui_viewpbtn2);
+            lv_group_add_obj(g_main, ui_viewpbtn3);
+            g_alarm_p = 1;
+            g_avarlive = 0;
+        }
     }
 }
 
@@ -509,7 +528,7 @@ void viewaf_cb(lv_event_t *e)
     if(g_alarm_p == 0)
     {
         lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
-        if(lv_scr_act() != ui_Page_ViewAva)_ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        if(lv_scr_act() != ui_Page_ViewAva)_ui_screen_change(&ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
         g_avarlive = 0;
     }
 }
@@ -543,6 +562,9 @@ void viewlc_cb(lv_event_t *e)
         if(g_taskdown == 0)lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
         lv_obj_move_foreground(ui_viewavap);
         lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_viewpbtn1);
+        lv_group_add_obj(g_main, ui_viewpbtn2);
+        lv_group_add_obj(g_main, ui_viewpbtn3);
         g_alarm_p = 1;
         g_avarlive = 1;
     }
@@ -551,7 +573,7 @@ void viewlc_cb(lv_event_t *e)
 void viewlf_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "viewlf_cb");
-    if(lv_scr_act() != ui_Page_ViewLive)_ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewLive_screen_init);
+    if(lv_scr_act() != ui_Page_ViewLive)_ui_screen_change(&ui_Page_ViewLive, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewLive_screen_init);
     g_avarlive = 1;
 }
 
@@ -579,7 +601,7 @@ void waitT_cb(lv_event_t *e)
 void loctask1c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "loctask1c_cb");
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
 }
 
 void loctask1f_cb(lv_event_t *e)
@@ -601,7 +623,7 @@ void loctask2c_cb(lv_event_t *e)
 
     if(!g_dev_binded)
     {
-        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
+        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_flag_screen_init);
         emoji_switch_scr = SCREEN_GUIDE;
         create_timer(1);
     }
@@ -609,7 +631,7 @@ void loctask2c_cb(lv_event_t *e)
     if(g_dev_binded){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
         g_taskdown = 0;
-        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
     }
 }
 
@@ -627,14 +649,14 @@ void loctask3c_cb(lv_event_t *e)
 
     if(!g_dev_binded)
     {
-        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
+        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_flag_screen_init);
         return;
     }
 
     if(g_dev_binded){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
         g_taskdown = 0;
-        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
     }  
 }
 
@@ -652,14 +674,14 @@ void loctask4c_cb(lv_event_t *e)
 
     if(!g_dev_binded)
     {
-        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_flag_screen_init);
+        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_flag_screen_init);
         return;
     }
 
     if(g_dev_binded){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
         g_taskdown = 0;
-        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
     } 
 }
 
@@ -839,7 +861,7 @@ void setvolc_cb(lv_event_t *e)
     lv_obj_add_flag(ui_bp, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui_vp, LV_OBJ_FLAG_HIDDEN);
 
-    lv_pm_open_page(g_main, &group_page_volume, PM_ADD_OBJS_TO_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
+    lv_pm_open_page(g_main, &group_page_volume, PM_ADD_OBJS_TO_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_brivol_screen_init);
     lv_event_send(ui_vslider, LV_EVENT_VALUE_CHANGED, NULL);
 }
 
@@ -862,7 +884,7 @@ void setbric_cb(lv_event_t *e)
     lv_obj_clear_flag(ui_bp, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_vp, LV_OBJ_FLAG_HIDDEN);
 
-    lv_pm_open_page(g_main, &group_page_brightness, PM_ADD_OBJS_TO_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_brivol_screen_init);
+    lv_pm_open_page(g_main, &group_page_brightness, PM_ADD_OBJS_TO_GROUP, &ui_Page_brivol, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_brivol_screen_init);
     lv_event_send(ui_bslider, LV_EVENT_VALUE_CHANGED, NULL);
 }
 
@@ -891,7 +913,7 @@ void setwwdf_cb(lv_event_t *e)
 void settimec_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "settimec_cb");
-    lv_pm_open_page(g_main, NULL, PM_ADD_OBJS_TO_GROUP, &ui_Page_Slpt, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Slpt_screen_init);
+    lv_pm_open_page(g_main, NULL, PM_ADD_OBJS_TO_GROUP, &ui_Page_Slpt, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Slpt_screen_init);
 }
 
 void settimef_cb(lv_event_t *e)
@@ -937,19 +959,19 @@ void abbledf_cb(lv_event_t *e) { }
 void paboutc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "paboutc_cb");
-    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Set_screen_init);
+    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Set_screen_init);
 }
 
 void setbackc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setbackc_cb");
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
 }
 
 void setdevc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setdevc_cb");
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_SAbout, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_SAbout_screen_init);
+    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_SAbout, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_SAbout_screen_init);
 }
 
 void setwific_cb(lv_event_t *e)
@@ -966,10 +988,10 @@ void setwific_cb(lv_event_t *e)
     ssid_string[sizeof(ssid_string) - 1] = '\0';
     lv_label_set_text(ui_wifissid, ssid_string);
     // binded
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Wifi_screen_init);
+    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Wifi, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Wifi_screen_init);
     lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(ui_wifiicon);
-    // lv_obj_add_flag(ui_wifip2, LV_OBJ_FLAG_HIDDEN);
+
     lv_obj_add_flag(ui_wifip3, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -1046,7 +1068,7 @@ void setdownc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setdownc_cb");
     g_swipeid = 0;
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
+    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Swipe_screen_init);
     lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_shutdown();
 }
@@ -1055,7 +1077,7 @@ void setfac_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setfac_cb");
     g_swipeid = 1;
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Swipe_screen_init);
+    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Swipe_screen_init);
     lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_facreset();
 }
@@ -1073,7 +1095,7 @@ void setappdf_cb(lv_event_t *e)
 void setappc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setappc_cb");
-    lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Connect_screen_init);
+    lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Connect_screen_init);
     lv_group_focus_obj(ui_connp1);
     // Page_ConnAPP_Mate();
 }
@@ -1132,7 +1154,7 @@ void sliderr_cb(lv_event_t *e)
 void otaback_cb(lv_event_t * e)
 {
     ESP_LOGI(CLICK_TAG, "otaback_cb");
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
 }
 
 void volvc_cb(lv_event_t *e)
@@ -1190,8 +1212,7 @@ void bridf_cb(lv_event_t * e)
 
 void hap_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "hap_cb");
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
 }
 
 void slpt1c_cb(lv_event_t *e) 
@@ -1233,7 +1254,7 @@ void pageguideavaf_cb(lv_event_t * e)
 {
     if(g_guide_step == 2)
     {
-        _ui_screen_change(&ui_Page_guide1, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_guide1_screen_init);
+        _ui_screen_change(&ui_Page_guide1, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_guide1_screen_init);
     }
 }
 
@@ -1284,12 +1305,12 @@ void guide2avaclick_cb(lv_event_t * e)
 
 void emoticonback_cb(lv_event_t * e)
 {
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
 }
 
 void guidebtn1click_cb(lv_event_t * e)
 {
-    lv_pm_open_page(g_main, &group_page_guide, PM_ADD_OBJS_TO_GROUP, &ui_Page_guide1, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_guide1_screen_init);
+    lv_pm_open_page(g_main, &group_page_guide, PM_ADD_OBJS_TO_GROUP, &ui_Page_guide1, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_guide1_screen_init);
 }
 
 void guidebtn2click_cb(lv_event_t * e)
@@ -1303,14 +1324,14 @@ void guidebtn2click_cb(lv_event_t * e)
         {
             g_taskdown = 0;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
-            lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+            lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
         }
     }
 
     if(g_tasktype == 1)
     {
         g_taskdown = 0;
-        if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
     }
 }
 
@@ -1328,14 +1349,14 @@ void guide1btn3c_cb(lv_event_t * e)
         {
             g_taskdown = 0;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
-            lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+            lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
         }
     }
 
     if(g_tasktype == 1)
     {
         g_taskdown = 0;
-        if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_ViewAva_screen_init);
+        if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
     }
 }
 
@@ -1343,7 +1364,7 @@ void pageguidelivef_cb(lv_event_t * e)
 {
     if(g_guide_step == 1)
     {
-        _ui_screen_change(&ui_Page_guide2, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_guide2_screen_init);
+        _ui_screen_change(&ui_Page_guide2, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_guide2_screen_init);
         lv_obj_add_flag(ui_guide2p1, LV_OBJ_FLAG_CLICKABLE);
 
         lv_group_add_obj(g_main, ui_guide2p1);
@@ -1609,7 +1630,7 @@ void viewp1c_cb(lv_event_t *e)
     g_alarm_p = 0;
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_main_screen_init);
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
     lv_group_set_wrap(g_main, true);
 }
 
@@ -1621,9 +1642,12 @@ void viewp2c_cb(lv_event_t *e)
 void viewp3c_cb(lv_event_t *e)
 {
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
+    lv_group_remove_all_objs(g_main);
     lv_group_add_obj(g_main, ui_Page_ViewAva);
     lv_group_add_obj(g_main, ui_Page_ViewLive);
     g_alarm_p = 0;
+    if(lv_scr_act() == ui_Page_ViewAva)lv_group_focus_obj(ui_Page_ViewAva);
+    if(lv_scr_act() == ui_Page_ViewLive)lv_group_focus_obj(ui_Page_ViewLive);
 }
 
 void ui_event_alarm_panel(lv_event_t * e)
@@ -1640,6 +1664,36 @@ void ui_event_alarm_panel(lv_event_t * e)
         }else if (target == ui_viewpbtn3)
         {
             viewp3c_cb(e);
+        }
+    }
+    if(event_code == LV_EVENT_FOCUSED) {
+        if(target == ui_viewpbtn1)
+        {
+            lv_obj_set_style_border_color(ui_viewpbtn1, lv_color_hex(0x1F6DC3), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_color(ui_viewpbtn2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_color(ui_viewpbtn3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+            lv_obj_set_style_border_opa(ui_viewpbtn1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_opa(ui_viewpbtn2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_opa(ui_viewpbtn3, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        }else if (target == ui_viewpbtn2)
+        {
+            lv_obj_set_style_border_color(ui_viewpbtn1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_color(ui_viewpbtn2, lv_color_hex(0x1F6DC3), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_color(ui_viewpbtn3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+            lv_obj_set_style_border_opa(ui_viewpbtn1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_opa(ui_viewpbtn2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_opa(ui_viewpbtn3, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        }else if (target == ui_viewpbtn3)
+        {
+            lv_obj_set_style_border_color(ui_viewpbtn1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_color(ui_viewpbtn2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_color(ui_viewpbtn3, lv_color_hex(0x1F6DC3), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+            lv_obj_set_style_border_opa(ui_viewpbtn1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_opa(ui_viewpbtn2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_opa(ui_viewpbtn3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
         }
     }
 }
