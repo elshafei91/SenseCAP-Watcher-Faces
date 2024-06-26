@@ -81,6 +81,8 @@ SET(SOURCES components/ui_comp_menucomponent.c
     fonts/ui_font_Font1.c
     fonts/ui_font_Font12.c
     fonts/ui_font_fontbold26.c
-    fonts/ui_font_font_bold.c)
+    fonts/ui_font_font_bold.c
+    fonts/ui_font_semibold28.c
+    fonts/ui_font_semibold42.c)
 
 add_library(ui ${SOURCES})

@@ -453,6 +453,8 @@ LV_FONT_DECLARE(ui_font_Font1);
 LV_FONT_DECLARE(ui_font_Font12);
 LV_FONT_DECLARE(ui_font_fontbold26);
 LV_FONT_DECLARE(ui_font_font_bold);
+LV_FONT_DECLARE(ui_font_semibold28);
+LV_FONT_DECLARE(ui_font_semibold42);
 
 
 
