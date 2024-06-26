@@ -140,8 +140,8 @@ void ui_Page_SAbout_screen_init(void)
     lv_obj_set_style_text_font(ui_hv2, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_aboutsn = lv_obj_create(ui_AboutP);
-    lv_obj_set_width(ui_aboutsn, 300);
-    lv_obj_set_height(ui_aboutsn, 90);
+    lv_obj_set_width(ui_aboutsn, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_aboutsn, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_aboutsn, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_aboutsn, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(ui_aboutsn, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
@@ -165,7 +165,7 @@ void ui_Page_SAbout_screen_init(void)
     lv_obj_set_width(ui_snt2, 260);
     lv_obj_set_height(ui_snt2, 50);
     lv_obj_set_align(ui_snt2, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_snt2, "xxxxxxxxxxxxxxxxxx");
+    lv_label_set_text(ui_snt2, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     lv_obj_add_flag(ui_snt2, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_set_style_text_color(ui_snt2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_snt2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -174,7 +174,7 @@ void ui_Page_SAbout_screen_init(void)
 
     ui_abouteui = lv_obj_create(ui_AboutP);
     lv_obj_set_width(ui_abouteui, 300);
-    lv_obj_set_height(ui_abouteui, 90);
+    lv_obj_set_height(ui_abouteui, 115);
     lv_obj_set_align(ui_abouteui, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_abouteui, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(ui_abouteui, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
@@ -198,7 +198,7 @@ void ui_Page_SAbout_screen_init(void)
     lv_obj_set_width(ui_euit2, 260);
     lv_obj_set_height(ui_euit2, 50);
     lv_obj_set_align(ui_euit2, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_euit2, "xxxxxxxxxxxxxxxxxx");
+    lv_label_set_text(ui_euit2, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     lv_obj_add_flag(ui_euit2, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_set_style_text_color(ui_euit2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_euit2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);

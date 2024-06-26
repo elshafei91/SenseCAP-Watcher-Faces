@@ -424,6 +424,14 @@ void view_alarm_panel_init()
     lv_obj_set_style_shadow_color(ui_viewpbtn3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_viewpbtn3, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    lv_obj_set_style_border_opa(ui_viewpbtn1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_viewpbtn2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_viewpbtn3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_set_style_border_width(ui_viewpbtn1, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_viewpbtn2, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_viewpbtn3, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+
     lv_obj_add_event_cb(ui_viewpbtn1, ui_event_alarm_panel, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_viewpbtn2, ui_event_alarm_panel, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_viewpbtn3, ui_event_alarm_panel, LV_EVENT_ALL, NULL);

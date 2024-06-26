@@ -204,7 +204,7 @@ void ui_Page_main_screen_init(void)
     lv_label_set_text(ui_maintime, "18:20");
     lv_obj_set_style_text_color(ui_maintime, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_maintime, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_maintime, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_maintime, &ui_font_semibold28, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_mainwifi = lv_img_create(ui_Devicep);
     lv_img_set_src(ui_mainwifi, &ui_img_no_wifi_png);
@@ -249,15 +249,15 @@ void ui_Page_main_screen_init(void)
     lv_obj_set_style_img_recolor_opa(ui_mainble, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_maintitle = lv_label_create(ui_Page_main);
-    lv_obj_set_width(ui_maintitle, 237);
-    lv_obj_set_height(ui_maintitle, 78);
+    lv_obj_set_width(ui_maintitle, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_maintitle, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_maintitle, 50);
     lv_obj_set_y(ui_maintitle, 0);
     lv_obj_set_align(ui_maintitle, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_maintitle, "Tasks\nTemplate");
+    lv_label_set_text(ui_maintitle, "Task\nTemplates");
     lv_obj_set_style_text_color(ui_maintitle, lv_color_hex(0xA9DE2C), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_maintitle, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_maintitle, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_maintitle, &ui_font_semibold42, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_mcontrolp = lv_obj_create(ui_Page_main);
     lv_obj_set_width(ui_mcontrolp, 412);
