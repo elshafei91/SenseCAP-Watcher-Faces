@@ -74,7 +74,7 @@ const char local_taskflow_gesture[] = \
 		\"index\": 1,    \  
 		\"version\": \"1.0.0\",    \  
 		\"params\": {    \  
-			\"text\": \"scissors detected\",    \  
+			\"text\": \"paper gesture detected\",    \  
 			\"audio\": \"\"    \  
 		},    \  
 		\"wires\": [    \  
@@ -153,7 +153,7 @@ const char local_taskflow_pet[] = \
 		\"index\": 1,    \  
 		\"version\": \"1.0.0\",    \  
 		\"params\": {    \  
-			\"text\": \"dog detected\",    \  
+			\"text\": \"dog or cat detected\",    \  
 			\"audio\": \"\"    \  
 		},    \  
 		\"wires\": [    \  

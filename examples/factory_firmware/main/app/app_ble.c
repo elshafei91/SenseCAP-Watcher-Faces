@@ -607,7 +607,9 @@ esp_err_t app_ble_init(void)
     ESP_ERROR_CHECK(gatt_svr_init());
 
     const char *sn = factory_info_sn_get();
-    memcpy(adv_data + 8, sn, SENSECAP_SN_STR_LEN);
+    if( sn != NULL ) {
+        memcpy(adv_data + 8, sn, SENSECAP_SN_STR_LEN);
+    }
     char ble_name[24] = { 0 };
     memcpy((char *)ble_name, adv_data + 8, SENSECAP_SN_STR_LEN + 5/*-WACH*/);
     ESP_ERROR_CHECK(ble_svc_gap_device_name_set(ble_name));
