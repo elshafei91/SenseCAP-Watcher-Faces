@@ -105,6 +105,8 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     const char *header = "SEEED";
     uart_write_bytes(UART_NUM_2, header, strlen(header));
 
+    ESP_LOGD(TAG, "uart magic header sent, output_format=%d", p_module_ins->output_format);
+
     if (p_module_ins->output_format == 0) {
         uart_write_bytes(UART_NUM_2, buffer, total_len);
         free(buffer);
@@ -113,6 +115,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         total_len = strlen(str);
         uart_write_bytes(UART_NUM_2, &total_len, 2);
         uart_write_bytes(UART_NUM_2, str, total_len);
+        ESP_LOGD(TAG, "output json:\n%s\ntotal_len=%d", str, total_len);
         free(str);
         cJSON_Delete(json);
     }
@@ -140,7 +143,7 @@ static int __cfg(void *p_module, cJSON *p_json)
     cJSON *output_format = cJSON_GetObjectItem(p_json, "output_format");
     if (output_format == NULL || !cJSON_IsNumber(output_format))
     {
-        ESP_LOGE(TAG, "params output_format err, default 0 (binary output)");
+        ESP_LOGE(TAG, "params output_format missing, default 0 (binary output)");
         p_module_ins->output_format = 0;
     } else {
         ESP_LOGI(TAG, "params output_format=%d", output_format->valueint);
@@ -150,7 +153,7 @@ static int __cfg(void *p_module, cJSON *p_json)
     cJSON *include_big_image = cJSON_GetObjectItem(p_json, "include_big_image");
     if (include_big_image == NULL || !cJSON_IsBool(include_big_image))
     {
-        ESP_LOGE(TAG, "params include_big_image err, default false");
+        ESP_LOGE(TAG, "params include_big_image missing, default false");
         p_module_ins->include_big_image = false;
     } else {
         ESP_LOGI(TAG, "params include_big_image=%s", cJSON_IsTrue(include_big_image)?"true":"false");
@@ -160,7 +163,7 @@ static int __cfg(void *p_module, cJSON *p_json)
     cJSON *include_small_image = cJSON_GetObjectItem(p_json, "include_small_image");
     if (include_small_image == NULL || !cJSON_IsBool(include_small_image))
     {
-        ESP_LOGE(TAG, "params include_small_image err, default false");
+        ESP_LOGE(TAG, "params include_small_image missing, default false");
         p_module_ins->include_small_image = false;
     } else {
         ESP_LOGI(TAG, "params include_small_image=%s", cJSON_IsTrue(include_small_image)?"true":"false");
@@ -170,7 +173,7 @@ static int __cfg(void *p_module, cJSON *p_json)
     cJSON *include_boxes = cJSON_GetObjectItem(p_json, "include_boxes");
     if (include_boxes == NULL || !cJSON_IsBool(include_boxes))
     {
-        ESP_LOGE(TAG, "params include_boxes err, default false");
+        ESP_LOGE(TAG, "params include_boxes missing, default false");
         p_module_ins->include_boxes = false;
     } else {
         ESP_LOGI(TAG, "params include_boxes=%s", cJSON_IsTrue(include_boxes)?"true":"false");
@@ -231,6 +234,7 @@ tf_module_t *tf_module_uart_alarm_instance(void)
         ESP_GOTO_ON_ERROR(uart_param_config(UART_NUM_2, &uart_config), err, TAG, "uart_param_config failed");
         ESP_GOTO_ON_ERROR(uart_set_pin(UART_NUM_2, GPIO_NUM_19/*TX*/, GPIO_NUM_20/*RX*/, -1, -1), err, TAG, "uart_set_pin failed");
         ESP_GOTO_ON_ERROR(uart_driver_install(UART_NUM_2, buffer_size, buffer_size, 0, NULL, ESP_INTR_FLAG_SHARED), err, TAG, "uart_driver_install failed");
+        ESP_LOGI(TAG, "uart driver is installed.");
     }
 
     return &p_module_ins->module_base;
@@ -242,8 +246,15 @@ err:
 
 void tf_module_uart_alarm_destroy(tf_module_t *p_module_base)
 {
-    if( atomic_fetch_sub(&g_ins_cnt, 1) <= 1 && p_module_base ) {
-        free(p_module_base->p_module);
+    if (p_module_base) {
+        if (atomic_fetch_sub(&g_ins_cnt, 1) <= 1) {
+            // this is the last destroy call, de-init the uart
+            uart_driver_delete(UART_NUM_2);
+            ESP_LOGI(TAG, "uart driver is deleted.");
+        }
+        if (p_module_base->p_module) {
+            free(p_module_base->p_module);
+        }
     }
 }
 
@@ -254,6 +265,9 @@ const static struct tf_module_mgmt __g_module_management = {
 
 esp_err_t tf_module_uart_alarm_register(void)
 {
+#if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+#endif
     return tf_module_register(TF_MODULE_UART_ALARM_NAME,
                               TF_MODULE_UART_ALARM_DESC,
                               TF_MODULE_UART_ALARM_VERSION,
