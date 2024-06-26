@@ -559,14 +559,17 @@ void viewlc_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "viewlc_cb");
     if(g_dev_binded)
     {
-        if(g_taskdown == 0)lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
-        lv_obj_move_foreground(ui_viewavap);
-        lv_group_remove_all_objs(g_main);
-        lv_group_add_obj(g_main, ui_viewpbtn1);
-        lv_group_add_obj(g_main, ui_viewpbtn2);
-        lv_group_add_obj(g_main, ui_viewpbtn3);
-        g_alarm_p = 1;
-        g_avarlive = 1;
+        if(g_taskdown == 0)
+        {
+            lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
+            lv_obj_move_foreground(ui_viewavap);
+            lv_group_remove_all_objs(g_main);
+            lv_group_add_obj(g_main, ui_viewpbtn1);
+            lv_group_add_obj(g_main, ui_viewpbtn2);
+            lv_group_add_obj(g_main, ui_viewpbtn3);
+            g_alarm_p = 1;
+            g_avarlive = 1;
+        }
     }
 }
 
