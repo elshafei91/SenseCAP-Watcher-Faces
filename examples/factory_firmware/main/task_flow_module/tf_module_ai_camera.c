@@ -122,6 +122,12 @@ static void __view_event_handler(void* handler_args,
 
 }
 
+static void __timer_callback(void* p_arg)
+{
+    tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)p_arg;
+    ESP_LOGI(TAG, "sample timeout, restart preview");
+    xEventGroupSetBits(p_module_ins->event_group, EVENT_PRVIEW_416_416);
+}
 
 static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
@@ -569,7 +575,7 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                         tf_data_image_copy(&p_module_ins->output_data.img_small, &info.img);
                         tf_data_inference_copy(&p_module_ins->output_data.inference, &info.inference);
 
-                        ret = tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), pdMS_TO_TICKS(100));
+                        ret = tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), pdMS_TO_TICKS(1));
                         if( ret != ESP_OK) {
                             ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
                             tf_data_free(&p_module_ins->output_data);
@@ -596,6 +602,13 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
             int img_size = 0;
             struct tf_data_image img_large;
             // printf("sscma:%s\r\n",reply->data);
+
+            if (esp_timer_is_active( p_module_ins->timer_handle ) == true)
+            {
+                ESP_LOGI(TAG, "stop timer");
+                esp_timer_stop(p_module_ins->timer_handle);
+            }
+
             if ( sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK ) {
                 img_large.p_buf = (uint8_t *)img;
                 img_large.len = img_size;
@@ -615,7 +628,7 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                 tf_data_image_copy(&p_module_ins->output_data.img_large, &img_large);
                 tf_data_image_copy(&p_module_ins->output_data.img_small, &p_module_ins->preview_info_cache.img);
                 tf_data_inference_copy(&p_module_ins->output_data.inference, &p_module_ins->preview_info_cache.inference);
-                ret = tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), pdMS_TO_TICKS(10000));
+                ret = tf_event_post(p_module_ins->p_output_evt_id[i], &p_module_ins->output_data, sizeof(p_module_ins->output_data), pdMS_TO_TICKS(1));
                 if( ret != ESP_OK) {
                     ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
                     tf_data_free(&p_module_ins->output_data);
@@ -942,12 +955,14 @@ static void ai_camera_task(void *p_arg)
             sscma_client_break(p_module_ins->sscma_client_handle);
             sscma_client_set_sensor(p_module_ins->sscma_client_handle, 1,  \
                                     TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_640_480, true);
+
+            esp_timer_start_once(p_module_ins->timer_handle, 5 * 1000000); // 5s
+
             if (sscma_client_sample(p_module_ins->sscma_client_handle, 1) != ESP_OK)
             {
                 ESP_LOGE(TAG, "Sample %d failed\n", TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_640_480);
                 xEventGroupSetBits(p_module_ins->event_group, EVENT_PRVIEW_416_416);
             }
-            //TODO  need to set a timeout?
         }
         if( ( bits & EVENT_PRVIEW_416_416 ) != 0 && run_flag ) {
             ESP_LOGI(TAG, "EVENT_PRVIEW_416_416");
@@ -1430,6 +1445,14 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
                                             __view_event_handler, 
                                             p_module_ins);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "view esp_event_handler_register failed");
+
+    const esp_timer_create_args_t timer_args = {
+            .callback = &__timer_callback,
+            .arg = (void*) p_module_ins,
+            .name = "ai_camera_timer"
+    };
+    ret = esp_timer_create(&timer_args, &p_module_ins->timer_handle);
+    ESP_GOTO_ON_ERROR(ret, err, TAG, "esp_timer_create failed");
 
     return &p_module_ins->module_serv;
 
