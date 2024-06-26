@@ -437,7 +437,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 if(ota_st->status == 1)
                 {
                     update_ota_progress(ota_st->percentage);
-                    lv_label_set_text(ui_otatext, "Updating\nFirmware");
+                    lv_label_set_text(ui_otatext, "Updating\nFirmware, this might take several minutes...");
                     lv_obj_add_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
