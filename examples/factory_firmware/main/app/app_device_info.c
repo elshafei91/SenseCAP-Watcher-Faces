@@ -99,30 +99,15 @@ static volatile atomic_bool g_will_reset_factory = ATOMIC_VAR_INIT(false);
 static esp_timer_handle_t g_timer_firstreport;
 
 
-void app_device_info_task(void *pvParameter);
-
-/*----------------------------------------------------tool function---------------------------------------------*/
-void byteArrayToHexString(const uint8_t *byteArray, size_t byteArraySize, char *hexString)
-{
-    for (size_t i = 0; i < byteArraySize; ++i)
-    {
-        sprintf(&hexString[2 * i], "%02X", byteArray[i]);
-    }
-}
-
-void string_to_byte_array(const char *str, uint8_t *byte_array, size_t length)
-{
-    for (size_t i = 0; i < length; i++)
-    {
-        sscanf(str + 2 * i, "%2hhx", &byte_array[i]);
-    }
-}
-
-/*----------------------------------------------------------init function--------------------------------------*/
 
 void init_sn_from_nvs()
 {
     const char *sn_str = factory_info_sn_get();
+    if (sn_str == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to get factory information of SN \n");
+        return;
+    }
     string_to_byte_array(sn_str, SN, 9);
 }
 
@@ -144,6 +129,10 @@ void init_eui_from_nvs()
 void init_batchid_from_nvs()
 {
     const char *batchid = factory_info_batchid_get();
+    if (batchid == NULL) {
+        ESP_LOGE(TAG, "Failed to get factory information of batchid \n");
+        return;
+    }
     create_batch = atoi(batchid);
     return;
 }
@@ -294,9 +283,9 @@ void init_qrcode_content()
     char hexStringEUI[19] = { 0 };
     char hexStringCode[19] = { 0 };
     char hexStringSn[19] = { 0 };
-    byteArrayToHexString(EUI, sizeof(EUI), hexStringEUI);
-    byteArrayToHexString(DEVCODE, sizeof(DEVCODE), hexStringCode);
-    byteArrayToHexString(SN, sizeof(SN), hexStringSn);
+    byte_array_to_hex_string(EUI, sizeof(EUI), hexStringEUI);
+    byte_array_to_hex_string(DEVCODE, sizeof(DEVCODE), hexStringCode);
+    byte_array_to_hex_string(SN, sizeof(SN), hexStringSn);
 
     snprintf((char *)QRCODE, sizeof(QRCODE), "w1:%s%s:%s:%s:%s", hexStringEUI, hexStringCode, str_platformid, str_batchid, hexStringSn);
     //esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, QRCODE, sizeof(QRCODE), pdMS_TO_TICKS(10000));

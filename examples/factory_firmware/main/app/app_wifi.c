@@ -568,7 +568,6 @@ static void __ping_start(void)
     esp_ping_start(ping);
 }
 
-extern char *app_https_upload_audio(uint8_t *data, size_t len);
 // net check
 static void __app_wifi_task(void *p_arg)
 {
@@ -594,11 +593,7 @@ static void __app_wifi_task(void *p_arg)
                         cnt = 0;
                         ESP_LOGI(TAG, "Network normal last time, retry check network...");
                         __ping_start();
-                    }
-                    // uint8_t buf[32];
-                    // int len = 32;
-                    // app_https_upload_audio(buf, len);
-                    if (atomic_load(&__g_ping_period_cnt) > PING_PERIOD_MAX) {
+                    } else if (atomic_load(&__g_ping_period_cnt) > PING_PERIOD_MAX) {
                         atomic_store(&__g_ping_period_cnt, 0);
                         ESP_LOGW(TAG, "network seems to be down, sensed by MQTT, ping now ...");
                         __ping_start();

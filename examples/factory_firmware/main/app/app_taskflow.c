@@ -74,7 +74,7 @@ const char local_taskflow_gesture[] = \
 		\"index\": 1,    \  
 		\"version\": \"1.0.0\",    \  
 		\"params\": {    \  
-			\"text\": \"scissors detected\",    \  
+			\"text\": \"paper gesture detected\",    \  
 			\"audio\": \"\"    \  
 		},    \  
 		\"wires\": [    \  
@@ -153,7 +153,7 @@ const char local_taskflow_pet[] = \
 		\"index\": 1,    \  
 		\"version\": \"1.0.0\",    \  
 		\"params\": {    \  
-			\"text\": \"dog detected\",    \  
+			\"text\": \"dog or cat detected\",    \  
 			\"audio\": \"\"    \  
 		},    \  
 		\"wires\": [    \  
@@ -564,7 +564,7 @@ static void __taskflow_task(void *p_arg)
 
             if( p_taskflow->status_need_report ) {
 
-                ESP_LOGI(TAG, "report taskflow status");
+                ESP_LOGI(TAG, "report taskflow status:%d", status.engine_status);
                 __data_lock(p_taskflow);
                 memcpy(&status, &p_taskflow->status, sizeof(struct view_data_taskflow_status));
 
@@ -677,7 +677,6 @@ static void __view_event_handler(void* handler_args,
             esp_err_t ret = ESP_OK;
             tf_engine_status_get(&status);
             if( status == TF_STATUS_RUNNING  || status ==  TF_STATUS_STARTING) {
-                app_ota_ai_model_download_abort(); // maybe donloading model, need to abort.
                 tf_engine_stop();
                 __task_flow_clean();
             } else {

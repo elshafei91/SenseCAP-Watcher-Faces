@@ -15,13 +15,6 @@
 #include "app_wifi.h"
 
 
-#define DATA_LENGTH 10320
-#define AT_EVENTS_COMMAND_ID 0x6F
-#define AT_EVENTS_RESPONSE_ID 0x70
-#define MEMORY_SIZE (1024 * 500)
-#define MESSAGE_QUEUE_SIZE 10
-
-
 typedef enum {
     // General Errors 
     AT_CMD_SUCCESS = ESP_OK, // No error occurred.
@@ -83,6 +76,12 @@ typedef struct {
     uint8_t *msg;
     int size;
 } ble_msg_t;
+
+typedef struct {
+    uint8_t *buff;
+    int cap;
+    int wr_ptr;
+} at_cmd_buffer_t;
 
 extern QueueHandle_t ble_msg_queue;
 

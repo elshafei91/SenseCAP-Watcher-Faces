@@ -7,6 +7,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
+#include "esp_timer.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -188,6 +189,7 @@ typedef struct tf_module_ai_camera
     SemaphoreHandle_t sem_handle; 
     EventGroupHandle_t event_group;
     TaskHandle_t task_handle;
+    esp_timer_handle_t timer_handle;
     StaticTask_t *p_task_buf;
     StackType_t *p_task_stack_buf;
     sscma_client_info_t *himax_info;
@@ -203,6 +205,9 @@ typedef struct tf_module_ai_camera
     struct tf_module_ai_camera_preview_info preview_info_cache;
     bool start_flag;
     int start_err_code;
+    bool ai_model_downloading;
+    bool ai_model_download_exit;
+    bool sscma_starting_flag;
 } tf_module_ai_camera_t;
 
 tf_module_t * tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins);

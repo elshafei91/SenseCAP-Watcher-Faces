@@ -29,6 +29,22 @@ time_t util_get_timestamp_ms(void)
 	return now * 1000;
 }
 
+void byte_array_to_hex_string(const uint8_t *byteArray, size_t byteArraySize, char *hexString)
+{
+    for (size_t i = 0; i < byteArraySize; ++i)
+    {
+        sprintf(&hexString[2 * i], "%02X", byteArray[i]);
+    }
+}
+
+void string_to_byte_array(const char *str, uint8_t *byte_array, size_t length)
+{
+    for (size_t i = 0; i < length; i++)
+    {
+        sscanf(str + 2 * i, "%2hhx", &byte_array[i]);
+    }
+}
+
 void *psram_malloc(size_t sz)
 {
     return heap_caps_malloc(sz, MALLOC_CAP_SPIRAM);

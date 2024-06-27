@@ -23,7 +23,8 @@ static const char *TAG = "sensecaft";
 
 struct app_sensecraft *gp_sensecraft = NULL;
 
-const int MQTT_PUB_QOS = 0;
+const int MQTT_PUB_QOS0 = 0;
+const int MQTT_PUB_QOS1 = 1;
 
 static void __data_lock(struct app_sensecraft  *p_sensecraft)
 {
@@ -490,15 +491,18 @@ static void __sensecraft_task(void *p_arg)
                 "sensecraft/ipnode/%s/update/event/measure-sensor", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_model_ota_status, MQTT_TOPIC_STR_LEN, 
                 "sensecraft/ipnode/%s/update/event/model-ota-status", p_sensecraft->deviceinfo.eui);
-    
-    ESP_LOGI(TAG, "topic_down_task_publish=%s",p_sensecraft->topic_down_task_publish);
-    ESP_LOGI(TAG, "topic_down_version_notify=%s",p_sensecraft->topic_down_version_notify);
-    ESP_LOGI(TAG, "topic_down_task_report=%s",p_sensecraft->topic_down_task_report);
-    ESP_LOGI(TAG, "topic_up_task_publish_ack=%s",p_sensecraft->topic_up_task_publish_ack);
-    ESP_LOGI(TAG, "topic_up_taskflow_report=%s",p_sensecraft->topic_up_taskflow_report);
-    ESP_LOGI(TAG, "topic_up_change_device_status=%s",p_sensecraft->topic_up_change_device_status);
-    ESP_LOGI(TAG, "topic_up_warn_event_report=%s",p_sensecraft->topic_up_warn_event_report);
-    ESP_LOGI(TAG, "topic_up_model_ota_status=%s",p_sensecraft->topic_up_model_ota_status);
+    sniprintf(p_sensecraft->topic_up_firmware_ota_status, MQTT_TOPIC_STR_LEN,
+                "sensecraft/ipnode/%s/update/event/firmware-ota-status", p_sensecraft->deviceinfo.eui);
+
+    ESP_LOGI(TAG, "topic_down_task_publish=%s", p_sensecraft->topic_down_task_publish);
+    ESP_LOGI(TAG, "topic_down_version_notify=%s", p_sensecraft->topic_down_version_notify);
+    ESP_LOGI(TAG, "topic_down_task_report=%s", p_sensecraft->topic_down_task_report);
+    ESP_LOGI(TAG, "topic_up_task_publish_ack=%s", p_sensecraft->topic_up_task_publish_ack);
+    ESP_LOGI(TAG, "topic_up_taskflow_report=%s", p_sensecraft->topic_up_taskflow_report);
+    ESP_LOGI(TAG, "topic_up_change_device_status=%s", p_sensecraft->topic_up_change_device_status);
+    ESP_LOGI(TAG, "topic_up_warn_event_report=%s", p_sensecraft->topic_up_warn_event_report);
+    ESP_LOGI(TAG, "topic_up_model_ota_status=%s", p_sensecraft->topic_up_model_ota_status);
+    ESP_LOGI(TAG, "topic_up_firmware_ota_status=%s", p_sensecraft->topic_up_firmware_ota_status);
 
     while (1) {
         
@@ -797,7 +801,7 @@ esp_err_t app_sensecraft_mqtt_taskflow_ack(char *request_id,
     ESP_LOGD(TAG, "app_sensecraft_mqtt_taskflow_ack: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_task_publish_ack, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS1, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -864,7 +868,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t taskflow_id,
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_status: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_taskflow_report, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS1, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -933,7 +937,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_info(intmax_t taskflow_id,
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_info: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_taskflow_report, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS1, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -994,7 +998,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_model_ota_status(intmax_t taskflow
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_taskflow_model_ota_status: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_model_ota_status, json_buff, json_len,
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS1, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -1058,7 +1062,7 @@ esp_err_t app_sensecraft_mqtt_report_warn_event(intmax_t taskflow_id,
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_warn_event: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_warn_event_report, json_buff, json_len,
-                                        1, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS0, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -1104,7 +1108,7 @@ esp_err_t app_sensecraft_mqtt_report_device_status_generic(char *event_value_fie
     ESP_LOGD(TAG, "app_sensecraft_mqtt_report_device_status: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
 
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_change_device_status, json_buff, strlen(json_buff),
-                                        MQTT_PUB_QOS, false/*retain*/, true/*store*/);
+                                        MQTT_PUB_QOS0, false/*retain*/, true/*store*/);
 
     free(json_buff);
 
@@ -1153,6 +1157,55 @@ esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_statu
     ret = app_sensecraft_mqtt_report_device_status_generic(json_buff);
 
     free(json_buff);
+
+    return ret;
+}
+
+esp_err_t app_sensecraft_mqtt_report_firmware_ota_status_generic(char *ota_status_fields_str)
+{
+    int ret = ESP_OK;
+    struct app_sensecraft *p_sensecraft = gp_sensecraft;
+    if (p_sensecraft == NULL)
+    {
+        return ESP_FAIL;
+    }
+    const char *json_fmt = \
+    "{"
+        "\"requestId\": \"%s\","
+        "\"timestamp\": %jd,"
+        "\"intent\": \"event\","
+        "\"deviceEui\": \"%s\","
+        "\"events\":  [{"
+            "\"name\": \"firmware-ota-status\","
+            "\"value\": {%s},"
+            "\"timestamp\": %jd"
+        "}]"
+    "}";
+
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle, ESP_FAIL, TAG, "mqtt_client is not inited yet [4]");
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet [4]");
+
+    char *json_buff = psram_malloc(3000);
+    ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
+
+    char uuid[37];
+    time_t timestamp_ms = util_get_timestamp_ms();
+
+    UUIDGen(uuid);
+    sniprintf(json_buff, 3000, json_fmt, uuid, timestamp_ms, p_sensecraft->deviceinfo.eui, ota_status_fields_str, timestamp_ms);
+
+    ESP_LOGD(TAG, "app_sensecraft_mqtt_report_firmware_ota_status_generic: \r\n%s\r\nstrlen=%d", json_buff, strlen(json_buff));
+
+    int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_firmware_ota_status, json_buff,
+                                            strlen(json_buff), MQTT_PUB_QOS1, false /*retain*/, true /*store*/);
+
+    free(json_buff);
+
+    if (msg_id < 0)
+    {
+        ESP_LOGW(TAG, "app_sensecraft_mqtt_report_firmware_ota_status_generic enqueue failed, err=%d", msg_id);
+        ret = ESP_FAIL;
+    }
 
     return ret;
 }

@@ -159,18 +159,17 @@ static int gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
         uuid = ctxt->chr->uuid;
         if (attr_handle == gatt_svr_chr_handle_write) {
             size_t ble_msg_len = OS_MBUF_PKTLEN(ctxt->om);
-            ble_msg_len += 1;
-            ble_msg_t ble_msg = {.size = ble_msg_len, .msg = psram_calloc(1, ble_msg_len)};
+            ble_msg_t ble_msg = {.size = ble_msg_len, .msg = psram_calloc(1, ble_msg_len + 1)};  // 1 for null-terminator
             uint16_t real_len = 0;
             rc = ble_hs_mbuf_to_flat(ctxt->om, ble_msg.msg, ble_msg_len, &real_len);
             if (rc != 0) {
                 free(ble_msg.msg);
                 return BLE_ATT_ERR_UNLIKELY;
             }
-            ESP_LOGI(TAG, "copied %d bytes from ble stack.", real_len);
+            ESP_LOGI(TAG, "mbuf_len: %d, copied %d bytes from ble stack.", ble_msg_len, real_len);
             ESP_LOGD(TAG, "ble msg: %s", ble_msg.msg);
 
-            if (xQueueSend(ble_msg_queue, &ble_msg, pdMS_TO_TICKS(10000)) != pdPASS) {
+            if (xQueueSend(ble_msg_queue, &ble_msg, pdMS_TO_TICKS(10)) != pdPASS) {
                 ESP_LOGW(TAG, "failed to send ble msg to queue, maybe at_cmd task stalled???");
             } else {
                 ESP_LOGD(TAG, "ble msg enqueued");
@@ -608,7 +607,9 @@ esp_err_t app_ble_init(void)
     ESP_ERROR_CHECK(gatt_svr_init());
 
     const char *sn = factory_info_sn_get();
-    memcpy(adv_data + 8, sn, SENSECAP_SN_STR_LEN);
+    if( sn != NULL ) {
+        memcpy(adv_data + 8, sn, SENSECAP_SN_STR_LEN);
+    }
     char ble_name[24] = { 0 };
     memcpy((char *)ble_name, adv_data + 8, SENSECAP_SN_STR_LEN + 5/*-WACH*/);
     ESP_ERROR_CHECK(ble_svc_gap_device_name_set(ble_name));

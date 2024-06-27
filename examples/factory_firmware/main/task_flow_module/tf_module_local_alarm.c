@@ -215,7 +215,6 @@ static int __stop(void *p_module)
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)p_module;
 #if TF_MODULE_LOCAL_ALARM_TIMER_ENABLE
     esp_timer_stop(p_module_ins->timer_handle);
-    esp_timer_delete(p_module_ins->timer_handle);
 #endif
     __alarm_off(p_module_ins);
     esp_err_t ret = tf_event_handler_unregister(p_module_ins->input_evt_id, __event_handler);

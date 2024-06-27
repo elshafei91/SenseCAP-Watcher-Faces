@@ -51,7 +51,7 @@ extern "C"
  * 
  * - Big Image: 640 * 480 image, base64 encoded JPG image, without boxes of detected objects.
  * - Small Image: 240 * 240 image, base64 encoded JPG image, with boxes drawn for detected objects.
- * - Box: A area which holds the detected object, with its coordinates and score.
+ * - Box: An area which holds the detected object, with its coordinates and score.
  * 
  * Please note, Big Image and Small Image buffer has no string terminator '\0'.
  * 
