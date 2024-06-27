@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_Wifi_screen_init(void)
+void ui_Page_Network_screen_init(void)
 {
-    ui_Page_Wifi = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_Wifi, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_Wifi, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_Wifi, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Network = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Network, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Network, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Network, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_wifip1 = lv_obj_create(ui_Page_Wifi);
+    ui_wifip1 = lv_obj_create(ui_Page_Network);
     lv_obj_set_width(ui_wifip1, 400);
     lv_obj_set_height(ui_wifip1, 300);
     lv_obj_set_x(ui_wifip1, 0);
@@ -57,7 +57,7 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_style_text_opa(ui_wifibtnt, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_wifibtnt, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_wifip3 = lv_obj_create(ui_Page_Wifi);
+    ui_wifip3 = lv_obj_create(ui_Page_Network);
     lv_obj_set_width(ui_wifip3, 400);
     lv_obj_set_height(ui_wifip3, 300);
     lv_obj_set_x(ui_wifip3, 0);
@@ -102,7 +102,7 @@ void ui_Page_Wifi_screen_init(void)
     lv_obj_set_style_text_opa(ui_wifitext2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_wifitext2, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_wificancel = lv_btn_create(ui_Page_Wifi);
+    ui_wificancel = lv_btn_create(ui_Page_Network);
     lv_obj_set_width(ui_wificancel, 60);
     lv_obj_set_height(ui_wificancel, 60);
     lv_obj_set_x(ui_wificancel, 0);

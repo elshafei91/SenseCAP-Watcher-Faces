@@ -31,7 +31,7 @@ void ui_Page_Wakup_screen_init(void)
     lv_label_set_text(ui_wakeupt1, "When");
     lv_obj_set_style_text_color(ui_wakeupt1, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_wakeupt1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_wakeupt1, &ui_font_fbold16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_wakeupt1, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_wakeupt2 = lv_label_create(ui_Page_Wakup);
     lv_obj_set_width(ui_wakeupt2, 264);
@@ -54,7 +54,7 @@ void ui_Page_Wakup_screen_init(void)
     lv_label_set_text(ui_wakeupt3, "Do");
     lv_obj_set_style_text_color(ui_wakeupt3, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_wakeupt3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_wakeupt3, &ui_font_fbold16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_wakeupt3, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_wakeupt4 = lv_label_create(ui_Page_Wakup);
     lv_obj_set_width(ui_wakeupt4, 264);

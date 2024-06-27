@@ -357,7 +357,7 @@ void scroll_anim_enable()
 
 void loading_anim_init()
 {
-    ui_Left1 = lv_obj_create(ui_Page_loading);
+    ui_Left1 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Left1);
     lv_obj_set_width( ui_Left1, 10);
     lv_obj_set_height( ui_Left1, 10);
@@ -388,7 +388,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Left1, 10, LV_PART_MAIN| LV_STATE_CHECKED);
     lv_obj_set_style_shadow_spread(ui_Left1, 5, LV_PART_MAIN| LV_STATE_CHECKED);
 
-    ui_Left2 = lv_obj_create(ui_Page_loading);
+    ui_Left2 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Left2);
     lv_obj_set_width( ui_Left2, 10);
     lv_obj_set_height( ui_Left2, 10);
@@ -408,7 +408,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Left2, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Left2, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Left3 = lv_obj_create(ui_Page_loading);
+    ui_Left3 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Left3);
     lv_obj_set_width( ui_Left3, 10);
     lv_obj_set_height( ui_Left3, 10);
@@ -428,7 +428,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Left3, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Left3, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Left4 = lv_obj_create(ui_Page_loading);
+    ui_Left4 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Left4);
     lv_obj_set_width( ui_Left4, 10);
     lv_obj_set_height( ui_Left4, 10);
@@ -448,7 +448,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Left4, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Left4, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Left5 = lv_obj_create(ui_Page_loading);
+    ui_Left5 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Left5);
     lv_obj_set_width( ui_Left5, 10);
     lv_obj_set_height( ui_Left5, 10);
@@ -468,7 +468,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Left5, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Left5, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Left6 = lv_obj_create(ui_Page_loading);
+    ui_Left6 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Left6);
     lv_obj_set_width( ui_Left6, 10);
     lv_obj_set_height( ui_Left6, 10);
@@ -488,7 +488,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Left6, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Left6, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Left7 = lv_obj_create(ui_Page_loading);
+    ui_Left7 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Left7);
     lv_obj_set_width( ui_Left7, 10);
     lv_obj_set_height( ui_Left7, 10);
@@ -509,7 +509,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Left7, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Left7, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Left8 = lv_obj_create(ui_Page_loading);
+    ui_Left8 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Left8);
     lv_obj_set_width( ui_Left8, 10);
     lv_obj_set_height( ui_Left8, 10);
@@ -530,7 +530,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Left8, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Left8, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Right1 = lv_obj_create(ui_Page_loading);
+    ui_Right1 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Right1);
     lv_obj_set_width( ui_Right1, 10);
     lv_obj_set_height( ui_Right1, 10);
@@ -550,7 +550,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Right1, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Right1, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Right2 = lv_obj_create(ui_Page_loading);
+    ui_Right2 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Right2);
     lv_obj_set_width( ui_Right2, 10);
     lv_obj_set_height( ui_Right2, 10);
@@ -570,7 +570,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Right2, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Right2, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Right3 = lv_obj_create(ui_Page_loading);
+    ui_Right3 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Right3);
     lv_obj_set_width( ui_Right3, 10);
     lv_obj_set_height( ui_Right3, 10);
@@ -590,7 +590,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Right3, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Right3, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Right4 = lv_obj_create(ui_Page_loading);
+    ui_Right4 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Right4);
     lv_obj_set_width( ui_Right4, 10);
     lv_obj_set_height( ui_Right4, 10);
@@ -610,7 +610,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Right4, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Right4, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Right5 = lv_obj_create(ui_Page_loading);
+    ui_Right5 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Right5);
     lv_obj_set_width( ui_Right5, 10);
     lv_obj_set_height( ui_Right5, 10);
@@ -630,7 +630,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Right5, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Right5, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Right6 = lv_obj_create(ui_Page_loading);
+    ui_Right6 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Right6);
     lv_obj_set_width( ui_Right6, 10);
     lv_obj_set_height( ui_Right6, 10);
@@ -650,7 +650,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Right6, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Right6, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Right7 = lv_obj_create(ui_Page_loading);
+    ui_Right7 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Right7);
     lv_obj_set_width( ui_Right7, 10);
     lv_obj_set_height( ui_Right7, 10);
@@ -671,7 +671,7 @@ void loading_anim_init()
     lv_obj_set_style_shadow_width(ui_Right7, 10, LV_PART_MAIN| LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_Right7, 5, LV_PART_MAIN| LV_STATE_DEFAULT);
 
-    ui_Right8 = lv_obj_create(ui_Page_loading);
+    ui_Right8 = lv_obj_create(ui_Page_Loading);
     lv_obj_remove_style_all(ui_Right8);
     lv_obj_set_width( ui_Right8, 10);
     lv_obj_set_height( ui_Right8, 10);

@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_flag_screen_init(void)
+void ui_Page_Flag_screen_init(void)
 {
-    ui_Page_flag = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_flag, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_flag, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_flag, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Flag = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Flag, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Flag, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Flag, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_guideflagp = lv_obj_create(ui_Page_flag);
+    ui_guideflagp = lv_obj_create(ui_Page_Flag);
     lv_obj_set_width(ui_guideflagp, 416);
     lv_obj_set_height(ui_guideflagp, 416);
     lv_obj_set_align(ui_guideflagp, LV_ALIGN_CENTER);

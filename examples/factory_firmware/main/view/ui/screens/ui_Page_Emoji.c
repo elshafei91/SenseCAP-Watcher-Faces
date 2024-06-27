@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_emoticon_screen_init(void)
+void ui_Page_Emoji_screen_init(void)
 {
-    ui_Page_emoticon = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_emoticon, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_emoticon, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_emoticon, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Emoji = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Emoji, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Emoji, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Emoji, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_facet = lv_label_create(ui_Page_emoticon);
+    ui_facet = lv_label_create(ui_Page_Emoji);
     lv_obj_set_width(ui_facet, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_facet, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_facet, 0);
@@ -24,7 +24,7 @@ void ui_Page_emoticon_screen_init(void)
     lv_obj_set_style_text_align(ui_facet, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_facet, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_facearc = lv_arc_create(ui_Page_emoticon);
+    ui_facearc = lv_arc_create(ui_Page_Emoji);
     lv_obj_set_width(ui_facearc, 412);
     lv_obj_set_height(ui_facearc, 412);
     lv_obj_set_x(ui_facearc, -1);
@@ -43,7 +43,7 @@ void ui_Page_emoticon_screen_init(void)
     lv_obj_set_style_bg_color(ui_facearc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_facearc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
-    ui_faceper = lv_obj_create(ui_Page_emoticon);
+    ui_faceper = lv_obj_create(ui_Page_Emoji);
     lv_obj_set_width(ui_faceper, 100);
     lv_obj_set_height(ui_faceper, 50);
     lv_obj_set_x(ui_faceper, 0);
@@ -77,7 +77,7 @@ void ui_Page_emoticon_screen_init(void)
     lv_obj_set_style_text_opa(ui_facetsym, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_facetsym, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_emoticonok = lv_btn_create(ui_Page_emoticon);
+    ui_emoticonok = lv_btn_create(ui_Page_Emoji);
     lv_obj_set_width(ui_emoticonok, 60);
     lv_obj_set_height(ui_emoticonok, 60);
     lv_obj_set_x(ui_emoticonok, 0);

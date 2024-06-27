@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_loading_screen_init(void)
+void ui_Page_Loading_screen_init(void)
 {
-    ui_Page_loading = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_loading, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_loading, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_loading, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Loading = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Loading, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Loading, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Loading, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_Arc1 = lv_arc_create(ui_Page_loading);
+    ui_Arc1 = lv_arc_create(ui_Page_Loading);
     lv_obj_set_width(ui_Arc1, 412);
     lv_obj_set_height(ui_Arc1, 412);
     lv_obj_set_align(ui_Arc1, LV_ALIGN_CENTER);
@@ -32,7 +32,7 @@ void ui_Page_loading_screen_init(void)
     lv_obj_set_style_bg_color(ui_Arc1, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Arc1, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
-    ui_loadpert = lv_label_create(ui_Page_loading);
+    ui_loadpert = lv_label_create(ui_Page_Loading);
     lv_obj_set_width(ui_loadpert, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_loadpert, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_loadpert, 0);
@@ -43,6 +43,6 @@ void ui_Page_loading_screen_init(void)
     lv_obj_set_style_text_opa(ui_loadpert, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_loadpert, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    lv_obj_add_event_cb(ui_Page_loading, ui_event_Page_loading, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_Page_Loading, ui_event_Page_Loading, LV_EVENT_ALL, NULL);
 
 }

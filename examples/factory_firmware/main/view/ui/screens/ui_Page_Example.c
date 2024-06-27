@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_LocTask_screen_init(void)
+void ui_Page_Example_screen_init(void)
 {
-    ui_Page_LocTask = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_LocTask, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_LocTask, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_LocTask, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Example = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Example, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Example, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Example, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_menulist = lv_obj_create(ui_Page_LocTask);
+    ui_menulist = lv_obj_create(ui_Page_Example);
     lv_obj_set_width(ui_menulist, 400);
     lv_obj_set_height(ui_menulist, 165);
     lv_obj_set_x(ui_menulist, 0);
@@ -236,7 +236,7 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_set_style_outline_width(ui_menubtn4, 0, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
     lv_obj_set_style_outline_pad(ui_menubtn4, 0, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
 
-    ui_Label1 = lv_label_create(ui_Page_LocTask);
+    ui_Label1 = lv_label_create(ui_Page_Example);
     lv_obj_set_width(ui_Label1, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_Label1, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_Label1, 2);
@@ -248,7 +248,7 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_set_style_text_align(ui_Label1, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_Label1, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_mimgp = lv_obj_create(ui_Page_LocTask);
+    ui_mimgp = lv_obj_create(ui_Page_Example);
     lv_obj_set_width(ui_mimgp, 412);
     lv_obj_set_height(ui_mimgp, 412);
     lv_obj_set_align(ui_mimgp, LV_ALIGN_CENTER);
@@ -260,7 +260,7 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_set_style_border_color(ui_mimgp, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_mimgp, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_lcontrolp = lv_obj_create(ui_Page_LocTask);
+    ui_lcontrolp = lv_obj_create(ui_Page_Example);
     lv_obj_set_width(ui_lcontrolp, 412);
     lv_obj_set_height(ui_lcontrolp, 412);
     lv_obj_set_align(ui_lcontrolp, LV_ALIGN_CENTER);
@@ -278,6 +278,6 @@ void ui_Page_LocTask_screen_init(void)
     lv_obj_add_event_cb(ui_menubtn2, ui_event_menubtn2, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_menubtn3, ui_event_menubtn3, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_menubtn4, ui_event_menubtn4, LV_EVENT_ALL, NULL);
-    lv_obj_add_event_cb(ui_Page_LocTask, ui_event_Page_LocTask, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_Page_Example, ui_event_Page_Example, LV_EVENT_ALL, NULL);
 
 }

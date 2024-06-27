@@ -23,7 +23,6 @@ static int PNG_LOADING_COUNT = 0;
 static uint8_t battery_per = 0;
 static bool battery_timer_toggle = 0;
 static int battery_flash_count = 0;
-static lv_obj_t * mbox1;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_dev_binded;
@@ -74,9 +73,9 @@ static void update_ota_progress(int percentage)
 static void toggle_image_visibility(lv_timer_t *timer)
 {
     if(battery_timer_toggle){
-        lv_obj_add_flag(ui_Image2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_batteryimg, LV_OBJ_FLAG_HIDDEN);
     }else{
-        lv_obj_clear_flag(ui_Image2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_batteryimg, LV_OBJ_FLAG_HIDDEN);
     }
     battery_timer_toggle = !battery_timer_toggle;
 
@@ -95,7 +94,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         switch (id)
         {
             case VIEW_EVENT_SCREEN_START: {
-                _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Vir_screen_init);
+                _ui_screen_change(&ui_Page_Avatar, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Avatar_screen_init);
                 break;
             }
 
@@ -110,7 +109,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }
                 if(progress_percentage>=50)
                 {
-                    lv_event_send(ui_Page_loading, LV_EVENT_SCREEN_LOADED, NULL);
+                    lv_event_send(ui_Page_Loading, LV_EVENT_SCREEN_LOADED, NULL);
                 }
                 break;
             }
@@ -118,7 +117,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_EMOJI_DOWLOAD_BAR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_BAR");
                 int *emoji_download_per = (int *)event_data;
-                _ui_screen_change(&ui_Page_emoticon, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_emoticon_screen_init);
+                _ui_screen_change(&ui_Page_Emoji, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Emoji_screen_init);
                 // ESP_LOGI(TAG, "emoji_download_per : %d", *emoji_download_per);
                 if(*emoji_download_per < 100){
                     lv_obj_clear_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
@@ -272,7 +271,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_WIFI_CONFIG_SYNC:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONFIG_SYNC");
                 int * wifi_config_sync = (int*)event_data;
-                if(lv_scr_act() != ui_Page_Wifi)_ui_screen_change(&ui_Page_Wifi, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Wifi_screen_init);
+                if(lv_scr_act() != ui_Page_Network)_ui_screen_change(&ui_Page_Network, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Network_screen_init);
                 if(* wifi_config_sync == 0)
                 {
                     waitForWifi();
@@ -287,7 +286,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     bindFinish();
                     wifi_page_id = 1;
                     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
-                    _ui_screen_change(&ui_Page_Vir, LV_SCR_LOAD_ANIM_NONE, 0, 3000, &ui_Page_Vir_screen_init);
+                    _ui_screen_change(&ui_Page_Avatar, LV_SCR_LOAD_ANIM_NONE, 0, 3000, &ui_Page_Avatar_screen_init);
                 }else if(* wifi_config_sync == 4)
                 {
                     wifiConnectFailed();
@@ -378,7 +377,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 g_taskdown = 0;
                 g_backpage = 1;
                 lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
-                _ui_screen_change(&ui_Page_CurTask3, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_CurTask3_screen_init);
+                _ui_screen_change(&ui_Page_Revtask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Revtask_screen_init);
                 break;
             }
 
@@ -390,9 +389,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 if(g_tasktype == 0)
                 {
-                    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_LocTask, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_LocTask_screen_init);
+                    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_Example, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Example_screen_init);
                 }else{
-                    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_main, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_main_screen_init);
+                    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
                     lv_group_focus_obj(ui_mainbtn2);
                 }
                 lv_group_set_wrap(g_main, true);
@@ -401,7 +400,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_AI_CAMERA_READY:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_READY");
-                if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive) && (lv_scr_act() != ui_Page_CurTask2) && (lv_scr_act() != ui_Page_CurTask3))
+                if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive) && (lv_scr_act() != ui_Page_Revtask) && (lv_scr_act() != ui_Page_ModelOTA))
                 {
                     break;
                 }
@@ -411,7 +410,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     {
                         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
                     }else{
-                        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_flag_screen_init);
+                        _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
                     }
                 }else if(g_avarlive == 1)
                 {
@@ -419,7 +418,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     {
                         if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewLive_screen_init);
                     }else{
-                        _ui_screen_change(&ui_Page_flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_flag_screen_init);
+                        _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
                     }
                 }
                 break;
@@ -478,10 +477,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: CTRL_EVENT_OTA_AI_MODEL");
                 if(g_taskdown == 0) // if the task is running
                 {
-                    if(lv_scr_act() != ui_Page_CurTask2)
+                    if(lv_scr_act() != ui_Page_ModelOTA)
                     {
                         lv_group_remove_all_objs(g_main);
-                        _ui_screen_change(&ui_Page_CurTask2, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_CurTask2_screen_init);
+                        _ui_screen_change(&ui_Page_ModelOTA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ModelOTA_screen_init);
                     }
                     struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                     lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
@@ -650,7 +649,7 @@ int view_init(void)
     }
 
     lv_disp_load_scr(ui____initial_actions0);
-    lv_disp_load_scr(ui_Page_Start);
+    lv_disp_load_scr(ui_Page_Startup);
 
     vTaskDelay(pdMS_TO_TICKS(200));
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));

@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_SAbout_screen_init(void)
+void ui_Page_About_screen_init(void)
 {
-    ui_Page_SAbout = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_SAbout, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_SAbout, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_SAbout, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_About = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_About, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_About, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_About, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_AboutP = lv_obj_create(ui_Page_SAbout);
+    ui_AboutP = lv_obj_create(ui_Page_About);
     lv_obj_set_width(ui_AboutP, 380);
     lv_obj_set_height(ui_AboutP, 356);
     lv_obj_set_x(ui_AboutP, 0);
@@ -281,7 +281,7 @@ void ui_Page_SAbout_screen_init(void)
     lv_obj_set_style_bg_opa(ui_Paboutb, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_src(ui_Paboutb, &ui_img_button_cancel_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_abtp = lv_obj_create(ui_Page_SAbout);
+    ui_abtp = lv_obj_create(ui_Page_About);
     lv_obj_set_width(ui_abtp, 288);
     lv_obj_set_height(ui_abtp, 60);
     lv_obj_set_x(ui_abtp, 0);

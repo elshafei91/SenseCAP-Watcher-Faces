@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_guide2_screen_init(void)
+void ui_Page_Guidelive_screen_init(void)
 {
-    ui_Page_guide2 = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_guide2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_guide2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_guide2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Guidelive = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Guidelive, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Guidelive, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Guidelive, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_guide2p1 = lv_obj_create(ui_Page_guide2);
+    ui_guide2p1 = lv_obj_create(ui_Page_Guidelive);
     lv_obj_set_width(ui_guide2p1, 412);
     lv_obj_set_height(ui_guide2p1, 412);
     lv_obj_set_align(ui_guide2p1, LV_ALIGN_CENTER);
@@ -36,7 +36,7 @@ void ui_Page_guide2_screen_init(void)
     lv_obj_set_style_text_align(ui_guide2t1, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_guide2t1, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_guide2p2 = lv_obj_create(ui_Page_guide2);
+    ui_guide2p2 = lv_obj_create(ui_Page_Guidelive);
     lv_obj_set_width(ui_guide2p2, 412);
     lv_obj_set_height(ui_guide2p2, 412);
     lv_obj_set_align(ui_guide2p2, LV_ALIGN_CENTER);
@@ -71,6 +71,6 @@ void ui_Page_guide2_screen_init(void)
 
     lv_obj_add_event_cb(ui_guide2p1, ui_event_guide2p1, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_guide2p2, ui_event_guide2p2, LV_EVENT_ALL, NULL);
-    lv_obj_add_event_cb(ui_Page_guide2, ui_event_Page_guide2, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_Page_Guidelive, ui_event_Page_Guidelive, LV_EVENT_ALL, NULL);
 
 }

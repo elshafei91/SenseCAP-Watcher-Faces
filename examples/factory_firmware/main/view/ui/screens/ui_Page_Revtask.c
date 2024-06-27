@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_CurTask3_screen_init(void)
+void ui_Page_Revtask_screen_init(void)
 {
-    ui_Page_CurTask3 = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_CurTask3, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_CurTask3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_CurTask3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Revtask = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Revtask, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Revtask, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Revtask, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_revtext = lv_label_create(ui_Page_CurTask3);
+    ui_revtext = lv_label_create(ui_Page_Revtask);
     lv_obj_set_width(ui_revtext, 360);
     lv_obj_set_height(ui_revtext, 100);
     lv_obj_set_x(ui_revtext, 0);
@@ -24,7 +24,7 @@ void ui_Page_CurTask3_screen_init(void)
     lv_obj_set_style_text_align(ui_revtext, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_revtext, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_revb = lv_btn_create(ui_Page_CurTask3);
+    ui_revb = lv_btn_create(ui_Page_Revtask);
     lv_obj_set_width(ui_revb, 60);
     lv_obj_set_height(ui_revb, 60);
     lv_obj_set_x(ui_revb, 0);
@@ -39,7 +39,7 @@ void ui_Page_CurTask3_screen_init(void)
     lv_obj_set_style_shadow_color(ui_revb, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_revb, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_Spinner3 = lv_spinner_create(ui_Page_CurTask3, 1000, 90);
+    ui_Spinner3 = lv_spinner_create(ui_Page_Revtask, 1000, 90);
     lv_obj_set_width(ui_Spinner3, 50);
     lv_obj_set_height(ui_Spinner3, 50);
     lv_obj_set_x(ui_Spinner3, 0);

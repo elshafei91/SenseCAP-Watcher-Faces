@@ -124,11 +124,11 @@ void initGroup()
     lv_obj_t * set_objects[]         = {ui_setback, ui_setdown, ui_setapp, ui_setwifi, ui_setble, ui_setvol, ui_setbri,ui_settime,
                                         ui_setrgb, ui_setww,ui_setdev, ui_setfac};
     lv_obj_t * view_objects[]        = {ui_Page_ViewAva, ui_Page_ViewLive};
-    lv_obj_t * ha_objects[]          = {ui_Page_HA};
+    lv_obj_t * ha_objects[]          = {ui_Page_Extension};
     lv_obj_t * brightness_objects[]  = {ui_bslider, ui_bvback};
     lv_obj_t * volume_objects[]      = {ui_vslider, ui_bvback};
     lv_obj_t * connectapp_objects[]  = {ui_connp1, ui_connp2};
-    lv_obj_t * guide_objects[]        = {ui_Page_guide1, ui_Page_guide2};
+    lv_obj_t * guide_objects[]        = {ui_Page_Guideavatar, ui_Page_Guidelive};
 
     addObjToGroup(&group_page_main, main_objects, sizeof(main_objects) / sizeof(main_objects[0]));
     addObjToGroup(&group_page_template, template_objects, sizeof(template_objects) / sizeof(template_objects[0]));

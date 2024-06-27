@@ -5,15 +5,15 @@
 
 #include "../ui.h"
 
-void ui_Page_main_screen_init(void)
+void ui_Page_Home_screen_init(void)
 {
-    ui_Page_main = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_main, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_main, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_main, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_Page_main, &ui_img_page_main_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Home = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Home, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Home, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Home, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_Page_Home, &ui_img_page_main_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_mainlist = lv_obj_create(ui_Page_main);
+    ui_mainlist = lv_obj_create(ui_Page_Home);
     lv_obj_set_width(ui_mainlist, 130);
     lv_obj_set_height(ui_mainlist, 399);
     lv_obj_set_x(ui_mainlist, 140);
@@ -169,7 +169,7 @@ void ui_Page_main_screen_init(void)
     lv_obj_set_style_outline_width(ui_mainbtn4, 0, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
     lv_obj_set_style_outline_pad(ui_mainbtn4, 0, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
 
-    ui_maincontent = lv_obj_create(ui_Page_main);
+    ui_maincontent = lv_obj_create(ui_Page_Home);
     lv_obj_set_width(ui_maincontent, 263);
     lv_obj_set_height(ui_maincontent, 240);
     lv_obj_set_x(ui_maincontent, 10);
@@ -248,7 +248,7 @@ void ui_Page_main_screen_init(void)
     lv_obj_set_style_img_recolor(ui_mainble, lv_color_hex(0x171515), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_mainble, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_maintitle = lv_label_create(ui_Page_main);
+    ui_maintitle = lv_label_create(ui_Page_Home);
     lv_obj_set_width(ui_maintitle, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_maintitle, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_maintitle, 50);
@@ -259,7 +259,7 @@ void ui_Page_main_screen_init(void)
     lv_obj_set_style_text_opa(ui_maintitle, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_maintitle, &ui_font_semibold42, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_mcontrolp = lv_obj_create(ui_Page_main);
+    ui_mcontrolp = lv_obj_create(ui_Page_Home);
     lv_obj_set_width(ui_mcontrolp, 412);
     lv_obj_set_height(ui_mcontrolp, 412);
     lv_obj_set_x(ui_mcontrolp, 0);
@@ -276,6 +276,6 @@ void ui_Page_main_screen_init(void)
     lv_obj_add_event_cb(ui_mainbtn2, ui_event_mainbtn2, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_mainbtn3, ui_event_mainbtn3, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_mainbtn4, ui_event_mainbtn4, LV_EVENT_ALL, NULL);
-    lv_obj_add_event_cb(ui_Page_main, ui_event_Page_main, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_Page_Home, ui_event_Page_Home, LV_EVENT_ALL, NULL);
 
 }

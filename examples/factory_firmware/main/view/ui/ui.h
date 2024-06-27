@@ -27,22 +27,22 @@ void blink_Animation(lv_obj_t * TargetObject, int delay);
 void ui_Page_Battery_screen_init(void);
 void ui_event_Page_Battery(lv_event_t * e);
 extern lv_obj_t * ui_Page_Battery;
-extern lv_obj_t * ui_Image2;
-// SCREEN: ui_Page_Start
-void ui_Page_Start_screen_init(void);
-void ui_event_Page_Start(lv_event_t * e);
-extern lv_obj_t * ui_Page_Start;
-extern lv_obj_t * ui_startlogo;
-// SCREEN: ui_Page_loading
-void ui_Page_loading_screen_init(void);
-void ui_event_Page_loading(lv_event_t * e);
-extern lv_obj_t * ui_Page_loading;
+extern lv_obj_t * ui_batteryimg;
+// SCREEN: ui_Page_Startup
+void ui_Page_Startup_screen_init(void);
+void ui_event_Page_Startup(lv_event_t * e);
+extern lv_obj_t * ui_Page_Startup;
+extern lv_obj_t * ui_startuplogo;
+// SCREEN: ui_Page_Loading
+void ui_Page_Loading_screen_init(void);
+void ui_event_Page_Loading(lv_event_t * e);
+extern lv_obj_t * ui_Page_Loading;
 extern lv_obj_t * ui_Arc1;
 extern lv_obj_t * ui_loadpert;
-// SCREEN: ui_Page_Vir
-void ui_Page_Vir_screen_init(void);
-void ui_event_Page_Vir(lv_event_t * e);
-extern lv_obj_t * ui_Page_Vir;
+// SCREEN: ui_Page_Avatar
+void ui_Page_Avatar_screen_init(void);
+void ui_event_Page_Avatar(lv_event_t * e);
+extern lv_obj_t * ui_Page_Avatar;
 extern lv_obj_t * ui_virp;
 extern lv_obj_t * ui_virsmile;
 void ui_event_virbtn1(lv_event_t * e);
@@ -51,10 +51,10 @@ extern lv_obj_t * ui_virtext1;
 void ui_event_virbtn2(lv_event_t * e);
 extern lv_obj_t * ui_virbtn2;
 extern lv_obj_t * ui_virtext2;
-// SCREEN: ui_Page_main
-void ui_Page_main_screen_init(void);
-void ui_event_Page_main(lv_event_t * e);
-extern lv_obj_t * ui_Page_main;
+// SCREEN: ui_Page_Home
+void ui_Page_Home_screen_init(void);
+void ui_event_Page_Home(lv_event_t * e);
+extern lv_obj_t * ui_Page_Home;
 extern lv_obj_t * ui_mainlist;
 extern lv_obj_t * ui_mainlp1;
 void ui_event_mainbtn1(lv_event_t * e);
@@ -103,9 +103,9 @@ void ui_event_connp2(lv_event_t * e);
 extern lv_obj_t * ui_connp2;
 void ui_event_arrow2(lv_event_t * e);
 extern lv_obj_t * ui_arrow2;
-// SCREEN: ui_Page_Wifi
-void ui_Page_Wifi_screen_init(void);
-extern lv_obj_t * ui_Page_Wifi;
+// SCREEN: ui_Page_Network
+void ui_Page_Network_screen_init(void);
+extern lv_obj_t * ui_Page_Network;
 extern lv_obj_t * ui_wifip1;
 extern lv_obj_t * ui_wifiicon;
 extern lv_obj_t * ui_wifissid;
@@ -116,16 +116,16 @@ extern lv_obj_t * ui_wifilogo;
 extern lv_obj_t * ui_wifitext2;
 void ui_event_wificancel(lv_event_t * e);
 extern lv_obj_t * ui_wificancel;
-// SCREEN: ui_Page_CurTask1
-void ui_Page_CurTask1_screen_init(void);
-extern lv_obj_t * ui_Page_CurTask1;
+// SCREEN: ui_Page_Notask
+void ui_Page_Notask_screen_init(void);
+extern lv_obj_t * ui_Page_Notask;
 extern lv_obj_t * ui_notasktext;
 void ui_event_curtask1b(lv_event_t * e);
 extern lv_obj_t * ui_curtask1b;
 extern lv_obj_t * ui_Label3;
-// SCREEN: ui_Page_CurTask2
-void ui_Page_CurTask2_screen_init(void);
-extern lv_obj_t * ui_Page_CurTask2;
+// SCREEN: ui_Page_ModelOTA
+void ui_Page_ModelOTA_screen_init(void);
+extern lv_obj_t * ui_Page_ModelOTA;
 extern lv_obj_t * ui_waittext;
 void ui_event_waitb(lv_event_t * e);
 extern lv_obj_t * ui_waitb;
@@ -134,9 +134,9 @@ extern lv_obj_t * ui_Spinner1;
 extern lv_obj_t * ui_otap;
 extern lv_obj_t * ui_otatper;
 extern lv_obj_t * ui_otatsym;
-// SCREEN: ui_Page_CurTask3
-void ui_Page_CurTask3_screen_init(void);
-extern lv_obj_t * ui_Page_CurTask3;
+// SCREEN: ui_Page_Revtask
+void ui_Page_Revtask_screen_init(void);
+extern lv_obj_t * ui_Page_Revtask;
 extern lv_obj_t * ui_revtext;
 void ui_event_revb(lv_event_t * e);
 extern lv_obj_t * ui_revb;
@@ -153,10 +153,10 @@ extern lv_obj_t * ui_viewlivp2;
 extern lv_obj_t * ui_viewtext;
 void ui_event_viewback(lv_event_t * e);
 extern lv_obj_t * ui_viewback;
-// SCREEN: ui_Page_LocTask
-void ui_Page_LocTask_screen_init(void);
-void ui_event_Page_LocTask(lv_event_t * e);
-extern lv_obj_t * ui_Page_LocTask;
+// SCREEN: ui_Page_Example
+void ui_Page_Example_screen_init(void);
+void ui_event_Page_Example(lv_event_t * e);
+extern lv_obj_t * ui_Page_Example;
 extern lv_obj_t * ui_menulist;
 extern lv_obj_t * ui_custp1;
 void ui_event_custbtn1(lv_event_t * e);
@@ -230,9 +230,9 @@ extern lv_obj_t * ui_setfact;
 extern lv_obj_t * ui_settextp;
 extern lv_obj_t * ui_Set_title;
 extern lv_obj_t * ui_scontrolp;
-// SCREEN: ui_Page_brivol
-void ui_Page_brivol_screen_init(void);
-extern lv_obj_t * ui_Page_brivol;
+// SCREEN: ui_Page_Slider
+void ui_Page_Slider_screen_init(void);
+extern lv_obj_t * ui_Page_Slider;
 extern lv_obj_t * ui_bvpb;
 extern lv_obj_t * ui_bvbimg;
 extern lv_obj_t * ui_bvbt;
@@ -248,9 +248,9 @@ extern lv_obj_t * ui_vslider;
 extern lv_obj_t * ui_bp;
 void ui_event_bslider(lv_event_t * e);
 extern lv_obj_t * ui_bslider;
-// SCREEN: ui_Page_SAbout
-void ui_Page_SAbout_screen_init(void);
-extern lv_obj_t * ui_Page_SAbout;
+// SCREEN: ui_Page_About
+void ui_Page_About_screen_init(void);
+extern lv_obj_t * ui_Page_About;
 extern lv_obj_t * ui_AboutP;
 void ui_event_aboutdn(lv_event_t * e);
 extern lv_obj_t * ui_aboutdn;
@@ -296,10 +296,10 @@ extern lv_obj_t * ui_swipep;
 extern lv_obj_t * ui_sptitle;
 extern lv_obj_t * ui_swipep2;
 extern lv_obj_t * ui_sptext2;
-// SCREEN: ui_Page_HA
-void ui_Page_HA_screen_init(void);
-void ui_event_Page_HA(lv_event_t * e);
-extern lv_obj_t * ui_Page_HA;
+// SCREEN: ui_Page_Extension
+void ui_Page_Extension_screen_init(void);
+void ui_event_Page_Extension(lv_event_t * e);
+extern lv_obj_t * ui_Page_Extension;
 extern lv_obj_t * ui_Label2;
 // SCREEN: ui_Page_OTA
 void ui_Page_OTA_screen_init(void);
@@ -311,9 +311,9 @@ extern lv_obj_t * ui_otaicon;
 extern lv_obj_t * ui_otaarc;
 void ui_event_otaback(lv_event_t * e);
 extern lv_obj_t * ui_otaback;
-// SCREEN: ui_Page_Slpt
-void ui_Page_Slpt_screen_init(void);
-extern lv_obj_t * ui_Page_Slpt;
+// SCREEN: ui_Page_Sleep
+void ui_Page_Sleep_screen_init(void);
+extern lv_obj_t * ui_Page_Sleep;
 extern lv_obj_t * ui_slptpanel;
 void ui_event_slpt1(lv_event_t * e);
 extern lv_obj_t * ui_slpt1;
@@ -339,10 +339,10 @@ extern lv_obj_t * ui_wakeupt1;
 extern lv_obj_t * ui_wakeupt2;
 extern lv_obj_t * ui_wakeupt3;
 extern lv_obj_t * ui_wakeupt4;
-// SCREEN: ui_Page_guide1
-void ui_Page_guide1_screen_init(void);
-void ui_event_Page_guide1(lv_event_t * e);
-extern lv_obj_t * ui_Page_guide1;
+// SCREEN: ui_Page_Guideavatar
+void ui_Page_Guideavatar_screen_init(void);
+void ui_event_Page_Guideavatar(lv_event_t * e);
+extern lv_obj_t * ui_Page_Guideavatar;
 void ui_event_guide1p1(lv_event_t * e);
 extern lv_obj_t * ui_guide1p1;
 extern lv_obj_t * ui_guide1img1;
@@ -361,10 +361,10 @@ extern lv_obj_t * ui_guide1btn2;
 extern lv_obj_t * ui_guide1btn2t;
 void ui_event_guide1btn3(lv_event_t * e);
 extern lv_obj_t * ui_guide1btn3;
-// SCREEN: ui_Page_guide2
-void ui_Page_guide2_screen_init(void);
-void ui_event_Page_guide2(lv_event_t * e);
-extern lv_obj_t * ui_Page_guide2;
+// SCREEN: ui_Page_Guidelive
+void ui_Page_Guidelive_screen_init(void);
+void ui_event_Page_Guidelive(lv_event_t * e);
+extern lv_obj_t * ui_Page_Guidelive;
 void ui_event_guide2p1(lv_event_t * e);
 extern lv_obj_t * ui_guide2p1;
 extern lv_obj_t * ui_guide2t1;
@@ -372,9 +372,9 @@ void ui_event_guide2p2(lv_event_t * e);
 extern lv_obj_t * ui_guide2p2;
 extern lv_obj_t * ui_guide2img2;
 extern lv_obj_t * ui_guide2t2;
-// SCREEN: ui_Page_emoticon
-void ui_Page_emoticon_screen_init(void);
-extern lv_obj_t * ui_Page_emoticon;
+// SCREEN: ui_Page_Emoji
+void ui_Page_Emoji_screen_init(void);
+extern lv_obj_t * ui_Page_Emoji;
 extern lv_obj_t * ui_facet;
 extern lv_obj_t * ui_facearc;
 extern lv_obj_t * ui_faceper;
@@ -382,9 +382,9 @@ extern lv_obj_t * ui_facetper;
 extern lv_obj_t * ui_facetsym;
 void ui_event_emoticonok(lv_event_t * e);
 extern lv_obj_t * ui_emoticonok;
-// SCREEN: ui_Page_flag
-void ui_Page_flag_screen_init(void);
-extern lv_obj_t * ui_Page_flag;
+// SCREEN: ui_Page_Flag
+void ui_Page_Flag_screen_init(void);
+extern lv_obj_t * ui_Page_Flag;
 extern lv_obj_t * ui_guideflagp;
 void ui_event_guidebtn1(lv_event_t * e);
 extern lv_obj_t * ui_guidebtn1;
@@ -447,7 +447,6 @@ LV_IMG_DECLARE(ui_img_wifi_abnormal_png);    // assets/wifi_abnormal.png
 
 
 
-LV_FONT_DECLARE(ui_font_fbold16);
 LV_FONT_DECLARE(ui_font_fbold24);
 LV_FONT_DECLARE(ui_font_Font1);
 LV_FONT_DECLARE(ui_font_Font12);

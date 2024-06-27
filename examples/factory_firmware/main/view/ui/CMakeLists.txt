@@ -1,30 +1,30 @@
 SET(SOURCES components/ui_comp_menucomponent.c
     components/ui_comp.c
     screens/ui_Page_Battery.c
-    screens/ui_Page_Start.c
-    screens/ui_Page_loading.c
-    screens/ui_Page_Vir.c
-    screens/ui_Page_main.c
+    screens/ui_Page_Startup.c
+    screens/ui_Page_Loading.c
+    screens/ui_Page_Avatar.c
+    screens/ui_Page_Home.c
     screens/ui_Page_Connect.c
-    screens/ui_Page_Wifi.c
-    screens/ui_Page_CurTask1.c
-    screens/ui_Page_CurTask2.c
-    screens/ui_Page_CurTask3.c
+    screens/ui_Page_Network.c
+    screens/ui_Page_Notask.c
+    screens/ui_Page_ModelOTA.c
+    screens/ui_Page_Revtask.c
     screens/ui_Page_ViewAva.c
     screens/ui_Page_ViewLive.c
-    screens/ui_Page_LocTask.c
+    screens/ui_Page_Example.c
     screens/ui_Page_Set.c
-    screens/ui_Page_brivol.c
-    screens/ui_Page_SAbout.c
+    screens/ui_Page_Slider.c
+    screens/ui_Page_About.c
     screens/ui_Page_Swipe.c
-    screens/ui_Page_HA.c
+    screens/ui_Page_Extension.c
     screens/ui_Page_OTA.c
-    screens/ui_Page_Slpt.c
+    screens/ui_Page_Sleep.c
     screens/ui_Page_Wakup.c
-    screens/ui_Page_guide1.c
-    screens/ui_Page_guide2.c
-    screens/ui_Page_emoticon.c
-    screens/ui_Page_flag.c
+    screens/ui_Page_Guideavatar.c
+    screens/ui_Page_Guidelive.c
+    screens/ui_Page_Emoji.c
+    screens/ui_Page_Flag.c
     ui.c
     components/ui_comp_hook.c
     ui_helpers.c
@@ -76,7 +76,6 @@ SET(SOURCES components/ui_comp_menucomponent.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c
     images/ui_img_wifi_abnormal_png.c
-    fonts/ui_font_fbold16.c
     fonts/ui_font_fbold24.c
     fonts/ui_font_Font1.c
     fonts/ui_font_Font12.c

@@ -12,13 +12,13 @@ void ui_Page_Battery_screen_init(void)
     lv_obj_set_style_bg_color(ui_Page_Battery, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Page_Battery, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_Image2 = lv_img_create(ui_Page_Battery);
-    lv_img_set_src(ui_Image2, &ui_img_battery_warn_png);
-    lv_obj_set_width(ui_Image2, LV_SIZE_CONTENT);   /// 102
-    lv_obj_set_height(ui_Image2, LV_SIZE_CONTENT);    /// 187
-    lv_obj_set_align(ui_Image2, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_Image2, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
-    lv_obj_clear_flag(ui_Image2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    ui_batteryimg = lv_img_create(ui_Page_Battery);
+    lv_img_set_src(ui_batteryimg, &ui_img_battery_warn_png);
+    lv_obj_set_width(ui_batteryimg, LV_SIZE_CONTENT);   /// 102
+    lv_obj_set_height(ui_batteryimg, LV_SIZE_CONTENT);    /// 187
+    lv_obj_set_align(ui_batteryimg, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_batteryimg, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
+    lv_obj_clear_flag(ui_batteryimg, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
 
     lv_obj_add_event_cb(ui_Page_Battery, ui_event_Page_Battery, LV_EVENT_ALL, NULL);
 

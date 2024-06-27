@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_Vir_screen_init(void)
+void ui_Page_Avatar_screen_init(void)
 {
-    ui_Page_Vir = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_Vir, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_Vir, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_Vir, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Avatar = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Avatar, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Avatar, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Avatar, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_virp = lv_obj_create(ui_Page_Vir);
+    ui_virp = lv_obj_create(ui_Page_Avatar);
     lv_obj_set_width(ui_virp, 416);
     lv_obj_set_height(ui_virp, 516);
     lv_obj_set_x(ui_virp, 0);
@@ -86,6 +86,6 @@ void ui_Page_Vir_screen_init(void)
 
     lv_obj_add_event_cb(ui_virbtn1, ui_event_virbtn1, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_virbtn2, ui_event_virbtn2, LV_EVENT_ALL, NULL);
-    lv_obj_add_event_cb(ui_Page_Vir, ui_event_Page_Vir, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_Page_Avatar, ui_event_Page_Avatar, LV_EVENT_ALL, NULL);
 
 }

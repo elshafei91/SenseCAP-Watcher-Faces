@@ -5,15 +5,15 @@
 
 #include "../ui.h"
 
-void ui_Page_HA_screen_init(void)
+void ui_Page_Extension_screen_init(void)
 {
-    ui_Page_HA = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_HA, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_HA, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_HA, 250, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_Page_HA, &ui_img_page_main_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Extension = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Extension, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Extension, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Extension, 250, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_Page_Extension, &ui_img_page_main_png, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_Label2 = lv_label_create(ui_Page_HA);
+    ui_Label2 = lv_label_create(ui_Page_Extension);
     lv_obj_set_width(ui_Label2, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_Label2, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_Label2, -37);
@@ -24,6 +24,6 @@ void ui_Page_HA_screen_init(void)
     lv_obj_set_style_text_opa(ui_Label2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_Label2, &ui_font_Font1, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    lv_obj_add_event_cb(ui_Page_HA, ui_event_Page_HA, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_Page_Extension, ui_event_Page_Extension, LV_EVENT_ALL, NULL);
 
 }
