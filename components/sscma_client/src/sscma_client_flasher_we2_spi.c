@@ -484,7 +484,7 @@ static esp_err_t sscma_client_flasher_we2_write(sscma_client_flasher_handle_t fl
                 goto err;
             }
             memcpy(&status, &flasher_we2->data[10], 4);
-            if ((esp_timer_get_time() - start) > 10000000)
+            if ((esp_timer_get_time() - start) > 3000000)
             {
                 spi_device_release_bus(flasher_we2->io->handle);
                 ESP_LOGE(TAG, "Timeout");
