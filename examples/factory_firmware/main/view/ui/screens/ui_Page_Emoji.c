@@ -13,10 +13,10 @@ void ui_Page_Emoji_screen_init(void)
     lv_obj_set_style_bg_opa(ui_Page_Emoji, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_facet = lv_label_create(ui_Page_Emoji);
-    lv_obj_set_width(ui_facet, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_facet, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_width(ui_facet, 380);
+    lv_obj_set_height(ui_facet, 100);
     lv_obj_set_x(ui_facet, 0);
-    lv_obj_set_y(ui_facet, -20);
+    lv_obj_set_y(ui_facet, -14);
     lv_obj_set_align(ui_facet, LV_ALIGN_CENTER);
     lv_label_set_text(ui_facet, "Uploading\nface...");
     lv_obj_set_style_text_color(ui_facet, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
