@@ -45,6 +45,8 @@ ESP_EVENT_DEFINE_BASE(OTA_EVENT_BASE);
 #define EVENT_OTA_HIMAX_HTTP_GOING      BIT1
 #define EVENT_AI_MODEL_DL_PREPARING     BIT2
 #define EVENT_AI_MODEL_DL_EARLY_ABORT   BIT3
+#define EVENT_OTA_SSCMA_DL_ABORT        BIT4
+#define EVENT_OTA_SSCMA_PROC_OVER       BIT5
 
 enum {
     OTA_TYPE_ESP32 = 1,
@@ -64,7 +66,6 @@ static volatile atomic_bool g_network_connected_flag = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_mqtt_connected_flag = ATOMIC_VAR_INIT(false);
 
 static SemaphoreHandle_t g_sem_network;
-static SemaphoreHandle_t g_sem_ai_model_downloaded;
 static SemaphoreHandle_t g_sem_worker_done;
 static SemaphoreHandle_t g_sem_sscma_writer_done;
 static EventGroupHandle_t g_eg_globalsync;
@@ -559,6 +560,7 @@ sscma_writer_end0:
         free(chunk);
 sscma_writer_end:
         if (is_abort || userdata->err != ESP_OK) {
+            ESP_LOGW(TAG, "sscma_client_ota_abort !!!");
             sscma_client_ota_abort(sscma_client);
         }
         xSemaphoreGive(g_sem_sscma_writer_done);
@@ -616,7 +618,15 @@ static esp_err_t __http_event_handler(esp_http_client_event_t *evt)
             //push to ringbuffer
             //himax will move the written bytes into flash every 1MB, it will take pretty long.
             //we give it 1min?
-            if (xRingbufferSend(g_rb_ai_model, evt->data, evt->data_len, pdMS_TO_TICKS(60000)) != pdTRUE) {
+            int i = 0;
+            for (i = 0; i < 60; i++)
+            {
+                if (xRingbufferSend(g_rb_ai_model, evt->data, evt->data_len, pdMS_TO_TICKS(1000)) == pdTRUE)
+                    break;
+                if (xEventGroupGetBits(g_eg_globalsync) & EVENT_OTA_SSCMA_DL_ABORT)
+                    break;
+            }
+            if (i == 60) {
                 ESP_LOGW(TAG, "HTTP_EVENT_ON_DATA, ringbuffer full? this should never happen!");
             }
             written_len += evt->data_len;
@@ -675,7 +685,7 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
     g_sscma_writer_userdata.err = ESP_OK;
 
     //breakpoint to check if user canceled, this is the last chance to do early abortion
-    if (xEventGroupGetBits(g_eg_globalsync) & EVENT_AI_MODEL_DL_EARLY_ABORT) {
+    if (xEventGroupWaitBits(g_eg_globalsync, EVENT_AI_MODEL_DL_EARLY_ABORT, pdTRUE, pdTRUE, 0) & EVENT_AI_MODEL_DL_EARLY_ABORT) {
         ret = ESP_ERR_OTA_USER_CANCELED;
         goto sscma_ota_end;
     }
@@ -689,26 +699,30 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
                 esp_http_client_get_status_code(http_client),
                 esp_http_client_get_content_length(http_client),
                 esp_timer_get_time() - start);
-
-        xSemaphoreTake(g_sem_sscma_writer_done, portMAX_DELAY);
-        if (atomic_load(&g_sscma_writer_abort)) {
+        if (xEventGroupGetBits(g_eg_globalsync) & EVENT_OTA_SSCMA_DL_ABORT) {
+            ESP_LOGW(TAG, "sscma ota, event bit ABORT was set, must be aborted manually");
             // user canceled
             ret = ESP_ERR_OTA_USER_CANCELED;
+            atomic_store(&g_sscma_writer_abort, true);
+            xSemaphoreTake(g_sem_sscma_writer_done, pdMS_TO_TICKS(60000));
         } else if (!esp_http_client_is_complete_data_received(http_client)) {
             ESP_LOGW(TAG, "sscma ota, HTTP finished but incompleted data received");
             // maybe network connection broken?
             ret = ESP_ERR_OTA_DOWNLOAD_FAIL;
+            atomic_store(&g_sscma_writer_abort, true);
+            xSemaphoreTake(g_sem_sscma_writer_done, pdMS_TO_TICKS(60000));
         } else {
-            ret = g_sscma_writer_userdata.err;  //there might be errors in sscma writer task.
+            xSemaphoreTake(g_sem_sscma_writer_done, pdMS_TO_TICKS(60000));
+            ret = g_sscma_writer_userdata.err;  //here may be OK, but might have errors in sscma writer task.
         }
     } else {
-        ESP_LOGE(TAG, "sscma ota, HTTP GET request failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "sscma ota, HTTP GET error happened: %s", esp_err_to_name(err));
         //error defines:
         //https://docs.espressif.com/projects/esp-idf/zh_CN/v5.2.1/esp32s3/api-reference/protocols/esp_http_client.html#macros
         ret = ESP_ERR_OTA_DOWNLOAD_FAIL;  //we sum all these errors as download failure, easier for upper caller
 
         atomic_store(&g_sscma_writer_abort, true);
-        xSemaphoreTake(g_sem_sscma_writer_done, pdMS_TO_TICKS(10));
+        xSemaphoreTake(g_sem_sscma_writer_done, pdMS_TO_TICKS(10000));
     }
 
 sscma_ota_end:
@@ -724,6 +738,7 @@ sscma_ota_end:
     esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, ota_eventid, 
                                     &ota_status, sizeof(struct view_data_ota_status),
                                     pdMS_TO_TICKS(10000));
+    xEventGroupSetBits(g_eg_globalsync, EVENT_OTA_SSCMA_PROC_OVER);
 }
 
 static void __app_ota_task(void *p_arg)
@@ -757,7 +772,6 @@ static void __app_ota_task(void *p_arg)
                     sscma_ota_process(OTA_TYPE_HIMAX, otajob->url);
                 } else if (ota_type == OTA_TYPE_AI_MODEL) {
                     sscma_ota_process(OTA_TYPE_AI_MODEL, otajob->url);
-                    xSemaphoreGive(g_sem_ai_model_downloaded);
                 } else {
                     ESP_LOGW(TAG, "unknown ota type: %" PRIu32, ota_type);
                 }
@@ -904,8 +918,11 @@ static esp_err_t ota_status(int ota_event_type, int total_progress)
             if (xEventGroupGetBits(g_eg_globalsync) & EVENT_OTA_HIMAX_HTTP_GOING) {
                 if (g_sscma_writer_userdata.http_client) {
                     ESP_LOGD(TAG, "force stop the http download for himax fw");
+                    xEventGroupClearBits(g_eg_globalsync, EVENT_OTA_SSCMA_PROC_OVER);
                     esp_http_client_cancel_request(g_sscma_writer_userdata.http_client);
-                    atomic_store(&g_sscma_writer_abort, true);
+                    xEventGroupSetBits(g_eg_globalsync, EVENT_OTA_SSCMA_DL_ABORT);
+                    xEventGroupWaitBits(g_eg_globalsync, EVENT_OTA_SSCMA_PROC_OVER | EVENT_OTA_SSCMA_DL_ABORT, 
+                                        pdTRUE, pdTRUE, pdMS_TO_TICKS(60000));
                 }
             }
         }
@@ -1284,7 +1301,6 @@ esp_err_t app_ota_init(void)
 #endif
 
     g_sem_network = xSemaphoreCreateBinary();
-    g_sem_ai_model_downloaded = xSemaphoreCreateBinary();
     g_sem_worker_done = xSemaphoreCreateBinary();
     g_sem_sscma_writer_done = xSemaphoreCreateBinary();
 
@@ -1362,14 +1378,14 @@ esp_err_t app_ota_ai_model_download(char *url, int size_bytes)
         int i;
         for (i = 0; i < 30; i++) {
             if (atomic_load(&g_network_connected_flag)) break;
-            if (xEventGroupGetBits(g_eg_globalsync) & EVENT_AI_MODEL_DL_EARLY_ABORT)
+            if (xEventGroupWaitBits(g_eg_globalsync, EVENT_AI_MODEL_DL_EARLY_ABORT, pdTRUE, pdTRUE, 0) & EVENT_AI_MODEL_DL_EARLY_ABORT)
                 return ESP_ERR_OTA_USER_CANCELED;
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
         if (i == 30) return ESP_ERR_OTA_CONNECTION_FAIL;
         
         for (i = 0; i < 10; i++) {
-            if (xEventGroupGetBits(g_eg_globalsync) & EVENT_AI_MODEL_DL_EARLY_ABORT)
+            if (xEventGroupWaitBits(g_eg_globalsync, EVENT_AI_MODEL_DL_EARLY_ABORT, pdTRUE, pdTRUE, 0) & EVENT_AI_MODEL_DL_EARLY_ABORT)
                 return ESP_ERR_OTA_USER_CANCELED;
             if (atomic_load(&g_mqtt_connected_flag)) {
                 vTaskDelay(pdMS_TO_TICKS(2000));  //schedule this behind FW ota from MQTT
@@ -1379,13 +1395,15 @@ esp_err_t app_ota_ai_model_download(char *url, int size_bytes)
         }
         //we'll start ai model download anyway, regardless of mqtt connection
     }
-    if (xEventGroupGetBits(g_eg_globalsync) & EVENT_AI_MODEL_DL_EARLY_ABORT)
+    if (xEventGroupWaitBits(g_eg_globalsync, EVENT_AI_MODEL_DL_EARLY_ABORT, pdTRUE, pdTRUE, 0) & EVENT_AI_MODEL_DL_EARLY_ABORT)
         return ESP_ERR_OTA_USER_CANCELED;
 
     ota_job_q_item_t *otajob = psram_calloc(1, sizeof(ota_job_q_item_t));
     otajob->ota_type = OTA_TYPE_AI_MODEL;
     memcpy(otajob->url, url, strlen(url));
     otajob->file_size = size_bytes;
+
+    xEventGroupClearBits(g_eg_globalsync, EVENT_OTA_SSCMA_PROC_OVER);
 
     if (xQueueSend(g_Q_ota_job, otajob, 0) != pdPASS) {
         free(otajob);
@@ -1395,7 +1413,7 @@ esp_err_t app_ota_ai_model_download(char *url, int size_bytes)
     free(otajob);
 
     // block until ai model download completed or failed
-    xSemaphoreTake(g_sem_ai_model_downloaded, portMAX_DELAY);
+    xEventGroupWaitBits(g_eg_globalsync, EVENT_OTA_SSCMA_PROC_OVER, pdTRUE, pdTRUE, portMAX_DELAY);
 
     return g_result_err;
 }
@@ -1403,11 +1421,10 @@ esp_err_t app_ota_ai_model_download(char *url, int size_bytes)
 esp_err_t app_ota_ai_model_download_abort()
 {
     esp_err_t ret = ESP_FAIL;
-    ESP_LOGI(TAG, "app_ota_ai_model_download_abort ...");
-    if (xEventGroupGetBits(g_eg_globalsync) & EVENT_AI_MODEL_DL_PREPARING) {
-        xEventGroupClearBits(g_eg_globalsync, EVENT_AI_MODEL_DL_PREPARING);
+    ESP_LOGW(TAG, "app_ota_ai_model_download_abort ...");
+    if (xEventGroupWaitBits(g_eg_globalsync, EVENT_AI_MODEL_DL_PREPARING, pdTRUE, pdTRUE, 0) & EVENT_AI_MODEL_DL_PREPARING) {
+        ESP_LOGW(TAG, "app_ota_ai_model_download_abort aborted in early phase");
         xEventGroupSetBits(g_eg_globalsync, EVENT_AI_MODEL_DL_EARLY_ABORT);
-        ESP_LOGD(TAG, "app_ota_ai_model_download_abort aborted in early phase");
         vTaskDelay(pdMS_TO_TICKS(1000));
         return ESP_OK;
     }
@@ -1415,10 +1432,12 @@ esp_err_t app_ota_ai_model_download_abort()
     if ((xEventGroupGetBits(g_eg_globalsync) & EVENT_OTA_HIMAX_HTTP_GOING) && 
         g_sscma_writer_userdata.http_client && g_sscma_writer_userdata.ota_type == OTA_TYPE_AI_MODEL)
     {
+        ESP_LOGW(TAG, "app_ota_ai_model_download_abort start in http download ...");
+        xEventGroupClearBits(g_eg_globalsync, EVENT_OTA_SSCMA_PROC_OVER);
         ret = esp_http_client_cancel_request(g_sscma_writer_userdata.http_client);
-        atomic_store(&g_sscma_writer_abort, true);
-        ESP_LOGD(TAG, "app_ota_ai_model_download_abort aborted the http download");
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        xEventGroupSetBits(g_eg_globalsync, EVENT_OTA_SSCMA_DL_ABORT);
+        xEventGroupWaitBits(g_eg_globalsync, EVENT_OTA_SSCMA_PROC_OVER | EVENT_OTA_SSCMA_DL_ABORT, pdTRUE, pdTRUE, pdMS_TO_TICKS(60000));
+        ESP_LOGW(TAG, "app_ota_ai_model_download_abort done");
     }
     return ret;
 }
