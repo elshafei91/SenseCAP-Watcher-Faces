@@ -1429,7 +1429,7 @@ static void Page_ConnAPP_Mate()
     lv_obj_clear_flag(ui_arrow1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui_arrow2, LV_OBJ_FLAG_HIDDEN);
 
-    static const char *data = "https://sensecap-mate-download.seeed.cc/";
+    static const char *data = "https://sensecraft-app-download.seeed.cc";
     lv_qrcode_update(qr, data, strlen(data));
     lv_obj_center(qr);
 }
