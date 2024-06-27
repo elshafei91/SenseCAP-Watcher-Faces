@@ -136,16 +136,6 @@ static void sscma_client_monitor(void *arg)
     while (true)
     {
         xQueueReceive(client->reply_queue, &reply, portMAX_DELAY);
-        if (client->on_connect)
-        {
-            cJSON *name = cJSON_GetObjectItem(reply.payload, "name");
-            if (name != NULL && strnstr(name->valuestring, EVENT_STARTUP, strlen(name->valuestring)) != NULL)
-            {
-                client->on_connect(client, &reply, client->user_ctx);
-                sscma_client_reply_clear(&reply);
-                continue;
-            }
-        }
 
         cJSON *type = cJSON_GetObjectItem(reply.payload, "type");
         if (type == NULL)
@@ -153,6 +143,18 @@ static void sscma_client_monitor(void *arg)
             sscma_client_reply_clear(&reply);
             continue;
         }
+
+        if (client->on_connect)
+        {
+            cJSON *name = cJSON_GetObjectItem(reply.payload, "name");
+            if (name != NULL && strnstr(name->valuestring, EVENT_INIT, strlen(name->valuestring)) != NULL)
+            {
+                client->on_connect(client, &reply, client->user_ctx);
+                sscma_client_reply_clear(&reply);
+                continue;
+            }
+        }
+
         if (type->valueint == CMD_TYPE_EVENT)
         {
             if (client->on_event)
@@ -208,7 +210,6 @@ static void sscma_client_process(void *arg)
             sscma_client_read(client, client->rx_buffer.data + client->rx_buffer.pos, rlen);
             client->rx_buffer.pos += rlen;
             client->rx_buffer.data[client->rx_buffer.pos] = 0;
-
             while ((suffix = strnstr(client->rx_buffer.data, RESPONSE_SUFFIX, client->rx_buffer.pos)) != NULL)
             {
                 if ((prefix = strnstr(client->rx_buffer.data, RESPONSE_PREFIX, suffix - client->rx_buffer.data)) != NULL)
@@ -219,6 +220,11 @@ static void sscma_client_process(void *arg)
                     {
                         reply.len = len;
                         memcpy(reply.data, prefix, len);
+
+                        // delete this reply from rx buffer
+                        memmove(client->rx_buffer.data, suffix + RESPONSE_SUFFIX_LEN, client->rx_buffer.pos - (suffix - client->rx_buffer.data) - RESPONSE_PREFIX_LEN);
+                        client->rx_buffer.pos -= len;
+
                         reply.data[len] = 0;
                         reply.payload = cJSON_Parse(reply.data);
                         if (reply.payload != NULL)
@@ -232,6 +238,20 @@ static void sscma_client_process(void *arg)
                                 sscma_client_reply_clear(&reply);
                                 continue;
                             }
+
+                            if (client->on_connect)
+                            {
+                                if (name != NULL && strnstr(name->valuestring, EVENT_INIT, strlen(name->valuestring)) != NULL)
+                                {
+                                    xQueueReset(client->reply_queue); // reset reply queue
+                                    if (xQueueSend(client->reply_queue, &reply, 0) != pdTRUE)
+                                    {
+                                        sscma_client_reply_clear(&reply);
+                                    }
+                                    continue;
+                                }
+                            }
+
                             if (type->valueint == CMD_TYPE_RESPONSE)
                             {
                                 sscma_client_request_t *first_req, *next_req = NULL;
@@ -350,14 +370,11 @@ static void sscma_client_process(void *arg)
                             }
                             else
                             {
-                                ESP_LOGW(TAG, "invalid reply: %s", reply.data);
+                                ESP_LOGW(TAG, "Invalid reply: %s", reply.data);
                                 sscma_client_reply_clear(&reply);
                             }
                         }
                     }
-                    // delete this reply from rx buffer
-                    memmove(client->rx_buffer.data, suffix + RESPONSE_SUFFIX_LEN, client->rx_buffer.pos - (suffix - client->rx_buffer.data) - RESPONSE_PREFIX_LEN);
-                    client->rx_buffer.pos -= len;
                 }
                 else
                 {
