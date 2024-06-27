@@ -560,6 +560,7 @@ sscma_writer_end0:
         free(chunk);
 sscma_writer_end:
         if (is_abort || userdata->err != ESP_OK) {
+            ESP_LOGW(TAG, "sscma_client_ota_abort !!!");
             sscma_client_ota_abort(sscma_client);
         }
         xSemaphoreGive(g_sem_sscma_writer_done);
