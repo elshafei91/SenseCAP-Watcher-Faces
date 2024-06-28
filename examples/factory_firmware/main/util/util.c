@@ -1,8 +1,9 @@
 #include <time.h>
 
 #include "esp_heap_caps.h"
-
+#include "esp_timer.h"
 #include "util.h"
+#include <sys/time.h>
 
 int wifi_rssi_level_get(int rssi)
 {
@@ -24,9 +25,13 @@ int wifi_rssi_level_get(int rssi)
 
 time_t util_get_timestamp_ms(void)
 {
-	time_t now;
-	time(&now);
-	return now * 1000;
+	time_t now_ms;
+
+	struct timeval tv_now;
+	gettimeofday(&tv_now, NULL);
+	now_ms = (time_t)((int64_t)tv_now.tv_sec * 1000 + (int64_t)tv_now.tv_usec/1000);
+
+	return now_ms;
 }
 
 void byte_array_to_hex_string(const uint8_t *byteArray, size_t byteArraySize, char *hexString)
