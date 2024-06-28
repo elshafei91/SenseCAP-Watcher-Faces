@@ -662,10 +662,42 @@ esp_err_t app_ble_send_indicate(uint8_t *data, int len)
 
     int mtu = app_ble_get_current_mtu();
     int txlen = 0, txed_len = 0;
+
+    const int wait_step_climb = 10, wait_max = 60000;  //ms
+    int wait = 0, wait_step = wait_step_climb, wait_sum = 0;  //ms
     while (len > 0) {
         txlen = MIN(len, mtu - 3);
-        txom = ble_hs_mbuf_from_flat(data + txed_len, txlen);
-        rc = ble_gatts_indicate_custom(g_curr_ble_conn_handle, gatt_svr_chr_handle_read, txom);
+        for (;;) {
+            txom = ble_hs_mbuf_from_flat(data + txed_len, txlen);
+            if (!txom) {
+                wait += wait_step;
+                wait_step += wait_step_climb;
+                ESP_LOGD(TAG, "app_ble_send_indicate, mbuf alloc failed, wait %dms", wait);
+                vTaskDelay(pdMS_TO_TICKS(wait));
+                wait_sum += wait;
+                if (wait_sum > wait_max) goto indicate_err;
+            } else {
+                wait = wait_sum = 0;
+                wait_step = wait_step_climb;
+                break;
+            }
+        }
+        
+        for (;;) {
+            rc = ble_gatts_indicate_custom(g_curr_ble_conn_handle, gatt_svr_chr_handle_read, txom);
+            if (rc != 0) {
+                wait += wait_step;
+                wait_step += wait_step_climb;
+                ESP_LOGD(TAG, "ble_gatts_indicate_custom failed, wait %dms", wait);
+                vTaskDelay(pdMS_TO_TICKS(wait));
+                wait_sum += wait;
+                if (wait_sum > wait_max) goto indicate_err0;
+            } else {
+                wait = wait_sum = 0;
+                wait_step = wait_step_climb;
+                break;
+            }
+        }
         txed_len += txlen;
         len -= txlen;
         if (rc == 0) {
@@ -673,7 +705,14 @@ esp_err_t app_ble_send_indicate(uint8_t *data, int len)
         } else {
             ESP_LOGW(TAG, "Error in sending indication rc = %d", rc);
         }
+        vTaskDelay(pdMS_TO_TICKS(100));  // to avoid watchdog dead in cpu1
     }
     
     return rc;
+
+indicate_err0:
+    if (txom)
+        os_mbuf_free_chain(txom);
+indicate_err:
+    return BLE_HS_ENOMEM;
 }
