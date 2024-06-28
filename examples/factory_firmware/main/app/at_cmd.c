@@ -52,6 +52,7 @@ static int network_connect_flag;
 static wifi_ap_record_t current_connected_wifi;
 // static int task_flow_resp;
 static struct view_data_taskflow_status taskflow_status;
+static struct view_data_ota_status  ai_model_ota_status;
 
 SemaphoreHandle_t semaphorewificonnected;
 SemaphoreHandle_t semaphorewifidisconnected;
@@ -301,7 +302,7 @@ void exec_command(command_entry **commands, const char *name, char *params, char
     command_entry *entry;
     char full_command[128];
     snprintf(full_command, sizeof(full_command), "%s%c", name, query); // Append the query character to the command name
-    // ESP_LOGD(TAG, "full_command: %s", full_command);
+    ESP_LOGD(TAG, "full_command: %s", full_command);
     HASH_FIND_STR(*commands, full_command, entry);
     if (entry)
     {
@@ -356,6 +357,7 @@ void AT_command_reg()
     add_command(&commands, "devicecfg=", handle_deviceinfo_cfg_command);
     add_command(&commands, "taskflow?", handle_taskflow_query_command);
     add_command(&commands, "taskflow=", handle_taskflow_command);
+    add_command(&commands, "taskflowinfo?", handle_taskflow_info_query_command);
     add_command(&commands, "cloudservice=", handle_cloud_service_command);
     add_command(&commands, "cloudservice?", handle_cloud_service_query_command);
     add_command(&commands, "emoji=", handle_emoji_command);
@@ -1346,6 +1348,7 @@ at_cmd_error_code handle_taskflow_query_command(char *params)
     cJSON_AddNumberToObject(data_rep, "ctd", taskflow_status.ctd);
     cJSON_AddStringToObject(data_rep, "module", taskflow_status.module_name);
     cJSON_AddNumberToObject(data_rep, "module_err_code", taskflow_status.module_status);
+    cJSON_AddNumberToObject(data_rep, "percent", ai_model_ota_status.percentage);
     __data_unlock();
 
     char *json_string = cJSON_Print(root);
@@ -1362,6 +1365,59 @@ at_cmd_error_code handle_taskflow_query_command(char *params)
     free(json_string);
     return AT_CMD_SUCCESS;
 }
+
+at_cmd_error_code handle_taskflow_info_query_command(char *params)
+{
+    ESP_LOGI(TAG, "Handling handle_taskflow_info_query_command \n");
+    char * p_json = NULL;
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create JSON object\n");
+        return ERROR_CMD_JSON_CREATE;
+    }
+    cJSON *data_rep = cJSON_CreateObject();
+    if (data_rep == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create JSON object\n");
+        cJSON_Delete(root);
+        return ERROR_CMD_JSON_CREATE;
+    }
+    cJSON_AddStringToObject(root, "name", "taskflowinfo");
+
+    cJSON_AddNumberToObject(root, "code", 0);
+    cJSON_AddItemToObject(root, "data", data_rep);
+
+    p_json = tf_engine_flow_get();
+    if (p_json == NULL)
+    {
+        cJSON_AddStringToObject(data_rep, "taskflow", "");
+    } else {
+        cJSON *taskflow_obj = cJSON_Parse(p_json);
+        if (taskflow_obj != NULL) {
+            cJSON_AddItemToObject(data_rep, "taskflow", taskflow_obj);
+        } else {
+            cJSON_AddStringToObject(data_rep, "taskflow", "");
+        }
+        free(p_json);
+    }
+    
+    char *json_string = cJSON_PrintUnformatted(root);
+    ESP_LOGD(TAG, "JSON String: %s\n", json_string);
+    esp_err_t send_result = send_at_response(json_string);
+    if (send_result != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to send AT response\n");
+        cJSON_Delete(root);
+        free(json_string);
+        return ERROR_CMD_RESPONSE;
+    }
+    cJSON_Delete(root);
+    free(json_string);
+    return AT_CMD_SUCCESS;
+}
+
 #if 0
 /**
  * @brief Parses a JSON string and concatenates task information into an array of Task structures.
@@ -1786,6 +1842,9 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             struct view_data_taskflow_status *p_status = (struct view_data_taskflow_status *)event_data;
             __data_lock();
             memcpy(&taskflow_status, p_status, sizeof(struct view_data_taskflow_status));
+            if( taskflow_status.engine_status == TF_STATUS_STARTING ) { 
+                ai_model_ota_status.percentage = 0; //Reset percentage
+            }
             __data_unlock();
             ESP_LOGI(TAG, "taskflow status = %d", taskflow_status.engine_status);
             break;
@@ -1797,6 +1856,26 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             if (!status) g_at_cmd_buffer.wr_ptr = 0;  //reset buffer when ble disconnect
             __data_unlock();
             break;
+        default:
+            break;
+    }
+}
+
+static void __ctrl_event_handler(void* handler_args, 
+                                 esp_event_base_t base, 
+                                 int32_t id, 
+                                 void* event_data)
+{
+    switch (id)
+    {
+        case CTRL_EVENT_OTA_AI_MODEL: {
+            ESP_LOGI(TAG, "event: CTRL_EVENT_OTA_AI_MODEL");
+            struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
+            __data_lock();
+            memcpy(&ai_model_ota_status, ota_st, sizeof(struct view_data_ota_status));
+            __data_unlock();
+            break;
+        }
         default:
             break;
     }
@@ -1843,7 +1922,11 @@ void app_at_cmd_init()
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STATUS,
                                                     __view_event_handler, NULL));
 
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_AI_MODEL, 
+                                                        __ctrl_event_handler, NULL));
+
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS,
                                                     __view_event_handler, NULL));
+
 }
 

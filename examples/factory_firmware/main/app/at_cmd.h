@@ -101,6 +101,7 @@ at_cmd_error_code handle_wifi_query(char *params);   //WiFi query command
 at_cmd_error_code handle_wifi_table(char *params);  // WiFi table command
 at_cmd_error_code handle_deviceinfo_cfg_command(char *params);  // Timezone command
 at_cmd_error_code handle_taskflow_command(char *params); // Taskflow command
+at_cmd_error_code handle_taskflow_info_query_command(char *params);    // Taskflow info query command
 at_cmd_error_code handle_cloud_service_command(char *params);    // Cloud service command
 at_cmd_error_code handle_cloud_service_query_command(char *params);    // Cloud service query command
 at_cmd_error_code handle_emoji_command(char *params);    // Emoji command
