@@ -429,7 +429,7 @@ at_cmd_error_code handle_bind_command(char *params)
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String: %s\n", json_string);
     esp_err_t send_result = send_at_response(json_string);
-    if (send_result < 0)
+    if (send_result != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to send AT response\n");
         cJSON_Delete(root);
@@ -444,137 +444,111 @@ at_cmd_error_code handle_bind_command(char *params)
 /*-----------------------------------------------------------------------------------------------------------*/
 at_cmd_error_code handle_emoji_command(char *params)
 {
+    esp_err_t ret = ESP_OK;
+
     ESP_LOGI(TAG, "handle_emoji_command\n");
 
-    char *filename = NULL;
-    char *urls[MAX_URLS] = { 0 };
     cJSON *json = cJSON_Parse(params);
     if (json == NULL)
     {
         const char *error_ptr = cJSON_GetErrorPtr();
         if (error_ptr != NULL)
         {
-            ESP_LOGE(TAG, "Error before: %s\n", error_ptr);
+            ESP_LOGE(TAG, "handle_emoji_command, parse error: %s\n", error_ptr);
         }
         return ERROR_CMD_JSON_PARSE;
     }
 
     // Get the "filename" from the JSON
     cJSON *filename_item = cJSON_GetObjectItem(json, "filename");
-    if (filename_item != NULL && cJSON_IsString(filename_item))
+    if (!filename_item || !cJSON_IsString(filename_item))
     {
-        filename = strdup(filename_item->valuestring);
-    }
-    else
-    {
-        filename = NULL; // If "filename" is not found or not a string, set to NULL
-        ESP_LOGE(TAG, "Error: 'filename' is not found or not a string\n");
-        cJSON_Delete(json);
-        return ERROR_CMD_PARAM_RANGE;
+        ESP_LOGE(TAG, "handle_emoji_command, Error: 'filename' is not found or not a string\n");
+        ret = ERROR_CMD_PARAM_RANGE;
+        goto handle_emoji_err0;
     }
 
     // Get the "urls" array from the JSON
     cJSON *urls_array = cJSON_GetObjectItem(json, "urls");
     if (urls_array == NULL || !cJSON_IsArray(urls_array))
     {
-        printf("Error: 'urls' is not an array\n");
-        free(filename); // Don't forget to free the allocated memory
-        cJSON_Delete(json);
-        return ERROR_CMD_PARAM_RANGE;
+        ESP_LOGE(TAG, "handle_emoji_command, Error: 'urls' is not an array\n");
+        ret = ERROR_CMD_PARAM_RANGE;
+        goto handle_emoji_err0;
     }
 
     // Extract each URL and copy to the urls array
     int url_count = cJSON_GetArraySize(urls_array);
-    for (int i = 0; i < url_count && i < MAX_URLS; i++)
+    if (url_count > MAX_IMAGES) {
+        ESP_LOGE(TAG, "handle_emoji_command, too many urls (%d)", url_count);
+        ret = ERROR_CMD_PARAM_RANGE;
+        goto handle_emoji_err0;
+    }
+    for (int i = 0; i < url_count; i++)
     {
         cJSON *url_item = cJSON_GetArrayItem(urls_array, i);
-        if (cJSON_IsString(url_item))
+        if (!cJSON_IsString(url_item) || strlen(url_item->valuestring) == 0)
         {
-            urls[i] = strdup(url_item->valuestring); // Duplicate the string
-        }
-        else
-        {
-            urls[i] = NULL; // If it's not a string, set to NULL
-            ESP_LOGE(TAG, "Error: URL %d is not a string\n", i);
-            for (int j = 0; j < i; j++) // Free the previously allocated URLs
-            {
-                free(urls[j]);
-            }
-            free(filename); // Don't forget to free the allocated memory
-            cJSON_Delete(json);
-            return ERROR_CMD_JSON_TYPE;
+            ESP_LOGE(TAG, "handle_emoji_command, Error: URL %d is not a string", i);
+            ret = ERROR_CMD_JSON_TYPE;
+            goto handle_emoji_err0;
         }
     }
-    cJSON_Delete(json);
-    download_summary_t summary = download_emoji_images(filename, urls, url_count);
 
-    // Print the extracted filename
-    if (filename != NULL)
-    {
-        ESP_LOGI(TAG, "Filename: %s\n", filename);
-        free(filename); // Don't forget to free the allocated memory
-    }
+    // validation done, now download
+    download_result_t *results = psram_calloc(url_count, sizeof(download_result_t));
+    download_summary_t *summary = psram_calloc(1, sizeof(download_summary_t));
+    summary->results = results;
+    ret = download_emoji_images(summary, filename_item, urls_array, url_count);
 
     // Create the root JSON object
     cJSON *root = cJSON_CreateObject();
-    if (root == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to create JSON object\n");
-        return ERROR_CMD_JSON_CREATE;
-    }
-    cJSON *data_rep = cJSON_CreateObject();
-    if (data_rep == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to create JSON object\n");
-        cJSON_Delete(root);
-        return ERROR_CMD_JSON_CREATE;
-    }
     cJSON_AddStringToObject(root, "name", "emoji");
-    cJSON_AddItemToObject(root, "data", data_rep);
 
     // Create a JSON array to store the result codes
     cJSON *code_array = cJSON_CreateArray();
 
     for (int i = 0; i < url_count; i++)
     {
-        if (summary.results[i].success)
+        if (ret != ESP_OK) {
+            cJSON_AddItemToArray(code_array, cJSON_CreateNumber(ret));
+        }
+        else if (summary->results[i].success)
         {
             ESP_LOGI(TAG, "Emoji %d downloaded successfully", i);
+            cJSON_AddItemToArray(code_array, cJSON_CreateNumber(0));
         }
         else
         {
-            ESP_LOGE(TAG, "Failed to download emoji %d, error code: %d", i, summary.results[i].error_code);
+            ESP_LOGE(TAG, "Failed to download emoji %d, error code: %d", i, summary->results[i].error_code);
+            cJSON_AddItemToArray(code_array, cJSON_CreateNumber(summary->results[i].error_code));
         }
-        // Add the result code to the JSON array
-        cJSON_AddItemToArray(code_array, cJSON_CreateNumber(summary.results[i].error_code));
     }
 
-    // Add the code array to the data_rep object
-    cJSON_AddItemToObject(data_rep, "code", code_array);
-
-    // Print the extracted URLs
-    for (int i = 0; i < MAX_URLS && urls[i] != NULL; i++)
-    {
-        printf("URL %d: %s\n", i + 1, urls[i]);
-        free(urls[i]); // Don't forget to free the allocated memory
-    }
+    cJSON_AddItemToObject(root, "data", code_array);
 
     // Convert the root JSON object to a string and send the response
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String: %s\n", json_string);
+    ret = ESP_OK;
     esp_err_t send_result = send_at_response(json_string);
-    if (send_result < 0)
+    if (send_result != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to send AT response\n");
-        cJSON_Delete(root);
-        free(json_string);
-        return ERROR_CMD_RESPONSE;
+        ret = ERROR_CMD_RESPONSE;
     }
 
     // Clean up
-    cJSON_Delete(root);
+    free(results);
+    free(summary);
     free(json_string);
-    return AT_CMD_SUCCESS; // Return success
+    cJSON_Delete(root);
+    cJSON_Delete(json);
+    return ret; // Return success
+
+handle_emoji_err0:
+    if (json) cJSON_Delete(json);
+    return ret;
 }
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -623,7 +597,7 @@ at_cmd_error_code handle_cloud_service_query_command(char *params)
     ESP_LOGD(TAG, "JSON String in cloud service query handle: %s\n", json_string);
 
     esp_err_t send_result = send_at_response(json_string);
-    if (send_result < 0)
+    if (send_result != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to send AT response\n");
         cJSON_Delete(root);
@@ -703,7 +677,7 @@ at_cmd_error_code handle_cloud_service_command(char *params)
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String: %s\n", json_string);
     esp_err_t send_result = send_at_response(json_string);
-    if (send_result < 0)
+    if (send_result != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to send AT response\n");
         cJSON_Delete(root);
@@ -945,7 +919,7 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String in device cfg command: %s\n", json_string);
     esp_err_t send_result = send_at_response(json_string);
-    if (send_result < 0)
+    if (send_result != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to send AT response\n");
         cJSON_Delete(root);
@@ -1211,7 +1185,7 @@ at_cmd_error_code handle_wifi_set(char *params)
         char *json_string = cJSON_Print(root);
         ESP_LOGD(TAG, "JSON String: %s", json_string);
         esp_err_t send_result = send_at_response(json_string);
-        if (send_result < 0)
+        if (send_result != ESP_OK)
         {
             ESP_LOGE(TAG, "Failed to send AT response\n");
             cJSON_Delete(root);
