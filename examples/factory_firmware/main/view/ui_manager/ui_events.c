@@ -41,6 +41,7 @@ static lv_obj_t *qr;
 static bool is_charging = 0;
 static uint8_t loading_flag = 0;
 static uint8_t emoji_switch_scr = NULL;
+static uint32_t emoji_user_data;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
 static struct view_data_emoticon_display emo_disp;
@@ -65,7 +66,7 @@ extern uint8_t view_alarm_status;
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_listen_img_dsc[MAX_IMAGES];
-extern lv_img_dsc_t *g_anaylze_img_dsc[MAX_IMAGES];
+extern lv_img_dsc_t *g_analyze_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
@@ -110,6 +111,18 @@ enum
     SCREEN_GUIDE    // display emoticon on guide page
 };
 
+enum
+{
+    EMOJI_GREETING,
+    EMOJI_DETECTING,
+    EMOJI_DETECTED,
+    EMOJI_SPEAKING,
+    EMOJI_LISTENING,
+    EMOJI_ANALYZING,
+    EMOJI_STANDBY,
+    EMOJI_STOP
+};
+
 static void async_emoji_switch_scr(void *arg)
 {
     lv_img_dsc_t *current_img = (lv_img_dsc_t *)arg;
@@ -127,94 +140,74 @@ static void async_emoji_switch_scr(void *arg)
     }
 }
 
-
-static uint8_t vir_load_count = 0;
-static void greet_timer_callback(lv_timer_t *timer)
+static void emoji_timer_callback(lv_timer_t *timer)
 {
-    emoji_switch_scr = SCREEN_VIRTUAL;
-    current_img_index = (current_img_index + 1) % g_greet_image_count;
-    lv_img_dsc_t *current_img = g_greet_img_dsc[current_img_index];
-    lv_async_call(async_emoji_switch_scr, current_img);
-    vir_load_count ++;
-    // if delay 2s and the device is not wifi-configed
-    if(vir_load_count > 8)
+    uint32_t * user_data = (uint32_t *)timer->user_data;
+    static uint8_t vir_load_count = 0;
+    const lv_img_dsc_t *current_img = NULL;
+    ESP_LOGI(TAG, "user_data is %d", *user_data);
+
+    if(*user_data == EMOJI_GREETING)
     {
-        lv_event_send(ui_Page_Avatar, LV_EVENT_CLICKED, NULL);
+        current_img_index = (current_img_index + 1) % g_greet_image_count;
+        current_img = g_greet_img_dsc[current_img_index];
+    }
+    else if(*user_data == EMOJI_DETECTING)
+    {
+        current_img_index = (current_img_index + 1) % g_detect_image_count;
+        current_img = g_detect_img_dsc[current_img_index];
+    }
+    else if(*user_data == EMOJI_DETECTED)
+    {
+        current_img_index = (current_img_index + 1) % g_detected_image_count;
+        current_img = g_detected_img_dsc[current_img_index];
+    }
+    else if(*user_data == EMOJI_SPEAKING)
+    {
+        current_img_index = (current_img_index + 1) % g_speak_image_count;
+        current_img = g_speak_img_dsc[current_img_index];
+    }
+    else if(*user_data == EMOJI_LISTENING)
+    {
+        current_img_index = (current_img_index + 1) % g_listen_image_count;
+        current_img = g_listen_img_dsc[current_img_index];
+    }
+    else if(*user_data == EMOJI_ANALYZING)
+    {
+        current_img_index = (current_img_index + 1) % g_analyze_image_count;
+        current_img = g_analyze_img_dsc[current_img_index];
+    }
+    else if(*user_data == EMOJI_STANDBY)
+    {
+        current_img_index = (current_img_index + 1) % g_standby_image_count;
+        current_img = g_standby_img_dsc[current_img_index];
+    }
+
+    if(current_img != NULL)
+    {
+        lv_async_call(async_emoji_switch_scr, (void *)current_img);
+    }
+
+    if(*user_data == EMOJI_GREETING)
+    {
+        vir_load_count ++;
+        // if delay 2s and the device is not wifi-configed
+        if(vir_load_count > 8)
+        {
+            lv_event_send(ui_Page_Avatar, LV_EVENT_CLICKED, NULL);
+        }
     }
 }
 
-static void detect_timer_callback(lv_timer_t *timer)
-{
-    current_img_index = (current_img_index + 1) % g_detect_image_count;
-    lv_img_dsc_t *current_img = g_detect_img_dsc[current_img_index];
-    lv_async_call(async_emoji_switch_scr, current_img);
-}
-
-static void listen_timer_callback(lv_timer_t *timer)
-{
-    emoji_switch_scr = SCREEN_AVATAR;
-    current_img_index = (current_img_index + 1) % g_listen_image_count;
-    lv_img_dsc_t *current_img = g_listen_img_dsc[current_img_index];
-    lv_async_call(async_emoji_switch_scr, current_img);
-}
-
-static void detected_timer_callback(lv_timer_t *timer)
-{
-    emoji_switch_scr = SCREEN_AVATAR;
-    current_img_index = (current_img_index + 1) % g_detected_image_count;
-    lv_img_dsc_t *current_img = g_detected_img_dsc[current_img_index];
-    lv_async_call(async_emoji_switch_scr, current_img);
-}
-
-static void standby_timer_callback(lv_timer_t *timer)
-{
-    emoji_switch_scr = SCREEN_AVATAR;
-    current_img_index = (current_img_index + 1) % g_standby_image_count;
-    lv_img_dsc_t *current_img = g_standby_img_dsc[current_img_index];
-    lv_async_call(async_emoji_switch_scr, current_img);
-}
-
-static void speak_timer_callback(lv_timer_t *timer)
-{
-    emoji_switch_scr = SCREEN_AVATAR;
-    current_img_index = (current_img_index + 1) % g_speak_image_count;
-    lv_img_dsc_t *current_img = g_speak_img_dsc[current_img_index];
-    lv_async_call(async_emoji_switch_scr, current_img);
-}
-
-static void create_timer(uint8_t det_task)
+static void emoji_timer(uint8_t emoji_type)
 {
     if (g_timer != NULL)
     {
         lv_timer_del(g_timer);
         g_timer = NULL;
     }
-    switch (det_task)
-    {
-        case 0:
-            g_timer = lv_timer_create(greet_timer_callback, 500, NULL);
-            break;
-        case 1:
-            g_timer = lv_timer_create(detect_timer_callback, 500, NULL);
-            break;
-        case 2:
-            g_timer = lv_timer_create(listen_timer_callback, 500, NULL);
-            break;
-        case 3:
-            g_timer = lv_timer_create(detected_timer_callback, 500, NULL);
-            break;
-        case 4:
-            g_timer = lv_timer_create(standby_timer_callback, 500, NULL);
-            break;
-        case 5:
-            g_timer = lv_timer_create(speak_timer_callback, 500, NULL);
-            break;
-        case 6:
-            // lv_timer_pause(g_timer);
-            break;
-        default:
-            break;
-    }
+    emoji_user_data = emoji_type;
+    if(emoji_user_data != EMOJI_STOP)g_timer = lv_timer_create(emoji_timer_callback, 500, &emoji_user_data);
 }
 
 void slbattery_cb(lv_event_t *e) { }
@@ -322,13 +315,13 @@ void loadscrload_cb(lv_event_t *e)
 void virclick_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virtc_cb");
-    if(!wifi_page_id)   // if the device is not wifi-configed, then appear Connect APP panel
+    if(!wifi_page_id)   // if the device is not wifi-configed, then appear panel
     {
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
-        create_timer(6);    // stop timer
-    }else{              // else the device is wifi-configed, then page jump to main page
+        emoji_timer(EMOJI_STOP);    // stop timer
+    }else{              // else the device is wifi-configed, jump to Home page
         if(lv_scr_act() == ui_Page_Avatar)lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-        create_timer(6);    // stop timer
+        emoji_timer(EMOJI_STOP);    // stop timer
     }
 }
 
@@ -336,7 +329,10 @@ void virscrload_cb(lv_event_t *e)
 {
     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
     lv_group_add_obj(g_main, ui_Page_Avatar);
-    create_timer(0);
+    
+    emoji_switch_scr = SCREEN_VIRTUAL;
+    emoji_timer(EMOJI_GREETING);
+
     viewInfoInit();
     view_info_obtain_early();
     if(avatar_image == NULL)avatar_image = lv_img_create(ui_Page_ViewAva);
@@ -357,7 +353,7 @@ void virscrunload_cb(lv_event_t * e)
 void virb1c_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virb1c_cb");
-    create_timer(6);
+    emoji_timer(EMOJI_STOP);
     lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
 }
@@ -365,7 +361,7 @@ void virb1c_cb(lv_event_t *e)
 void virb2c_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virb2c_cb");
-    create_timer(6);
+    emoji_timer(EMOJI_STOP);
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
@@ -540,18 +536,19 @@ void viewasl_cb(lv_event_t *e)
     if(lv_scr_act() == ui_Page_ViewAva || lv_scr_act() == ui_Page_ViewLive)lv_group_set_wrap(g_main, false);
     if (emoticon_disp_id == 1)
     {
-        create_timer(3); // Load timer for the "detected" animation when emoticon_disp_id is 1
+        emoji_switch_scr = SCREEN_AVATAR;
+        emoji_timer(EMOJI_DETECTED); // Load timer for the "detected" animation when emoticon_disp_id is 1
     }
     else
     {
         emoji_switch_scr = SCREEN_AVATAR;
-        create_timer(1); // Load timer for the "detecting" animation when emoticon_disp_id is 0
+        emoji_timer(EMOJI_DETECTING); // Load timer for the "detecting" animation when emoticon_disp_id is 0
     }
 }
 
 void viewasul_cb(lv_event_t *e)
 {
-    create_timer(6);
+    emoji_timer(EMOJI_STOP);
 }
 
 void viewlc_cb(lv_event_t *e)
@@ -628,7 +625,7 @@ void loctask2c_cb(lv_event_t *e)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
         emoji_switch_scr = SCREEN_GUIDE;
-        create_timer(1);
+        emoji_timer(EMOJI_DETECTING);
     }
     
     if(g_dev_binded){
