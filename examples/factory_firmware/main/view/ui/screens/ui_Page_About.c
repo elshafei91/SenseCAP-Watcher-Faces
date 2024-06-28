@@ -61,7 +61,7 @@ void ui_Page_About_screen_init(void)
     lv_obj_set_width(ui_dnt2, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_dnt2, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_dnt2, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_dnt2, "Sensecap Watcher");
+    lv_label_set_text(ui_dnt2, "SenseCAP Watcher");
     lv_obj_add_flag(ui_dnt2, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_set_style_text_color(ui_dnt2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_dnt2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -86,7 +86,7 @@ void ui_Page_About_screen_init(void)
     lv_obj_set_x(ui_svt1, 1);
     lv_obj_set_y(ui_svt1, 0);
     lv_obj_set_align(ui_svt1, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_svt1, "Software Version :");
+    lv_label_set_text(ui_svt1, "Firmware Version :");
     lv_obj_set_style_text_color(ui_svt1, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_svt1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_svt1, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -122,7 +122,7 @@ void ui_Page_About_screen_init(void)
     lv_obj_set_x(ui_hv1, 1);
     lv_obj_set_y(ui_hv1, 0);
     lv_obj_set_align(ui_hv1, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_hv1, "Himax Version :");
+    lv_label_set_text(ui_hv1, "AI Service Version :");
     lv_obj_set_style_text_color(ui_hv1, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_hv1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_hv1, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -221,7 +221,7 @@ void ui_Page_About_screen_init(void)
     lv_obj_set_width(ui_blet1, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_blet1, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_blet1, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_blet1, "Bluetooth :");
+    lv_label_set_text(ui_blet1, "Bluetooth Mac:");
     lv_obj_set_style_text_color(ui_blet1, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_blet1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_blet1, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -253,7 +253,7 @@ void ui_Page_About_screen_init(void)
     lv_obj_set_width(ui_wifit1, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_wifit1, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_wifit1, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_wifit1, "Wi-Fi :");
+    lv_label_set_text(ui_wifit1, "Wi-Fi Mac:");
     lv_obj_set_style_text_color(ui_wifit1, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_wifit1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_wifit1, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
