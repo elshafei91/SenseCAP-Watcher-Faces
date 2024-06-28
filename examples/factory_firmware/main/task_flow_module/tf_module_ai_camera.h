@@ -207,6 +207,7 @@ typedef struct tf_module_ai_camera
     int start_err_code;
     bool ai_model_downloading;
     bool ai_model_download_exit;
+    bool need_abort_ai_model_download;
     bool sscma_starting_flag;
 } tf_module_ai_camera_t;
 
