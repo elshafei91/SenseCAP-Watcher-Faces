@@ -117,6 +117,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_EMOJI_DOWLOAD_BAR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_BAR");
                 int *emoji_download_per = (int *)event_data;
+                if(lv_scr_act() == ui_Page_ViewAva || lv_scr_act() == ui_Page_ViewLive)
+                {
+                    lv_obj_move_background(ui_task_error);
+                    lv_obj_move_background(ui_viewavap);
+                }
                 _ui_screen_change(&ui_Page_Emoji, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Emoji_screen_init);
                 // ESP_LOGI(TAG, "emoji_download_per : %d", *emoji_download_per);
                 if(*emoji_download_per < 100){
@@ -431,6 +436,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 {
                     lv_group_remove_all_objs(g_main);
                     _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_OTA_screen_init);
+                    lv_obj_move_background(ui_viewavap);
                 }
                 if(ota_st->status == 1)
                 {
@@ -463,6 +469,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_clear_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_task_error);
                 lv_label_set_text(ui_taskerrt2, error_msg);
+
+                lv_group_remove_all_objs(g_main);
                 break;
             }
             default:
@@ -480,6 +488,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     {
                         lv_group_remove_all_objs(g_main);
                         _ui_screen_change(&ui_Page_ModelOTA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ModelOTA_screen_init);
+                        lv_obj_move_background(ui_viewavap);
                     }
                     struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                     lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
@@ -653,13 +662,13 @@ int view_init(void)
     vTaskDelay(pdMS_TO_TICKS(200));
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
 
-    read_and_store_selected_pngs("greeting", g_greet_img_dsc, &g_greet_image_count);
-    read_and_store_selected_pngs("detecting", g_detect_img_dsc, &g_detect_image_count);
-    read_and_store_selected_pngs("detected", g_detected_img_dsc, &g_detected_image_count);
-    read_and_store_selected_pngs("speaking", g_speak_img_dsc, &g_speak_image_count);
-    read_and_store_selected_pngs("listening", g_listen_img_dsc, &g_listen_image_count);
-    read_and_store_selected_pngs("analyzing", g_analyze_img_dsc, &g_analyze_image_count);
-    read_and_store_selected_pngs("standby", g_standby_img_dsc, &g_standby_image_count);
+    read_and_store_selected_pngs("Custom_greeting",    "greeting", g_greet_img_dsc, &g_greet_image_count);
+    read_and_store_selected_pngs("Custom_detecting",   "detecting", g_detect_img_dsc, &g_detect_image_count);
+    read_and_store_selected_pngs("Custom_detected",    "detected", g_detected_img_dsc, &g_detected_image_count);
+    read_and_store_selected_pngs("Custom_speaking",    "speaking", g_speak_img_dsc, &g_speak_image_count);
+    read_and_store_selected_pngs("Custom_listening",   "listening", g_listen_img_dsc, &g_listen_image_count);
+    read_and_store_selected_pngs("Custom_analyzing",   "analyzing", g_analyze_img_dsc, &g_analyze_image_count);
+    read_and_store_selected_pngs("Custom_standby",     "standby", g_standby_img_dsc, &g_standby_image_count);
 
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_START, NULL, 0, pdMS_TO_TICKS(10000));
                     
