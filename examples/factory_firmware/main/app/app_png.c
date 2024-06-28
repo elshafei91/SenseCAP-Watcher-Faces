@@ -19,31 +19,37 @@
 #include "cJSON.h"
 
 #define TAG              "HTTP_EMOJI"
-#define HTTP_MOUNT_POINT "/spiffs"
 
 #define EMOJI_HTTP_TIMEOUT_MS           30000
 #define EMOJI_HTTP_DOWNLOAD_RETRY_TIMES 5
 #define EMOJI_HTTP_RX_CHUNK_SIZE        512
 
-#define MAX_RETRY_COUNT      5
-#define HTTP_MAX_BUFFER_SIZE (100 * 1024)
-#define EMOJI_HTTP_TIMEOUT_MS 5000
-#define HTTP_MOUNT_POINT "/spiffs"
+#define MAX_RETRY_COUNT                 5
+#define HTTP_MAX_BUFFER_SIZE            (100 * 1024)
+#define EMOJI_HTTP_TIMEOUT_MS           5000
+#define STORAGE_MOUNT_POINT             "/spiffs"
+
+#define ERR_EMOJI_DL_BAD_HTTP_LEN       0x200
+
 
 typedef struct {
+    StackType_t *stack;
+    StaticTask_t *tcb;
+    int task_num;
     esp_http_client_config_t config;
     FILE *f;
-    char *file_path;
+    char file_path[256];
     int64_t file_start_time;
     bool download_complete;
     int64_t content_length;
     char *buffer;
     int buffer_size;
+    esp_err_t err;
+    esp_err_t http_err;
 } download_task_arg_t;
 
 
 static EventGroupHandle_t download_event_group;
-static const int DOWNLOAD_COMPLETE_BIT = BIT0;
 static SemaphoreHandle_t download_mutex;
 static int64_t total_data_size = 0;
 
@@ -312,11 +318,11 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
         case HTTP_EVENT_ON_CONNECTED:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
             task_arg->file_start_time = esp_timer_get_time();
+            task_arg->content_length = 0;
             task_arg->buffer_size = 0;
-            task_arg->buffer = heap_caps_malloc(HTTP_MAX_BUFFER_SIZE, MALLOC_CAP_SPIRAM);
-            if (task_arg->buffer == NULL) {
-                ESP_LOGE(TAG, "Failed to allocate PSRAM buffer");
-                return ESP_FAIL;
+            if (task_arg->buffer) {
+                free(task_arg->buffer);
+                task_arg->buffer = NULL;
             }
             break;
         case HTTP_EVENT_HEADER_SENT:
@@ -326,34 +332,38 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
             ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
             break;
         case HTTP_EVENT_ON_DATA:
+            if (task_arg->content_length == 0) {
+                task_arg->content_length = esp_http_client_get_content_length(evt->client);
+                ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, content_len=%lld", task_arg->content_length);
+                if (task_arg->content_length == 0) {
+                    task_arg->http_err = ERR_EMOJI_DL_BAD_HTTP_LEN;
+                    break;
+                }
+                if (task_arg->buffer == NULL)
+                    task_arg->buffer = psram_calloc(1, task_arg->content_length);
+
+                if (task_arg->buffer == NULL) {
+                    task_arg->http_err = ESP_ERR_NO_MEM;
+                    break;
+                }
+                task_arg->buffer_size = 0;
+            }
             if (evt->data_len > 0) {
-                if (task_arg->buffer_size + evt->data_len <= HTTP_MAX_BUFFER_SIZE) {
+                if (task_arg->buffer_size + evt->data_len <= task_arg->content_length) {
                     memcpy(task_arg->buffer + task_arg->buffer_size, evt->data, evt->data_len);
                     task_arg->buffer_size += evt->data_len;
                 } else {
-                    ESP_LOGE(TAG, "PSRAM buffer overflow");
-                    return ESP_FAIL;
+                    ESP_LOGE(TAG, "data can not fit in content buffer, this should not happen!!!");
+                    task_arg->http_err = ESP_ERR_NO_MEM;
+                    break;
                 }
             }
             break;
         case HTTP_EVENT_ON_FINISH:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
-            task_arg->content_length = esp_http_client_get_content_length(evt->client);
-            task_arg->download_complete = true;
-            esp_err_t err = storage_file_write(task_arg->file_path, task_arg->buffer, task_arg->buffer_size);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to write data to file using storage_file_write");
-                return err;
-            }
-            heap_caps_free(task_arg->buffer);
-            task_arg->buffer = NULL;
             break;
         case HTTP_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
-            if (task_arg->buffer != NULL) {
-                heap_caps_free(task_arg->buffer);
-                task_arg->buffer = NULL;
-            }
             break;
         case HTTP_EVENT_REDIRECT:
             ESP_LOGI(TAG, "HTTP_EVENT_REDIRECT");
@@ -366,16 +376,25 @@ static void download_task(void *arg) {
     download_task_arg_t *task_arg = (download_task_arg_t *)arg;
     esp_http_client_handle_t client = esp_http_client_init(&task_arg->config);
     task_arg->download_complete = false;
-    esp_err_t final_err = ESP_OK;
+    task_arg->err = ESP_OK;
+    task_arg->http_err = ESP_OK;
 
     for (int i = 0; i < MAX_RETRY_COUNT; i++) {
         esp_err_t err = esp_http_client_perform(client);
+        vTaskDelay(pdMS_TO_TICKS(100));
         if (err == ESP_OK) {
             int64_t download_time = esp_timer_get_time() - task_arg->file_start_time;
             ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %lld, download time = %lld us",
                      esp_http_client_get_status_code(client), task_arg->content_length, download_time);
+            if (!esp_http_client_is_complete_data_received(client)) {
+                ESP_LOGW(TAG, "HTTP finished but incompleted data received");
+                task_arg->err = task_arg->http_err != ESP_OK ? task_arg->http_err : ESP_ERR_NOT_FINISHED;
+                continue;
+            }
             xSemaphoreTake(download_mutex, portMAX_DELAY);
             total_data_size += task_arg->content_length;
+            task_arg->download_complete = true;
+            task_arg->err = ESP_OK;
             xSemaphoreGive(download_mutex);
             break;
         } else {
@@ -383,37 +402,52 @@ static void download_task(void *arg) {
             esp_http_client_cleanup(client);
             vTaskDelay(500 / portTICK_PERIOD_MS); // Wait for a second before retrying
             client = esp_http_client_init(&task_arg->config);
-            final_err = err;
+            task_arg->err = err;
         }
     }
 
-    while (!task_arg->download_complete) {
-        vTaskDelay(50 / portTICK_PERIOD_MS);
+    if (!task_arg->download_complete) {
+        goto download_task_end;
     }
 
-    esp_http_client_cleanup(client);
-    free(task_arg->file_path);
-    free(task_arg);
+    esp_err_t err2 = storage_file_write(task_arg->file_path, task_arg->buffer, task_arg->buffer_size);
+    if (err2 != ESP_OK) {
+        ESP_LOGE(TAG, "emoji download task, failed to write data to file using storage_file_write");
+        task_arg->err = err2;
+    } else {
+        ESP_LOGI(TAG, "emoji download task, saved file %s", task_arg->file_path);
+    }
 
-    xEventGroupSetBits(download_event_group, DOWNLOAD_COMPLETE_BIT);
+download_task_end:
+    esp_http_client_cleanup(client);
+    if (task_arg->buffer) {
+        free(task_arg->buffer);
+        task_arg->buffer = NULL;
+    }
+
+    xEventGroupSetBits(download_event_group, BIT0 << (task_arg->task_num));
     vTaskDelete(NULL);
 }
 
-download_summary_t download_emoji_images(char *base_name, char *urls[], int url_count) {
-    ESP_LOGI(TAG, "Starting emoji HTTP download, base file name = %s ...", base_name);
+esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJSON *url_array, int url_count)
+{
+    char *base_name = filename->valuestring;
+    ESP_LOGI(TAG, "Starting emoji HTTP download, base file name = %s ...", filename->valuestring);
+
     int64_t total_start_time = esp_timer_get_time();
     download_event_group = xEventGroupCreate();
     download_mutex = xSemaphoreCreateMutex();
-    EventBits_t bits;
-    download_result_t *results = calloc(url_count, sizeof(download_result_t));
+    EventBits_t bits, bit_mask = 0;
+    download_task_arg_t *task_args = (download_task_arg_t *)psram_calloc(url_count, sizeof(download_task_arg_t));
+    esp_err_t ret = ESP_OK;
 
     for (int url_index = 0; url_index < url_count; url_index++) {
-        char name_with_index[50];
-        snprintf(name_with_index, sizeof(name_with_index), "%s%d", base_name, url_index+1);
-        char *emoji_name = strdup(name_with_index);
+        cJSON *url_item = cJSON_GetArrayItem(url_array, url_index);
 
-        download_task_arg_t *task_arg = (download_task_arg_t *)calloc(1, sizeof(download_task_arg_t));
-        task_arg->config.url = urls[url_index];
+        download_task_arg_t *task_arg = &task_args[url_index];
+        task_arg->task_num = url_index;
+
+        task_arg->config.url = url_item->valuestring;
         task_arg->config.method = HTTP_METHOD_GET;
         task_arg->config.timeout_ms = EMOJI_HTTP_TIMEOUT_MS;
         task_arg->config.crt_bundle_attach = esp_crt_bundle_attach;
@@ -421,62 +455,84 @@ download_summary_t download_emoji_images(char *base_name, char *urls[], int url_
         task_arg->config.event_handler = _http_event_handler;
         task_arg->config.user_data = task_arg;
 
-        asprintf(&task_arg->file_path, "%s/%s.png", HTTP_MOUNT_POINT, emoji_name);
+        sniprintf(task_arg->file_path, 255/*leave the last zero*/, "%s/%s%d.png", STORAGE_MOUNT_POINT, base_name, url_index+1);
 
-        StackType_t *task_stack = (StackType_t *)heap_caps_malloc(8192 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
+        const int stack_size = 8192;
+        StackType_t *task_stack = (StackType_t *)psram_calloc(stack_size, sizeof(StackType_t));
         StaticTask_t *task_buffer = (StaticTask_t *)heap_caps_malloc(sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+
+        task_arg->stack = task_stack;
+        task_arg->tcb = task_buffer;
 
         if (task_stack == NULL || task_buffer == NULL) {
             ESP_LOGE(TAG, "Failed to allocate memory for task stack or control block");
-            free(task_stack);
-            free(task_buffer);
-            free(task_arg->file_path);
-            free(task_arg);
-            results[url_index].success = false;
-            results[url_index].error_code = ESP_ERR_NO_MEM;
-            free(emoji_name);
-            continue;
+            ret = ESP_ERR_NO_MEM;
+            goto download_emoji_cleanup;
         }
 
-        xTaskCreateStatic(download_task, "download_task", 8192, task_arg, 9, task_stack, task_buffer);
+        ESP_LOGI(TAG, "worker task download %s, save to %s", url_item->valuestring, task_arg->file_path);
 
-        free(emoji_name);
+        xTaskCreateStatic(download_task, "download_task", stack_size, task_arg, 9, task_stack, task_buffer);
+
+        bit_mask |= (BIT0 << url_index);
+
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
+
     int i;
     int emoticon_download_per;
-    for (i =0 ; i < url_count; i++) {
-        bits = xEventGroupWaitBits(download_event_group, DOWNLOAD_COMPLETE_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
-        if (bits & DOWNLOAD_COMPLETE_BIT) {
-            ESP_LOGI(TAG, "Download task %d completed", i);
-            results[i].success = true;
-            results[i].error_code = ESP_OK;
-        } else {
-            results[i].success = false;
-            results[i].error_code = ESP_FAIL;
-
+    for (i = 0 ; i < MAX_IMAGES; i++) {
+        bits = xEventGroupWaitBits(download_event_group, bit_mask, pdFALSE, pdTRUE, pdMS_TO_TICKS(60000));
+        int cnt = 0;
+        for (int j = 0; j < url_count; j++)
+        {
+            if (bits & (BIT0 << j)) cnt++;
         }
-        emoticon_download_per = (i + 1) * 100 / url_count;
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, &emoticon_download_per, sizeof(int), pdMS_TO_TICKS(10000));
+        ESP_LOGI(TAG, "emoji download progress, %d emojis has been downloaded (bits: 0x%x)", cnt, bits);
+        emoticon_download_per = cnt * 100 / url_count;
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, 
+                            &emoticon_download_per, sizeof(int), pdMS_TO_TICKS(10000));
+        if (cnt == url_count) break;
     }
+
+    if (i == MAX_IMAGES) {
+        ESP_LOGE(TAG, "emoji download failed, timeout waiting for all tasks join");
+        ret = ESP_ERR_TIMEOUT;
+        goto download_emoji_cleanup;
+    }
+
+    download_result_t *results = summary->results;
+    for (int t = 0; t < url_count; t++)
+    {
+        download_task_arg_t *task_arg = &task_args[t];
+        results[t].success = task_arg->err == ESP_OK;
+        results[t].error_code = task_arg->err;
+    }
+    
 
     int64_t total_end_time = esp_timer_get_time();
     int64_t total_time_us = total_end_time - total_start_time;
     double total_time_s = total_time_us / 1000000.0;
     double download_speed = total_data_size / total_time_s;
 
-    ESP_LOGD(TAG, "Total download size: %" PRId64 " bytes", total_data_size);
+    ESP_LOGI(TAG, "emoji download, total download size: %" PRId64 " bytes", total_data_size);
     total_data_size = 0;
-    ESP_LOGD(TAG, "Total download time: %.2f seconds", total_time_s);
-    ESP_LOGD(TAG, "Overall download speed: %.2f bytes/second", download_speed);
+    ESP_LOGI(TAG, "emoji download, total download time: %.2f seconds", total_time_s);
+    ESP_LOGI(TAG, "emoji download, overall download speed: %.2f bytes/second", download_speed);
 
+    summary->total_time_us = total_time_us;
+    summary->download_speed = download_speed;
+
+download_emoji_cleanup:
+    for (int i = 0; i < url_count; i++)
+    {
+        download_task_arg_t *task_arg = &task_args[i];
+        if (task_arg->stack) free(task_arg->stack);
+        if (task_arg->tcb) free(task_arg->tcb);
+    }
+    free(task_args);
     vEventGroupDelete(download_event_group);
     vSemaphoreDelete(download_mutex);
 
-    download_summary_t summary = {
-        .results = results,
-        .total_time_us = total_time_us,
-        .download_speed = download_speed
-    };
-
-    return summary;
+    return ret;
 }
