@@ -305,17 +305,16 @@ static void __tf_engine_task(void *p_arg)
             ESP_LOGI(TAG, "RECV NEW TASK");
             if(run_flag) {
                 ESP_LOGI(TAG, "STOP LAST TASK");
-                // __status_cb(p_engine, TF_STATUS_STOP, NULL);
                 __stop(p_engine);
                 run_flag = false;
             }
-
-            __status_cb(p_engine, TF_STATUS_STARTING, NULL);
 
             __data_lock(p_engine);
             ret = tf_parse_json_with_length( flow.p_data, flow.len, &p_engine->cur_flow_root, &p_engine->p_module_head, &p_engine->tf_info);
             p_engine->module_item_num = ret;
             __data_unlock(p_engine);
+
+            __status_cb(p_engine, TF_STATUS_STARTING, NULL);
 
             if( ret  <= 0) {
                 ESP_LOGE(TAG, "parse json failed");
