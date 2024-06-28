@@ -161,12 +161,6 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
             }
             else
             {
-                // Attempt to reconnect to previous WiFi
-                ESP_LOGI(TAG, "Reconnecting to previous WiFi");
-                esp_wifi_disconnect();
-                ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &previous_wifi_config));
-                esp_wifi_connect();
-
                 struct view_data_wifi_st st;
                 __wifi_st_get(&st);
                 st.is_connected = false;
@@ -611,8 +605,8 @@ static void __app_wifi_task(void *p_arg)
         {
             // Periodically check the wifi connection status
 
-            // 5min retry connect
-            if (_g_wifi_cfg.wifi_reconnect_cnt > 5)
+            // 1min retry connect
+            if (_g_wifi_cfg.wifi_reconnect_cnt > 12)
             {
                 ESP_LOGI(TAG, " Wifi reconnect...");
                 _g_wifi_cfg.wifi_reconnect_cnt = 0;
