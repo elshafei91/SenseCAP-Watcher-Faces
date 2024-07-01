@@ -411,18 +411,6 @@ lv_obj_t * ui_guide2img2;
 lv_obj_t * ui_guide2t2;
 
 
-// SCREEN: ui_Page_Emoji
-void ui_Page_Emoji_screen_init(void);
-lv_obj_t * ui_Page_Emoji;
-lv_obj_t * ui_facet;
-lv_obj_t * ui_facearc;
-lv_obj_t * ui_faceper;
-lv_obj_t * ui_facetper;
-lv_obj_t * ui_facetsym;
-void ui_event_emoticonok(lv_event_t * e);
-lv_obj_t * ui_emoticonok;
-
-
 // SCREEN: ui_Page_Flag
 void ui_Page_Flag_screen_init(void);
 lv_obj_t * ui_Page_Flag;
@@ -1493,14 +1481,6 @@ void ui_event_guide2p2(lv_event_t * e)
         guide2liveclick_cb(e);
     }
 }
-void ui_event_emoticonok(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        emoticonback_cb(e);
-    }
-}
 void ui_event_guidebtn1(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1559,11 +1539,7 @@ void ui_init(void)
     ui_Page_Wakup_screen_init();
     ui_Page_Guideavatar_screen_init();
     ui_Page_Guidelive_screen_init();
-    ui_Page_Emoji_screen_init();
     ui_Page_Flag_screen_init();
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_obj_add_event_cb(ui____initial_actions0, ui_event____initial_actions0, LV_EVENT_ALL, NULL);
-
-    lv_disp_load_scr(ui____initial_actions0);
-    lv_disp_load_scr(ui_Page_Battery);
 }

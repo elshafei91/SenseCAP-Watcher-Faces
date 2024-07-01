@@ -23,7 +23,6 @@ SET(SOURCES components/ui_comp_menucomponent.c
     screens/ui_Page_Wakup.c
     screens/ui_Page_Guideavatar.c
     screens/ui_Page_Guidelive.c
-    screens/ui_Page_Emoji.c
     screens/ui_Page_Flag.c
     ui.c
     components/ui_comp_hook.c

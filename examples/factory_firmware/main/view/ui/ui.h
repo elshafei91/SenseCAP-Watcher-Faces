@@ -373,16 +373,6 @@ void ui_event_guide2p2(lv_event_t * e);
 extern lv_obj_t * ui_guide2p2;
 extern lv_obj_t * ui_guide2img2;
 extern lv_obj_t * ui_guide2t2;
-// SCREEN: ui_Page_Emoji
-void ui_Page_Emoji_screen_init(void);
-extern lv_obj_t * ui_Page_Emoji;
-extern lv_obj_t * ui_facet;
-extern lv_obj_t * ui_facearc;
-extern lv_obj_t * ui_faceper;
-extern lv_obj_t * ui_facetper;
-extern lv_obj_t * ui_facetsym;
-void ui_event_emoticonok(lv_event_t * e);
-extern lv_obj_t * ui_emoticonok;
 // SCREEN: ui_Page_Flag
 void ui_Page_Flag_screen_init(void);
 extern lv_obj_t * ui_Page_Flag;

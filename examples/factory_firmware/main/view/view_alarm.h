@@ -19,6 +19,7 @@ void view_alarm_off(uint8_t task_down);
 
 void view_task_error_init();
 void view_alarm_panel_init();
+void view_emoji_ota_init();
 
 
 #ifdef __cplusplus

@@ -98,6 +98,9 @@ extern lv_obj_t * ui_viewpbtn2;
 extern lv_obj_t * ui_viewpt2;
 extern lv_obj_t * ui_viewpbtn3;
 
+// view emoji ota extern
+extern lv_obj_t * ui_Page_Emoji;
+
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
 static void Task_end();
@@ -431,6 +434,7 @@ void main4f_cb(lv_event_t *e)
 void backset_cb(lv_event_t * e)
 {
     // ESP_LOGI(CLICK_TAG, "backset_cb");
+    lv_group_set_wrap(g_main, true);
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Set_screen_init);
 }
 
@@ -944,12 +948,6 @@ void abblef_cb(lv_event_t *e) { }
 
 void abbledf_cb(lv_event_t *e) { }
 
-void paboutc_cb(lv_event_t *e)
-{
-    ESP_LOGI(CLICK_TAG, "paboutc_cb");
-    lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Set_screen_init);
-}
-
 void setdevc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setdevc_cb");
@@ -1081,7 +1079,6 @@ void setappc_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "setappc_cb");
     lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Connect_screen_init);
     lv_group_focus_obj(ui_connp1);
-    // Page_ConnAPP_Mate();
 }
 
 void slidervc_cb(lv_event_t *e)
@@ -1122,6 +1119,7 @@ void sliderr_cb(lv_event_t *e)
                 break;
 
             case 1:
+                lv_obj_clear_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
                 set_reset_factory();
                 break;
 
@@ -1289,7 +1287,8 @@ void guide2avaclick_cb(lv_event_t * e)
 
 void emoticonback_cb(lv_event_t * e)
 {
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    lv_obj_add_flag(ui_Page_Emoji, LV_OBJ_FLAG_HIDDEN);
+    // lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
 void guidebtn1click_cb(lv_event_t * e)
@@ -1679,5 +1678,14 @@ void ui_event_alarm_panel(lv_event_t * e)
             lv_obj_set_style_border_opa(ui_viewpbtn2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_border_opa(ui_viewpbtn3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
         }
+    }
+}
+
+void ui_event_emoticonok(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        emoticonback_cb(e);
     }
 }

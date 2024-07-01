@@ -47,6 +47,14 @@ extern lv_obj_t * ui_viewpbtn2;
 extern lv_obj_t * ui_viewpt2;
 extern lv_obj_t * ui_viewpbtn3;
 
+extern lv_obj_t * ui_Page_Emoji;
+extern lv_obj_t * ui_facet;
+extern lv_obj_t * ui_facearc;
+extern lv_obj_t * ui_faceper;
+extern lv_obj_t * ui_facetper;
+extern lv_obj_t * ui_facetsym;
+extern lv_obj_t * ui_emoticonok;
+
 extern GroupInfo group_page_main;
 extern GroupInfo group_page_template;
 extern GroupInfo group_page_notask;
@@ -128,12 +136,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_EMOJI_DOWLOAD_BAR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_BAR");
                 int *emoji_download_per = (int *)event_data;
-                if(lv_scr_act() == ui_Page_ViewAva || lv_scr_act() == ui_Page_ViewLive)
-                {
-                    lv_obj_move_background(ui_task_error);
-                    lv_obj_move_background(ui_viewavap);
-                }
-                _ui_screen_change(&ui_Page_Emoji, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Emoji_screen_init);
+
+                lv_obj_clear_flag(ui_Page_Emoji, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(ui_Page_Emoji);
+
                 // ESP_LOGI(TAG, "emoji_download_per : %d", *emoji_download_per);
                 if(*emoji_download_per < 100){
                     lv_obj_clear_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
@@ -151,6 +157,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_arc_set_value(ui_facearc, 100);
                     lv_label_set_text(ui_facet, "Please reboot to update new faces");
                 }
+                
+                
                 break;
             }
 
@@ -448,7 +456,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 {
                     lv_group_remove_all_objs(g_main);
                     _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_OTA_screen_init);
-                    lv_obj_move_background(ui_viewavap);
+                    lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 }
                 if(ota_st->status == 1)
                 {
