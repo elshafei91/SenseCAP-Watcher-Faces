@@ -104,13 +104,25 @@ void tf_data_inference_copy(struct tf_module_ai_camera_inference_info *p_dst, st
         p_dst->p_data = NULL;
         p_dst->cnt    = 0;
     }
-    memcpy(p_dst->classes, p_src->classes, sizeof(p_dst->classes));
+    
+    memset(p_dst->classes, 0, sizeof(char *) * CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM);
+    for (int i = 0; p_src->classes[i] != NULL && i < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM; i++)
+    {
+        char *p_name = tf_malloc(strlen(p_src->classes[i]) + 1); //Using strup may cause internal memory fragmentation
+        memset(p_name, 0, strlen(p_src->classes[i]) + 1);
+        strcpy(p_name, p_src->classes[i]);
+        p_dst->classes[i] = p_name;
+    }
 }
 
 void tf_data_inference_free(struct tf_module_ai_camera_inference_info *p_inference)
 {
     if( p_inference->p_data != NULL) {
         tf_free(p_inference->p_data);
+    }
+    for (int i = 0; p_inference->classes[i] != NULL && i < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM; i++)
+    {
+        tf_free(p_inference->classes[i]);
     }
     p_inference->p_data   = NULL;
     p_inference->cnt      = 0;

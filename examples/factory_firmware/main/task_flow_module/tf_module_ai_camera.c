@@ -83,6 +83,17 @@ static int __model_flag_clear(void)
     return __model_flag_set(&flag);
 }
 
+static void __classes_name_copy(char *classes_dst[], char *classes_src[])
+{
+    memset(classes_dst, NULL, sizeof(char *) * CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM);
+    for (int i = 0; classes_src[i] != NULL && i < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM; i++)
+    {
+        char *p_name = tf_malloc(strlen(classes_src[i]) + 1); //Using strup may cause internal memory fragmentation
+        memset(p_name, 0, strlen(classes_src[i]) + 1);
+        strcpy(p_name, classes_src[i]);
+        classes_dst[i] = p_name;
+    }
+}
 
 // static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 // {
@@ -501,8 +512,11 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
             info.inference.cnt = 0;
             info.inference.is_valid = false;
             info.inference.p_data = NULL;
-            memcpy(info.inference.classes, p_module_ins->classes, sizeof(info.inference.classes));
-            
+
+            __data_lock(p_module_ins);
+            __classes_name_copy(info.inference.classes, p_module_ins->classes);
+            __data_unlock(p_module_ins);
+
             // printf("sscma:%s\r\n",reply->data);
 
             if ( sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK ) {
@@ -1179,7 +1193,9 @@ static void ai_camera_task(void *p_arg)
                         }
 
                         //update classes
+                        __data_lock(p_module_ins);
                         memccpy(p_module_ins->classes, model_info->classes, 0, i * sizeof(char*));
+                        __data_unlock(p_module_ins);
                     } else {
                         ESP_LOGI(TAG, "  N/A");
                     }
