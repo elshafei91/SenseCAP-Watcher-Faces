@@ -241,7 +241,7 @@ void read_and_store_selected_pngs(const char *primary_prefix, const char *second
     // If no images loaded with either prefix, create black images with labels
     if (!image_loaded && *image_count < MAX_IMAGES) {
         ESP_LOGW("PNG Load", "No images found with either prefix, creating black images with labels");
-        size_t size = 412 * 412 * 4; // Assuming the size for a 412x412 image with alpha channel
+        size_t size = 412 * 412 * 3; // Assuming the size for a 412x412 image with alpha channel
         void *black_data = create_black_image_with_label(size, primary_prefix);
         if (black_data) {
             create_img_dsc(&img_dsc_array[*image_count], black_data, size);
@@ -399,7 +399,7 @@ esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJ
         task_arg->config.event_handler = _http_event_handler;
         task_arg->config.user_data = task_arg;
 
-        sniprintf(task_arg->file_path, 255/*leave the last zero*/, "%s/%s%d.png", STORAGE_MOUNT_POINT, base_name, url_index+1);
+        sniprintf(task_arg->file_path, 255/*leave the last zero*/, "%s/Custom_%s%d.png", STORAGE_MOUNT_POINT, base_name, url_index+1);
 
         const int stack_size = 8192;
         StackType_t *task_stack = (StackType_t *)psram_calloc(stack_size, sizeof(StackType_t));
