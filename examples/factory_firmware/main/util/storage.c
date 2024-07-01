@@ -315,7 +315,7 @@ esp_err_t storage_file_remove(char *file)
     storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = file, .err = ESP_OK };
     storage_event_data_t *pevtdata = &evtdata;
 
-    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_SIZE_GET, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_REMOVE, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
 
