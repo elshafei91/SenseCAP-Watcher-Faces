@@ -16,21 +16,18 @@
 
 static const char *TAG = "view";
 
-uint8_t wifi_page_id;
-lv_obj_t * view_show_img;
-uint8_t shutdown_state = 0;
-static int PNG_LOADING_COUNT = 0;
-static uint8_t battery_per = 0;
-static bool battery_timer_toggle = 0;
-static int battery_flash_count = 0;
+static int png_loading_count = 0;
+static bool battery_flag_toggle = 0;
+static int battery_blink_count = 0;
+
+uint8_t g_shutdown = 0;
+uint8_t g_dev_binded = 0;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
-extern int g_dev_binded;
+extern int g_guide_disable;
 extern uint8_t g_avarlive;
 extern uint8_t g_tasktype;
 extern uint8_t g_backpage;
-extern lv_obj_t * ui_taskerrt2;
-extern lv_obj_t * ui_task_error;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -40,6 +37,8 @@ extern lv_img_dsc_t *g_standby_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_greet_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
+extern lv_obj_t * ui_taskerrt2;
+extern lv_obj_t * ui_task_error;
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
 extern lv_obj_t * ui_viewpbtn1;
@@ -72,16 +71,16 @@ static void update_ota_progress(int percentage)
 
 static void toggle_image_visibility(lv_timer_t *timer)
 {
-    if(battery_timer_toggle){
+    if(battery_flag_toggle){
         lv_obj_add_flag(ui_batteryimg, LV_OBJ_FLAG_HIDDEN);
     }else{
         lv_obj_clear_flag(ui_batteryimg, LV_OBJ_FLAG_HIDDEN);
     }
-    battery_timer_toggle = !battery_timer_toggle;
+    battery_flag_toggle = !battery_flag_toggle;
 
-    battery_flash_count++;
+    battery_blink_count++;
 
-    if (battery_flash_count >= 4) {
+    if (battery_blink_count >= 4) {
         lv_timer_del(timer);
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
     }
@@ -99,8 +98,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             }
 
             case VIEW_EVENT_PNG_LOADING:{
-                PNG_LOADING_COUNT++;
-                int progress_percentage = (PNG_LOADING_COUNT * 100) / PNG_IMG_NUMS;
+                png_loading_count++;
+                int progress_percentage = (png_loading_count * 100) / PNG_IMG_NUMS;
                 if(progress_percentage <= 100){
                     lv_arc_set_value(ui_Arc1, progress_percentage);
                     static char load_per[5];
@@ -159,8 +158,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             {
                 ESP_LOGI(TAG, "event: VIEW_EVENT_USAGE_GUIDE_SWITCH");
                 int *usage_guide_st = (int *)event_data;
-                g_dev_binded = (*usage_guide_st);
-                // ESP_LOGI(TAG, "g_dev_binded : %d", g_dev_binded);
+                g_guide_disable = (*usage_guide_st);
+                // ESP_LOGI(TAG, "g_guide_disable : %d", g_guide_disable);
                 break;
             }
 
@@ -189,7 +188,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                 if(is_charging == 1)
                 {
-                    shutdown_state = 0;
+                    g_shutdown = 0;
                     if(g_swipeid==0)
                     {
                         lv_label_set_text(ui_setdownt, "Reboot");
@@ -199,7 +198,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_obj_add_flag(ui_btpert, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_mainb, &ui_img_battery_charging_png);
                 }else if(is_charging == 0){
-                    shutdown_state = 1;
+                    g_shutdown = 1;
                     if(g_swipeid==0)
                     {
                         lv_label_set_text(ui_setdownt, "Shutdown");
@@ -243,9 +242,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 uint8_t *p_src =NULL;
                 if ( p_st->past_connected)
                 {
-                    wifi_page_id = 1;
+                    g_dev_binded = 1;
                 }else{
-                    wifi_page_id = 0;
+                    g_dev_binded = 0;
                 }
                 if ( p_st->is_network ) {
                     switch (wifi_rssi_level_get( p_st->rssi )) {
@@ -289,7 +288,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }else if(* wifi_config_sync == 3)
                 {
                     bindFinish();
-                    wifi_page_id = 1;
+                    g_dev_binded = 1;
                     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
                     _ui_screen_change(&ui_Page_Avatar, LV_SCR_LOAD_ANIM_NONE, 0, 3000, &ui_Page_Avatar_screen_init);
                 }else if(* wifi_config_sync == 4)
@@ -411,7 +410,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }
                 if(g_avarlive == 0)
                 {
-                    if(g_dev_binded)
+                    if(g_guide_disable)
                     {
                         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
                     }else{
@@ -419,7 +418,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     }
                 }else if(g_avarlive == 1)
                 {
-                    if(g_dev_binded)
+                    if(g_guide_disable)
                     {
                         if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewLive_screen_init);
                     }else{

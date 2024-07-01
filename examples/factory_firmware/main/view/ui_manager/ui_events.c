@@ -28,13 +28,13 @@ static const char *TAG = "ui_event";
 static const char *CLICK_TAG = "Click_event";
 
 wifi_ap_record_t wifi_record;
-int g_dev_binded = 0;
-uint8_t g_taskdown = 1;     // 0: task running, 1: task down
+int g_guide_disable = 0;    // 0: usage guide enable,           1: usage guide disable
+uint8_t g_taskdown = 1;     // 0: task running,                 1: task down
 uint8_t g_guide_step = 0;   // usage guide step : 0~3
-uint8_t g_swipeid = 0;      // 0: shutdown, 1: factoryreset
-uint8_t g_alarm_p = 0;      // 0: End Task panel display, 1: End_Task panel hidden 
-uint8_t g_avarlive = 0;     // 0: current page is avatar, 1: current page is live
-uint8_t g_tasktype = 0;     // 0: local task, 1: remote task
+uint8_t g_swipeid = 0;      // 0: shutdown,                     1: factoryreset
+uint8_t g_alarm_p = 0;      // 0: End Task panel display,       1: End_Task panel hidden 
+uint8_t g_avarlive = 0;     // 0: current page is avatar,       1: current page is live
+uint8_t g_tasktype = 0;     // 0: local task,                   1: remote task
 uint8_t g_backpage = 0;
 uint8_t g_avalivjump = 0;
 static lv_obj_t *qr;
@@ -56,8 +56,8 @@ static uint32_t local_task_id;
 static lv_timer_t *g_timer;
 static char *qrcode_content = NULL;
 
-extern uint8_t wifi_page_id;
-extern uint8_t shutdown_state;
+extern uint8_t g_dev_binded;
+extern uint8_t g_shutdown;
 extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
 extern lv_obj_t *ui_alarm_indicator;
 extern lv_obj_t * ui_task_error;
@@ -145,7 +145,7 @@ static void emoji_timer_callback(lv_timer_t *timer)
     uint32_t * user_data = (uint32_t *)timer->user_data;
     static uint8_t vir_load_count = 0;
     const lv_img_dsc_t *current_img = NULL;
-    ESP_LOGI(TAG, "user_data is %d", *user_data);
+    // ESP_LOGI(TAG, "user_data is %d", *user_data);
 
     if(*user_data == EMOJI_GREETING)
     {
@@ -315,7 +315,7 @@ void loadscrload_cb(lv_event_t *e)
 void virclick_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virtc_cb");
-    if(!wifi_page_id)   // if the device is not wifi-configed, then appear panel
+    if(!g_dev_binded)   // if the device is not wifi-configed, then appear panel
     {
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
         emoji_timer(EMOJI_STOP);    // stop timer
@@ -329,7 +329,7 @@ void virscrload_cb(lv_event_t *e)
 {
     lv_obj_add_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
     lv_group_add_obj(g_main, ui_Page_Avatar);
-    
+
     emoji_switch_scr = SCREEN_VIRTUAL;
     emoji_timer(EMOJI_GREETING);
 
@@ -501,11 +501,10 @@ void revbc_cb(lv_event_t *e)
 void viewac_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "viewac_cb");
-    if(g_dev_binded)
+    if(g_guide_disable)
     {
         if(g_taskdown == 0)
         {
-            ESP_LOGI(CLICK_TAG, "testtest");
             lv_obj_clear_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN); /// Flags
             lv_obj_move_foreground(ui_viewavap);
             lv_group_remove_all_objs(g_main);
@@ -536,12 +535,12 @@ void viewasl_cb(lv_event_t *e)
     if(lv_scr_act() == ui_Page_ViewAva || lv_scr_act() == ui_Page_ViewLive)lv_group_set_wrap(g_main, false);
     if (emoticon_disp_id == 1)
     {
-        emoji_switch_scr = SCREEN_AVATAR;
+        emoji_switch_scr = SCREEN_AVATAR;   // set the emoji display page to VIEWAVATAR
         emoji_timer(EMOJI_DETECTED); // Load timer for the "detected" animation when emoticon_disp_id is 1
     }
     else
     {
-        emoji_switch_scr = SCREEN_AVATAR;
+        emoji_switch_scr = SCREEN_AVATAR;   // set the emoji display page to VIEWAVATAR
         emoji_timer(EMOJI_DETECTING); // Load timer for the "detecting" animation when emoticon_disp_id is 0
     }
 }
@@ -554,7 +553,7 @@ void viewasul_cb(lv_event_t *e)
 void viewlc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "viewlc_cb");
-    if(g_dev_binded)
+    if(g_guide_disable)
     {
         if(g_taskdown == 0)
         {
@@ -621,14 +620,14 @@ void loctask2c_cb(lv_event_t *e)
     local_task_id = 2;
     g_tasktype = 0;
 
-    if(!g_dev_binded)
+    if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
         emoji_switch_scr = SCREEN_GUIDE;
         emoji_timer(EMOJI_DETECTING);
     }
     
-    if(g_dev_binded){
+    if(g_guide_disable){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
         g_taskdown = 0;
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
@@ -647,13 +646,13 @@ void loctask3c_cb(lv_event_t *e)
     local_task_id = 1;
     g_tasktype = 0;
 
-    if(!g_dev_binded)
+    if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
         return;
     }
 
-    if(g_dev_binded){
+    if(g_guide_disable){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
         g_taskdown = 0;
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
@@ -672,13 +671,13 @@ void loctask4c_cb(lv_event_t *e)
     local_task_id = 0;
     g_tasktype = 0;
 
-    if(!g_dev_binded)
+    if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
         return;
     }
 
-    if(g_dev_binded){
+    if(g_guide_disable){
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
         g_taskdown = 0;
         lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
@@ -1127,11 +1126,11 @@ void sliderr_cb(lv_event_t *e)
         switch (g_swipeid)
         {
             case 0:
-                if (shutdown_state == 0)
+                if (g_shutdown == 0)
                 {
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
                 }
-                if (shutdown_state == 1)
+                if (g_shutdown == 1)
                 {
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
                 }
@@ -1298,7 +1297,7 @@ void guide2avaclick_cb(lv_event_t * e)
         lv_obj_clear_flag(ui_guide1p3, LV_OBJ_FLAG_HIDDEN);
 
         set_usage_guide(UI_CALLER, 1);
-        g_dev_binded = get_usage_guide(UI_CALLER);
+        g_guide_disable = get_usage_guide(UI_CALLER);
         lv_group_set_wrap(g_main, true);
     }
 }
@@ -1316,7 +1315,7 @@ void guidebtn1click_cb(lv_event_t * e)
 void guidebtn2click_cb(lv_event_t * e)
 {
     set_usage_guide(UI_CALLER, 1);
-    g_dev_binded = get_usage_guide(UI_CALLER);
+    g_guide_disable = get_usage_guide(UI_CALLER);
 
     if(g_tasktype == 0)
     {
@@ -1459,12 +1458,12 @@ static void Task_end()
 
 static void Page_shutdown()
 {
-    if (shutdown_state == 1)
+    if (g_shutdown == 1)
     {
         lv_label_set_text(ui_sptitle, "Shut down");
         lv_label_set_text(ui_sptext, "Swipe to shut down");
     }
-    else if (shutdown_state == 0)
+    else if (g_shutdown == 0)
     {
         lv_label_set_text(ui_sptitle, "Reboot");
         lv_label_set_text(ui_sptext, "Swipe to reboot");
@@ -1554,7 +1553,7 @@ void viewInfoInit()
 
 static void view_info_obtain_early()
 {
-    g_dev_binded = retry_get_data((uint8_t* (*)(int))get_usage_guide, UI_CALLER, MAX_RETRIES);
+    g_guide_disable = retry_get_data((uint8_t* (*)(int))get_usage_guide, UI_CALLER, MAX_RETRIES);
     qrcode_content = (char *)retry_get_data((uint8_t* (*)(int))get_qrcode_content, UI_CALLER, MAX_RETRIES);
 }
 

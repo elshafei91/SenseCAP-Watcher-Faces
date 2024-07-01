@@ -25,9 +25,8 @@ lv_obj_t * ui_viewpt2;
 lv_obj_t * ui_viewpbtn3;
 
 extern uint8_t g_avarlive;
-
-extern uint8_t wifi_page_id;
-extern int g_dev_binded;
+extern uint8_t g_dev_binded;
+extern int g_guide_disable;
 extern uint8_t g_guide_step;
 extern uint8_t g_alarm_p;
 extern uint8_t g_avalivjump;
@@ -194,7 +193,7 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
     }
     view_alarm_status = 1;
     alarm_timer_start(alarm_st->duration);
-    if((!g_dev_binded) && (g_guide_step != 3)){return 0;}
+    if((!g_guide_disable) && (g_guide_step != 3)){return 0;}
     if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive)){return 0;}
     // for switch avatar emoticon
     emoticon_disp_id = 1;
