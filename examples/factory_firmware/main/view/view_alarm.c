@@ -26,6 +26,7 @@ lv_obj_t * ui_viewpbtn3;
 
 // view emoji ota
 lv_obj_t * ui_Page_Emoji;
+lv_obj_t * ui_failed;
 lv_obj_t * ui_facet;
 lv_obj_t * ui_facearc;
 lv_obj_t * ui_faceper;
@@ -462,13 +463,24 @@ void view_emoji_ota_init(void)
     lv_obj_set_width(ui_facet, 380);
     lv_obj_set_height(ui_facet, 100);
     lv_obj_set_x(ui_facet, 0);
-    lv_obj_set_y(ui_facet, -14);
+    lv_obj_set_y(ui_facet, 0);
     lv_obj_set_align(ui_facet, LV_ALIGN_CENTER);
     lv_label_set_text(ui_facet, "Uploading\nface...");
     lv_obj_set_style_text_color(ui_facet, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_facet, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_facet, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_facet, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_failed = lv_label_create(ui_Page_Emoji);
+    lv_obj_set_width(ui_failed, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_failed, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_x(ui_failed, 0);
+    lv_obj_set_y(ui_failed, -75);
+    lv_obj_set_align(ui_failed, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_failed, "Failed");
+    lv_obj_set_style_text_color(ui_failed, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_failed, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_failed, &ui_font_semibold42, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_facearc = lv_arc_create(ui_Page_Emoji);
     lv_obj_set_width(ui_facearc, 412);

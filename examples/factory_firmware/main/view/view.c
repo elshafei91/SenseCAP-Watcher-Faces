@@ -48,6 +48,7 @@ extern lv_obj_t * ui_viewpt2;
 extern lv_obj_t * ui_viewpbtn3;
 
 extern lv_obj_t * ui_Page_Emoji;
+extern lv_obj_t * ui_failed;
 extern lv_obj_t * ui_facet;
 extern lv_obj_t * ui_facearc;
 extern lv_obj_t * ui_faceper;
@@ -138,6 +139,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 int *emoji_download_per = (int *)event_data;
 
                 lv_obj_clear_flag(ui_Page_Emoji, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_clear_flag(ui_facearc, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_failed, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_Page_Emoji);
 
                 // ESP_LOGI(TAG, "emoji_download_per : %d", *emoji_download_per);
@@ -157,10 +160,18 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_arc_set_value(ui_facearc, 100);
                     lv_label_set_text(ui_facet, "Please reboot to update new faces");
                 }
-                
-                
                 break;
             }
+
+            //TODO
+            // case VIEW_EVENT_EMOJI_DOWLOAD_FAILED:{
+            //     ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_FAILED");
+            //     lv_obj_add_flag(ui_facearc, LV_OBJ_FLAG_HIDDEN);
+            //     lv_obj_clear_flag(ui_failed, LV_OBJ_FLAG_HIDDEN);
+            //     lv_label_set_text(ui_facet, "No internet, cannot get new animation");
+
+            //     break;
+            // }
 
             case VIEW_EVENT_INFO_OBTAIN:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_INFO_OBTAIN");
@@ -654,6 +665,11 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, 
                                                             __view_event_handler, NULL, NULL));
+
+    //TODO
+    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_FAILED, 
+    //                                                         __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_MODE_STANDBY, 
