@@ -30,14 +30,6 @@ typedef enum
   PM_CLEAR_GROUP        // 2: change screen, and clear all the objs of group
 } pm_operation_t;
 
-extern lv_pm_page_record g_page_record;
-
-extern GroupInfo group_page_main;
-extern GroupInfo group_page_template;
-extern GroupInfo group_page_set;
-extern GroupInfo group_page_view;
-extern GroupInfo group_page_ha;
-
 void lv_pm_init(void);
 void lv_pm_open_page(lv_group_t * group, GroupInfo *groupInfo, pm_operation_t operation, lv_obj_t **target,
                     lv_scr_load_anim_t fademode, int spd, int delay, void (*target_init)(void));

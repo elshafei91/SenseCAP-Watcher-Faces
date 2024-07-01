@@ -47,6 +47,18 @@ extern lv_obj_t * ui_viewpbtn2;
 extern lv_obj_t * ui_viewpt2;
 extern lv_obj_t * ui_viewpbtn3;
 
+extern GroupInfo group_page_main;
+extern GroupInfo group_page_template;
+extern GroupInfo group_page_notask;
+extern GroupInfo group_page_extension;
+extern GroupInfo group_page_set;
+extern GroupInfo group_page_view;
+extern GroupInfo group_page_brightness;
+extern GroupInfo group_page_volume;
+extern GroupInfo group_page_connectapp;
+extern GroupInfo group_page_about;
+extern GroupInfo group_page_guide;
+
 extern int g_detect_image_count;
 extern int g_speak_image_count;
 extern int g_listen_image_count;

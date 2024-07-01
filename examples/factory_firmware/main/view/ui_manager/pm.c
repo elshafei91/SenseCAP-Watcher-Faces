@@ -14,12 +14,14 @@ lv_indev_t *cur_drv;
 
 GroupInfo group_page_main;
 GroupInfo group_page_template;
+GroupInfo group_page_notask;
+GroupInfo group_page_extension;
 GroupInfo group_page_set;
 GroupInfo group_page_view;
-GroupInfo group_page_ha;
 GroupInfo group_page_brightness;
 GroupInfo group_page_volume;
 GroupInfo group_page_connectapp;
+GroupInfo group_page_about;
 GroupInfo group_page_guide;
 
 static void lv_pm_obj_group(lv_group_t * group, GroupInfo *groupInfo);
@@ -119,25 +121,31 @@ static void lv_pm_obj_group(lv_group_t * group, GroupInfo *groupInfo)
 void initGroup()
 {
     // define objects array
-    lv_obj_t * main_objects[]        = {ui_mainbtn1, ui_mainbtn2, ui_mainbtn3, ui_mainbtn4};
-    lv_obj_t * template_objects[]    = {ui_menubtn1, ui_menubtn2, ui_menubtn3, ui_menubtn4};
-    lv_obj_t * set_objects[]         = {ui_setback, ui_setdown, ui_setapp, ui_setwifi, ui_setble, ui_setvol, ui_setbri,ui_settime,
+    lv_obj_t * main_objects[]           = {ui_mainbtn1, ui_mainbtn2, ui_mainbtn3, ui_mainbtn4};
+    lv_obj_t * template_objects[]       = {ui_menubtn1, ui_menubtn2, ui_menubtn3, ui_menubtn4};
+    lv_obj_t * notask_objects[]         = {ui_curtask1b};
+    lv_obj_t * extension_objects[]      = {ui_extensionback};
+    lv_obj_t * set_objects[]            = {ui_setback, ui_setdown, ui_setapp, ui_setwifi, ui_setble, ui_setvol, ui_setbri,ui_settime,
                                         ui_setrgb, ui_setww,ui_setdev, ui_setfac};
-    lv_obj_t * view_objects[]        = {ui_Page_ViewAva, ui_Page_ViewLive};
-    lv_obj_t * ha_objects[]          = {ui_Page_Extension};
-    lv_obj_t * brightness_objects[]  = {ui_bslider, ui_bvback};
-    lv_obj_t * volume_objects[]      = {ui_vslider, ui_bvback};
-    lv_obj_t * connectapp_objects[]  = {ui_connp1, ui_connp2};
-    lv_obj_t * guide_objects[]        = {ui_Page_Guideavatar, ui_Page_Guidelive};
+    lv_obj_t * view_objects[]           = {ui_Page_ViewAva, ui_Page_ViewLive};
+    lv_obj_t * brightness_objects[]     = {ui_bslider, ui_bvback};
+    lv_obj_t * volume_objects[]         = {ui_vslider, ui_bvback};
+    lv_obj_t * connectapp_objects[]     = {ui_connp1, ui_connp2};
+    lv_obj_t * about_objects[]          = {ui_aboutdevname, ui_aboutespversion, ui_aboutaiversion, ui_aboutsn, ui_abouteui, ui_aboutblemac,
+                                        ui_aboutwifimac, ui_Paboutb};
+    lv_obj_t * guide_objects[]          = {ui_Page_Guideavatar, ui_Page_Guidelive};
+
 
     addObjToGroup(&group_page_main, main_objects, sizeof(main_objects) / sizeof(main_objects[0]));
     addObjToGroup(&group_page_template, template_objects, sizeof(template_objects) / sizeof(template_objects[0]));
+    addObjToGroup(&group_page_notask, notask_objects, sizeof(notask_objects) / sizeof(notask_objects[0]));
+    addObjToGroup(&group_page_extension, extension_objects, sizeof(extension_objects) / sizeof(extension_objects[0]));
     addObjToGroup(&group_page_set, set_objects, sizeof(set_objects) / sizeof(set_objects[0]));
     addObjToGroup(&group_page_view, view_objects, sizeof(view_objects) / sizeof(view_objects[0]));
-    addObjToGroup(&group_page_ha, ha_objects, sizeof(ha_objects) / sizeof(ha_objects[0]));
     addObjToGroup(&group_page_brightness, brightness_objects, sizeof(brightness_objects) / sizeof(brightness_objects[0]));
     addObjToGroup(&group_page_volume, volume_objects, sizeof(volume_objects) / sizeof(volume_objects[0]));
     addObjToGroup(&group_page_connectapp, connectapp_objects, sizeof(connectapp_objects) / sizeof(connectapp_objects[0]));
+    addObjToGroup(&group_page_about, about_objects, sizeof(about_objects) / sizeof(about_objects[0]));
     addObjToGroup(&group_page_guide, guide_objects, sizeof(guide_objects) / sizeof(guide_objects[0]));
 }
 
