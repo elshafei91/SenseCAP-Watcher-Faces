@@ -53,6 +53,7 @@ static lv_obj_t *virtual_image = NULL;
 static lv_obj_t *flag_image = NULL;
 
 static int current_img_index = 0;
+static uint8_t vir_load_count = 0;
 static uint32_t local_task_id;
 static lv_timer_t *g_timer;
 static char *qrcode_content = NULL;
@@ -147,7 +148,6 @@ static void async_emoji_switch_scr(void *arg)
 static void emoji_timer_callback(lv_timer_t *timer)
 {
     uint32_t * user_data = (uint32_t *)timer->user_data;
-    static uint8_t vir_load_count = 0;
     const lv_img_dsc_t *current_img = NULL;
     // ESP_LOGI(TAG, "user_data is %d", *user_data);
 
@@ -319,10 +319,12 @@ void loadscrload_cb(lv_event_t *e)
 void virclick_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virtc_cb");
+    if(vir_load_count < 8)return;
     if(!g_dev_binded)   // if the device is not wifi-configed, then appear panel
     {
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
         emoji_timer(EMOJI_STOP);    // stop timer
+        vir_load_count = 0;
     }else{              // else the device is wifi-configed, jump to Home page
         if(lv_scr_act() == ui_Page_Avatar)lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
         emoji_timer(EMOJI_STOP);    // stop timer
@@ -971,6 +973,9 @@ void setwific_cb(lv_event_t *e)
     lv_label_set_text(ui_wifissid, ssid_string);
     // binded
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Network, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Network_screen_init);
+    lv_group_remove_all_objs(g_main);
+    lv_group_add_obj(g_main, ui_wificancel);
+
     lv_obj_clear_flag(ui_wifip1, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(ui_wifiicon);
 
