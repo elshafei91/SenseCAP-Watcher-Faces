@@ -361,7 +361,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 struct tf_module_local_alarm_info *alarm_st = (struct tf_module_local_alarm_info *)event_data;
                              
                 view_alarm_on(alarm_st);
-
+                tf_data_buf_free(&(alarm_st->text));
+                tf_data_image_free(&(alarm_st->img));
                 break;
             }
 
