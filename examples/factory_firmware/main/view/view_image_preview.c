@@ -156,7 +156,6 @@ int view_image_preview_init(lv_obj_t *ui_screen)
         lv_obj_set_style_text_font(ui_class_name[i], &lv_font_montserrat_26, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_add_flag(ui_class_name[i], LV_OBJ_FLAG_HIDDEN);
     }
-
     classes_color_init();
     return 0;
 }
@@ -258,11 +257,35 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
             break;
 
         case AI_CAMERA_INFERENCE_TYPE_CLASS:
-            // char buf1[32];
-            // char *p_class_name = p_info->inference.classes[p_box[i].target];
-            // lv_snprintf(buf1, sizeof(buf1), "%s", p_class_name);
-            // lv_label_set_text(ui_class_name[i], buf1);
-            // lv_obj_set_style_bg_color(ui_class_name[i], cls_color[], LV_PART_MAIN | LV_STATE_DEFAULT);
+            for (size_t i = 0; i < IMAGE_INVOKED_BOXES; i++)
+            {
+                if (i < p_info->inference.cnt)
+                {
+                    sscma_client_class_t *p_class = (sscma_client_class_t *)p_info->inference.p_data;
+                    
+                    char *p_class_name = "unknown";
+                    if(  p_info->inference.classes[p_class[i].target] != NULL) {
+                        p_class_name = p_info->inference.classes[p_class[i].target];
+                    }
+                    
+                    lv_color_t color = cls_color[p_class[i].target];
+                    char buf1[32];
+                    lv_snprintf(buf1, sizeof(buf1), "%s:%d", p_class_name, p_class[i].score);
+                    
+                    
+                    lv_obj_set_pos(ui_class_name[i], 180, 60 + i*40);
+                    lv_label_set_text(ui_class_name[i], buf1);
+                    lv_obj_set_style_bg_color(ui_class_name[i], color, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(ui_class_name[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_clear_flag(ui_class_name[i], LV_OBJ_FLAG_HIDDEN);
+                }
+                else
+                {
+                    lv_obj_add_flag(ui_rectangle[i], LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_add_flag(ui_class_name[i], LV_OBJ_FLAG_HIDDEN);
+                }
+            }
+
             break;
 
         default:
