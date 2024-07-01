@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_CurTask2_screen_init(void)
+void ui_Page_ModelOTA_screen_init(void)
 {
-    ui_Page_CurTask2 = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_CurTask2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_CurTask2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_CurTask2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_ModelOTA = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_ModelOTA, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_ModelOTA, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_ModelOTA, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_waittext = lv_label_create(ui_Page_CurTask2);
+    ui_waittext = lv_label_create(ui_Page_ModelOTA);
     lv_obj_set_width(ui_waittext, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_waittext, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_waittext, 0);
@@ -24,7 +24,7 @@ void ui_Page_CurTask2_screen_init(void)
     lv_obj_set_style_text_align(ui_waittext, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_waittext, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_waitb = lv_btn_create(ui_Page_CurTask2);
+    ui_waitb = lv_btn_create(ui_Page_ModelOTA);
     lv_obj_set_width(ui_waitb, 60);
     lv_obj_set_height(ui_waitb, 60);
     lv_obj_set_x(ui_waitb, 0);
@@ -39,7 +39,7 @@ void ui_Page_CurTask2_screen_init(void)
     lv_obj_set_style_shadow_color(ui_waitb, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(ui_waitb, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_waitarc = lv_arc_create(ui_Page_CurTask2);
+    ui_waitarc = lv_arc_create(ui_Page_ModelOTA);
     lv_obj_set_width(ui_waitarc, 412);
     lv_obj_set_height(ui_waitarc, 412);
     lv_obj_set_x(ui_waitarc, 0);
@@ -58,7 +58,7 @@ void ui_Page_CurTask2_screen_init(void)
     lv_obj_set_style_bg_color(ui_waitarc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_waitarc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
-    ui_Spinner1 = lv_spinner_create(ui_Page_CurTask2, 1000, 90);
+    ui_Spinner1 = lv_spinner_create(ui_Page_ModelOTA, 1000, 90);
     lv_obj_set_width(ui_Spinner1, 50);
     lv_obj_set_height(ui_Spinner1, 50);
     lv_obj_set_x(ui_Spinner1, 0);
@@ -71,7 +71,7 @@ void ui_Page_CurTask2_screen_init(void)
     lv_obj_set_style_arc_opa(ui_Spinner1, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_width(ui_Spinner1, 8, LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
-    ui_otap = lv_obj_create(ui_Page_CurTask2);
+    ui_otap = lv_obj_create(ui_Page_ModelOTA);
     lv_obj_set_width(ui_otap, 100);
     lv_obj_set_height(ui_otap, 50);
     lv_obj_set_x(ui_otap, 0);

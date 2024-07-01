@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_brivol_screen_init(void)
+void ui_Page_Slider_screen_init(void)
 {
-    ui_Page_brivol = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_brivol, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_brivol, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_brivol, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Slider = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Slider, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Slider, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Slider, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_bvpb = lv_obj_create(ui_Page_brivol);
+    ui_bvpb = lv_obj_create(ui_Page_Slider);
     lv_obj_set_width(ui_bvpb, 320);
     lv_obj_set_height(ui_bvpb, 67);
     lv_obj_set_x(ui_bvpb, 0);
@@ -63,7 +63,7 @@ void ui_Page_brivol_screen_init(void)
     lv_obj_set_style_text_opa(ui_bvs, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_bvs, &ui_font_fontbold26, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_bvtp = lv_obj_create(ui_Page_brivol);
+    ui_bvtp = lv_obj_create(ui_Page_Slider);
     lv_obj_set_width(ui_bvtp, 288);
     lv_obj_set_height(ui_bvtp, 60);
     lv_obj_set_x(ui_bvtp, 0);
@@ -84,7 +84,7 @@ void ui_Page_brivol_screen_init(void)
     lv_obj_set_style_text_opa(ui_bvtitle, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_bvtitle, &lv_font_montserrat_22, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_bvback = lv_btn_create(ui_Page_brivol);
+    ui_bvback = lv_btn_create(ui_Page_Slider);
     lv_obj_set_width(ui_bvback, 75);
     lv_obj_set_height(ui_bvback, 75);
     lv_obj_set_x(ui_bvback, 0);
@@ -102,7 +102,7 @@ void ui_Page_brivol_screen_init(void)
     lv_obj_set_style_border_opa(ui_bvback, 255, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_border_width(ui_bvback, 5, LV_PART_MAIN | LV_STATE_FOCUSED);
 
-    ui_vp = lv_obj_create(ui_Page_brivol);
+    ui_vp = lv_obj_create(ui_Page_Slider);
     lv_obj_set_width(ui_vp, 380);
     lv_obj_set_height(ui_vp, 100);
     lv_obj_set_align(ui_vp, LV_ALIGN_CENTER);
@@ -133,7 +133,7 @@ void ui_Page_brivol_screen_init(void)
     lv_obj_set_style_border_opa(ui_vslider, 255, LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_vslider, 4, LV_PART_KNOB | LV_STATE_DEFAULT);
 
-    ui_bp = lv_obj_create(ui_Page_brivol);
+    ui_bp = lv_obj_create(ui_Page_Slider);
     lv_obj_set_width(ui_bp, 380);
     lv_obj_set_height(ui_bp, 100);
     lv_obj_set_align(ui_bp, LV_ALIGN_CENTER);

@@ -159,26 +159,22 @@ void* read_png_to_psram(const char *path, size_t *out_size) {
     return png_buffer;
 }
 
-// Function to create a black image buffer
-void* create_black_image(size_t size) {
+// Function to create a black image buffer with a label
+void* create_black_image_with_label(size_t size, const char *label) {
     void *black_buffer = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
     if (!black_buffer) {
         ESP_LOGE("PSRAM", "Failed to allocate PSRAM for black image buffer");
         return NULL;
     }
     memset(black_buffer, 0, size);
+
+    // Add label to the black buffer
+    // This could be done using a graphics library to draw the label text onto the black buffer
+    // For simplicity, we are just logging it here
+    ESP_LOGW("Black Image", "Created black image with label: %s", label);
+
     return black_buffer;
 }
-
-// // Function to create a black image buffer and store it
-// void create_black_image_and_store(lv_img_dsc_t **img_dsc_array, int *image_count, size_t size) {
-//     ESP_LOGW("PNG Load", "Creating a black image due to validation failure");
-//     void *black_data = create_black_image(size);
-//     if (black_data) {
-//         create_img_dsc(&img_dsc_array[*image_count], black_data, size);
-//         (*image_count)++;
-//     }
-// }
 
 // Helper function to check if the file name matches the specified prefix and is a PNG file
 static int is_png_file_for_expression(const char* filename, const char* prefix) {
@@ -193,118 +189,66 @@ static int is_png_file_for_expression(const char* filename, const char* prefix) 
     return 0;
 }
 
-// Function to read and store selected PNG files based on prefix
-void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
+// Helper function to load images based on prefix
+bool load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
     DIR *dir;
     struct dirent *ent;
-    bool image_loaded = false;
+    bool loaded = false;
+
     if ((dir = opendir("/spiffs")) != NULL) {
         while ((ent = readdir(dir)) != NULL) {
-            if (is_png_file_for_expression(ent->d_name, file_prefix)) {
+            if (is_png_file_for_expression(ent->d_name, prefix)) {
                 if (*image_count >= MAX_IMAGES) {
                     ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
                     break;
                 }
-                
+
                 size_t size;
                 char filepath[256];
                 sprintf(filepath, "/spiffs/%s", ent->d_name);
                 void *data = read_png_to_psram(filepath, &size);
                 if (data) {
                     ESP_LOGI("PNG Load", "Loaded %s into PSRAM", ent->d_name);
-                    
+
                     create_img_dsc(&img_dsc_array[*image_count], data, size);
                     (*image_count)++;
-                    image_loaded = true;
+                    loaded = true;
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
                 }
             }
         }
         closedir(dir);
-    }
-    else
-    {
+    } else {
         ESP_LOGE("SPIFFS", "Failed to open directory /spiffs");
     }
+
+    return loaded;
+}
+
+// Function to read and store selected PNG files based on prefix
+void read_and_store_selected_pngs(const char *primary_prefix, const char *secondary_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
+    bool image_loaded = false;
+
+    // Try loading images with primary prefix
+    image_loaded = load_images(primary_prefix, img_dsc_array, image_count);
+
+    // If no images loaded with primary prefix, try secondary prefix
+    if (!image_loaded) {
+        ESP_LOGW("PNG Load", "No images found with primary prefix %s, trying secondary prefix %s", primary_prefix, secondary_prefix);
+        image_loaded = load_images(secondary_prefix, img_dsc_array, image_count);
+    }
+
+    // If no images loaded with either prefix, create black images with labels
     if (!image_loaded && *image_count < MAX_IMAGES) {
-        ESP_LOGW("PNG Load", "No image found for prefix %s, creating a black image", file_prefix);
+        ESP_LOGW("PNG Load", "No images found with either prefix, creating black images with labels");
         size_t size = 412 * 412 * 3; // Assuming the size for a 412x412 image with alpha channel
-        void *black_data = create_black_image(size);
+        void *black_data = create_black_image_with_label(size, primary_prefix);
         if (black_data) {
             create_img_dsc(&img_dsc_array[*image_count], black_data, size);
             (*image_count)++;
         }
     }
 }
-
-//TODO
-// // Function to read and store selected PNG files based on prefix
-// void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
-//     char json_filepath[256];
-//     sprintf(json_filepath, "/spiffs/%s.json", file_prefix);
-//     char *json_content = read_json_file(json_filepath);
-//     if (!json_content) {
-//         ESP_LOGE("JSON", "Failed to read JSON file: %s", json_filepath);
-//         return;
-//     }
-
-//     cJSON *json = cJSON_Parse(json_content);
-//     if (!json) {
-//         ESP_LOGE("JSON", "Failed to parse JSON content");
-//         free(json_content);
-//         return;
-//     }
-
-//     cJSON *expressions = cJSON_GetObjectItemCaseSensitive(json, "expressions");
-//     if (!cJSON_IsObject(expressions)) {
-//         ESP_LOGE("JSON", "Invalid JSON format");
-//         cJSON_Delete(json);
-//         free(json_content);
-//         return;
-//     }
-
-//     cJSON *expression = cJSON_GetObjectItemCaseSensitive(expressions, file_prefix);
-//     if (!cJSON_IsArray(expression)) {
-//         ESP_LOGE("JSON", "Invalid JSON format for expression %s", file_prefix);
-//         cJSON_Delete(json);
-//         free(json_content);
-//         return;
-//     }
-
-//     cJSON *image;
-//     cJSON_ArrayForEach(image, expression) {
-//         cJSON *img_name = cJSON_GetObjectItemCaseSensitive(image, "name");
-//         cJSON *img_size = cJSON_GetObjectItemCaseSensitive(image, "size");
-
-//         if (!cJSON_IsString(img_name) || !cJSON_IsNumber(img_size)) {
-//             ESP_LOGE("JSON", "Invalid image format in JSON for expression %s", file_prefix);
-//             continue;
-//         }
-
-//         char filepath[256];
-//         sprintf(filepath, "/spiffs/%s", img_name->valuestring);
-//         size_t size;
-//         void *data = read_png_to_psram(filepath, &size);
-//         if (data) {
-//             if (validate_image(img_name->valuestring, size, expression)) {
-//                 ESP_LOGI("PNG Load", "Loaded %s into PSRAM", img_name->valuestring);
-//                 create_img_dsc(&img_dsc_array[*image_count], data, size);
-//                 (*image_count)++;
-//                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, 0, pdMS_TO_TICKS(10000));
-//             } else {
-//                 ESP_LOGE("Validation", "Image %s failed validation, creating black image", img_name->valuestring);
-//                 create_black_image_and_store(img_dsc_array, image_count, img_size->valueint);
-//             }
-//         } else {
-//             ESP_LOGE("PNG Load", "Failed to load image %s, creating black image", img_name->valuestring);
-//             create_black_image_and_store(img_dsc_array, image_count, img_size->valueint);
-//         }
-//     }
-
-//     cJSON_Delete(json);
-//     free(json_content);
-// }
-
 
 
 
@@ -455,7 +399,7 @@ esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJ
         task_arg->config.event_handler = _http_event_handler;
         task_arg->config.user_data = task_arg;
 
-        sniprintf(task_arg->file_path, 255/*leave the last zero*/, "%s/%s%d.png", STORAGE_MOUNT_POINT, base_name, url_index+1);
+        sniprintf(task_arg->file_path, 255/*leave the last zero*/, "%s/Custom_%s%d.png", STORAGE_MOUNT_POINT, base_name, url_index+1);
 
         const int stack_size = 8192;
         StackType_t *task_stack = (StackType_t *)psram_calloc(stack_size, sizeof(StackType_t));

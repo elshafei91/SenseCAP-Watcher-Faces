@@ -20,8 +20,7 @@ typedef struct
 } ImageData;
 
 
-void *read_png_to_psram(const char *path, size_t *out_size);
-void read_and_store_selected_pngs(const char *file_prefix, lv_img_dsc_t **img_dsc_array, int *image_count);
+void read_and_store_selected_pngs(const char *primary_prefix, const char *secondary_prefix, lv_img_dsc_t **img_dsc_array, int *image_count);
 
 
 typedef enum {

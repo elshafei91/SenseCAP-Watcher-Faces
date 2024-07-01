@@ -5,14 +5,14 @@
 
 #include "../ui.h"
 
-void ui_Page_Slpt_screen_init(void)
+void ui_Page_Sleep_screen_init(void)
 {
-    ui_Page_Slpt = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Page_Slpt, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_Page_Slpt, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Page_Slpt, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_Page_Sleep = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Page_Sleep, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_Page_Sleep, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_Page_Sleep, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_slptpanel = lv_obj_create(ui_Page_Slpt);
+    ui_slptpanel = lv_obj_create(ui_Page_Sleep);
     lv_obj_set_width(ui_slptpanel, 380);
     lv_obj_set_height(ui_slptpanel, 260);
     lv_obj_set_x(ui_slptpanel, 0);
@@ -131,7 +131,7 @@ void ui_Page_Slpt_screen_init(void)
     lv_obj_set_style_border_opa(ui_slpt7, 255, LV_PART_MAIN | LV_STATE_FOCUSED);
     lv_obj_set_style_border_width(ui_slpt7, 1, LV_PART_MAIN | LV_STATE_FOCUSED);
 
-    ui_slpback = lv_btn_create(ui_Page_Slpt);
+    ui_slpback = lv_btn_create(ui_Page_Sleep);
     lv_obj_set_width(ui_slpback, 60);
     lv_obj_set_height(ui_slpback, 60);
     lv_obj_set_x(ui_slpback, 0);

@@ -703,6 +703,38 @@ static esp_err_t __check_reset_factory()
     {
         ESP_LOGI(TAG, "###########>>> start to reset factory <<<###########");
         storage_erase();
+        storage_file_remove("/spiffs/Custom_greeting1.png");
+        storage_file_remove("/spiffs/Custom_greeting2.png");
+        storage_file_remove("/spiffs/Custom_greeting3.png");
+
+        storage_file_remove("/spiffs/Custom_detecting1.png");
+        storage_file_remove("/spiffs/Custom_detecting2.png");
+        storage_file_remove("/spiffs/Custom_detecting3.png");
+        storage_file_remove("/spiffs/Custom_detecting4.png");
+        storage_file_remove("/spiffs/Custom_detecting5.png");
+
+        storage_file_remove("/spiffs/Custom_detected1.png");
+        storage_file_remove("/spiffs/Custom_detected2.png");
+
+        storage_file_remove("/spiffs/Custom_speaking1.png");
+        storage_file_remove("/spiffs/Custom_speaking2.png");
+        storage_file_remove("/spiffs/Custom_speaking3.png");
+
+        storage_file_remove("/spiffs/Custom_listening1.png");
+        storage_file_remove("/spiffs/Custom_listening2.png");
+
+        storage_file_remove("/spiffs/Custom_analyzing1.png");
+        storage_file_remove("/spiffs/Custom_analyzing2.png");
+        storage_file_remove("/spiffs/Custom_analyzing3.png");
+        storage_file_remove("/spiffs/Custom_analyzing4.png");
+        storage_file_remove("/spiffs/Custom_analyzing5.png");
+
+        storage_file_remove("/spiffs/Custom_standby1.png");
+        storage_file_remove("/spiffs/Custom_standby2.png");
+        storage_file_remove("/spiffs/Custom_standby3.png");
+        storage_file_remove("/spiffs/Custom_standby4.png");
+
+
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
         atomic_store(&g_will_reset_factory, false);
     }

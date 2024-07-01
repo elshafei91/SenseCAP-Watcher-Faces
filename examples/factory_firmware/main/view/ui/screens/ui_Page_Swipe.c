@@ -87,9 +87,7 @@ void ui_Page_Swipe_screen_init(void)
 
     ui_swipep2 = lv_obj_create(ui_Page_Swipe);
     lv_obj_set_width(ui_swipep2, 412);
-    lv_obj_set_height(ui_swipep2, 200);
-    lv_obj_set_x(ui_swipep2, 0);
-    lv_obj_set_y(ui_swipep2, -30);
+    lv_obj_set_height(ui_swipep2, 412);
     lv_obj_set_align(ui_swipep2, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_swipep2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
@@ -99,13 +97,29 @@ void ui_Page_Swipe_screen_init(void)
     lv_obj_set_style_border_opa(ui_swipep2, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_sptext2 = lv_label_create(ui_swipep2);
-    lv_obj_set_width(ui_sptext2, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_width(ui_sptext2, 311);
     lv_obj_set_height(ui_sptext2, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_x(ui_sptext2, 0);
+    lv_obj_set_y(ui_sptext2, 25);
     lv_obj_set_align(ui_sptext2, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_sptext2, "Cannot shutdown");
+    lv_label_set_text(ui_sptext2, "Factory reset in progress, please do not turn off the device...");
     lv_obj_set_style_text_color(ui_sptext2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_sptext2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_sptext2, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_sptext2, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_Spinner4 = lv_spinner_create(ui_swipep2, 1000, 90);
+    lv_obj_set_width(ui_Spinner4, 50);
+    lv_obj_set_height(ui_Spinner4, 50);
+    lv_obj_set_x(ui_Spinner4, 0);
+    lv_obj_set_y(ui_Spinner4, -76);
+    lv_obj_set_align(ui_Spinner4, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_Spinner4, LV_OBJ_FLAG_CLICKABLE);      /// Flags
+    lv_obj_set_style_arc_width(ui_Spinner4, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_set_style_arc_color(ui_Spinner4, lv_color_hex(0xA1D42A), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_opa(ui_Spinner4, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_width(ui_Spinner4, 8, LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_spsilder, ui_event_spsilder, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_spback, ui_event_spback, LV_EVENT_ALL, NULL);
