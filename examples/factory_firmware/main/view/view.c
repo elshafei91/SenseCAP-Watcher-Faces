@@ -138,6 +138,15 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 }
                 break;
             }
+            case VIEW_EVENT_EMOJI_DOWLOAD_FAILED:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_FAILED");
+                _ui_screen_change(&ui_Page_emoticon, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_emoticon_screen_init);
+                lv_obj_add_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_clear_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);  // TODO @QingWind6: should be err X btn
+                lv_obj_add_flag(ui_facearc, LV_OBJ_FLAG_HIDDEN);
+                lv_label_set_text(ui_facet, "Failed, please retry");
+                break;
+            }
 
             case VIEW_EVENT_INFO_OBTAIN:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_INFO_OBTAIN");
@@ -626,6 +635,10 @@ int view_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_FAILED, 
                                                             __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
