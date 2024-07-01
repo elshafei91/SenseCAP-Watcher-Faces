@@ -24,21 +24,6 @@ void ui_Page_Revtask_screen_init(void)
     lv_obj_set_style_text_align(ui_revtext, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_revtext, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_revb = lv_btn_create(ui_Page_Revtask);
-    lv_obj_set_width(ui_revb, 60);
-    lv_obj_set_height(ui_revb, 60);
-    lv_obj_set_x(ui_revb, 0);
-    lv_obj_set_y(ui_revb, 120);
-    lv_obj_set_align(ui_revb, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_revb, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
-    lv_obj_clear_flag(ui_revb, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_revb, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_revb, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_revb, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_revb, &ui_img_button_cancel_png, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_color(ui_revb, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_shadow_opa(ui_revb, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
     ui_Spinner3 = lv_spinner_create(ui_Page_Revtask, 1000, 90);
     lv_obj_set_width(ui_Spinner3, 50);
     lv_obj_set_height(ui_Spinner3, 50);
@@ -51,7 +36,5 @@ void ui_Page_Revtask_screen_init(void)
     lv_obj_set_style_arc_color(ui_Spinner3, lv_color_hex(0xA1D42A), LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_opa(ui_Spinner3, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_width(ui_Spinner3, 8, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-
-    lv_obj_add_event_cb(ui_revb, ui_event_revb, LV_EVENT_ALL, NULL);
 
 }

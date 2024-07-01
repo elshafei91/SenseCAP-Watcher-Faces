@@ -37,11 +37,13 @@ uint8_t g_avarlive = 0;     // 0: current page is avatar,       1: current page 
 uint8_t g_tasktype = 0;     // 0: local task,                   1: remote task
 uint8_t g_backpage = 0;
 uint8_t g_avalivjump = 0;
+extern uint8_t g_dev_binded;
+extern uint8_t g_shutdown;
+
 static lv_obj_t *qr;
-static bool is_charging = 0;
 static uint8_t loading_flag = 0;
 static uint8_t emoji_switch_scr = NULL;
-static uint32_t emoji_user_data;
+static uint32_t emoji_user_data = NULL;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
 static struct view_data_emoticon_display emo_disp;
@@ -50,14 +52,11 @@ static lv_obj_t *avatar_image = NULL;
 static lv_obj_t *virtual_image = NULL;
 static lv_obj_t *flag_image = NULL;
 
-static int file_idx = 0;
 static int current_img_index = 0;
 static uint32_t local_task_id;
 static lv_timer_t *g_timer;
 static char *qrcode_content = NULL;
 
-extern uint8_t g_dev_binded;
-extern uint8_t g_shutdown;
 extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
 extern lv_obj_t *ui_alarm_indicator;
 extern lv_obj_t * ui_task_error;
@@ -81,12 +80,14 @@ extern int g_detected_image_count;
 
 extern GroupInfo group_page_main;
 extern GroupInfo group_page_template;
+extern GroupInfo group_page_notask;
+extern GroupInfo group_page_extension;
 extern GroupInfo group_page_set;
 extern GroupInfo group_page_view;
-extern GroupInfo group_page_ha;
 extern GroupInfo group_page_brightness;
 extern GroupInfo group_page_volume;
 extern GroupInfo group_page_connectapp;
+extern GroupInfo group_page_about;
 extern GroupInfo group_page_guide;
 
 // view_alarm obj extern
@@ -383,7 +384,7 @@ void main2c_cb(lv_event_t *e)
     ESP_LOGI(CLICK_TAG, "main2c_cb");
     if(g_taskdown == 1)
     {
-        lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Notask, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Notask_screen_init);
+        lv_pm_open_page(g_main, &group_page_notask, PM_ADD_OBJS_TO_GROUP, &ui_Page_Notask, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Notask_screen_init);
     }
     if(g_taskdown == 0)
     {
@@ -406,7 +407,7 @@ void main2f_cb(lv_event_t *e)
 void main3c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "main3c_cb");
-    lv_pm_open_page(g_main, &group_page_ha, PM_ADD_OBJS_TO_GROUP, &ui_Page_Extension, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Extension_screen_init);
+    lv_pm_open_page(g_main, &group_page_extension, PM_ADD_OBJS_TO_GROUP, &ui_Page_Extension, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Extension_screen_init);
 }
 
 void main3f_cb(lv_event_t *e)
@@ -436,13 +437,13 @@ void backset_cb(lv_event_t * e)
 void backmenu_cb(lv_event_t * e)
 {
     // ESP_LOGI(CLICK_TAG, "backmenu_cb");
-    if(g_backpage == 0){
-        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-    }
-
-    if(g_backpage == 1)
+    if(lv_scr_act() == ui_Page_ModelOTA)
     {
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
+    }else
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+        lv_group_set_wrap(g_main, true);
     }
 }
 
@@ -476,12 +477,6 @@ void ntaskb1c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "ntaskb1c_cb");
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_ModelOTA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ModelOTA_screen_init);
-}
-
-void ntaskb2c_cb(lv_event_t *e)
-{
-    ESP_LOGI(CLICK_TAG, "ntaskb2c_cb");
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
 void waitbc_cb(lv_event_t *e)
@@ -595,12 +590,6 @@ void viewlsul_cb(lv_event_t *e)
 void waitT_cb(lv_event_t *e)
 {
     // Your code here
-}
-
-void loctask1c_cb(lv_event_t *e)
-{
-    ESP_LOGI(CLICK_TAG, "loctask1c_cb");
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
 void loctask1f_cb(lv_event_t *e)
@@ -961,16 +950,12 @@ void paboutc_cb(lv_event_t *e)
     lv_pm_open_page(g_main, &group_page_set, PM_ADD_OBJS_TO_GROUP, &ui_Page_Set, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Set_screen_init);
 }
 
-void setbackc_cb(lv_event_t *e)
-{
-    ESP_LOGI(CLICK_TAG, "setbackc_cb");
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-}
-
 void setdevc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setdevc_cb");
-    lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_About, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_About_screen_init);
+    lv_pm_open_page(g_main, &group_page_about, PM_ADD_OBJS_TO_GROUP, &ui_Page_About, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_About_screen_init);
+    lv_group_focus_obj(ui_aboutdevname);
+    lv_group_set_wrap(g_main, false);
 }
 
 void setwific_cb(lv_event_t *e)
@@ -1565,7 +1550,7 @@ void view_info_obtain()
     retry_get_data((uint8_t* (*)(int))get_sound, UI_CALLER, MAX_RETRIES);
     retry_get_data((uint8_t* (*)(int))get_ble_switch, UI_CALLER, MAX_RETRIES);
 
-    // Update SN、EUI、BT-MAC to about device page
+    // Update SN、EUI、BTMAC、WIFIMAC、ESP_VERSION、AI_VERSION  to about device page
     static char about_sn[20];
     static char about_eui[40];
     static char about_btmac[20];
@@ -1616,8 +1601,8 @@ void view_info_obtain()
         snprintf(about_himax_version, sizeof(about_himax_version), "N/A");
     }
 
-    lv_label_set_text(ui_hv2, about_himax_version);
-    lv_label_set_text(ui_svt2, about_sw_version);
+    lv_label_set_text(ui_aiversion2, about_himax_version);
+    lv_label_set_text(ui_espversiont2, about_sw_version);
     lv_label_set_text(ui_snt2, (char *)about_sn);
     lv_label_set_text(ui_euit2, (char *)about_eui);
     lv_label_set_text(ui_blet2, (char *)about_btmac);

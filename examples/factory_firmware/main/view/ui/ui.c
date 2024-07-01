@@ -148,8 +148,6 @@ lv_obj_t * ui_otatsym;
 void ui_Page_Revtask_screen_init(void);
 lv_obj_t * ui_Page_Revtask;
 lv_obj_t * ui_revtext;
-void ui_event_revb(lv_event_t * e);
-lv_obj_t * ui_revb;
 lv_obj_t * ui_Spinner3;
 
 
@@ -274,18 +272,18 @@ lv_obj_t * ui_bslider;
 void ui_Page_About_screen_init(void);
 lv_obj_t * ui_Page_About;
 lv_obj_t * ui_AboutP;
-void ui_event_aboutdn(lv_event_t * e);
-lv_obj_t * ui_aboutdn;
-lv_obj_t * ui_dnt1;
-lv_obj_t * ui_dnt2;
-void ui_event_aboutsv(lv_event_t * e);
-lv_obj_t * ui_aboutsv;
-lv_obj_t * ui_svt1;
-lv_obj_t * ui_svt2;
-void ui_event_abouthimaxver(lv_event_t * e);
-lv_obj_t * ui_abouthimaxver;
-lv_obj_t * ui_hv1;
-lv_obj_t * ui_hv2;
+void ui_event_aboutdevname(lv_event_t * e);
+lv_obj_t * ui_aboutdevname;
+lv_obj_t * ui_devnamet1;
+lv_obj_t * ui_devnamet2;
+void ui_event_aboutespversion(lv_event_t * e);
+lv_obj_t * ui_aboutespversion;
+lv_obj_t * ui_espversiont1;
+lv_obj_t * ui_espversiont2;
+void ui_event_aboutaiversion(lv_event_t * e);
+lv_obj_t * ui_aboutaiversion;
+lv_obj_t * ui_aiversion1;
+lv_obj_t * ui_aiversion2;
 void ui_event_aboutsn(lv_event_t * e);
 lv_obj_t * ui_aboutsn;
 lv_obj_t * ui_snt1;
@@ -294,12 +292,12 @@ void ui_event_abouteui(lv_event_t * e);
 lv_obj_t * ui_abouteui;
 lv_obj_t * ui_euit1;
 lv_obj_t * ui_euit2;
-void ui_event_aboutble(lv_event_t * e);
-lv_obj_t * ui_aboutble;
+void ui_event_aboutblemac(lv_event_t * e);
+lv_obj_t * ui_aboutblemac;
 lv_obj_t * ui_blet1;
 lv_obj_t * ui_blet2;
-void ui_event_aboutwifi(lv_event_t * e);
-lv_obj_t * ui_aboutwifi;
+void ui_event_aboutwifimac(lv_event_t * e);
+lv_obj_t * ui_aboutwifimac;
 lv_obj_t * ui_wifit1;
 lv_obj_t * ui_wifit2;
 void ui_event_Paboutb(lv_event_t * e);
@@ -327,6 +325,8 @@ void ui_Page_Extension_screen_init(void);
 void ui_event_Page_Extension(lv_event_t * e);
 lv_obj_t * ui_Page_Extension;
 lv_obj_t * ui_Label2;
+void ui_event_extensionback(lv_event_t * e);
+lv_obj_t * ui_extensionback;
 
 
 // SCREEN: ui_Page_OTA
@@ -821,18 +821,10 @@ void ui_event_curtask1b(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
-        ntaskb2c_cb(e);
-    }
-}
-void ui_event_waitb(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
         backmenu_cb(e);
     }
 }
-void ui_event_revb(lv_event_t * e)
+void ui_event_waitb(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
@@ -951,7 +943,7 @@ void ui_event_menubtn1(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
-        loctask1c_cb(e);
+        backmenu_cb(e);
     }
     if(event_code == LV_EVENT_FOCUSED) {
         loctask1f_cb(e);
@@ -1023,7 +1015,7 @@ void ui_event_setback(lv_event_t * e)
         setbackdf_cb(e);
     }
     if(event_code == LV_EVENT_CLICKED) {
-        setbackc_cb(e);
+        backmenu_cb(e);
     }
 }
 void ui_event_setdown(lv_event_t * e)
@@ -1222,7 +1214,7 @@ void ui_event_bslider(lv_event_t * e)
         bridf_cb(e);
     }
 }
-void ui_event_aboutdn(lv_event_t * e)
+void ui_event_aboutdevname(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
@@ -1233,7 +1225,7 @@ void ui_event_aboutdn(lv_event_t * e)
         abdndf_cb(e);
     }
 }
-void ui_event_aboutsv(lv_event_t * e)
+void ui_event_aboutespversion(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
@@ -1244,7 +1236,7 @@ void ui_event_aboutsv(lv_event_t * e)
         absvdf_cb(e);
     }
 }
-void ui_event_abouthimaxver(lv_event_t * e)
+void ui_event_aboutaiversion(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
@@ -1277,7 +1269,7 @@ void ui_event_abouteui(lv_event_t * e)
         abeuidf_cb(e);
     }
 }
-void ui_event_aboutble(lv_event_t * e)
+void ui_event_aboutblemac(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
@@ -1288,7 +1280,7 @@ void ui_event_aboutble(lv_event_t * e)
         abbledf_cb(e);
     }
 }
-void ui_event_aboutwifi(lv_event_t * e)
+void ui_event_aboutwifimac(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
@@ -1332,6 +1324,14 @@ void ui_event_Page_Extension(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
         hap_cb(e);
+    }
+}
+void ui_event_extensionback(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        backmenu_cb(e);
     }
 }
 void ui_event_otaback(lv_event_t * e)
