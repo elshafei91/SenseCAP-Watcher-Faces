@@ -7,12 +7,14 @@
 #include "esp_check.h"
 #include "sscma_client_io.h"
 #include "sscma_client_ops.h"
+#include "sscma_client_commands.h"
 #include "tf_module_util.h"
 #include "data_defs.h"
 #include "event_loops.h"
 #include "view_image_preview.h"
 #include "app_ota.h"
 #include "storage.h"
+
 
 static const char *TAG = "tfm.ai_camera";
 
@@ -82,17 +84,17 @@ static int __model_flag_clear(void)
 }
 
 
-static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
-{
-    tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)handler_args;
-    struct view_data_ota_status *p_status = ( struct view_data_ota_status *)p_event_data;
+// static void __ota_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
+// {
+//     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)handler_args;
+//     struct view_data_ota_status *p_status = ( struct view_data_ota_status *)p_event_data;
 
-    // if ota success,  will restart device. so don't  restart sscma.
-    if( p_status->status == OTA_STATUS_FAIL && p_module_ins->start_flag) {
-        ESP_LOGI(TAG, "Himax FW Download fail, start sscma client");
-        xEventGroupSetBits(p_module_ins->event_group, EVENT_START);
-    }
-}
+//     // if ota success,  will restart device. so don't  restart sscma.
+//     if( p_status->status == OTA_STATUS_FAIL && p_module_ins->start_flag) {
+//         ESP_LOGI(TAG, "Himax FW Download fail, start sscma client");
+//         xEventGroupSetBits(p_module_ins->event_group, EVENT_START);
+//     }
+// }
 static void __view_event_handler(void* handler_args, 
                                  esp_event_base_t base, 
                                  int32_t id, 
@@ -108,7 +110,7 @@ static void __view_event_handler(void* handler_args,
             __data_lock(p_module_ins);
             if( p_module_ins->ai_model_downloading ) {
                 ESP_LOGI(TAG, "AI Model Downloading, abort");
-                app_ota_ai_model_download_abort();
+                p_module_ins->need_abort_ai_model_download = true;
             } else {
                 p_module_ins->ai_model_download_exit = true; // maybe ready download
             }
@@ -932,6 +934,25 @@ static int __params_parse(struct tf_module_ai_camera_params *p_params, cJSON *p_
     return 0;
 }
 
+static bool __himax_keepalive_check(tf_module_ai_camera_t *p_module_ins)
+{
+    esp_err_t ret = ESP_OK;
+    sscma_client_reply_t reply = {0};
+    int retry = 3;
+    while(retry--) {
+        ret = sscma_client_request(p_module_ins->sscma_client_handle, CMD_PREFIX CMD_AT_ID CMD_QUERY CMD_SUFFIX, &reply, true, CMD_WAIT_DELAY);
+        if (reply.payload != NULL) {
+            sscma_client_reply_clear(&reply);
+        }
+        if( ret != ESP_OK ) {
+            ESP_LOGE(TAG, "Himax keepalive check failed: %d", ret);
+            vTaskDelay(pdMS_TO_TICKS(100));
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
 
 static void ai_camera_task(void *p_arg)
 {
@@ -942,13 +963,14 @@ static void ai_camera_task(void *p_arg)
     sscma_client_model_t *model_info;
     EventBits_t bits;
     bool run_flag = false;
+    uint32_t check_cnt = 0;
     ESP_LOGI(TAG, "Task start");
     while(1) {
         
         err_flag = 0;
         bits = xEventGroupWaitBits(p_module_ins->event_group, \
                 EVENT_START | EVENT_STOP | \
-                EVENT_SIMPLE_640_480 | EVENT_PRVIEW_416_416, pdTRUE, pdFALSE, portMAX_DELAY);
+                EVENT_SIMPLE_640_480 | EVENT_PRVIEW_416_416, pdTRUE, pdFALSE, pdMS_TO_TICKS(1000));
 
         if( ( bits & EVENT_SIMPLE_640_480 ) != 0  && run_flag ) {
             ESP_LOGI(TAG, "EVENT_SIMPLE_640_480");
@@ -1002,6 +1024,7 @@ static void ai_camera_task(void *p_arg)
             bool is_need_update = false;
 
             ESP_LOGI(TAG, "EVENT_START");
+            run_flag = false;
             p_module_ins->sscma_starting_flag = true;
             
             sscma_client_break(p_module_ins->sscma_client_handle);
@@ -1029,8 +1052,7 @@ static void ai_camera_task(void *p_arg)
                 if( p_params->model.model_type == TF_MODULE_AI_CAMERA_MODEL_TYPE_CLOUD ) {
                     ESP_LOGI(TAG, "Use cloud model");
                     if(sscma_client_set_model(p_module_ins->sscma_client_handle, 4) != ESP_OK) {
-                        ESP_LOGE(TAG, "Failed to set model:%d\n", 4);
-                        // err_flag |= TF_MODULE_AI_CAMERA_CODE_ERR_SSCMA_MODEL; //TODO 
+                        ESP_LOGE(TAG, "Failed to set model:%d\n", 4); // Set failure when the model is broken
                     }
                     
                     if(sscma_client_get_model(p_module_ins->sscma_client_handle, &model_info, false) != ESP_OK) {
@@ -1179,6 +1201,7 @@ static void ai_camera_task(void *p_arg)
                 // start preview
                 xEventGroupSetBits(p_module_ins->event_group, EVENT_PRVIEW_416_416);
                 run_flag = true;
+                check_cnt = 0;
             } else {
                 __data_lock(p_module_ins);
                 p_module_ins->start_err_code = err_flag;
@@ -1204,6 +1227,20 @@ static void ai_camera_task(void *p_arg)
                 EVENT_SIMPLE_640_480 | EVENT_PRVIEW_416_416);
             xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP_DONE);
         }
+        
+        if( run_flag ) {
+            check_cnt++;
+            // 10s check
+            if( check_cnt > 10 ) {
+                check_cnt = 0;
+                if( !__himax_keepalive_check(p_module_ins) ) {
+                    ESP_LOGE(TAG, "restart himax");
+                    sscma_client_reset(p_module_ins->sscma_client_handle);
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                }
+            }
+        }
+
     }
 }
 /*************************************************************************
@@ -1214,24 +1251,44 @@ static int __start(void *p_module)
     esp_err_t ret = ESP_OK;
     tf_module_ai_camera_t *p_module_ins = (tf_module_ai_camera_t *)p_module;
 
+    __data_lock(p_module_ins);
+    p_module_ins->need_abort_ai_model_download = false; //clear flag, All previous stop commands will be cleared.
     p_module_ins->ai_model_download_exit = false; //clear flag
     p_module_ins->ai_model_downloading = false;
     p_module_ins->start_flag = true;
     p_module_ins->sscma_starting_flag = false;
-    
+    __data_unlock(p_module_ins);
+
+    xEventGroupClearBits(p_module_ins->event_group, EVENT_START_DONE); //maybe set when himax restart， need clear
     xEventGroupSetBits(p_module_ins->event_group, EVENT_START);
+    
+    // wait start done
+    int retry = 0;
     EventBits_t bits = 0;
-    bits = xEventGroupWaitBits(p_module_ins->event_group, EVENT_START_DONE, 1, 1,  pdMS_TO_TICKS(60000 * 10)); // 10 min
-    if( bits & EVENT_START_DONE ) {
-        int start_err_code = 0;
-        if( p_module_ins->start_err_code != 0 ) {
-            ESP_LOGE(TAG, "Start failed: %d", p_module_ins->start_err_code);
-            ret = ESP_FAIL;
-        } else {
-            ret = ESP_OK;
+    while ( retry < (60*15) ) // 15 min timeout
+    {
+        bits = xEventGroupWaitBits(p_module_ins->event_group, EVENT_START_DONE, 1, 1,  pdMS_TO_TICKS(1000));
+        if( bits & EVENT_START_DONE ) {
+            if( p_module_ins->start_err_code != 0 ) {
+                ESP_LOGE(TAG, "Start failed: %d", p_module_ins->start_err_code);
+                ret = ESP_FAIL;
+            } else {
+                ESP_LOGI(TAG, "Start success");
+                ret = ESP_OK;
+            }
+            break;
         }
-    } else {
-        ESP_LOGE(TAG, "EVENT_START_DONE timeout");
+
+        if( p_module_ins->need_abort_ai_model_download ) {
+            ESP_LOGI(TAG, "Abort model download");
+            p_module_ins->need_abort_ai_model_download = false;
+            app_ota_ai_model_download_abort();
+        }
+        retry++;
+    }
+    
+    if( retry >= (60*15) ) {
+        ESP_LOGE(TAG, "Start failed: timeout");
         ret = ESP_FAIL;
     }
     return ret;
@@ -1245,11 +1302,12 @@ static int __stop(void *p_module)
         ESP_LOGI(TAG, "Abort model download");
         app_ota_ai_model_download_abort();
     }
-
+    xEventGroupClearBits(p_module_ins->event_group, EVENT_STOP_DONE);
     xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP);
     xEventGroupWaitBits(p_module_ins->event_group, EVENT_STOP_DONE, 1, 1, pdMS_TO_TICKS(60000));
 
     p_module_ins->start_flag = false;
+    p_module_ins->need_abort_ai_model_download = false;
 
     __data_lock(p_module_ins);
     if( p_module_ins->p_output_evt_id ) {
@@ -1379,6 +1437,7 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     p_module_ins->condition_trigger_buf_idx = 0;
     memset(p_module_ins->condition_trigger_buf, false, sizeof(p_module_ins->condition_trigger_buf));
     p_module_ins->ai_model_downloading = false;
+    p_module_ins->need_abort_ai_model_download = false;
     p_module_ins->ai_model_download_exit = false;
     p_module_ins->sscma_starting_flag = false;
 
@@ -1435,9 +1494,9 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
         ESP_LOGI(TAG,"Firmware Version: %s", (p_module_ins->himax_info->fw_ver != NULL) ? p_module_ins->himax_info->fw_ver : "NULL");
     }
 
-    ret = esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_HIMAX_FW,
-                                                    __ota_event_handler, p_module_ins);
-    ESP_GOTO_ON_ERROR(ret, err, TAG, "ota esp_event_handler_register failed");
+    // ret = esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_OTA_HIMAX_FW,
+    //                                                 __ota_event_handler, p_module_ins);
+    // ESP_GOTO_ON_ERROR(ret, err, TAG, "ota esp_event_handler_register failed");
 
     ret = esp_event_handler_register_with(  app_event_loop_handle, 
                                             VIEW_EVENT_BASE, 

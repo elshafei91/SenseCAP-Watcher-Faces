@@ -849,6 +849,7 @@ static void __timer_cb_first_report(void *arg)
 
 void __app_device_info_task(void *pvParameter)
 {
+    uint8_t is_charging = false;
     uint8_t batnow = 0;
     uint32_t cnt = 0;
     bool firstboot_reported = false, himax_version_got = false;
@@ -916,6 +917,7 @@ void __app_device_info_task(void *pvParameter)
         if ((cnt % 300) == 0)
         {
             batnow = bsp_battery_get_percent();
+            is_charging = (uint8_t)(bsp_exp_io_get_level(BSP_PWR_VBUS_IN_DET) == 0);
             if (abs(g_device_status.battery_per - batnow) > 0 || batnow == 0) {
                 g_device_status.battery_per = batnow;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
@@ -928,7 +930,7 @@ void __app_device_info_task(void *pvParameter)
                 app_sensecraft_mqtt_report_device_status(&g_device_status);
                 last_bat_level_report = batnow;
             }
-            if (batnow == 0) {
+            if (batnow == 0 && !is_charging) {
                 vTaskDelay(pdMS_TO_TICKS(2000)); //for mqtt pub
                 ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));

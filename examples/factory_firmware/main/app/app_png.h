@@ -8,11 +8,11 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include "lvgl/lvgl.h"
+#include "cJSON.h"
+#include "esp_err.h"
 
 #define MAX_IMAGES 10
 
-
-#define MAX_URLS 5
 typedef struct
 {
     void *data;
@@ -31,19 +31,18 @@ typedef enum {
     DOWNLOAD_ERR_UNKNOWN = -4
 } download_status_t;
 
-
-
 typedef struct {
     bool success;
     int error_code;
 } download_result_t;
+
 typedef struct {
     download_result_t *results;
     int64_t total_time_us;
     double download_speed;
 } download_summary_t;
 
-download_summary_t download_emoji_images(char *base_name, char *urls[], int url_count);
+esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJSON *url_array, int url_count);
 
 #ifdef __cplusplus
 }

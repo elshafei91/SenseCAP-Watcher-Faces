@@ -736,6 +736,36 @@ static void __view_event_handler(void* handler_args,
             }
             break;
         }
+        case VIEW_EVENT_OTA_STATUS: {
+            ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
+            struct view_data_ota_status * p_ota_st = (struct view_data_ota_status *)event_data;
+            
+            if( SENSECRAFT_OTA_STATUS_UPGRADING  == p_ota_st->status) {
+                if( !p_taskflow->need_pause_taskflow ) {
+                    ESP_LOGI(TAG, "taskflow need pause");
+                    p_taskflow->need_pause_taskflow = true;
+                    if( p_taskflow->p_taskflow_json_backup != NULL) {
+                        free(p_taskflow->p_taskflow_json_backup);
+                        p_taskflow->p_taskflow_json_backup = NULL;
+                    }
+                    p_taskflow->p_taskflow_json_backup = tf_engine_flow_get();
+                    if( p_taskflow->p_taskflow_json_backup ) {
+                        ESP_LOGI(TAG, "backup taskflow and stop");
+                        tf_engine_stop();
+                    }
+                }
+            } else if ( SENSECRAFT_OTA_STATUS_FAIL == p_ota_st->status) {
+                ESP_LOGI(TAG, "ota fail");
+                if( p_taskflow->p_taskflow_json_backup ) {
+                    ESP_LOGI(TAG, "task flow need resume");
+                    tf_engine_flow_set( p_taskflow->p_taskflow_json_backup,  strlen(p_taskflow->p_taskflow_json_backup));
+                    free(p_taskflow->p_taskflow_json_backup);
+                    p_taskflow->p_taskflow_json_backup = NULL;
+                    p_taskflow->need_pause_taskflow = false;
+                }   
+            }            
+            break;
+        }
         default:
             break;
     }
@@ -1015,6 +1045,12 @@ esp_err_t app_taskflow_init(void)
                                                         VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, 
                                                         __view_event_handler, 
                                                         p_taskflow));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    VIEW_EVENT_BASE, 
+                                                    VIEW_EVENT_OTA_STATUS, 
+                                                    __view_event_handler, 
+                                                    p_taskflow));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                         CTRL_EVENT_BASE, 

@@ -15,6 +15,7 @@ esp_err_t storage_erase();
 esp_err_t storage_file_write(char *file, void *p_data, size_t len);
 esp_err_t storage_file_read(char *file, void *p_data, size_t *p_len); //p_len : inout
 esp_err_t storage_file_size_get(char *file, size_t *p_len);
+esp_err_t storage_file_remove(char *file);
 
 #ifdef __cplusplus
 }
