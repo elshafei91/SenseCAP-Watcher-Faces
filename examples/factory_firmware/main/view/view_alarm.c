@@ -463,7 +463,7 @@ void view_emoji_ota_init(void)
     lv_obj_set_width(ui_facet, 380);
     lv_obj_set_height(ui_facet, 100);
     lv_obj_set_x(ui_facet, 0);
-    lv_obj_set_y(ui_facet, 0);
+    lv_obj_set_y(ui_facet, 10);
     lv_obj_set_align(ui_facet, LV_ALIGN_CENTER);
     lv_label_set_text(ui_facet, "Uploading\nface...");
     lv_obj_set_style_text_color(ui_facet, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -477,7 +477,7 @@ void view_emoji_ota_init(void)
     lv_obj_set_x(ui_failed, 0);
     lv_obj_set_y(ui_failed, -75);
     lv_obj_set_align(ui_failed, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_failed, "Failed");
+    lv_label_set_text(ui_failed, "Upload failed");
     lv_obj_set_style_text_color(ui_failed, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_failed, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_failed, &ui_font_semibold42, LV_PART_MAIN | LV_STATE_DEFAULT);
