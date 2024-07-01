@@ -294,6 +294,7 @@ extern lv_obj_t * ui_swipep;
 extern lv_obj_t * ui_sptitle;
 extern lv_obj_t * ui_swipep2;
 extern lv_obj_t * ui_sptext2;
+extern lv_obj_t * ui_Spinner4;
 // SCREEN: ui_Page_Extension
 void ui_Page_Extension_screen_init(void);
 void ui_event_Page_Extension(lv_event_t * e);

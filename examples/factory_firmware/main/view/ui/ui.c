@@ -318,6 +318,7 @@ lv_obj_t * ui_swipep;
 lv_obj_t * ui_sptitle;
 lv_obj_t * ui_swipep2;
 lv_obj_t * ui_sptext2;
+lv_obj_t * ui_Spinner4;
 
 
 // SCREEN: ui_Page_Extension
@@ -1562,4 +1563,7 @@ void ui_init(void)
     ui_Page_Flag_screen_init();
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_obj_add_event_cb(ui____initial_actions0, ui_event____initial_actions0, LV_EVENT_ALL, NULL);
+
+    lv_disp_load_scr(ui____initial_actions0);
+    lv_disp_load_scr(ui_Page_Battery);
 }
