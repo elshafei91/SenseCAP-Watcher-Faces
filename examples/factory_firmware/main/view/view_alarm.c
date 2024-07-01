@@ -214,7 +214,6 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
         if (alarm_text->p_buf != NULL)
         {
             lv_label_set_text(ui_viewtext, (const char *)alarm_text->p_buf);
-            tf_data_buf_free(alarm_text);
         }
     }
     // image display 
@@ -241,7 +240,6 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
             img_dsc.data = image_ram_buf;
             lv_img_set_src(ui_image, &img_dsc);
             lv_obj_clear_flag(ui_image, LV_OBJ_FLAG_HIDDEN);
-            tf_data_image_free(&alarm_st->img);
         }
     }
     // initial indicator and state
