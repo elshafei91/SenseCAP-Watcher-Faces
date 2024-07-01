@@ -209,6 +209,7 @@ enum {
     VIEW_EVENT_CLOUD_SERVICE_SWITCH,
 
     VIEW_EVENT_EMOJI_DOWLOAD_BAR,       //Display the progress of emoticon downloads
+    VIEW_EVENT_EMOJI_DOWLOAD_FAILED,    //emoji download failed, dismiss the progress bar
 
     VIEW_EVENT_INFO_OBTAIN,
 
