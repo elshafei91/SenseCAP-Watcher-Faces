@@ -430,13 +430,17 @@ esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJ
         bits = xEventGroupWaitBits(download_event_group, bit_mask, pdFALSE, pdFALSE, pdMS_TO_TICKS(60000));
         bits_all |= bits;
         bit_mask &= ~bits;  //don't wait on these bits next time
-        int cnt = 0;
+        int cnt = 0, succ_cnt = 0;
         for (int j = 0; j < url_count; j++)
         {
-            if (bits_all & (BIT0 << j)) cnt++;
+            download_task_arg_t *task_arg = &task_args[j];
+            if (bits_all & (BIT0 << j)) {
+                cnt++;
+                if (task_arg->err == ESP_OK) succ_cnt++;
+            }
         }
-        ESP_LOGI(TAG, "emoji download progress, %d emojis has been downloaded (bits: 0x%x)", cnt, bits_all);
-        emoticon_download_per = cnt * 100 / url_count;
+        ESP_LOGI(TAG, "emoji download progress, %d downloader task joined (bits: 0x%x), succ_cnt: %d", cnt, bits_all, succ_cnt);
+        emoticon_download_per = succ_cnt * 100 / url_count;
         if (emoticon_download_per > 0) {
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, 
                               &emoticon_download_per, sizeof(int), pdMS_TO_TICKS(10000));
@@ -457,7 +461,6 @@ esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJ
         results[t].success = task_arg->err == ESP_OK;
         results[t].error_code = task_arg->err;
     }
-    
 
     int64_t total_end_time = esp_timer_get_time();
     int64_t total_time_us = total_end_time - total_start_time;
@@ -473,11 +476,16 @@ esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJ
     summary->download_speed = download_speed;
 
 download_emoji_cleanup:
+    bool overall_succ = true;
     for (int i = 0; i < url_count; i++)
     {
         download_task_arg_t *task_arg = &task_args[i];
         if (task_arg->stack) free(task_arg->stack);
         if (task_arg->tcb) free(task_arg->tcb);
+        if (task_arg->err != ESP_OK) overall_succ = false;
+    }
+    if (!overall_succ) {
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_FAILED, NULL, 0, pdMS_TO_TICKS(10000));
     }
     free(task_args);
     vEventGroupDelete(download_event_group);
