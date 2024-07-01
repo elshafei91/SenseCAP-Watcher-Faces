@@ -313,10 +313,10 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
 
     switch (evt->event_id) {
         case HTTP_EVENT_ERROR:
-            ESP_LOGI(TAG, "HTTP_EVENT_ERROR");
+            ESP_LOGI(TAG, "downloader, HTTP_EVENT_ERROR");
             break;
         case HTTP_EVENT_ON_CONNECTED:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
+            ESP_LOGI(TAG, "downloader, HTTP_EVENT_ON_CONNECTED");
             task_arg->file_start_time = esp_timer_get_time();
             task_arg->content_length = 0;
             task_arg->buffer_size = 0;
@@ -326,15 +326,15 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
             }
             break;
         case HTTP_EVENT_HEADER_SENT:
-            ESP_LOGI(TAG, "HTTP_EVENT_HEADER_SENT");
+            ESP_LOGI(TAG, "downloader, HTTP_EVENT_HEADER_SENT");
             break;
         case HTTP_EVENT_ON_HEADER:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+            ESP_LOGI(TAG, "downloader, HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
             break;
         case HTTP_EVENT_ON_DATA:
             if (task_arg->content_length == 0) {
                 task_arg->content_length = esp_http_client_get_content_length(evt->client);
-                ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, content_len=%lld", task_arg->content_length);
+                ESP_LOGI(TAG, "downloader, HTTP_EVENT_ON_DATA, content_len=%lld", task_arg->content_length);
                 if (task_arg->content_length == 0) {
                     task_arg->http_err = ERR_EMOJI_DL_BAD_HTTP_LEN;
                     break;
@@ -353,20 +353,20 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
                     memcpy(task_arg->buffer + task_arg->buffer_size, evt->data, evt->data_len);
                     task_arg->buffer_size += evt->data_len;
                 } else {
-                    ESP_LOGE(TAG, "data can not fit in content buffer, this should not happen!!!");
+                    ESP_LOGE(TAG, "downloader, data can not fit in content buffer, this should not happen!!!");
                     task_arg->http_err = ESP_ERR_NO_MEM;
                     break;
                 }
             }
             break;
         case HTTP_EVENT_ON_FINISH:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
+            ESP_LOGI(TAG, "downloader, HTTP_EVENT_ON_FINISH");
             break;
         case HTTP_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
+            ESP_LOGI(TAG, "downloader, HTTP_EVENT_DISCONNECTED");
             break;
         case HTTP_EVENT_REDIRECT:
-            ESP_LOGI(TAG, "HTTP_EVENT_REDIRECT");
+            ESP_LOGI(TAG, "downloader, HTTP_EVENT_REDIRECT");
             break;
     }
     return ESP_OK;
@@ -384,10 +384,10 @@ static void download_task(void *arg) {
         vTaskDelay(pdMS_TO_TICKS(100));
         if (err == ESP_OK) {
             int64_t download_time = esp_timer_get_time() - task_arg->file_start_time;
-            ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %lld, download time = %lld us",
+            ESP_LOGI(TAG, "downloader, HTTP GET Status = %d, content_length = %lld, download time = %lld us",
                      esp_http_client_get_status_code(client), task_arg->content_length, download_time);
             if (!esp_http_client_is_complete_data_received(client)) {
-                ESP_LOGW(TAG, "HTTP finished but incompleted data received");
+                ESP_LOGW(TAG, "downloader, HTTP finished but incompleted data received");
                 task_arg->err = task_arg->http_err != ESP_OK ? task_arg->http_err : ESP_ERR_NOT_FINISHED;
                 continue;
             }
@@ -398,7 +398,7 @@ static void download_task(void *arg) {
             xSemaphoreGive(download_mutex);
             break;
         } else {
-            ESP_LOGE(TAG, "HTTP GET request failed: %s. Retrying...", esp_err_to_name(err));
+            ESP_LOGE(TAG, "downloader, HTTP GET request failed: %s. Retrying...", esp_err_to_name(err));
             esp_http_client_cleanup(client);
             vTaskDelay(500 / portTICK_PERIOD_MS); // Wait for a second before retrying
             client = esp_http_client_init(&task_arg->config);
@@ -412,10 +412,10 @@ static void download_task(void *arg) {
 
     esp_err_t err2 = storage_file_write(task_arg->file_path, task_arg->buffer, task_arg->buffer_size);
     if (err2 != ESP_OK) {
-        ESP_LOGE(TAG, "emoji download task, failed to write data to file using storage_file_write");
+        ESP_LOGE(TAG, "downloader, failed to write data to file using storage_file_write");
         task_arg->err = err2;
     } else {
-        ESP_LOGI(TAG, "emoji download task, saved file %s", task_arg->file_path);
+        ESP_LOGI(TAG, "downloader, saved file %s", task_arg->file_path);
     }
 
 download_task_end:
@@ -437,7 +437,7 @@ esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJ
     int64_t total_start_time = esp_timer_get_time();
     download_event_group = xEventGroupCreate();
     download_mutex = xSemaphoreCreateMutex();
-    EventBits_t bits, bit_mask = 0;
+    EventBits_t bits, bits_all, bit_mask = 0;
     download_task_arg_t *task_args = (download_task_arg_t *)psram_calloc(url_count, sizeof(download_task_arg_t));
     esp_err_t ret = ESP_OK;
 
@@ -470,7 +470,7 @@ esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJ
             goto download_emoji_cleanup;
         }
 
-        ESP_LOGI(TAG, "worker task download %s, save to %s", url_item->valuestring, task_arg->file_path);
+        ESP_LOGI(TAG, "create downloader task to download %s, save to %s", url_item->valuestring, task_arg->file_path);
 
         xTaskCreateStatic(download_task, "download_task", stack_size, task_arg, 9, task_stack, task_buffer);
 
@@ -481,17 +481,22 @@ esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJ
 
     int i;
     int emoticon_download_per;
+    bits_all = 0x0;
     for (i = 0 ; i < MAX_IMAGES; i++) {
-        bits = xEventGroupWaitBits(download_event_group, bit_mask, pdFALSE, pdTRUE, pdMS_TO_TICKS(60000));
+        bits = xEventGroupWaitBits(download_event_group, bit_mask, pdFALSE, pdFALSE, pdMS_TO_TICKS(60000));
+        bits_all |= bits;
+        bit_mask &= ~bits;  //don't wait on these bits next time
         int cnt = 0;
         for (int j = 0; j < url_count; j++)
         {
-            if (bits & (BIT0 << j)) cnt++;
+            if (bits_all & (BIT0 << j)) cnt++;
         }
-        ESP_LOGI(TAG, "emoji download progress, %d emojis has been downloaded (bits: 0x%x)", cnt, bits);
+        ESP_LOGI(TAG, "emoji download progress, %d emojis has been downloaded (bits: 0x%x)", cnt, bits_all);
         emoticon_download_per = cnt * 100 / url_count;
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, 
-                            &emoticon_download_per, sizeof(int), pdMS_TO_TICKS(10000));
+        if (emoticon_download_per > 0) {
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_EMOJI_DOWLOAD_BAR, 
+                              &emoticon_download_per, sizeof(int), pdMS_TO_TICKS(10000));
+        }
         if (cnt == url_count) break;
     }
 
@@ -515,10 +520,10 @@ esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJ
     double total_time_s = total_time_us / 1000000.0;
     double download_speed = total_data_size / total_time_s;
 
-    ESP_LOGI(TAG, "emoji download, total download size: %" PRId64 " bytes", total_data_size);
+    ESP_LOGI(TAG, "emoji download stats, total download size: %" PRId64 " bytes", total_data_size);
     total_data_size = 0;
-    ESP_LOGI(TAG, "emoji download, total download time: %.2f seconds", total_time_s);
-    ESP_LOGI(TAG, "emoji download, overall download speed: %.2f bytes/second", download_speed);
+    ESP_LOGI(TAG, "emoji download stats, total download time: %.2f seconds", total_time_s);
+    ESP_LOGI(TAG, "emoji download stats, overall download speed: %.2f bytes/second", download_speed);
 
     summary->total_time_us = total_time_us;
     summary->download_speed = download_speed;
