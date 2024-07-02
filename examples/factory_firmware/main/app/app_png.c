@@ -305,6 +305,14 @@ void check_and_download_files() {
         return;
     }
 
+    cJSON * download_list = cJSON_CreateArray();
+    if(!download_list)
+    {
+        ESP_LOGE(TAG, "Failed to create download list");
+        cJSON_Delete(manifest);
+        return;
+    }
+
     cJSON *file;
     cJSON_ArrayForEach(file, manifest) {
         const char *file_name = file->string;
@@ -323,7 +331,7 @@ void check_and_download_files() {
         size_t size = size_item->valueint;
         const char *checksum = checksum_item->valuestring;
 
-        ESP_LOGI(TAG, "File: %s, URL: %s, Size: %zu", file_name, url, size);
+        // ESP_LOGI(TAG, "File: %s, URL: %s, Size: %zu", file_name, url, size);
 
         char file_path[256];
         sprintf(file_path, "/spiffs/%s", file_name);
@@ -331,7 +339,12 @@ void check_and_download_files() {
         FILE *f = fopen(file_path, "rb");
         if (!f) {
             ESP_LOGI(TAG, "File %s not found, requesting download", file_name);
-            // send_download_request(file_name, url);
+            cJSON *download_item = cJSON_CreateObject();
+            cJSON_AddStringToObject(download_item, "name", file_name);
+            cJSON_AddStringToObject(download_item, "url", url);
+            cJSON_AddStringToObject(download_item, "checksum", checksum);
+            cJSON_AddStringToObject(download_item, "size", size);
+            cJSON_AddItemToArray(download_list, download_item);
             continue;
         }
 
@@ -340,12 +353,16 @@ void check_and_download_files() {
         fseek(f, 0, SEEK_SET);
 
         char *file_checksum = calculate_file_md5(file_path);
-        // ESP_LOGI(TAG, "File %s validated successfully, checksum is %s", file_name, file_checksum);
         fclose(f);
 
         if (!validate_image(file_name, file_size, file_checksum, manifest)) {
             ESP_LOGW(TAG, "File %s validation failed, checksum is %s, requesting download", file_name, file_checksum);
-            // send_download_request(file_name, url);
+            cJSON *download_item = cJSON_CreateObject();
+            cJSON_AddStringToObject(download_item, "name", file_name);
+            cJSON_AddStringToObject(download_item, "url", url);
+            cJSON_AddStringToObject(download_item, "checksum", checksum);
+            cJSON_AddStringToObject(download_item, "size", size);
+            cJSON_AddItemToArray(download_list, download_item);
         } else {
             ESP_LOGI(TAG, "File %s validated successfully, checksum is %s", file_name, file_checksum);
         }
@@ -353,6 +370,21 @@ void check_and_download_files() {
         free(file_checksum);
     }
 
+    if(cJSON_GetArraySize(download_list) > 0)
+    {
+        char * download_list_string = cJSON_Print(download_list);
+        if(download_list_string)
+        {
+            ESP_LOGI(TAG, "Download list: %s", download_list_string);
+            // TODO: Send the download list to the download request function
+            // send_download_request("download_list", download_list_string);
+            free(download_list_string);
+        }
+    }else{
+        ESP_LOGI(TAG, "All files validated successfully, no downloads needed");
+    }
+
+    cJSON_Delete(download_list);
     cJSON_Delete(manifest);
 }
 
