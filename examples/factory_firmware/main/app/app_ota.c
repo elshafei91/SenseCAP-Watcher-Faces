@@ -41,12 +41,13 @@ ESP_EVENT_DEFINE_BASE(OTA_EVENT_BASE);
 #define AI_MODEL_RINGBUFF_SIZE          102400
 
 //event group events
-#define EVENT_OTA_STOP_BY_TOO_SLOW      BIT0
-#define EVENT_OTA_HIMAX_HTTP_GOING      BIT1
-#define EVENT_AI_MODEL_DL_PREPARING     BIT2
-#define EVENT_AI_MODEL_DL_EARLY_ABORT   BIT3
-#define EVENT_OTA_SSCMA_DL_ABORT        BIT4
-#define EVENT_OTA_SSCMA_PROC_OVER       BIT5
+#define EVENT_OTA_ESP32_DL_ABORT        BIT0  //due to network too slow
+#define EVENT_OTA_ESP32_PROC_OVER       BIT1
+#define EVENT_OTA_HIMAX_HTTP_GOING      BIT2
+#define EVENT_AI_MODEL_DL_PREPARING     BIT3
+#define EVENT_AI_MODEL_DL_EARLY_ABORT   BIT4
+#define EVENT_OTA_SSCMA_DL_ABORT        BIT5
+#define EVENT_OTA_SSCMA_PROC_OVER       BIT6
 
 enum {
     OTA_TYPE_ESP32 = 1,
@@ -224,6 +225,7 @@ static void esp32_ota_process(char *url)
                                     pdMS_TO_TICKS(10000));
         free(config);
         free(ota_config);
+        xEventGroupSetBits(g_eg_globalsync, EVENT_OTA_ESP32_PROC_OVER);
         return;
     }
 
@@ -270,7 +272,7 @@ static void esp32_ota_process(char *url)
         if (err != ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
             break;
         }
-        if (xEventGroupWaitBits(g_eg_globalsync, EVENT_OTA_STOP_BY_TOO_SLOW, pdTRUE, pdTRUE, 0) & EVENT_OTA_STOP_BY_TOO_SLOW)
+        if (xEventGroupGetBits(g_eg_globalsync) & EVENT_OTA_ESP32_DL_ABORT)
             break;
 
         // esp_https_ota_perform returns after every read operation which gives user the ability to
@@ -328,6 +330,7 @@ ota_end:
                         pdMS_TO_TICKS(10000));
     free(config);
     free(ota_config);
+    xEventGroupSetBits(g_eg_globalsync, EVENT_OTA_ESP32_PROC_OVER);
 }
 
 static const char *ota_type_str(int ota_type)
@@ -913,11 +916,15 @@ static esp_err_t ota_status(int ota_event_type, int total_progress)
 
     if (need_force_stop) {
         if (ota_event_type == CTRL_EVENT_OTA_ESP32_FW) {
-            xEventGroupSetBits(g_eg_globalsync, EVENT_OTA_STOP_BY_TOO_SLOW);
+            ESP_LOGW(TAG, "need force stop the esp32 ota process!!! esp32_ota_running=%d", atomic_load(&g_ota_running));
+            xEventGroupClearBits(g_eg_globalsync, EVENT_OTA_ESP32_PROC_OVER);
+            xEventGroupSetBits(g_eg_globalsync, EVENT_OTA_ESP32_DL_ABORT);
+            xEventGroupWaitBits(g_eg_globalsync, EVENT_OTA_ESP32_PROC_OVER | EVENT_OTA_ESP32_DL_ABORT, 
+                                        pdTRUE, pdTRUE, pdMS_TO_TICKS(60000));
         } else if (ota_event_type == CTRL_EVENT_OTA_HIMAX_FW) {
             if (xEventGroupGetBits(g_eg_globalsync) & EVENT_OTA_HIMAX_HTTP_GOING) {
                 if (g_sscma_writer_userdata.http_client) {
-                    ESP_LOGD(TAG, "force stop the http download for himax fw");
+                    ESP_LOGW(TAG, "need force stop the http download for himax fw!!!");
                     xEventGroupClearBits(g_eg_globalsync, EVENT_OTA_SSCMA_PROC_OVER);
                     esp_http_client_cancel_request(g_sscma_writer_userdata.http_client);
                     xEventGroupSetBits(g_eg_globalsync, EVENT_OTA_SSCMA_DL_ABORT);
@@ -1165,6 +1172,9 @@ cleanup:
             xQueueReceive(g_Q_ota_msg, &ota_msg_cjson, portMAX_DELAY);
             //the json is used up
             cJSON_Delete(ota_msg_cjson);
+            //str ref is gone with the cJSON as well
+            g_cur_ota_version_esp32 = NULL;
+            g_cur_ota_version_himax = NULL;
         }
     }
 }
