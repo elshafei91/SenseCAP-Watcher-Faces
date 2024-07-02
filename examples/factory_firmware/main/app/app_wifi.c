@@ -714,14 +714,13 @@ int set_wifi_config(wifi_config *config)
 }
 
 extern SemaphoreHandle_t xBinarySemaphore_wifitable;
-void wifi_config_entry(void *pvParameters)
+void __wifi_config_task(void *pvParameters)
 {
     uint32_t ulNotificationValue;
     xTask_wifi_config_entry = xTaskGetCurrentTaskHandle();
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        // ESP_LOGE(TAG, "wifi_config_layer");
         wifi_scan();
         xSemaphoreGive(xBinarySemaphore_wifitable);
     }
@@ -729,7 +728,6 @@ void wifi_config_entry(void *pvParameters)
 
 void app_wifi_config_entry_init()
 {
-    // xTaskCreate(&wifi_config_layer, "wifi_config_layer", 1024 * 4, NULL, 9, &xTask_wifi_config_layer);
     wifi_task_stack = (StackType_t *)heap_caps_malloc(4096 * sizeof(StackType_t), MALLOC_CAP_SPIRAM);
     if (wifi_task_stack == NULL)
     {
@@ -737,7 +735,7 @@ void app_wifi_config_entry_init()
         return;
     }
 
-    TaskHandle_t wifi_task_handle = xTaskCreateStatic(wifi_config_entry, "wifi_config_entry", 4096, NULL, 9, wifi_task_stack, &wifi_task_buffer);
+    TaskHandle_t wifi_task_handle = xTaskCreateStatic(__wifi_config_task, "wifi_config", 4096, NULL, 9, wifi_task_stack, &wifi_task_buffer);
 
     if (wifi_task_handle == NULL)
     {
