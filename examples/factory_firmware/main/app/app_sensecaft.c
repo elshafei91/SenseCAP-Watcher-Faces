@@ -834,6 +834,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t taskflow_id,
             "{"
                 "\"name\": \"task-flow-report\","
                 "\"value\": {"
+                    "\"type\": 1,"
                     "\"tlid\": %jd,"
                     "\"ctd\": %jd,"
                     "\"status\": %d,"

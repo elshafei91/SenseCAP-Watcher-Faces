@@ -267,6 +267,15 @@ static void __data_unlock(struct app_taskflow * p_taskflow )
     xSemaphoreGive(p_taskflow->sem_handle);  
 }
 
+static void __report_lock(struct app_taskflow * p_taskflow )
+{
+    xSemaphoreTake(p_taskflow->report_sem_handle, portMAX_DELAY);
+}
+static void __report_unlock(struct app_taskflow * p_taskflow )
+{
+    xSemaphoreGive(p_taskflow->report_sem_handle);  
+}
+
 static void __task_flow_clean( void )
 {
     esp_err_t ret = ESP_OK;
@@ -415,11 +424,15 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
         if(  status.engine_status !=  TF_STATUS_STARTING && p_json != NULL ) {
             size_t len = 0;
             len = strlen(p_json);
+            
+            __report_lock(p_taskflow); 
             ret = app_sensecraft_mqtt_report_taskflow_info( tid, status.ctd,
                                                                 status.engine_status,
                                                                 p_module_name,
                                                                 status.module_status,
                                                                 p_json, len);
+            __report_unlock(p_taskflow);
+
             if( ret != ESP_OK ) {
                 need_report = true;
                 ESP_LOGW(TAG, "Failed to report taskflow ack status to MQTT server");
@@ -564,16 +577,21 @@ static void __taskflow_task(void *p_arg)
 
             if( p_taskflow->status_need_report ) {
 
-                ESP_LOGI(TAG, "report taskflow status:%d", status.engine_status);
+                ESP_LOGI(TAG, "report cache taskflow status:%d", status.engine_status);
+
                 __data_lock(p_taskflow);
                 memcpy(&status, &p_taskflow->status, sizeof(struct view_data_taskflow_status));
 
-                if( p_taskflow->p_taskflow_json != NULL ) {    
+                if( p_taskflow->p_taskflow_json != NULL ) {
+
+                    __report_lock(p_taskflow);    
                     ret = app_sensecraft_mqtt_report_taskflow_info( status.tid, status.ctd,
                                                                     status.engine_status,
                                                                     status.module_name,
                                                                     status.module_status,
                                                                     p_taskflow->p_taskflow_json, strlen(p_taskflow->p_taskflow_json));
+                    __report_unlock(p_taskflow);
+
                     if( ret != ESP_OK ) {
                         ESP_LOGW(TAG, "Failed to report taskflow ack status to MQTT server");
                     } else {
@@ -582,9 +600,10 @@ static void __taskflow_task(void *p_arg)
                         p_taskflow->p_taskflow_json = NULL;
                     }
                 } else {
-
+                    __report_lock(p_taskflow);  
                     ret = app_sensecraft_mqtt_report_taskflow_status( status.tid, status.ctd, status.engine_status, 
                                                                             status.module_name,status.module_status);
+                    __report_unlock(p_taskflow);
                     if( ret != ESP_OK ) {
                         ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
                     } else {
@@ -605,23 +624,15 @@ static void __taskflow_task(void *p_arg)
                     int engine_status = 0;
                     struct view_data_taskflow_status status;
 
+                    __report_lock(p_taskflow);
                     tf_engine_ctd_get( &ctd );
                     tf_engine_tid_get( &tlid );
                     tf_engine_status_get( &engine_status);
+                    app_sensecraft_mqtt_report_taskflow_status( tlid, ctd, engine_status, NULL, 0);
+                    __report_unlock(p_taskflow);
+                    ESP_LOGI(TAG, "report taskflow status:%d", engine_status);
 
-                    memset(&status,0, sizeof(struct view_data_taskflow_status));
-                    status.tid = tlid;
-                    status.ctd = ctd;
-                    status.engine_status = engine_status;
-                    status.module_status = 0; // don't care module status.
-                    strncpy(status.module_name, "unknown", sizeof(status.module_name) - 1); // don't care module name.
-                    
-                    __data_lock(p_taskflow);
-                    p_taskflow->status_need_report = true;
-                    p_taskflow->p_taskflow_json = NULL; //don't send taskflow json.
-                    memcpy(&p_taskflow->status, &status, sizeof(struct view_data_taskflow_status));
-                    __data_unlock(p_taskflow);
-
+                    p_taskflow->report_cnt = 0;
                 }
                 p_taskflow->report_cnt++;
             }
@@ -681,7 +692,9 @@ static void __view_event_handler(void* handler_args,
                 __task_flow_clean();
             } else {
                 ESP_LOGI(TAG, "task flow already stopped");
+                __report_lock(p_taskflow);
                 ret = app_sensecraft_mqtt_report_taskflow_status( 0, 0, TF_STATUS_STOP, NULL, 0);
+                __report_unlock(p_taskflow);
                 if( ret != ESP_OK ) {
                     ESP_LOGW(TAG, "Failed to report taskflow status to MQTT server");
                 } else {
@@ -724,8 +737,10 @@ static void __view_event_handler(void* handler_args,
                 if( p_taskflow->mqtt_connect_flag ) {
                     intmax_t tid = 0;
                     intmax_t ctd = 0;
+                    __report_lock(p_taskflow);
                     __taskflow_tid_get(p_task_flow, &tid, &ctd);
                     ret = app_sensecraft_mqtt_report_taskflow_status(tid, ctd, TF_STATUS_STARTING, NULL, 0);
+                    __report_unlock(p_taskflow);
                     if( ret != ESP_OK ) {
                         ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
                     } else {
@@ -815,8 +830,10 @@ static void __taskflow_start(struct app_taskflow * p_taskflow, char *p_task_flow
     if( p_taskflow->mqtt_connect_flag ) {
         intmax_t tid = 0;
         intmax_t ctd = 0;
+        __report_lock(p_taskflow);
         __taskflow_tid_get(p_task_flow, &tid, &ctd);
         ret = app_sensecraft_mqtt_report_taskflow_status(tid, ctd, TF_STATUS_STARTING, NULL, 0);
+        __report_unlock(p_taskflow);
         if( ret != ESP_OK ) {
             ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
         } else {
@@ -1018,6 +1035,9 @@ esp_err_t app_taskflow_init(void)
     p_taskflow->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_taskflow->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
 
+    p_taskflow->report_sem_handle = xSemaphoreCreateMutex();
+    ESP_GOTO_ON_FALSE(NULL != p_taskflow->report_sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
+
     p_taskflow->p_task_stack_buf = (StackType_t *)psram_malloc(TASKFLOW_TASK_STACK_SIZE);
     ESP_GOTO_ON_FALSE(NULL != p_taskflow->p_task_stack_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task stack");
 
@@ -1126,6 +1146,11 @@ err:
         vSemaphoreDelete(p_taskflow->sem_handle);
         p_taskflow->sem_handle = NULL;
     }
+    if (p_taskflow->report_sem_handle) {
+        vSemaphoreDelete(p_taskflow->report_sem_handle);
+        p_taskflow->report_sem_handle = NULL;
+    }
+
     if (p_taskflow) {
         free(p_taskflow);
         p_taskflow = NULL;
