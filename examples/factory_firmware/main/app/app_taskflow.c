@@ -1025,7 +1025,7 @@ esp_err_t app_taskflow_init(void)
     ESP_GOTO_ON_FALSE(NULL != p_taskflow->p_task_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task TCB");
 
     p_taskflow->task_handle = xTaskCreateStatic(__taskflow_task,
-                                                "__taskflow_task",
+                                                "app_taskflow",
                                                 TASKFLOW_TASK_STACK_SIZE,
                                                 (void *)p_taskflow,
                                                 TASKFLOW_TASK_PRIO,

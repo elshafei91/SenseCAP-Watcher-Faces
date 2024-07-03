@@ -82,7 +82,7 @@ int tf_parse_json_with_length(const char *p_str, size_t len,
     p_tn = cJSON_GetObjectItem(p_json_root, "tn");
     if (p_tn == NULL || !cJSON_IsString(p_tn))
     {
-        ESP_LOGE(TAG, "ctd is not number");
+        ESP_LOGE(TAG, "tn is missing or not a string");
         goto err;
     } else {
         p_info->p_tf_name = p_tn->valuestring;

@@ -640,7 +640,7 @@ esp_err_t app_sensecraft_init(void)
     ESP_GOTO_ON_FALSE(NULL != p_sensecraft->p_task_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task TCB");
 
     p_sensecraft->task_handle = xTaskCreateStatic(__sensecraft_task,
-                                                "__sensecraft_task",
+                                                "app_sensecraft",
                                                 SENSECRAFT_TASK_STACK_SIZE,
                                                 (void *)p_sensecraft,
                                                 SENSECRAFT_TASK_PRIO,

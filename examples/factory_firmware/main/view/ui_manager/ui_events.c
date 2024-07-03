@@ -10,6 +10,7 @@
 #include "esp_timer.h"
 
 #include "ui/ui.h"
+#include "view.h"
 #include "pm.h"
 #include "animation.h"
 #include "event.h"
@@ -985,19 +986,29 @@ void setwific_cb(lv_event_t *e)
 void setblec_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setblec_cb");
-    static lv_state_t btn_state;
-    btn_state = lv_obj_get_state(ui_setblesw);
+
+    if (lv_obj_has_state(ui_setblesw, LV_STATE_DISABLED)) {
+        ESP_LOGI(TAG, "ui_setblesw is disabled, skipping action");
+        return;
+    }
+
+    static int btn_state;
+    btn_state = (get_ble_switch(UI_CALLER));
     switch (btn_state)
     {
         case 0:
             ESP_LOGI(TAG, "ble_btn_status: on");
-            lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
             set_ble_switch(UI_CALLER, 1);
+            lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+            lv_obj_add_state(ui_setblesw, LV_STATE_DISABLED);
+            wait_timer_start();
             break;
         case 1:
             ESP_LOGI(TAG, "ble_btn_status: off");
-            lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
             set_ble_switch(UI_CALLER, 0);
+            lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
+            lv_obj_add_state(ui_setblesw, LV_STATE_DISABLED);
+            wait_timer_start();
             break;
 
         default:
@@ -1008,21 +1019,19 @@ void setblec_cb(lv_event_t *e)
 void setrgbc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "setrgbc_cb");
-    static lv_state_t btn_state;
-    btn_state = lv_obj_get_state(ui_setrgbsw);
+    static int btn_state;
+    btn_state = (get_rgb_switch(UI_CALLER));
     switch (btn_state)
     {
         case 0:
             ESP_LOGI(TAG, "rgb_switch: on");
-            lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
             set_rgb_switch(UI_CALLER, 1);
-
+            lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
             break;
         case 1:
             ESP_LOGI(TAG, "rgb_switch: off");
-            lv_obj_clear_state(ui_setrgbsw, LV_STATE_CHECKED);
             set_rgb_switch(UI_CALLER, 0);
-
+            lv_obj_clear_state(ui_setrgbsw, LV_STATE_CHECKED);
             break;
 
         default:
@@ -1550,9 +1559,23 @@ void view_info_obtain()
 {
     ESP_LOGI(TAG, "settingInfoInit");
     retry_get_data((uint8_t* (*)(int))get_brightness, UI_CALLER, MAX_RETRIES);
-    retry_get_data((uint8_t* (*)(int))get_rgb_switch, UI_CALLER, MAX_RETRIES);
     retry_get_data((uint8_t* (*)(int))get_sound, UI_CALLER, MAX_RETRIES);
-    retry_get_data((uint8_t* (*)(int))get_ble_switch, UI_CALLER, MAX_RETRIES);
+    const uint8_t *rgb_switch = retry_get_data((uint8_t* (*)(int))get_rgb_switch, UI_CALLER, MAX_RETRIES);
+    const uint8_t *ble_switch = retry_get_data((uint8_t* (*)(int))get_ble_switch, UI_CALLER, MAX_RETRIES);
+
+    if(rgb_switch)
+    {
+        lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
+    }else{
+        lv_obj_clear_state(ui_setrgbsw, LV_STATE_CHECKED);
+    }
+
+    if(ble_switch)
+    {
+        lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
+    }else{
+        lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
+    }
 
     // Update SN、EUI、BTMAC、WIFIMAC、ESP_VERSION、AI_VERSION  to about device page
     static char about_sn[20];

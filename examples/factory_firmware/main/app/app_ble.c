@@ -48,6 +48,9 @@ Passkey Entry: designed for the scenario where one device has input capability b
 
 #define SENSECAP_SN_STR_LEN             18
 
+//event group events
+#define EVENT_INDICATE_SENDING          BIT0
+
 
 static const char *TAG = "ble";
 
@@ -60,6 +63,7 @@ static uint8_t adv_data[31] = {
 static uint8_t ble_mac_addr[6] = {0};
 static uint8_t own_addr_type;
 static SemaphoreHandle_t g_sem_mac_addr;
+static EventGroupHandle_t g_eg_ble;
 static volatile atomic_bool g_ble_synced = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_ble_adv = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_ble_connected = ATOMIC_VAR_INIT(false);
@@ -378,7 +382,6 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
         bleprph_print_conn_desc(&event->disconnect.conn);
         atomic_store(&g_ble_connected, false);
-        g_curr_ble_conn_handle = 0xffff;
         bool status = false;
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_STATUS, &status, sizeof(bool), pdMS_TO_TICKS(10000));
         
@@ -563,24 +566,39 @@ static void __bleprph_host_task(void *param)
     ESP_LOGI(TAG, "BLE Host Task Started");
     /* This function will return only when nimble_port_stop() is executed */
     nimble_port_run();
-
     nimble_port_freertos_deinit();
+    ESP_LOGD(TAG, "BLE Host Task Ended");
 }
 
 static void __ble_monitor_task(void *p_arg)
 {
+    bool last_ble_adv_state = false;
+
     while (1) {
-        if (atomic_load(&g_ble_adv)) {
-            if (!ble_gap_adv_active() && atomic_load(&g_ble_synced) && !atomic_load(&g_ble_connected))
+        bool cur_ble_adv = atomic_load(&g_ble_adv);
+        if (cur_ble_adv) {
+            if (cur_ble_adv != last_ble_adv_state && atomic_load(&g_ble_synced) && !atomic_load(&g_ble_connected)) {
                 bleprph_advertise_start();
+                last_ble_adv_state = cur_ble_adv;
+            }
         } else {
-            if (ble_gap_adv_active() && atomic_load(&g_ble_synced))
+            if (cur_ble_adv != last_ble_adv_state && atomic_load(&g_ble_synced)) {
+
+                if (atomic_load(&g_ble_connected)) {
+                    //wait app_ble_send_indicate() done if it's under call
+                    while (xEventGroupGetBits(g_eg_ble) & EVENT_INDICATE_SENDING) {
+                        vTaskDelay(pdMS_TO_TICKS(10));
+                    }
+                    ESP_LOGW(TAG, "going to terminate the active connections!!!");
+                    ble_gap_terminate(g_curr_ble_conn_handle, BLE_HS_EDISABLED);
+                }
+
                 bleprph_advertise_stop();
 
-            if (atomic_load(&g_ble_connected))
-                ble_gap_terminate(g_curr_ble_conn_handle, BLE_HS_EDISABLED);
+                last_ble_adv_state = cur_ble_adv;
+            }
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -592,6 +610,7 @@ esp_err_t app_ble_init(void)
     esp_err_t ret;
 
     g_sem_mac_addr = xSemaphoreCreateMutex();
+    g_eg_ble = xEventGroupCreate();
 
     ret = nimble_port_init();
     ESP_RETURN_ON_ERROR(ret, TAG, "Failed to init nimble %d ", ret);
@@ -656,63 +675,63 @@ int app_ble_get_current_mtu(void)
 */
 esp_err_t app_ble_send_indicate(uint8_t *data, int len)
 {
-    if (!atomic_load(&g_ble_connected)) return BLE_HS_ENOTCONN;
+    if (!atomic_load(&g_ble_connected) || !atomic_load(&g_ble_adv)) return BLE_HS_ENOTCONN;
     int rc = ESP_FAIL;
-    struct os_mbuf *txom;
+    struct os_mbuf *txom = NULL;
+
+    xEventGroupSetBits(g_eg_ble, EVENT_INDICATE_SENDING);
 
     int mtu = app_ble_get_current_mtu();
     int txlen = 0, txed_len = 0;
 
-    const int wait_step_climb = 10, wait_max = 60000;  //ms
+    const int wait_step_climb = 10, wait_max = 10000;  //ms
     int wait = 0, wait_step = wait_step_climb, wait_sum = 0;  //ms
-    while (len > 0) {
+    const int retry_max = 10;
+    int retry_cnt = 0;
+    while (len > 0 && atomic_load(&g_ble_connected) && atomic_load(&g_ble_adv)) {
         txlen = MIN(len, mtu - 3);
-        for (;;) {
-            txom = ble_hs_mbuf_from_flat(data + txed_len, txlen);
-            if (!txom) {
-                wait += wait_step;
-                wait_step += wait_step_climb;
-                ESP_LOGD(TAG, "app_ble_send_indicate, mbuf alloc failed, wait %dms", wait);
-                vTaskDelay(pdMS_TO_TICKS(wait));
-                wait_sum += wait;
-                if (wait_sum > wait_max) goto indicate_err;
-            } else {
-                wait = wait_sum = 0;
-                wait_step = wait_step_climb;
-                break;
+        txom = ble_hs_mbuf_from_flat(data + txed_len, txlen);
+        ESP_LOGD(TAG, "after mbuf alloc, os_msys_count: %d, os_msys_num_free: %d", os_msys_count(), os_msys_num_free());
+        if (!txom) {
+            wait += wait_step;
+            wait_step += wait_step_climb;
+            ESP_LOGD(TAG, "app_ble_send_indicate, mbuf alloc failed, wait %dms", wait);
+            vTaskDelay(pdMS_TO_TICKS(wait));
+            wait_sum += wait;
+            if (wait_sum > wait_max) {
+                ESP_LOGE(TAG, "app_ble_send_indicate, mbuf alloc timeout!!!");
+                rc = BLE_HS_ENOMEM;
+                goto indicate_end;
             }
+            continue;
         }
+        wait = wait_sum = 0;
+        wait_step = wait_step_climb;
         
-        for (;;) {
-            rc = ble_gatts_indicate_custom(g_curr_ble_conn_handle, gatt_svr_chr_handle_read, txom);
-            if (rc != 0) {
-                wait += wait_step;
-                wait_step += wait_step_climb;
-                ESP_LOGD(TAG, "ble_gatts_indicate_custom failed, wait %dms", wait);
-                vTaskDelay(pdMS_TO_TICKS(wait));
-                wait_sum += wait;
-                if (wait_sum > wait_max) goto indicate_err0;
-            } else {
-                wait = wait_sum = 0;
-                wait_step = wait_step_climb;
-                break;
+        rc = ble_gatts_indicate_custom(g_curr_ble_conn_handle, gatt_svr_chr_handle_read, txom);
+        //txom will be consumed anyways, we don't need to release it here.
+        if (rc != 0) {
+            ESP_LOGD(TAG, "ble_gatts_indicate_custom failed (rc=%d, mtu=%d, txlen=%d, remain_len=%d), retry ...", rc, mtu, txlen, len);
+            retry_cnt++;
+            if (retry_cnt > retry_max) {
+                ESP_LOGE(TAG, "ble_gatts_indicate_custom failed overall after %d retries!!!", retry_max);
+                rc = BLE_HS_ESTALLED;
+                goto indicate_end;
             }
+            continue;
         }
         txed_len += txlen;
         len -= txlen;
-        if (rc == 0) {
-            ESP_LOGI(TAG, "indication sent successfully, mtu=%d, txlen=%d, remain_len=%d", mtu, txlen, len);
-        } else {
-            ESP_LOGW(TAG, "Error in sending indication rc = %d", rc);
-        }
-        vTaskDelay(pdMS_TO_TICKS(100));  // to avoid watchdog dead in cpu1
+        ESP_LOGI(TAG, "indication sent successfully, mtu=%d, txlen=%d, remain_len=%d", mtu, txlen, len);
+        // vTaskDelay(pdMS_TO_TICKS(100));  // to avoid watchdog dead in cpu1
     }
-    
-    return rc;
 
-indicate_err0:
-    if (txom)
-        os_mbuf_free_chain(txom);
-indicate_err:
-    return BLE_HS_ENOMEM;
+    if (len != 0) {
+        rc = BLE_ERR_CONN_TERM_LOCAL;
+    }
+
+indicate_end:
+    ESP_LOGD(TAG, "before app_ble_send_indicate return, os_msys_count: %d, os_msys_num_free: %d", os_msys_count(), os_msys_num_free());
+    xEventGroupClearBits(g_eg_ble, EVENT_INDICATE_SENDING);
+    return rc;
 }
