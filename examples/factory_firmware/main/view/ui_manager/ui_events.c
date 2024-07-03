@@ -113,24 +113,6 @@ static void Page_shutdown();
 static void Page_facreset();
 static void view_info_obtain_early();
 
-enum
-{
-    SCREEN_VIRTUAL, // display emoticon on virtual page
-    SCREEN_AVATAR,  // display emoticon on avatar page
-    SCREEN_GUIDE    // display emoticon on guide page
-};
-
-enum
-{
-    EMOJI_GREETING,
-    EMOJI_DETECTING,
-    EMOJI_DETECTED,
-    EMOJI_SPEAKING,
-    EMOJI_LISTENING,
-    EMOJI_ANALYZING,
-    EMOJI_STANDBY,
-    EMOJI_STOP
-};
 
 static void async_emoji_switch_scr(void *arg)
 {

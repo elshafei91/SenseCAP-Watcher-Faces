@@ -505,20 +505,23 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 if(ota_st->status == 1)
                 {
                     update_ota_progress(ota_st->percentage);
-                    lv_label_set_text(ui_otatext, "Updating\nFirmware, this might take several minutes...");
+                    lv_label_set_text(ui_otastatus, "Updating\nFirmware");
+                    lv_obj_clear_flag(ui_otatext, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
                 }else if (ota_st->status == 2)
                 {
                     ESP_LOGI(TAG, "OTA download succeeded");
-                    lv_label_set_text(ui_otatext, "Update\nSuccessful");
+                    lv_label_set_text(ui_otastatus, "Update\nSuccessful");
+                    lv_obj_add_flag(ui_otatext, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_otaicon, &ui_img_wifiok_png);
                     lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
                 }else if (ota_st->status == 3){
                     ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
-                    lv_label_set_text(ui_otatext, "Update Failed");
+                    lv_label_set_text(ui_otastatus, "Update Failed");
+                    lv_obj_add_flag(ui_otatext, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_otaicon, &ui_img_error_png);
                     lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
@@ -561,13 +564,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         ESP_LOGI(TAG, "OTA download succeeded");
                     }else if (ota_st->status == 1)
                     {
-                        lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                        // lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
                         update_ai_ota_progress(ota_st->percentage);
                     }else{
-                        lv_label_set_text(ui_otatext, "Update Failed");
-                        lv_img_set_src(ui_otaicon, &ui_img_error_png);
-                        lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
+                        // lv_label_set_text(ui_otatext, "Update Failed");
+                        // lv_img_set_src(ui_otaicon, &ui_img_error_png);
+                        // lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                        // lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                         ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
                     }
                 }
