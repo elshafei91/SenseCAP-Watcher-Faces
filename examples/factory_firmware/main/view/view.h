@@ -9,6 +9,8 @@
 extern "C" {
 #endif
 
+void wait_timer_start();
+
 int view_init(void);
 
 void view_render_black(void);
