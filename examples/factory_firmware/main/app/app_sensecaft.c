@@ -474,6 +474,7 @@ static void __sensecraft_task(void *p_arg)
     bool mqtt_client_inited = false;
     size_t len =0;
     bool  is_need_update_token = false;
+    int http_fail_cnt = 0;
 
     sniprintf(p_sensecraft->topic_down_task_publish, MQTT_TOPIC_STR_LEN, 
                 "sensecraft/ipnode/%s/get/order/task-publish", p_sensecraft->deviceinfo.eui);
@@ -518,10 +519,8 @@ static void __sensecraft_task(void *p_arg)
             } 
         } else {
             if( p_sensecraft->last_http_time == 0 ) {
-                p_sensecraft->last_http_time = now;
                 is_need_update_token = true;
             } else if( difftime(now, p_sensecraft->last_http_time) > (60*60) ) {
-                p_sensecraft->last_http_time = now;
                 is_need_update_token = true;
             }
         }
@@ -533,7 +532,8 @@ static void __sensecraft_task(void *p_arg)
             
             ret = __https_mqtt_token_get(p_mqtt_info, (const char *)p_sensecraft->https_token);
             if( ret == 0 ) {
-
+                http_fail_cnt = 0;
+                p_sensecraft->last_http_time = now;
                 snprintf(p_sensecraft->mqtt_broker_uri, sizeof(p_sensecraft->mqtt_broker_uri), "mqtt://%s:%d", \
                                                 p_mqtt_info->serverUrl, p_mqtt_info->mqttPort);
                 snprintf(p_sensecraft->mqtt_client_id,  sizeof(p_sensecraft->mqtt_client_id), "device-3000-%s", p_sensecraft->deviceinfo.eui);
@@ -558,6 +558,17 @@ static void __sensecraft_task(void *p_arg)
                     esp_mqtt_set_config(p_sensecraft->mqtt_handle, &p_sensecraft->mqtt_cfg);
                     esp_mqtt_client_reconnect(p_sensecraft->mqtt_handle);
                     ESP_LOGI(TAG, "mqtt client start reconnecting ...");
+                }
+
+            } else {
+                ESP_LOGE(TAG, "get token error, ret: %d", ret);
+                ESP_LOGE(TAG, "wait %ds retry.", (http_fail_cnt + 1) * 10);
+                if( http_fail_cnt ) {                    
+                    vTaskDelay(10000 * http_fail_cnt / portTICK_PERIOD_MS);
+                }
+                http_fail_cnt++;
+                if( http_fail_cnt >= 10 ) {
+                    http_fail_cnt = 10;
                 }
             }
         }
