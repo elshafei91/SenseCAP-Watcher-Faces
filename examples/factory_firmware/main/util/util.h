@@ -19,6 +19,11 @@ void *psram_malloc(size_t sz);
 void *psram_calloc(size_t n, size_t sz);
 void *psram_realloc(void *ptr, size_t new_sz);
 
+/**
+ * util func that combines vTaskList and vTaskGetRunTimeStats
+*/
+void util_print_task_stats(char *dst_buffer);
+
 #ifdef __cplusplus
 }
 #endif

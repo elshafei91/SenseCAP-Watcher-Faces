@@ -244,7 +244,7 @@ void app_main(void)
     xTaskCreatePinnedToCore(task_app_init, "task_app_init", 4096, NULL, 4, NULL, 1);
 
 #ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
-    char *buffer = psram_calloc(1, 3096);
+    char *buffer = psram_calloc(1, 4096);
 #else
     static char buffer[512];
 #endif
@@ -280,15 +280,12 @@ void app_main(void)
          * requires configuration:
          * Component config -> FreeRTOS -> Kernel -> configUSE_TRACE_FACILITY (Yes)
          *                                           configUSE_STATS_FORMATTING_FUNCTIONS (Yes)
+         *                                           configGENERATE_RUN_TIME_STATS (Yes, to display the cpu usage column)
+         *                                (optional) Enable display of xCoreID in vTaskList (Yes, to display the cpu core column)
          */
 #ifdef CONFIG_FREERTOS_USE_TRACE_FACILITY
         vTaskDelay(pdMS_TO_TICKS(1));
-        vTaskList(buffer);
-#ifdef CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
-        ESP_LOGI("task stack", "\nTask Name       Status  Prio    Core    HWM     Task#\n%s\n", buffer);
-#else
-        ESP_LOGI("task stack", "\nTask Name       Status  Prio    HWM     Task#\n%s\n", buffer);
-#endif
+        util_print_task_stats(buffer);  //printing happends inside
 #endif
 
 #ifdef CONFIG_ESP_EVENT_LOOP_PROFILING
