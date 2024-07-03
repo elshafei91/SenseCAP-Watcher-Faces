@@ -1133,8 +1133,6 @@ esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_statu
     const char *fields =  \
                 "\"3000\": %d,"
                 "\"3001\": \"%s\","
-                "\"3002\": \"%s\","
-                "\"3003\": \"%s\","
                 "\"3502\": \"%s\"";
 
     ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle, ESP_FAIL, TAG, "mqtt_client is not inited yet [4]");
@@ -1145,7 +1143,7 @@ esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_statu
     ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
 
     sniprintf(json_buff, buff_sz, fields, 
-              dev_status->battery_per, dev_status->hw_version, dev_status->fw_version, dev_status->fw_version, dev_status->fw_version);
+              dev_status->battery_per, dev_status->hw_version, dev_status->fw_version);
 
     if (dev_status->himax_fw_version) {
         // himax version might be NULL, if NULL don't include 3577
