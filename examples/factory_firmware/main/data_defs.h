@@ -46,7 +46,7 @@ struct view_data_wifi_st
 
 struct view_data_wifi_config
 {
-    char    ssid[32];
+    char    ssid[33];
     char    password[64];
     bool    have_password;
 };
