@@ -474,6 +474,7 @@ static void __sensecraft_task(void *p_arg)
     bool mqtt_client_inited = false;
     size_t len =0;
     bool  is_need_update_token = false;
+    int http_fail_cnt = 0;
 
     sniprintf(p_sensecraft->topic_down_task_publish, MQTT_TOPIC_STR_LEN, 
                 "sensecraft/ipnode/%s/get/order/task-publish", p_sensecraft->deviceinfo.eui);
@@ -518,10 +519,8 @@ static void __sensecraft_task(void *p_arg)
             } 
         } else {
             if( p_sensecraft->last_http_time == 0 ) {
-                p_sensecraft->last_http_time = now;
                 is_need_update_token = true;
             } else if( difftime(now, p_sensecraft->last_http_time) > (60*60) ) {
-                p_sensecraft->last_http_time = now;
                 is_need_update_token = true;
             }
         }
@@ -533,7 +532,8 @@ static void __sensecraft_task(void *p_arg)
             
             ret = __https_mqtt_token_get(p_mqtt_info, (const char *)p_sensecraft->https_token);
             if( ret == 0 ) {
-
+                http_fail_cnt = 0;
+                p_sensecraft->last_http_time = now;
                 snprintf(p_sensecraft->mqtt_broker_uri, sizeof(p_sensecraft->mqtt_broker_uri), "mqtt://%s:%d", \
                                                 p_mqtt_info->serverUrl, p_mqtt_info->mqttPort);
                 snprintf(p_sensecraft->mqtt_client_id,  sizeof(p_sensecraft->mqtt_client_id), "device-3000-%s", p_sensecraft->deviceinfo.eui);
@@ -558,6 +558,17 @@ static void __sensecraft_task(void *p_arg)
                     esp_mqtt_set_config(p_sensecraft->mqtt_handle, &p_sensecraft->mqtt_cfg);
                     esp_mqtt_client_reconnect(p_sensecraft->mqtt_handle);
                     ESP_LOGI(TAG, "mqtt client start reconnecting ...");
+                }
+
+            } else {
+                ESP_LOGE(TAG, "get token error, ret: %d", ret);
+                ESP_LOGE(TAG, "wait %ds retry.", (http_fail_cnt + 1) * 10);
+                if( http_fail_cnt ) {                    
+                    vTaskDelay(10000 * http_fail_cnt / portTICK_PERIOD_MS);
+                }
+                http_fail_cnt++;
+                if( http_fail_cnt >= 10 ) {
+                    http_fail_cnt = 10;
                 }
             }
         }
@@ -834,6 +845,7 @@ esp_err_t app_sensecraft_mqtt_report_taskflow_status(intmax_t taskflow_id,
             "{"
                 "\"name\": \"task-flow-report\","
                 "\"value\": {"
+                    "\"type\": 1,"
                     "\"tlid\": %jd,"
                     "\"ctd\": %jd,"
                     "\"status\": %d,"
@@ -1133,8 +1145,6 @@ esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_statu
     const char *fields =  \
                 "\"3000\": %d,"
                 "\"3001\": \"%s\","
-                "\"3002\": \"%s\","
-                "\"3003\": \"%s\","
                 "\"3502\": \"%s\"";
 
     ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle, ESP_FAIL, TAG, "mqtt_client is not inited yet [4]");
@@ -1145,7 +1155,7 @@ esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_statu
     ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
 
     sniprintf(json_buff, buff_sz, fields, 
-              dev_status->battery_per, dev_status->hw_version, dev_status->fw_version, dev_status->fw_version, dev_status->fw_version);
+              dev_status->battery_per, dev_status->hw_version, dev_status->fw_version);
 
     if (dev_status->himax_fw_version) {
         // himax version might be NULL, if NULL don't include 3577

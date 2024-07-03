@@ -452,7 +452,7 @@ static int __get_camera_sensor_resolution(cJSON *payload)
         case (640+480):
             return TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_640_480;
         default:
-            ESP_LOGW(TAG, "unknown resolution: %d, %d", (width+height));
+            ESP_LOGW(TAG, "unknown resolution: %d, %d", width, height);
             return -1;
     }
 }
@@ -462,11 +462,14 @@ static int __get_camera_mode_get(cJSON *payload)
     int mode = 0;
     cJSON * name = cJSON_GetObjectItem(payload, "name");
     if( name != NULL  && name->valuestring != NULL ) {
-       if(strcmp(name->valuestring, "SAMPLE") == 0) {
+        // maybe have "xxx@SAMPLE, so use strnstr, not strcmp"
+        if(strnstr(name->valuestring, "SAMPLE", strlen(name->valuestring)) != NULL) {
             mode = TF_MODULE_AI_CAMERA_MODES_SAMPLE;  
-       } else {
+        } else if( strnstr(name->valuestring, "INVOKE", strlen(name->valuestring)) != NULL) {
             mode = TF_MODULE_AI_CAMERA_MODES_INFERENCE;
-       }
+        } else {
+            mode = -1;
+        }
     } else {
         mode = -1;
     }
@@ -662,8 +665,13 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
             break;
         }
         default:
-            xEventGroupSetBits(p_module_ins->event_group, EVENT_PRVIEW_416_416);
-            ESP_LOGW(TAG, "Ignored this resolution: %d", resolution);
+            ESP_LOGW(TAG, "Ignored this data: %s", reply->data);
+
+            if ( mode == TF_MODULE_AI_CAMERA_MODES_INFERENCE  || mode  == TF_MODULE_AI_CAMERA_MODES_SAMPLE) {
+                // When sampling 640*480, the timer may time out, causing repeated preview, but it does not affect.
+                ESP_LOGE(TAG, "Need Re-preview");
+                xEventGroupSetBits(p_module_ins->event_group, EVENT_PRVIEW_416_416);
+            }
             break;
     }
 }
@@ -1233,11 +1241,15 @@ static void ai_camera_task(void *p_arg)
         }
 
         if( ( bits & EVENT_STOP ) != 0 ) {
-            sscma_client_break(p_module_ins->sscma_client_handle);
             ESP_LOGI(TAG, "EVENT_STOP");
+            sscma_client_break(p_module_ins->sscma_client_handle);
+            if (esp_timer_is_active( p_module_ins->timer_handle ) == true){
+                esp_timer_stop(p_module_ins->timer_handle);
+                ESP_LOGI(TAG, "stop timer");
+            }
             vTaskDelay(1000 / portTICK_PERIOD_MS); //wait sscma handle event done
             run_flag = false;
-
+            
             xEventGroupClearBits(p_module_ins->event_group, \
                 EVENT_START | EVENT_STOP | \
                 EVENT_SIMPLE_640_480 | EVENT_PRVIEW_416_416);
@@ -1500,9 +1512,16 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     sscma_client_init(p_module_ins->sscma_client_handle);
     sscma_client_break(p_module_ins->sscma_client_handle);
 
-    if (sscma_client_get_info(p_module_ins->sscma_client_handle, &p_module_ins->himax_info, true) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get info");
-    } else {
+    for (size_t i = 0; i < 3; i++)
+    {
+        ret  = sscma_client_get_info(p_module_ins->sscma_client_handle, &p_module_ins->himax_info, true);
+        if ( ret == ESP_OK) {
+            break;
+        }
+        ESP_LOGE(TAG, "Failed to get info, retry %d", i);
+        vTaskDelay(20 / portTICK_PERIOD_MS);
+    }
+    if ( ret != ESP_OK) {
         ESP_LOGI(TAG,"ID: %s", (p_module_ins->himax_info->id != NULL) ? p_module_ins->himax_info->id : "NULL");
         ESP_LOGI(TAG,"Name: %s", (p_module_ins->himax_info->name != NULL) ? p_module_ins->himax_info->name : "NULL");
         ESP_LOGI(TAG,"Hardware Version: %s", (p_module_ins->himax_info->hw_ver != NULL) ? p_module_ins->himax_info->hw_ver : "NULL");
