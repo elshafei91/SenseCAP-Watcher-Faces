@@ -20,6 +20,8 @@ static int png_loading_count = 0;
 static bool battery_flag_toggle = 0;
 static int battery_blink_count = 0;
 
+lv_obj_t * pre_foucsed_obj = NULL;
+uint8_t g_group_layer_ = 0;
 uint8_t g_shutdown = 0;
 uint8_t g_dev_binded = 0;
 extern uint8_t g_taskdown;
@@ -160,6 +162,16 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
                 lv_obj_clear_flag(ui_Page_Emoji, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_clear_flag(ui_facearc, LV_OBJ_FLAG_HIDDEN);
+
+                if(g_group_layer_ == 0)
+                {
+                    pre_foucsed_obj = lv_group_get_focused(g_main);
+                    ESP_LOGI(TAG, "pre_foucsed_obj : %d", pre_foucsed_obj);
+                }
+                lv_group_add_obj(g_main, ui_emoticonok);
+                lv_group_focus_obj(ui_emoticonok);
+                lv_group_focus_freeze(g_main, true);
+
                 lv_obj_add_flag(ui_failed, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_Page_Emoji);
                 lv_obj_set_style_bg_color(ui_emoticonok, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -180,6 +192,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_arc_set_value(ui_facearc, 100);
                     lv_label_set_text(ui_facet, "Please reboot to update new faces");
                 }
+
+                g_group_layer_ = 1;
                 break;
             }
 
@@ -187,12 +201,20 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_FAILED");
                 lv_obj_clear_flag(ui_Page_Emoji, LV_OBJ_FLAG_HIDDEN);
 
+                if(g_group_layer_ == 0)
+                {
+                    pre_foucsed_obj = lv_group_get_focused(g_main);
+                }
+                lv_group_add_obj(g_main, ui_emoticonok);
+                lv_group_focus_obj(ui_emoticonok);
+                lv_group_focus_freeze(g_main, true);
+
                 lv_obj_add_flag(ui_facearc, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_clear_flag(ui_failed, LV_OBJ_FLAG_HIDDEN);
                 lv_label_set_text(ui_facet, "Please retry");
                 lv_obj_set_style_bg_color(ui_emoticonok, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);
 
-
+                g_group_layer_ = 1;
                 break;
             }
 

@@ -63,6 +63,9 @@ extern uint8_t emoticon_disp_id; // for lv_async switch and emoticon switch
 extern lv_obj_t *ui_alarm_indicator;
 extern lv_obj_t * ui_task_error;
 extern uint8_t view_alarm_status;
+extern lv_obj_t * ui_emoticonok;
+extern lv_obj_t * pre_foucsed_obj;
+extern uint8_t g_group_layer_;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -1301,8 +1304,11 @@ void guide2avaclick_cb(lv_event_t * e)
 
 void emoticonback_cb(lv_event_t * e)
 {
+    g_group_layer_ = 0;
     lv_obj_add_flag(ui_Page_Emoji, LV_OBJ_FLAG_HIDDEN);
-    // lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    lv_group_remove_obj(ui_emoticonok);
+    lv_group_focus_freeze(g_main, false);
+    lv_group_focus_obj(pre_foucsed_obj);
 }
 
 void guidebtn1click_cb(lv_event_t * e)
