@@ -307,6 +307,7 @@ void ui_Page_OTA_screen_init(void);
 extern lv_obj_t * ui_Page_OTA;
 extern lv_obj_t * ui_otapanel;
 extern lv_obj_t * ui_otatext;
+extern lv_obj_t * ui_otastatus;
 extern lv_obj_t * ui_otaspinner;
 extern lv_obj_t * ui_otaicon;
 extern lv_obj_t * ui_otaarc;
