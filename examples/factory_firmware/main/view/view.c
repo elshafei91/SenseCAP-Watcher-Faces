@@ -76,6 +76,25 @@ extern int g_standby_image_count;
 extern int g_greet_image_count;
 extern int g_detected_image_count;
 
+static void waiting_timer_callback(void *arg);
+static const esp_timer_create_args_t waiting_timer_args = { .callback = &waiting_timer_callback, .name = "waiting for ble" };
+static esp_timer_handle_t waiting_timer;
+
+static void waiting_timer_callback(void *arg)
+{
+    lv_obj_clear_state(ui_setblesw, LV_STATE_DISABLED);
+}
+
+
+void wait_timer_start()
+{
+    if (esp_timer_is_active(waiting_timer))
+    {
+        esp_timer_stop(waiting_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_once(waiting_timer, (uint64_t)1000000));
+}
+
 static void update_ai_ota_progress(int percentage)
 {
     lv_arc_set_value(ui_waitarc, percentage);
@@ -362,12 +381,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_RGB_SWITCH:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_RGB_SWITCH");
                 int * rgb_st = (int *)event_data;
-                if((*rgb_st))
-                {
-                    lv_obj_add_state(ui_setrgbsw, LV_STATE_CHECKED);
-                }else{
-                    lv_obj_clear_state(ui_setrgbsw, LV_STATE_CHECKED);
-                }
 
                 break;
             }
@@ -375,12 +388,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_BLE_SWITCH:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BLE_SWITCH, %d", *(int *)event_data);
                 int *sw = (int *)event_data;
-                if((*sw))
-                {
-                    lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
-                }else{
-                    lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
-                }
 
                 break;
             }
@@ -564,6 +571,7 @@ int view_init(void)
     lv_pm_init();
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
+    ESP_ERROR_CHECK(esp_timer_create(&waiting_timer_args, &waiting_timer));
     lvgl_port_unlock();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
