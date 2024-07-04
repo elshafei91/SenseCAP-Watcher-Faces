@@ -101,6 +101,8 @@ static void __app_event_loop_handler(void *handler_args, esp_event_base_t base, 
                 esp_vfs_spiffs_unregister("storage");
             }
             bsp_system_shutdown();
+            vTaskDelay(pdMS_TO_TICKS(1000)); 
+            esp_restart(); //If you connect a Type-C, you will not be able to shut down the device. Just restart it.
             break;
         }
         case VIEW_EVENT_REBOOT: {

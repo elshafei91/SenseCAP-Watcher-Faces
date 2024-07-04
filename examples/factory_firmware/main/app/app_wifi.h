@@ -39,6 +39,8 @@ int app_wifi_init(void);
 void wifi_scan(void);
 void current_wifi_get(wifi_ap_record_t *p_st);
 
+const char *print_auth_mode(int authmode);
+
 #ifdef __cplusplus
 }
 #endif

@@ -19,6 +19,7 @@
 #include "esp_wifi.h"
 #include "cJSON.h"
 #include "esp_check.h"
+#include "sensecap-watcher.h"
 
 #include "data_defs.h"
 #include "event_loops.h"
@@ -890,6 +891,28 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
         {
             ESP_LOGI(TAG, "Reset factory flag not found or not a valid number in JSON\n");
         }
+
+        cJSON *json_reboot = cJSON_GetObjectItemCaseSensitive(data, "reboot");
+        if (cJSON_IsNumber(json_reboot))
+        {
+            if ( json_reboot->valueint )
+            {
+                ESP_LOGI(TAG, "Reboot device\n");
+                //Allow No Response
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
+            }
+        }
+
+        cJSON *json_shutdown = cJSON_GetObjectItemCaseSensitive(data, "shutdown");
+        if (cJSON_IsNumber(json_shutdown))
+        {
+            if ( json_shutdown->valueint )
+            {
+                ESP_LOGI(TAG, "Shutdown device\n");
+                //Allow No Response
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
+            }
+        }
     }
     else
     {
@@ -971,7 +994,6 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
     if (himax_version == NULL)
     {
         ESP_LOGE(TAG, "Failed to get Himax software version\n");
-        return ERROR_DATA_READ_FAIL;
     }
 
     // Get the brightness value
@@ -996,6 +1018,9 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
         ESP_LOGE(TAG, "Failed to get RGB switch value\n");
         return ERROR_DATA_READ_FAIL;
     }
+
+    int32_t voltage = bsp_battery_get_voltage();
+    int battery_percent = bsp_battery_get_percent();
 
     // Get the time configuration
     struct view_data_time_cfg cfg;
@@ -1022,16 +1047,20 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "eui", (const char *)eui_rsp);
     cJSON_AddStringToObject(data, "blemac", (const char *)bt_mac_rsp);
-    cJSON_AddStringToObject(data, "himaxsoftwareversion", (const char *)himax_version);
     cJSON_AddNumberToObject(data, "automatic", cfg.auto_update);
     cJSON_AddNumberToObject(data, "rgbswitch", rgb_switch);
     cJSON_AddNumberToObject(data, "sound", sound_value_resp);
     cJSON_AddNumberToObject(data, "brightness", brightness_value_resp);
     cJSON_AddStringToObject(data, "timestamp", timestamp_str);
     cJSON_AddNumberToObject(data, "timezone", cfg.zone);
-    // add Himax_Software_Versionfield
-
+    
     cJSON_AddStringToObject(data, "esp32softwareversion", (const char *)software_version);
+    if (himax_version != NULL)
+    {
+        cJSON_AddStringToObject(data, "himaxsoftwareversion", (const char *)himax_version);
+    }
+    cJSON_AddNumberToObject(data, "batterypercent", battery_percent);
+    cJSON_AddNumberToObject(data, "voltage", voltage); //mv
 
     char *json_string = cJSON_Print(root);
 
@@ -1102,14 +1131,13 @@ at_cmd_error_code handle_wifi_set(char *params)
     }
 
     // Get the password from the JSON
-    if ((json_password != NULL) && cJSON_IsString(json_password) && (json_password->valuestring != NULL))
+    if ((json_password != NULL) && cJSON_IsString(json_password) && (json_password->valuestring != NULL) && (strlen(json_password->valuestring) > 0))
     {
         ESP_LOGI(TAG, "Password in json : %s\n", json_password->valuestring);
         config.have_password = true;
         strncpy(config.password, json_password->valuestring, sizeof(config.password) - 1);
     } else {
         config.have_password = false;
-        ESP_LOGE(TAG, "Password not found in JSON\n"); // maybe not need password
     }
     cJSON_Delete(json);
 
@@ -1206,6 +1234,8 @@ at_cmd_error_code handle_wifi_query(char *params)
     char rssi_str[10];
     snprintf(rssi_str, sizeof(rssi_str), "%d", current_connected_wifi.rssi);
     cJSON_AddStringToObject(data, "rssi", rssi_str);
+    const char *encryption = print_auth_mode(current_connected_wifi.authmode);
+    cJSON_AddStringToObject(data, "encryption", encryption);
 
     ESP_LOGI(TAG, "current_connected_wifi.ssid: %s", current_connected_wifi.ssid);
     ESP_LOGI(TAG, "current_connected_wifi.rssi: %d", current_connected_wifi.rssi);

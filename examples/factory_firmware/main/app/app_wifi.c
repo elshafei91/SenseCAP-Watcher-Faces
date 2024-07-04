@@ -241,7 +241,7 @@ static int __wifi_scan()
 
 /*----------------------------------------------------------------------------------------------------------*/
 /*add scanned wifi entry  into wifi stack*/
-static const char *print_auth_mode(int authmode)
+const char *print_auth_mode(int authmode)
 {
     switch (authmode)
     {
@@ -531,7 +531,15 @@ static void __ping_end(esp_ping_handle_t hdl, void *args)
     struct view_data_wifi_st st;
     if (received > 0)
     {
+        wifi_ap_record_t ap_st;
+        esp_err_t ret = esp_wifi_sta_get_ap_info(&ap_st);
+        
         __wifi_st_get(&st);
+        if( ret == ESP_OK ) {
+            st.rssi = ap_st.rssi;
+            memset(st.ssid, 0, sizeof(st.ssid));
+            strncpy(st.ssid, (char *)ap_st.ssid, sizeof(st.ssid));
+        }
         st.is_network = true;
         atomic_store(&__g_ping_period_cnt, 0);  //reset the counter if network is good
         __wifi_st_set(&st);
@@ -647,11 +655,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             __wifi_cfg_restore();
             break;
         }
-        case VIEW_EVENT_SHUTDOWN: {
-            ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
-            __wifi_shutdown();
-            break;
-        }
         case CTRL_EVENT_MQTT_DISCONNECTED: {
             ESP_LOGI(TAG, "event: CTRL_EVENT_MQTT_DISCONNECTED, speed up ping time counting ...");
             atomic_fetch_add(&__g_ping_period_cnt, PING_PERIOD_DECAY_STEP);
@@ -733,7 +736,6 @@ int app_wifi_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CFG_DELETE, __view_event_handler, NULL, NULL));
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_DISCONNECTED, __view_event_handler, NULL, NULL));
 
