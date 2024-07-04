@@ -1234,6 +1234,8 @@ at_cmd_error_code handle_wifi_query(char *params)
     char rssi_str[10];
     snprintf(rssi_str, sizeof(rssi_str), "%d", current_connected_wifi.rssi);
     cJSON_AddStringToObject(data, "rssi", rssi_str);
+    const char *encryption = print_auth_mode(current_connected_wifi.authmode);
+    cJSON_AddStringToObject(data, "encryption", encryption);
 
     ESP_LOGI(TAG, "current_connected_wifi.ssid: %s", current_connected_wifi.ssid);
     ESP_LOGI(TAG, "current_connected_wifi.rssi: %d", current_connected_wifi.rssi);
