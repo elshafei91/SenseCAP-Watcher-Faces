@@ -39,11 +39,14 @@ void ui_event_emoticonok(lv_event_t * e);
 void viewInfoInit();
 void view_info_obtain();
 
+void emoji_timer(uint8_t emoji_type);
+
 enum
 {
     SCREEN_VIRTUAL, // display emoticon on virtual page
     SCREEN_AVATAR,  // display emoticon on avatar page
-    SCREEN_GUIDE    // display emoticon on guide page
+    SCREEN_GUIDE,    // display emoticon on guide page
+    SCREEN_STANDBY  // display emoticon on standby page
 };
 
 enum

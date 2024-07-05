@@ -41,9 +41,10 @@ uint8_t g_avalivjump = 0;
 extern uint8_t g_dev_binded;
 extern uint8_t g_shutdown;
 
+uint8_t emoji_switch_scr = NULL;
+
 static lv_obj_t *qr;
 static uint8_t loading_flag = 0;
-static uint8_t emoji_switch_scr = NULL;
 static uint32_t emoji_user_data = NULL;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
@@ -52,6 +53,7 @@ static struct view_data_emoticon_display emo_disp;
 static lv_obj_t *avatar_image = NULL;
 static lv_obj_t *virtual_image = NULL;
 static lv_obj_t *flag_image = NULL;
+static lv_obj_t *standby_image = NULL;
 
 static int current_img_index = 0;
 static uint8_t vir_load_count = 0;
@@ -106,6 +108,9 @@ extern lv_obj_t * ui_viewpbtn3;
 // view emoji ota extern
 extern lv_obj_t * ui_Page_Emoji;
 
+// view standby 
+extern lv_obj_t * ui_Page_Standby;
+
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
 static void Task_end();
@@ -128,6 +133,10 @@ static void async_emoji_switch_scr(void *arg)
     if(emoji_switch_scr == SCREEN_GUIDE)
     {
         lv_img_set_src(flag_image, current_img);
+    }
+    if(emoji_switch_scr == SCREEN_STANDBY)
+    {
+        lv_img_set_src(standby_image, current_img);
     }
 }
 
@@ -189,7 +198,7 @@ static void emoji_timer_callback(lv_timer_t *timer)
     }
 }
 
-static void emoji_timer(uint8_t emoji_type)
+void emoji_timer(uint8_t emoji_type)
 {
     if (g_timer != NULL)
     {
@@ -330,11 +339,14 @@ void virscrload_cb(lv_event_t *e)
     if(avatar_image == NULL)avatar_image = lv_img_create(ui_Page_ViewAva);
     if(virtual_image == NULL)virtual_image = lv_img_create(ui_Page_Avatar);
     if(flag_image == NULL)flag_image = lv_img_create(ui_Page_Flag);
+    if(standby_image == NULL)standby_image = lv_img_create(ui_Page_Standby);
     lv_obj_set_align(avatar_image, LV_ALIGN_CENTER);
     lv_obj_set_align(virtual_image, LV_ALIGN_CENTER);
     lv_obj_set_align(flag_image, LV_ALIGN_CENTER);
+    lv_obj_set_align(standby_image, LV_ALIGN_CENTER);
     lv_obj_move_background(flag_image);
     lv_obj_move_background(virtual_image);
+    lv_obj_move_background(standby_image);
 }
 
 void virscrunload_cb(lv_event_t * e)
