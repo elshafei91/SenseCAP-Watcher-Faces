@@ -37,12 +37,6 @@ esp_err_t set_ble_switch(int caller, int status);
 int get_ble_switch(int caller);
 
 /**
- * will be deprecated!
-*/
-int get_time_automatic(int caller);
-esp_err_t set_time_automatic(int caller, int value);
-
-/**
  * all the following size unit is KiB.
 */
 uint16_t get_spiffs_total_size(int caller);
