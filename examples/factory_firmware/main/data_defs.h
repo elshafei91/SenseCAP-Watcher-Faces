@@ -309,6 +309,10 @@ enum {
     CTRL_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status
     CTRL_EVENT_OTA_HIMAX_FW,  //struct view_data_ota_status
 
+    CTRL_EVENT_LOCAL_SVC_CFG_PUSH2TALK,
+    CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW,
+    CTRL_EVENT_LOCAL_SVC_CFG_TOKEN,
+
     CTRL_EVENT_ALL,
 };
 

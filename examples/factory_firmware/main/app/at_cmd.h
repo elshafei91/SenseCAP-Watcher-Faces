@@ -107,6 +107,8 @@ at_cmd_error_code handle_cloud_service_query_command(char *params);    // Cloud 
 at_cmd_error_code handle_emoji_command(char *params);    // Emoji command
 at_cmd_error_code handle_taskflow_query_command(char *params); // Taskflow query command
 at_cmd_error_code handle_bind_command(char *params); // Bind command
+at_cmd_error_code handle_localservice_query(char *params);  // Local service query command
+at_cmd_error_code handle_localservice_set(char *params);  // Local service config command
 
 void init_event_loop_and_task();
 void app_at_cmd_init();

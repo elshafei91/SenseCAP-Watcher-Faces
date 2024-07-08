@@ -6,8 +6,28 @@
 
 #define DEVICEINFO_STORAGE  "deviceinfo"
 
-enum { BLE_CONNECTED, BLE_DISCONNECTED, STATUS_WAITTING };
-enum {BLE_SWITCH_OFF,BLE_SWITCH_ON,BLE_SWITCH_DANGLING};
+// a type of cfg item that includes a string and a switch
+typedef struct {
+    bool enable;
+    char *url;
+} local_service_cfg_type1_t;
+
+// index of cfg items
+// NOTICE: DO NOT reorder the indexies, they're stored in NVS in their order.
+enum {
+    CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER = 0,
+    CFG_ITEM_TYPE1_IMAGE_ANALYZER,
+    CFG_ITEM_TYPE1_TRAINING,
+    CFG_ITEM_TYPE1_NOTIFICATION_PROXY,
+    CFG_ITEM_TYPE1_TOKEN,
+    CFG_ITEM_TYPE1_MAX,
+};
+
+// struct holding all the cfg items for local service configuration
+typedef struct {
+    local_service_cfg_type1_t cfg_items_type1[CFG_ITEM_TYPE1_MAX];
+} local_service_cfg_t;
+
 uint8_t *get_sn(int caller);
 uint8_t *get_eui();
 uint8_t *get_qrcode_content();
@@ -27,6 +47,9 @@ esp_err_t set_sound(int caller, int value);
 
 int get_cloud_service_switch(int caller);
 esp_err_t set_cloud_service_switch(int caller, int value);
+
+esp_err_t get_local_service_cfg_type1(int caller, int cfg_index, local_service_cfg_type1_t *pcfg);
+esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, char *url);
 
 int get_usage_guide(int caller);
 esp_err_t set_usage_guide(int caller, int value);

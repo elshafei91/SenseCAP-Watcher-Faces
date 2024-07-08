@@ -17,6 +17,7 @@
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
 #include "esp_timer.h"
+#include "cJSON.h"
 
 #include "sensecap-watcher.h"
 
@@ -113,6 +114,110 @@ static devicecfg_t *g_devicecfgs;
 static sscma_client_info_t *g_himax_info;
 
 
+static cJSON *__local_service_cfg_to_json(local_service_cfg_t *local_svc_cfg)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (!root) return NULL;
+
+    //type1
+    cJSON *type1 =  cJSON_AddObjectToObject(root, "type1");
+    if (!type1) goto to_json_err;
+    char key_name[32];
+    for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
+    {
+        memset(key_name, 0, 32);
+        snprintf(key_name, 32, "cfg_%d", i);
+        cJSON *item = cJSON_AddObjectToObject(type1, key_name);
+        if (!item) goto to_json_err;
+        local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
+        if (!cJSON_AddBoolToObject(item, "enable", (cJSON_bool)item_type1->enable)) goto to_json_err;
+        if (!cJSON_AddStringToObject(item, "url", item_type1->url)) goto to_json_err;
+    }
+
+    return root;
+    
+to_json_err:
+    ESP_LOGE(TAG, "%s: error happen when creating the json object", __func__);
+    if (root) cJSON_Delete(root);
+    return NULL;
+}
+
+static esp_err_t __local_service_cfg_from_json(local_service_cfg_t *local_svc_cfg, cJSON *json)
+{
+    esp_err_t ret = ESP_ERR_NOT_FOUND;
+
+    cJSON *type1 = cJSON_GetObjectItem(json, "type1");
+    if (!type1) goto from_json_err;
+    char key_name[32];
+    for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
+    {
+        memset(key_name, 0, 32);
+        snprintf(key_name, 32, "cfg_%d", i);
+        cJSON *item = cJSON_GetObjectItem(type1, key_name);
+        if (!item) goto from_json_err;
+        cJSON *item_enable = cJSON_GetObjectItem(item, "enable");
+        if (!item_enable) goto from_json_err;
+        cJSON *item_url = cJSON_GetObjectItem(item, "url");
+        if (!item_url) goto from_json_err;
+        local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
+        item_type1->enable = cJSON_IsTrue(item_enable);
+        if (item_type1->url != NULL) free(item_type1->url);
+        item_type1->url = strdup(item_url->valuestring);
+    }
+
+    return ESP_OK;
+
+from_json_err:
+    ESP_LOGE(TAG, "%s: error happen when parsing the json object", __func__);
+    return ret;
+}
+
+static void __deep_copy_local_service_cfg(local_service_cfg_t *dst, local_service_cfg_t *src)
+{
+    //type1
+    for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
+    {
+        if (dst->cfg_items_type1[i].url != NULL) free(dst->cfg_items_type1[i].url);
+        dst->cfg_items_type1[i].enable = src->cfg_items_type1[i].enable;
+        dst->cfg_items_type1[i].url = strdup(src->cfg_items_type1[i].url);
+    }
+    
+}
+
+static esp_err_t __safely_set_devicecfg_value(devicecfg_t *cfg, int value)
+{
+    esp_err_t ret;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    cfg->current.value = value;
+    esp_timer_stop(cfg->timer_handle);
+    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
+    xSemaphoreGive(cfg->mutex);
+    return ret;
+}
+
+static esp_err_t __safely_set_devicecfg_uint_value(devicecfg_t *cfg, uint32_t value)
+{
+    esp_err_t ret;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    cfg->current.uint_value = value;
+    esp_timer_stop(cfg->timer_handle);
+    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
+    xSemaphoreGive(cfg->mutex);
+    return ret;
+}
+
+static esp_err_t __safely_set_devicecfg_str_value(devicecfg_t *cfg, char *value)
+{
+    esp_err_t ret;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    cfg->current.str_value = value;
+    esp_timer_stop(cfg->timer_handle);
+    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
+    xSemaphoreGive(cfg->mutex);
+    return ret;
+}
+
+/*----------------------------------------------initial load------------------------------------------------------*/
 void init_sn_from_nvs()
 {
     const char *sn_str = factory_info_sn_get();
@@ -295,9 +400,47 @@ void init_cloud_service_switch_from_nvs()
     cfg->last.value = cfg->current.value;
 }
 
-void init_local_service_from_nvs()
+void init_local_service_cfg_from_nvs()
 {
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_LOCAL_SVC);
+    if (cfg->current.uint_value) return;  //already initialized
 
+    local_service_cfg_t *local_svc_cfg = (local_service_cfg_t *)psram_calloc(1, sizeof(local_service_cfg_t));  //ensured init once, never released
+
+    size_t buffer_size = 4096;
+    char *buffer = psram_calloc(1, buffer_size);
+    esp_err_t ret = storage_read(LOCAL_SERVICE_STORAGE_KEY, buffer, &buffer_size);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "local_service_cfg loaded from NVS: %s\nstrlen=%d", buffer, buffer_size);
+        cJSON *json = cJSON_Parse(buffer);
+        if (json) {
+            if (__local_service_cfg_from_json(local_svc_cfg, json)) {
+                ESP_LOGI(TAG, "local_service_cfg all configurations are extracted.");
+            }
+            cJSON_Delete(json);
+        }
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI(TAG, "No local_service_cfg found in NVS. Using default, all disabled.");
+    }
+    else {
+        ESP_LOGE(TAG, "Error reading local_service_cfg from NVS: %s", esp_err_to_name(ret));
+    }
+    free(buffer);
+
+    for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
+    {
+        local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
+        if (item_type1->url == NULL) item_type1->url = strdup("");
+        ESP_LOGI(TAG, "type1/cfg_%d: enable=%d, url=%s", i, item_type1->enable, item_type1->url);
+    }
+
+    cfg->current.uint_value = (uint32_t)local_svc_cfg;
+
+    //copy to last
+    local_service_cfg_t *local_svc_cfg2 = (local_service_cfg_t *)psram_calloc(1, sizeof(local_service_cfg_t));  //ensured init once, never released
+    __deep_copy_local_service_cfg(local_svc_cfg2, local_svc_cfg);
+    cfg->last.uint_value = (uint32_t)local_svc_cfg2;
 }
 
 void init_usage_guide_switch_from_nvs()
@@ -339,9 +482,7 @@ void init_qrcode_content()
     //esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, QRCODE, sizeof(QRCODE), pdMS_TO_TICKS(10000));
 }
 
-/*----------------------------------------------------------------------------------------------------------------------*/
-/*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
-
+/*---------------------------------------------FACTORY info----------------------------------------------------------*/
 uint8_t *get_sn(int caller)
 {
     return SN;
@@ -382,7 +523,7 @@ uint8_t *get_wifi_mac()
     return wifi_mac;
 }
 
-/*---------------------------------------------version module--------------------------------------------------------------*/
+/*---------------------------------------------versions--------------------------------------------------------------*/
 
 char *get_software_version(int caller)
 {
@@ -426,41 +567,7 @@ char *get_himax_software_version(int caller)
     return g_device_status.himax_fw_version;
 }
 
-/*----------------------------------------------little util func------------------------------------------------------*/
-static esp_err_t __safely_set_devicecfg_value(devicecfg_t *cfg, int value)
-{
-    esp_err_t ret;
-    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
-    cfg->current.value = value;
-    esp_timer_stop(cfg->timer_handle);
-    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
-    xSemaphoreGive(cfg->mutex);
-    return ret;
-}
-
-static esp_err_t __safely_set_devicecfg_uint_value(devicecfg_t *cfg, uint32_t value)
-{
-    esp_err_t ret;
-    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
-    cfg->current.uint_value = value;
-    esp_timer_stop(cfg->timer_handle);
-    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
-    xSemaphoreGive(cfg->mutex);
-    return ret;
-}
-
-static esp_err_t __safely_set_devicecfg_str_value(devicecfg_t *cfg, char *value)
-{
-    esp_err_t ret;
-    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
-    cfg->current.str_value = value;
-    esp_timer_stop(cfg->timer_handle);
-    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
-    xSemaphoreGive(cfg->mutex);
-    return ret;
-}
-
-/*----------------------------------------------brightness module------------------------------------------------------*/
+/*----------------------------------------------brightness------------------------------------------------------*/
 int get_brightness(int caller)
 {
     devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_BRIGHTNESS);
@@ -506,7 +613,7 @@ set_brightness_err:
     return ret;
 }
 
-/*--------------------------------------------rgb switch  module----------------------------------------------------------------*/
+/*--------------------------------------------rgb switch----------------------------------------------------------------*/
 
 int get_rgb_switch(int caller)
 {
@@ -553,7 +660,7 @@ set_rgbswitch_err:
     return ret;
 }
 
-/*-----------------------------------------------------sound_Volume---------------------------------------------------*/
+/*-----------------------------------------------------sound volume---------------------------------------------------*/
 
 int get_sound(int caller)
 {
@@ -646,7 +753,7 @@ set_ble_err:
     return ret;
 }
 
-/*-----------------------------------------------------Cloud_service_switch------------------------------------------*/
+/*-----------------------------------------------------cloud service switch------------------------------------------*/
 int get_cloud_service_switch(int caller)
 {
     devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_CLOUD_SVC_SWITCH);
@@ -690,6 +797,109 @@ set_cloud_svc_err:
     xSemaphoreGive(cfg->mutex);
 
     return ret;
+}
+
+/*-----------------------------------------------------local service cfg------------------------------------------*/
+esp_err_t get_local_service_cfg_type1(int caller, int cfg_index, local_service_cfg_type1_t *pcfg)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_LOCAL_SVC);
+    local_service_cfg_t *local_svc_cfg = (local_service_cfg_t *)cfg->current.uint_value;
+    if (cfg_index > CFG_ITEM_TYPE1_MAX) return ESP_ERR_NOT_FOUND;
+
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    memcpy(pcfg, &local_svc_cfg->cfg_items_type1[cfg_index], sizeof(local_service_cfg_type1_t));
+    xSemaphoreGive(cfg->mutex);
+
+    return ESP_OK;
+}
+
+esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, char *url)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_LOCAL_SVC);
+    esp_err_t ret;
+    ESP_LOGI(TAG, "%s: cfg_index=%d, enable=%d, url=%s", __func__, cfg_index, enable, url);
+    local_service_cfg_t *local_svc_cfg = (local_service_cfg_t *)cfg->current.uint_value;
+    if (cfg_index > CFG_ITEM_TYPE1_MAX) return ESP_ERR_NOT_FOUND;
+
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    local_svc_cfg->cfg_items_type1[cfg_index].enable = enable;
+    if (local_svc_cfg->cfg_items_type1[cfg_index].url != NULL) free(local_svc_cfg->cfg_items_type1[cfg_index].url);
+    local_svc_cfg->cfg_items_type1[cfg_index].url = strdup(url);
+    esp_timer_stop(cfg->timer_handle);
+    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
+    xSemaphoreGive(cfg->mutex);
+
+    return ret;
+}
+
+static bool __local_service_cfg_type1_equal(local_service_cfg_t *current, local_service_cfg_t *last, int index)
+{
+    return current->cfg_items_type1[index].enable == last->cfg_items_type1[index].enable && \
+            strcmp(current->cfg_items_type1[index].url, last->cfg_items_type1[index].url) == 0;
+}
+
+static esp_err_t __set_local_service_cfg()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_LOCAL_SVC);
+    esp_err_t ret = ESP_OK;
+    local_service_cfg_t *current_cfg = (local_service_cfg_t *)cfg->current.uint_value;
+    local_service_cfg_t *last_cfg = (local_service_cfg_t *)cfg->last.uint_value;
+    bool changed_push2talk = false, changed_task_flow = false, changed_token = false;
+    char *json_str = NULL;
+
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER)) {
+        changed_push2talk = true;
+    }
+    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_IMAGE_ANALYZER)) {
+        changed_task_flow = true;
+    }
+    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_TRAINING)) {
+        changed_task_flow = true;
+    }
+    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_NOTIFICATION_PROXY)) {
+        changed_task_flow = true;
+    }
+    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_TOKEN)) {
+        changed_token = true;
+    }
+
+    if (changed_push2talk || changed_task_flow || changed_token) {
+        cJSON *json = __local_service_cfg_to_json(current_cfg);
+        if (json) {
+            json_str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
+        }
+    }
+    xSemaphoreGive(cfg->mutex);
+
+    if (json_str) {
+        ESP_GOTO_ON_ERROR(storage_write(LOCAL_SERVICE_STORAGE_KEY, json_str, strlen(json_str)),
+                            set_local_service_cfg_err, TAG, "%s cfg write err", __func__);
+        ESP_LOGD(TAG, "%s done \n%s\nstrlen=%d", __func__, json_str, strlen(json_str));
+        free(json_str);
+    }
+
+    if (changed_push2talk) {
+       esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_LOCAL_SVC_CFG_PUSH2TALK, NULL, 0, pdMS_TO_TICKS(10000));
+    }
+    if (changed_task_flow) {
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW, NULL, 0, pdMS_TO_TICKS(10000));
+    }
+    if (changed_token) {
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_LOCAL_SVC_CFG_TOKEN, NULL, 0, pdMS_TO_TICKS(10000));
+    }
+
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    __deep_copy_local_service_cfg(last_cfg, current_cfg);
+    xSemaphoreGive(cfg->mutex);
+
+    return ESP_OK;
+
+set_local_service_cfg_err:
+    if (json_str) free(json_str);
+    return ret;
+
 }
 
 /*----------------------------------------------------usage guide switch--------------------------------------------------------*/
@@ -948,7 +1158,9 @@ void __app_device_info_task(void *pvParameter)
             else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_CLOUD_SVC_SWITCH)) != 0) {
                 __set_cloud_service_switch();
             }
-            else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_LOCAL_SVC)) != 0) { }
+            else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_LOCAL_SVC)) != 0) {
+                __set_local_service_cfg();
+            }
             else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_USAGE_GUIDE_FLAG)) != 0) {
                 __set_usage_guide();
             }
@@ -1094,6 +1306,7 @@ void app_device_info_init_early()
     init_server_code_from_nvs();
     init_qrcode_content();
     init_usage_guide_switch_from_nvs();
+    init_local_service_cfg_from_nvs();
 
     ESP_LOGI(TAG, "device info init early done, qrcode content: %s", (char *)get_qrcode_content());
 }

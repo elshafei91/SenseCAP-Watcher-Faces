@@ -352,10 +352,10 @@ void AT_command_reg()
 {
     // Register the AT commands
     add_command(&commands, "deviceinfo?", handle_deviceinfo_command);
+    add_command(&commands, "devicecfg=", handle_deviceinfo_cfg_command);  //why `devicecfg=` ? this would be history problem
     add_command(&commands, "wifi=", handle_wifi_set);
     add_command(&commands, "wifi?", handle_wifi_query);
     add_command(&commands, "wifitable?", handle_wifi_table);
-    add_command(&commands, "devicecfg=", handle_deviceinfo_cfg_command);
     add_command(&commands, "taskflow?", handle_taskflow_query_command);
     add_command(&commands, "taskflow=", handle_taskflow_command);
     add_command(&commands, "taskflowinfo?", handle_taskflow_info_query_command);
@@ -363,6 +363,8 @@ void AT_command_reg()
     add_command(&commands, "cloudservice?", handle_cloud_service_query_command);
     add_command(&commands, "emoji=", handle_emoji_command);
     add_command(&commands, "bind=", handle_bind_command);
+    add_command(&commands, "localservice?", handle_localservice_query);
+    add_command(&commands, "localservice=", handle_localservice_set);
 }
 
 /**
@@ -937,7 +939,7 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
         cJSON_Delete(root);
         return ERROR_CMD_JSON_CREATE;
     }
-    cJSON_AddStringToObject(root, "name", "deviceinfo=");
+    cJSON_AddStringToObject(root, "name", "devicecfg");
     cJSON_AddNumberToObject(root, "code", 0);
     char *json_string = cJSON_Print(root);
     ESP_LOGD(TAG, "JSON String in device cfg command: %s\n", json_string);
@@ -1034,7 +1036,7 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
 
     cJSON *root = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(root, "name", "deviceinfo?");
+    cJSON_AddStringToObject(root, "name", "deviceinfo");
 
     cJSON_AddNumberToObject(root, "code", 0);
 
@@ -1227,7 +1229,7 @@ at_cmd_error_code handle_wifi_query(char *params)
         return ERROR_CMD_JSON_CREATE;
     }
     // add json obj
-    cJSON_AddStringToObject(root, "name", "Wifi_Cfg");
+    cJSON_AddStringToObject(root, "name", "wifi");
     cJSON_AddNumberToObject(root, "code", network_connect_flag); // finish flag
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddStringToObject(data, "ssid", ssid_string);
@@ -1385,175 +1387,6 @@ at_cmd_error_code handle_taskflow_info_query_command(char *params)
     return AT_CMD_SUCCESS;
 }
 
-#if 0
-/**
- * @brief Parses a JSON string and concatenates task information into an array of Task structures.
- *
- * This function is an auxiliary function for the handle_taskflow_command function. It parses a given JSON string
- * to extract task information such as name, package, sum, and data. It then allocates memory and stores this information
- * in an array of Task structures. The function handles the initialization of the task array if it is the first JSON being processed.
- *
- * @param json_string A JSON string containing task information. The expected format is:
- * {
- *     "name": "<task_name>",
- *     "package": <package_number>,
- *     "sum": <total_number_of_tasks>,
- *     "data": "<task_data>"
- * }
- *
- * The JSON object is expected to have the following fields:
- * - name: A string representing the name of the task.
- * - package: A number representing the package index of the task.
- * - sum: A number representing the total number of tasks.
- * - data: A string containing the task data.
- */
-
-at_cmd_error_code parse_json_and_concatenate(char *json_string)
-{
-    cJSON *json = cJSON_Parse(json_string);
-    if (json == NULL)
-    {
-        ESP_LOGE(TAG, "Error parsing JSON\n");
-        return ERROR_CMD_JSON_PARSE;
-    }
-
-    cJSON *name = cJSON_GetObjectItem(json, "name");
-    cJSON *package = cJSON_GetObjectItem(json, "package");
-    cJSON *sum = cJSON_GetObjectItem(json, "sum");
-    cJSON *data = cJSON_GetObjectItem(json, "data");
-    cJSON *total_size = cJSON_GetObjectItem(json, "totalsize");
-    if (!cJSON_IsString(name) || !cJSON_IsNumber(package) || !cJSON_IsNumber(sum) || !cJSON_IsString(data) || !cJSON_IsNumber(total_size))
-    {
-        ESP_LOGE(TAG, "Invalid JSON format\n");
-        cJSON_Delete(json);
-        return ERROR_CMD_JSON_TYPE;
-    }
-    total_size = total_size->valueint;
-    int index = package->valueint;
-
-    if (num_jsons == 0)
-    {
-        num_jsons = sum->valueint;
-        tasks = (Task *)heap_caps_malloc(num_jsons * sizeof(Task), MALLOC_CAP_SPIRAM);
-        if (tasks == NULL)
-        {
-            ESP_LOGE(TAG, "Failed to allocate memory for tasks\n");
-            cJSON_Delete(json);
-            return ERROR_CMD_MEM_ALLOC;
-        }
-        for (int i = 0; i < num_jsons; i++)
-        {
-            tasks[i].data = NULL;
-        }
-    }
-
-    if (tasks == NULL || index < 0 || index >= num_jsons)
-    {
-        ESP_LOGE(TAG, "Tasks array is not properly allocated or index out of range\n");
-        cJSON_Delete(json);
-        return ERROR_CMD_JSON_TYPE;
-    }
-
-    tasks[index].package = package->valueint;
-    tasks[index].sum = sum->valueint;
-    tasks[index].data = (char *)heap_caps_malloc(AT_CMD_SLICE_LEN + 1, MALLOC_CAP_SPIRAM);
-    if (tasks[index].data == NULL)
-    {
-        ESP_LOGI(TAG, "Failed to allocate memory for data\n");
-        cJSON_Delete(json);
-        return ERROR_CMD_MEM_ALLOC;
-    }
-    strncpy(tasks[index].data, data->valuestring, AT_CMD_SLICE_LEN);
-    tasks[index].data[AT_CMD_SLICE_LEN] = '\0'; // end
-
-    cJSON_Delete(json);
-    return AT_CMD_SUCCESS;
-}
-
-/**
- * @brief Concatenates task data into a single result string after sorting tasks by their package index.
- *
- * This function is an auxiliary function for the handle_taskflow_command function. It sorts the tasks array
- * based on the package index in ascending order, concatenates the data fields of each task into a single result string,
- * and frees the allocated memory for each task and the tasks array.
- *
- * @param result A character array to store the concatenated result. The array should be pre-allocated with sufficient size
- * to hold the concatenated data from all tasks.
- */
-void concatenate_data(char *result)
-{
-    // sort
-    for (int i = 0; i < num_jsons - 1; i++)
-    {
-        for (int j = 0; j < num_jsons - 1 - i; j++)
-        {
-            if (tasks[j].package > tasks[j + 1].package)
-            {
-                Task temp = tasks[j];
-                tasks[j] = tasks[j + 1];
-                tasks[j + 1] = temp;
-            }
-        }
-    }
-
-    // concatenate_data
-    result[0] = '\0';
-    for (int i = 0; i < num_jsons; i++)
-    {
-        strcat(result, tasks[i].data);
-        free(tasks[i].data);
-    }
-    num_jsons = 0;
-    free(tasks);
-    tasks = NULL;
-}
-
-/**
- * @brief Handles the taskflow command by parsing JSON input, managing task data, and generating a JSON response.
- *
- * This function parses the given parameters in JSON format to extract task information, stores the information in an array of Task structures,
- * checks if all tasks have been received, concatenates the task data into a single result string, and generates a JSON response.
- *
- * The function relies on auxiliary functions `parse_json_and_concatenate` to parse the input JSON and store the task information,
- * and `concatenate_data` to concatenate the task data.
- *
- * @param params A JSON string containing task information. The expected format for each task is:
- * {
- *     "name": "<task_name>",
- *     "package": <package_number>,
- *     "sum": <total_number_of_tasks>,
- *     "data": "<task_data>"
- * }
- *
- * The generated JSON response includes the following fields:
- * - name: "taskflow"
- * - code: The result code of the operation.
- * - data: An object representing additional response data.
- */
-
-at_cmd_error_code base64_decode(const unsigned char *input, size_t input_len, unsigned char **output, size_t *output_len)
-{
-    size_t olen = 0;
-    mbedtls_base64_decode(NULL, 0, &olen, input, input_len);
-
-    *output = (unsigned char *)heap_caps_malloc(olen, MALLOC_CAP_SPIRAM);
-    if (*output == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to allocate memory for base64 decoding\n");
-        return ERROR_CMD_MEM_ALLOC;
-    }
-
-    int ret = mbedtls_base64_decode(*output, olen, output_len, input, input_len);
-    if (ret != 0)
-    {
-        ESP_LOGE(TAG, "Base64 decoding failed\n");
-        free(*output);
-        *output = NULL;
-        return ERROR_CMD_BASE64_DECODE;
-    }
-    return AT_CMD_SUCCESS; // success
-}
-#endif
 at_cmd_error_code handle_taskflow_command(char *params)
 {
     esp_err_t code = ESP_OK;
@@ -1615,41 +1448,147 @@ at_cmd_error_code handle_taskflow_command(char *params)
     return AT_CMD_SUCCESS;
 }
 
-/**
- * @brief Converts a hex array to a string and logs the hex data.
- *
- * This function is an auxiliary function for the task_handle_AT_command task. It takes a hex array,
- * converts each hex value to a character, and stores the result in an output string. The function
- * also logs the hex data for debugging purposes.
- *
- * @param hex A pointer to the array of hex values to be converted.
- * @param hex_size The size of the hex array.
- * @param output A pointer to the output buffer where the resulting string will be stored.
- *               The buffer should be large enough to hold the converted string and a null terminator.
- */
-// static void byte_array_to_hex_string(uint8_t *in_data, int Size, char *out_data)
-// {
-//     for (unsigned char i = 0; i < Size; i++)
-//     {
-//         out_data[2 * i] = (in_data[i] >> 4);
-//         out_data[2 * i + 1] = (in_data[i] & 0x0F);
-//     }
-//     for (unsigned char i = 0; i < 2 * Size; i++)
-//     {
-//         if ((out_data[i] >= 0) && (out_data[i] <= 9))
-//         {
-//             out_data[i] = '0' + out_data[i];
-//         }
-//         else if ((out_data[i] >= 0x0A) && (out_data[i] <= 0x0F))
-//         {
-//             out_data[i] = 'A' - 10 + out_data[i];
-//         }
-//         else
-//         {
-//             return;
-//         }
-//     }
-// }
+at_cmd_error_code handle_localservice_query(char *params)
+{
+    (void)params; // Prevent unused parameter warning
+    ESP_LOGI(TAG, "%s \n", __func__);
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create JSON object\n");
+        return ERROR_CMD_JSON_CREATE;
+    }
+    cJSON_AddStringToObject(root, "name", "localservice");
+    cJSON_AddNumberToObject(root, "code", 0);
+    bool passthrough = false;
+    esp_err_t ret = ERROR_CMD_JSON_CREATE, ret_tmp;
+    local_service_cfg_type1_t cfg;
+    do {
+        cJSON *data = cJSON_AddObjectToObject(root, "data");
+        if (!data) break;
+        //audio_task_composer
+        cJSON *data_item = cJSON_AddObjectToObject(data, "audio_task_composer");
+        if (!data_item) break;
+        ret_tmp = get_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER, &cfg);
+        if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
+        if (!cJSON_AddNumberToObject(data_item, "switch", (int)cfg.enable)) break;
+        if (!cJSON_AddStringToObject(data_item, "url", cfg.url)) break;
+        //image_analyzer
+        data_item = cJSON_AddObjectToObject(data, "image_analyzer");
+        if (!data_item) break;
+        ret_tmp = get_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_IMAGE_ANALYZER, &cfg);
+        if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
+        if (!cJSON_AddNumberToObject(data_item, "switch", (int)cfg.enable)) break;
+        if (!cJSON_AddStringToObject(data_item, "url", cfg.url)) break;
+        //training
+        data_item = cJSON_AddObjectToObject(data, "training");
+        if (!data_item) break;
+        ret_tmp = get_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_TRAINING, &cfg);
+        if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
+        if (!cJSON_AddNumberToObject(data_item, "switch", (int)cfg.enable)) break;
+        if (!cJSON_AddStringToObject(data_item, "url", cfg.url)) break;
+        //notification_proxy
+        data_item = cJSON_AddObjectToObject(data, "notification_proxy");
+        if (!data_item) break;
+        ret_tmp = get_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_NOTIFICATION_PROXY, &cfg);
+        if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
+        if (!cJSON_AddNumberToObject(data_item, "switch", (int)cfg.enable)) break;
+        if (!cJSON_AddStringToObject(data_item, "url", cfg.url)) break;
+        //token
+        ret_tmp = get_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_TOKEN, &cfg);
+        if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
+        if (!cJSON_AddStringToObject(data, "token", cfg.url)) break;
+
+        passthrough = true;
+    } while (0);
+    if (!passthrough) {
+        cJSON_Delete(root);
+        return ret;
+    }
+
+    char *json_string = cJSON_Print(root);
+
+    ESP_LOGD(TAG, "%s: JSON String: %s\n", __func__, json_string);
+
+    esp_err_t send_result = send_at_response(json_string);
+    if (send_result != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to send AT response\n");
+        cJSON_Delete(root);
+        free(json_string);
+        return ERROR_CMD_RESPONSE;
+    }
+
+    cJSON_Delete(root);
+    free(json_string);
+
+    return AT_CMD_SUCCESS;
+}
+
+static esp_err_t __localservice_set_one(cJSON *data, const char *data_key, int cfg_index)
+{
+    cJSON *data_item = cJSON_GetObjectItem(data, data_key);
+    if (data_item) {
+        cJSON *item_enable, *item_url;
+        item_enable = cJSON_GetObjectItem(data_item, "switch");
+        item_url = cJSON_GetObjectItem(data_item, "url");
+        if (item_enable && item_url && cJSON_IsNumber(item_enable) && cJSON_IsString(item_url)) {
+            return set_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER, cJSON_IsTrue(item_enable), item_url->valuestring);
+        }
+    }
+    return ESP_OK;
+}
+
+at_cmd_error_code handle_localservice_set(char *params)
+{
+    ESP_LOGI(TAG, "%s \n", __func__);
+
+    cJSON *json = cJSON_Parse(params);
+    if (json == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            ESP_LOGE(TAG, "Error before: %s\n", error_ptr);
+        }
+        return ERROR_CMD_JSON_PARSE;
+    }
+
+    at_cmd_error_code ret = AT_CMD_SUCCESS;
+    cJSON *data = cJSON_GetObjectItem(json, "data");
+    if (!data) goto localservice_set_end;
+
+    ESP_GOTO_ON_ERROR(__localservice_set_one(data, "audio_task_composer", CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER),
+                        localservice_set_end, TAG, "%s: error when setting local service cfg!!!", __func__);
+    ESP_GOTO_ON_ERROR(__localservice_set_one(data, "image_analyzer", CFG_ITEM_TYPE1_IMAGE_ANALYZER),
+                        localservice_set_end, TAG, "%s: error when setting local service cfg!!!", __func__);
+    ESP_GOTO_ON_ERROR(__localservice_set_one(data, "training", CFG_ITEM_TYPE1_TRAINING),
+                        localservice_set_end, TAG, "%s: error when setting local service cfg!!!", __func__);
+    ESP_GOTO_ON_ERROR(__localservice_set_one(data, "notification_proxy", CFG_ITEM_TYPE1_NOTIFICATION_PROXY),
+                        localservice_set_end, TAG, "%s: error when setting local service cfg!!!", __func__);
+    cJSON *data_token = cJSON_GetObjectItem(data, "token");
+    if (data_token && cJSON_IsString(data_token)) {
+        ret = set_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_TOKEN, true, data_token->valuestring);
+        // if (ret != ESP_OK) goto localservice_set_end;
+    }
+    // fall through
+localservice_set_end:
+    cJSON_AddNumberToObject(json, "code", (int)ret);
+    char *json_string = cJSON_Print(json);
+    ESP_LOGD(TAG, "JSON String: %s", json_string);
+    if (send_at_response(json_string) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to send AT response\n");
+        ret = ERROR_CMD_RESPONSE;
+    }
+    cJSON_Delete(json);
+    free(json_string);
+
+    return ret;
+}
+
+
 /**
  * @brief A static task that handles incoming AT commands, parses them, and executes the corresponding actions.
  *
