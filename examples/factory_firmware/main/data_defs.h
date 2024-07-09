@@ -304,6 +304,7 @@ enum {
     CTRL_EVENT_TASK_FLOW_START_BY_BLE,  // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_SR,   // char * , taskflow json, There can only be one listener
     CTRL_EVENT_TASK_FLOW_START_BY_CMD,   // char * , taskflow json, There can only be one listener
+    CTRL_EVENT_TASK_FLOW_START_BY_LOCAL_SVC_CFG,   // none
 
     CTRL_EVENT_OTA_AI_MODEL,  //struct view_data_ota_status
     CTRL_EVENT_OTA_ESP32_FW,  //struct view_data_ota_status

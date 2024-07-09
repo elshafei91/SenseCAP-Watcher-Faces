@@ -12,6 +12,7 @@
 #include "event_loops.h"
 #include "esp_event_base.h"
 #include "factory_info.h"
+#include "app_device_info.h"
 
 static const char *TAG = "tfm.img_analyzer";
 
@@ -486,14 +487,37 @@ static int __start(void *p_module)
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)p_module;
     struct tf_module_img_analyzer_params *p_params = &p_module_ins->params;
 
-    // TODO set url、token、head
-    snprintf(p_module_ins->url,sizeof(p_module_ins->url),"%s%s",CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST,CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
+    // url
+    local_service_cfg_type1_t local_svc_cfg = { .enable = false, .url = NULL };
+    esp_err_t ret = get_local_service_cfg_type1(MAX_CALLER, CFG_ITEM_TYPE1_IMAGE_ANALYZER, &local_svc_cfg);
+    if (ret == ESP_OK && local_svc_cfg.enable && local_svc_cfg.url != NULL && strlen(local_svc_cfg.url) > 7) {
+        ESP_LOGI(TAG, "got local service cfg, url=%s", local_svc_cfg.url);
+        int len = strlen(local_svc_cfg.url);
+        if (local_svc_cfg.url[len - 1] == '/') local_svc_cfg.url[len - 1] = '\0';  //remove trail '/'
+        snprintf(p_module_ins->url,sizeof(p_module_ins->url),"%s%s", local_svc_cfg.url, CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
+    } else {
+        snprintf(p_module_ins->url,sizeof(p_module_ins->url),"%s%s", CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST, CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
+    }
+    if (local_svc_cfg.url != NULL) {
+        free(local_svc_cfg.url);
+        local_svc_cfg.url = NULL;
+    }
     
-    p_token =  __token_gen();
+    // token
+    ret = get_local_service_cfg_type1(MAX_CALLER, CFG_ITEM_TYPE1_TOKEN, &local_svc_cfg);
+    if (ret == ESP_OK && local_svc_cfg.url != NULL && strlen(local_svc_cfg.url) > 0) {
+        p_token = local_svc_cfg.url;
+    } else {
+        p_token =  __token_gen();
+    }
     if( p_token ) {
         snprintf(p_module_ins->token, sizeof(p_module_ins->token), "Device %s", p_token);
     } else {
         p_module_ins->token[0] = '\0';
+    }
+    if (local_svc_cfg.url != NULL) {
+        free(local_svc_cfg.url);
+        local_svc_cfg.url = NULL;
     }
 
     p_module_ins->head[0] = '\0';

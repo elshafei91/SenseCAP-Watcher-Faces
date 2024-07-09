@@ -1,6 +1,7 @@
 #include "app_taskflow.h"
 #include "esp_err.h"
 #include "esp_check.h"
+#include "esp_timer.h"
 #include "event_loops.h"
 #include "data_defs.h"
 #include "storage.h"
@@ -31,6 +32,7 @@ static const char *TAG = "taskflow";
 #define TASK_FLOW_NULL  "{}"
 
 struct app_taskflow *gp_taskflow = NULL;
+static esp_timer_handle_t g_timer;
 
 const char local_taskflow_gesture[] = \
 "{  \ 
@@ -991,11 +993,53 @@ static void __ctrl_event_handler(void* handler_args,
             __taskflow_start(p_taskflow, p_task_flow_str);
             break;
         }
+        case CTRL_EVENT_LOCAL_SVC_CFG_TOKEN:
+            ESP_LOGI(TAG, "event: CTRL_EVENT_LOCAL_SVC_CFG_TOKEN");
+            // fall through
+        case CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW: {
+            ESP_LOGI(TAG, "event: CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW");
+            if (!p_taskflow->need_pause_taskflow) {
+                ESP_LOGI(TAG, "taskflow needs restart to apply new local service cfg.");
+                p_taskflow->need_pause_taskflow = true;
+                if (p_taskflow->p_taskflow_json_backup != NULL) {
+                    free(p_taskflow->p_taskflow_json_backup);
+                    p_taskflow->p_taskflow_json_backup = NULL;
+                }
+                p_taskflow->p_taskflow_json_backup = tf_engine_flow_get();
+                if (p_taskflow->p_taskflow_json_backup) {
+                    ESP_LOGI(TAG, "backup taskflow and stop");
+                    tf_engine_stop();
+                    //resume the task flow after 1s
+                    esp_timer_start_once(g_timer, 1000000);  //1s
+                }
+            }
+            break;
+        }
+        case CTRL_EVENT_TASK_FLOW_START_BY_LOCAL_SVC_CFG: {
+            ESP_LOGI(TAG, "event: CTRL_EVENT_TASK_FLOW_START_BY_LOCAL_SVC_CFG");
+            if (p_taskflow->p_taskflow_json_backup) {
+                ESP_LOGI(TAG, "task flow resumed after new local service cfg applied.");
+                tf_engine_flow_set(p_taskflow->p_taskflow_json_backup, strlen(p_taskflow->p_taskflow_json_backup));
+                free(p_taskflow->p_taskflow_json_backup);
+                p_taskflow->p_taskflow_json_backup = NULL;
+                p_taskflow->need_pause_taskflow = false;
+            }
+            break;
+        }
         default:
             break;
     }
-
 }
+
+static void __timer_cb(void *arg)
+{
+    esp_err_t ret = esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, 
+                                        CTRL_EVENT_TASK_FLOW_START_BY_LOCAL_SVC_CFG, NULL, 0, 0);  //wait 0, should not block this event loop
+    if (ret != ESP_OK) {
+        esp_timer_start_once(g_timer, 100000);  //100ms
+    }
+}
+
 static  void taskflow_engine_module_init( struct app_taskflow * p_taskflow)
 {
     ESP_ERROR_CHECK(tf_engine_init());
@@ -1120,6 +1164,18 @@ esp_err_t app_taskflow_init(void)
                                                     __ctrl_event_handler, 
                                                     p_taskflow));
 
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    CTRL_EVENT_BASE, 
+                                                    CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW, 
+                                                    __ctrl_event_handler,
+                                                    p_taskflow));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    CTRL_EVENT_BASE, 
+                                                    CTRL_EVENT_LOCAL_SVC_CFG_TOKEN, 
+                                                    __ctrl_event_handler,
+                                                    p_taskflow));
+
     p_taskflow->mqtt_connect_flag = app_sensecraft_is_connected(); // Update connection flags.
 
 #if CONFIG_ENABLE_TASKFLOW_FROM_SPIFFS
@@ -1127,6 +1183,9 @@ esp_err_t app_taskflow_init(void)
 #else
     __task_flow_restore(p_taskflow);
 #endif
+
+    esp_timer_create_args_t timerarg = { .callback = __timer_cb };
+    esp_timer_create(&timerarg, &g_timer);
 
     return ESP_OK; 
 err:

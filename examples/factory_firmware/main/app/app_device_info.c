@@ -807,7 +807,8 @@ esp_err_t get_local_service_cfg_type1(int caller, int cfg_index, local_service_c
     if (cfg_index > CFG_ITEM_TYPE1_MAX) return ESP_ERR_NOT_FOUND;
 
     xSemaphoreTake(cfg->mutex, portMAX_DELAY);
-    memcpy(pcfg, &local_svc_cfg->cfg_items_type1[cfg_index], sizeof(local_service_cfg_type1_t));
+    pcfg->enable = local_svc_cfg->cfg_items_type1[cfg_index].enable;
+    pcfg->url = strdup(local_svc_cfg->cfg_items_type1[cfg_index].url);
     xSemaphoreGive(cfg->mutex);
 
     return ESP_OK;
