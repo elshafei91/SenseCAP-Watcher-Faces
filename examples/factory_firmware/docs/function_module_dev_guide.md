@@ -358,7 +358,7 @@ In the [Architecture](docs/architecture.md) we learned that the data flow is dri
 
 In this `uart alarmer` example, we consume data from an alarm trigger FM which has the output data type `TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT`.  Since the uart data preparation is simple, we do all the data generation in the event loop handler. This is not recommended though, if your data processing is time consuming or IO eager. In that case, you need to create a worker task (thread) to do the background processing.
 
-We prepare a binary output buffer or a JSON string according to the input parameter `output_format`. Finally we write these data into the UART. Our FM has only one output which is the hardware, not another FM, in this reason our `msgs_pub_set` is dummy one.
+We prepare a binary output buffer or a JSON string according to the input parameter `output_format`. Finally we write these data into the UART. Our FM has only one output which is the hardware, not another FM, in this reason our `msgs_pub_set` is dummy one. In the end, we need to release the data coming from the event loop, the reason will be explained in the next section.
 
 ### 4.4 msgs_pub_set
 
@@ -414,7 +414,7 @@ When we gonna use these event ids? The moment that data is generated, and passes
 ...
 ```
 
-We need to post to every subscriber of our output. 
+We need to post to every subscriber of our output. As you can see, we make a copy of the data for every subscriber.
 
 **THE RULE OF MEMORY ALLOCATION AND RELEASE**
 - The data maker FM does the memory allocation for each subscriber

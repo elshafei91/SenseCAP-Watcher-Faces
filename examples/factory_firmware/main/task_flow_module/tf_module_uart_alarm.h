@@ -49,6 +49,7 @@ extern "C"
  * 
  * This is the full packet with all fields enabled.
  * 
+ * - Prompt Str: a string for shortly explaining what task the watcher is doing, if the `text` parameter is set, this would be the `text` parameter.
  * - Big Image: 640 * 480 image, base64 encoded JPG image, without boxes of detected objects.
  * - Small Image: 240 * 240 image, base64 encoded JPG image, with boxes drawn for detected objects.
  * - Box: An area which holds the detected object, with its coordinates and score.
@@ -103,7 +104,8 @@ extern "C"
  * output_format: int, controls what format of the payloda will be put out of the UART.
  * - 0: binary output
  * - 1: JSON output
- * 
+ * text: str, a string to be copied into the `prompt` field of the output, if this parameter is omitted, the default task name
+ *       will be filled into the `prompt` field of the output
  * include_big_image: boolean (true | false), controls whether the big image is included in the output
  * include_small_image: boolean (true | false), controls whether the small image is included in the output
  * include_boxes: boolean (true | false), controls whether the boxes are included in the output
@@ -120,6 +122,7 @@ typedef struct {
     tf_module_t module_base;
     int input_evt_id;           //this can also be the module instance id
     int output_format;          //default 0, see comment above
+    char *text;                 //default: NULL
     bool include_big_image;     //default: false
     bool include_small_image;   //default: false
     bool include_boxes;         //default: false, coming soon
