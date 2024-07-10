@@ -32,7 +32,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     }
 
     tf_data_dualimage_with_audio_text_t *p_data = (tf_data_dualimage_with_audio_text_t*)p_event_data;
-    uint16_t total_len = 0;
+    uint32_t total_len = 0;
     uint8_t *buffer = NULL;
     cJSON *json = NULL;
 
@@ -47,11 +47,11 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     }
     if (p_module_ins->output_format == 0) {
         //binary output
-        uint16_t prompt_len = strlen(prompt);
-        buffer = psram_calloc(1, prompt_len + 2);
-        memcpy(buffer, &prompt_len, 2);
-        memcpy(buffer + 2, prompt, prompt_len);
-        total_len += prompt_len + 2;
+        uint32_t prompt_len = strlen(prompt);
+        buffer = psram_calloc(1, prompt_len + 4);
+        memcpy(buffer, &prompt_len, 4);
+        memcpy(buffer + 4, prompt, prompt_len);
+        total_len += prompt_len + 4;
     } else {
         //json output
         json = cJSON_CreateObject();
@@ -63,11 +63,11 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         ESP_LOGI(TAG, "include_big_image: %d", (int)p_module_ins->include_big_image);
         if (p_module_ins->output_format == 0) {
             //binary output
-            uint16_t big_image_len = p_data->img_large.len;
-            buffer = psram_realloc(buffer, total_len + big_image_len + 2);
-            memcpy(buffer + total_len, &big_image_len, 2);
-            memcpy(buffer + total_len + 2, p_data->img_large.p_buf, big_image_len);
-            total_len += big_image_len + 2;
+            uint32_t big_image_len = p_data->img_large.len;
+            buffer = psram_realloc(buffer, total_len + big_image_len + 4);
+            memcpy(buffer + total_len, &big_image_len, 4);
+            memcpy(buffer + total_len + 4, p_data->img_large.p_buf, big_image_len);
+            total_len += big_image_len + 4;
         } else {
             //json output
             cJSON_AddItemToObject(json, "big_image", cJSON_CreateString((char *)p_data->img_large.p_buf));
@@ -79,11 +79,11 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         ESP_LOGI(TAG, "include_small_image: %d", (int)p_module_ins->include_small_image);
         if (p_module_ins->output_format == 0) {
             //binary output
-            uint16_t small_image_len = p_data->img_small.len;
-            buffer = psram_realloc(buffer, total_len + small_image_len + 2);
-            memcpy(buffer + total_len, &small_image_len, 2);
-            memcpy(buffer + total_len + 2, p_data->img_small.p_buf, small_image_len);
-            total_len += small_image_len + 2;
+            uint32_t small_image_len = p_data->img_small.len;
+            buffer = psram_realloc(buffer, total_len + small_image_len + 4);
+            memcpy(buffer + total_len, &small_image_len, 4);
+            memcpy(buffer + total_len + 4, p_data->img_small.p_buf, small_image_len);
+            total_len += small_image_len + 4;
         } else {
             //json output
             cJSON_AddItemToObject(json, "small_image", cJSON_CreateString((char *)p_data->img_small.p_buf));
@@ -108,20 +108,18 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 #endif
 
     //output the packet
-    const char *header = "SEEED";
-    uart_write_bytes(UART_NUM_2, header, strlen(header));
-
-    ESP_LOGD(TAG, "uart magic header sent, output_format=%d", p_module_ins->output_format);
-
     if (p_module_ins->output_format == 0) {
+        const char *header = "SEEED";
+        uart_write_bytes(UART_NUM_2, header, strlen(header));
+        ESP_LOGD(TAG, "uart magic header sent, output_format=%d", p_module_ins->output_format);
         uart_write_bytes(UART_NUM_2, buffer, total_len);
         free(buffer);
     } else {
         char *str = cJSON_PrintUnformatted(json);
         total_len = strlen(str);
-        uart_write_bytes(UART_NUM_2, &total_len, 2);
-        uart_write_bytes(UART_NUM_2, str, total_len);
         ESP_LOGD(TAG, "output json:\n%s\ntotal_len=%d", str, total_len);
+        uart_write_bytes(UART_NUM_2, str, total_len);
+        uart_write_bytes(UART_NUM_2, "\r\n", 2);
         free(str);
         cJSON_Delete(json);
     }
