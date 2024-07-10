@@ -31,12 +31,12 @@ extern "C"
  * +------------------+----------------+------------+---------------+-----------+-----------------+-------------+
  * | PKT_MAGIC_HEADER | Prompt Str Len | Prompt Str | Big Image Len | Big Image | Small Image Len | Small Image |
  * +------------------+----------------+------------+---------------+-----------+-----------------+-------------+ + 
- * | "SEEED"(5bytes)  | 2bytes         | X bytes    | 2bytes        | Y bytes   | 2bytes          | Z bytes     |
+ * | "SEEED"(5bytes)  | 4bytes         | X bytes    | 4bytes        | Y bytes   | 4bytes          | Z bytes     |
  * +------------------+----------------+------------+---------------+-----------+-----------------+-------------+
  * +-------------+------------------------+---------------+---------------+---------------+
  * | Boxes Count |         Box 1          |     Box 2     |      ...      |     Box N     |
  * +-------------+------------------------+---------------+---------------+---------------+
- * | 2bytes      | Box Structure(10bytes) | Box Structure | Box Structure | Box Structure |
+ * | 4bytes      | Box Structure(10bytes) | Box Structure | Box Structure | Box Structure |
  * +-------------+------------------------+---------------+---------------+---------------+
  *               /                        \
  * /------------/                          \------------------------------\
@@ -54,7 +54,7 @@ extern "C"
  * - Small Image: 240 * 240 image, base64 encoded JPG image, with boxes drawn for detected objects.
  * - Box: An area which holds the detected object, with its coordinates and score.
  * 
- * Please note, Big Image and Small Image buffer has no string terminator '\0'.
+ * Please note, Big Image and Small Image buffer has no string terminator '\0'. All the 4bytes length and count fields are uint32_t in little-endian.
  * 
  * Some of the fields can be controlled by configuration of the function module, see the comments for 
  * `tf_module_uart_alarm_t` below. 
@@ -72,11 +72,11 @@ extern "C"
 /**
  * The packet structure of the JSON output
  * 
- * +------------------+--------+-------------+
- * | PKT_MAGIC_HEADER |  Len   |    JSON     |
- * +------------------+--------+-------------+
- * | "SEEED"(5bytes)  | 2bytes | `Len` bytes |
- * +------------------+--------+-------------+
+ * +------------------+-------------+
+ * | JSON             |  separator  |
+ * +------------------+-------------+
+ * |      {...}       |  \r\n       |
+ * +------------------+-------------+
  * 
  * The JSON will be like:
  * {
