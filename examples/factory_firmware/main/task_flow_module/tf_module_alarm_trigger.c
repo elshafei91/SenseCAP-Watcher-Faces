@@ -214,8 +214,8 @@ tf_module_t * tf_module_alarm_trigger_init(tf_module_alarm_trigger_t *p_module_i
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
-    p_module_ins->module_serv.p_module = p_module_ins;
-    p_module_ins->module_serv.ops = &__g_module_ops;
+    p_module_ins->module_base.p_module = p_module_ins;
+    p_module_ins->module_base.ops = &__g_module_ops;
     
     __parmas_default(&p_module_ins->params);
 
@@ -226,7 +226,7 @@ tf_module_t * tf_module_alarm_trigger_init(tf_module_alarm_trigger_t *p_module_i
     p_module_ins->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
 
-    return &p_module_ins->module_serv;
+    return &p_module_ins->module_base;
 err:
     if (p_module_ins->sem_handle) {
         vSemaphoreDelete(p_module_ins->sem_handle);

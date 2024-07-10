@@ -38,7 +38,7 @@ struct tf_module_local_alarm_info
 
 typedef struct tf_module_local_alarm
 {
-    tf_module_t module_serv;
+    tf_module_t module_base;
     int input_evt_id; // no output
     struct tf_module_local_alarm_params params;
 #if TF_MODULE_LOCAL_ALARM_TIMER_ENABLE

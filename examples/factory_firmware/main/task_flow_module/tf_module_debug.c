@@ -113,10 +113,10 @@ tf_module_t * tf_module_debug_init(tf_module_debug_t *p_module_ins)
     {
         return NULL;
     }
-    p_module_ins->module_serv.p_module = p_module_ins;
-    p_module_ins->module_serv.ops = &__g_module_ops;
+    p_module_ins->module_base.p_module = p_module_ins;
+    p_module_ins->module_base.ops = &__g_module_ops;
 
-    return &p_module_ins->module_serv;
+    return &p_module_ins->module_base;
 }
 
 esp_err_t tf_module_debug_register(void)

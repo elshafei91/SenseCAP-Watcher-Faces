@@ -2,7 +2,7 @@
 
 这个软件的框架如下图所示, 主要分成三部分: APP应用程序、 UI及交互、任务流。
 
-![architecture](img/architecture.png)
+<img src="img/architecture.png" alt="architecture" width="600">
 
 *   APP应用程序: 主要是一些应用程序,如 WiFi连接、蓝牙配置、 与平台通信、OTA等, 同时会产生一些数据给UI显示.
 *   UI及交互: 主要是UI 界面和UI 交互的实现.
@@ -20,8 +20,7 @@
 任务流引擎的主要作用根据任务流JSON能让各个模块运作起来; 它管理了模块的注册、模块的实例化和销毁、以及模块之间的连线.
 
 如下图为任务流引擎的处理流程:
-
-![taskflow\_engine](img/taskflow_engine.png)
+<img src="img/taskflow_engine.png" alt="taskflow\_engine" width="400">
 
 1.  初始化任务流引擎。
 2.  将各个模块注册到任务流引擎中，使用链表存储各模块的管理函数和信息。
@@ -215,7 +214,7 @@
 
 该任务流中使用了 ai camera、image analyzer、local alarm 和 sensecraft alarm四个块,连线拓扑图如下发所示:
 
-![taskflow\_timing](img/modules_connection1.png)
+<img src="img/modules_connection1.png" alt="taskflow\_timing" width="400">
 
 如下图为任务流引擎和模块的启动运行的大致流程:
 
@@ -233,7 +232,7 @@
 
 如下图示例，模块1在事件ID为2上发布消息，模块2接收并处理消息；模块2有两个输出端子，第一个输出端子连接模块3和模块4，第二个输出端子连接模块5，当输出端子1有数据时，分别向事件ID3和事件ID4发布消息，输出端子2有数据时，向事件ID5发布消息。
 
-![taskflow\_timing](img/modules_connection2.png)
+<img src="img/modules_connection2.png" alt="taskflow\_timing" width="400">
 
 对应的模块2 JSON 描述如下:
 

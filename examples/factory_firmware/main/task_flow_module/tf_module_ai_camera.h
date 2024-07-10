@@ -180,7 +180,7 @@ typedef struct tf_data_dualimage_with_inference
 
 typedef struct tf_module_ai_camera
 {
-    tf_module_t module_serv;
+    tf_module_t module_base;
     int input_evt_id;
     int *p_output_evt_id;
     int output_evt_num;
@@ -212,6 +212,7 @@ typedef struct tf_module_ai_camera
 } tf_module_ai_camera_t;
 
 tf_module_t * tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins);
+
 
 esp_err_t tf_module_ai_camera_register(void);
 

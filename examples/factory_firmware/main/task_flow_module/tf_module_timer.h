@@ -16,7 +16,7 @@ extern "C"
 
 typedef struct tf_module_timer
 {
-    tf_module_t module_serv;
+    tf_module_t module_base;
     int *p_output_evt_id;
     int output_evt_num;
     esp_timer_handle_t timer_handle;

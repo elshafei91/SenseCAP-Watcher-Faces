@@ -1453,8 +1453,8 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
-    p_module_ins->module_serv.p_module = p_module_ins;
-    p_module_ins->module_serv.ops = &__g_module_ops;
+    p_module_ins->module_base.p_module = p_module_ins;
+    p_module_ins->module_base.ops = &__g_module_ops;
 
     // params default
     __parmas_default(&p_module_ins->params);
@@ -1548,7 +1548,7 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     ret = esp_timer_create(&timer_args, &p_module_ins->timer_handle);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "esp_timer_create failed");
 
-    return &p_module_ins->module_serv;
+    return &p_module_ins->module_base;
 
 err:
     if(p_module_ins->task_handle ) {
