@@ -744,6 +744,9 @@ set_usage_guide_err:
 
 esp_err_t set_reset_factory()
 {
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_FACTORY_RESET_FLAG);
+    esp_timer_stop(cfg->timer_handle);
+    esp_timer_start_once(cfg->timer_handle, 100*1000);
     atomic_store(&g_will_reset_factory, true);
     return ESP_OK;
 }
