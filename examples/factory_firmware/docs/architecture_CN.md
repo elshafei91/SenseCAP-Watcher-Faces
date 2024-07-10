@@ -1,12 +1,12 @@
 # 软件框架
 
-这个软件的框架如下图所示, 主要分成三部分: APP应用程序、 UI及交互、任务流。
+软件框架如下图所示, 主要分成三部分: APP应用程序、 UI及交互、任务流。
 
 <img src="img/architecture.png" alt="architecture" width="600">
 
 *   APP应用程序: 主要是一些应用程序,如 WiFi连接、蓝牙配置、 与平台通信、OTA等, 同时会产生一些数据给UI显示.
 *   UI及交互: 主要是UI 界面和UI 交互的实现.
-*   任务流: 主要是任务流引擎和各个任务流模块的实现.
+*   任务流: 主要是任务流引擎和各个任务流功能模块的实现.
 
 ## 任务流框架
 
@@ -17,20 +17,20 @@
 
 ### 任务流引擎
 
-任务流引擎的主要作用根据任务流JSON能让各个模块运作起来; 它管理了模块的注册、模块的实例化和销毁、以及模块之间的连线.
+任务流引擎的主要作用根据任务流JSON能让各个功能模块运作起来; 它管理了功能模块的注册、功能模块的实例化和销毁、以及功能模块之间的连线.
 
 如下图为任务流引擎的处理流程:
 <img src="img/taskflow_engine.png" alt="taskflow\_engine" width="400">
 
 1.  初始化任务流引擎。
-2.  将各个模块注册到任务流引擎中，使用链表存储各模块的管理函数和信息。
+2.  将各个功能模块注册到任务流引擎中，使用链表存储各功能模块的管理函数和信息。
 3.  任务流引擎等待接收任务流。
-4.  接收到新任务流时，解析任务流JSON，提取所需运行的模块，存储在数组中。
-5.  在模块数组中，根据模块名从链表中找到模块的管理函数，并进行排序。
-6.  实例化模块。
-7.  配置模块。
-8.  建立模块之间的事件管道，用于消息传输。
-9.  依次启动各个模块
+4.  接收到新任务流时，解析任务流JSON，提取所需运行的功能模块，存储在数组中。
+5.  在功能模块数组中，根据模块名从链表中找到模块的管理函数，并进行排序。
+6.  实例化功能模块。
+7.  配置功能模块。
+8.  建立功能模块之间的事件管道，用于消息传输。
+9.  依次启动各个功能模块
 10. 启动完成,任务流运行.
 
 ### 任务流JSON
@@ -105,13 +105,13 @@
     *   **1**: MQTT 下发的任务流。
     *   **2**: 蓝牙下发的任务流。
     *   **3**: 语音下发的任务流。
-*   **task\_flow**: 包含任务流中各个模块的详细信息。
-    *   **id**: 模块ID (module id)。
-    *   **type**: 模块名称。
-    *   **index**: 模块在任务流中的顺序, 模块在流的位置越靠前,值越小, 用于模块的排序。
-    *   **version**: 模块的版本。
-    *   **params**: 模块的参数,不同的版本参数配置可能不同，可根据版本号来兼容解析。
-    *   **wires**: 模块之间的连接关系. 详细见 **任务流模块的事件管道** 。
+*   **task\_flow**: 包含任务流中各个功能模块的详细信息。
+    *   **id**: 功能模块ID (module id)。
+    *   **type**: 功能模块名称。
+    *   **index**: 功能模块在任务流中的顺序, 功能模块在流的位置越靠前,值越小, 用于功能模块的排序。
+    *   **version**: 功能模块的版本。
+    *   **params**: 功能模块的参数,不同的版本参数配置可能不同，可根据版本号来兼容解析。
+    *   **wires**: 功能模块之间的连接关系. 详细见 **任务流功能模块的事件管道** 。
 
 如下为监控火的一条任务流json 示例.
 
@@ -216,13 +216,13 @@
 
 <img src="img/modules_connection1.png" alt="taskflow\_timing" width="400">
 
-如下图为任务流引擎和模块的启动运行的大致流程:
+如下图为任务流引擎和功能模块的启动运行的大致流程:
 
 ![taskflow\_timing](img/taskflow_timing.png)
 
-### 任务流模块的事件管道
+### 模块的事件管道
 
-模块之间的连接表示它们之间的数据传输，前一个模块生成数据并发送给下一个模块。消息传输使用事件机制，前者发布事件，后者订阅事件。事件采用IDF的esp\_event组件实现，支持队列缓存。
+功能模块之间的连接表示它们之间的数据传输，前一个模块生成数据并发送给下一个模块。消息传输使用事件机制，前者发布事件，后者订阅事件。事件采用IDF的esp\_event组件实现，支持队列缓存。
 
 每个模块都有一个唯一的id, 这个id作为该模块订阅的事件id. 在执行sub\_set时, 将订阅该id 的消息; 在执行stop时将注销掉该事件id.有些模块作为激励源，没有上一级模块,此时它可以无需订阅该事件ID.
 
@@ -283,6 +283,38 @@
 
 当模块收到事件数据时, 会先提取事件数据的第一个字节来获取数据类型，再判断数据是否是自己想要的,若是则进一步处理, 否则就舍弃掉。
 
+目前已有的数据类型说明如下:
+
+<table>
+  <thead>
+    <tr>
+      <th>数据类型</th>
+      <th>数据结构体</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>TF_DATA_TYPE_BUFFER</td>
+      <td>tf_data_buffer_t</td>
+      <td>buf 数据</td>
+    </tr>
+    <tr>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
+      <td>tf_data_dualimage_with_inference_t</td>
+      <td>包含大图、小图以及推理信息</td>
+    </tr>
+    <tr>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>tf_data_dualimage_with_audio_text_t</td>
+      <td>包含大图、小图、告警音频以及告警文本</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
 #### 事件管道高效传输
 
 使用idf的 esp\_event 组件来进行消息传输时，在入队的时将发生的内存的拷贝 (详情请阅读esp\_event源码); 当传输大数据时，如图片音频相关的，是非常不友好的.
@@ -295,13 +327,25 @@
     };
 
 对于数据生产者模块，将负责p\_buf的内存申请; 而下一级的数据消费者模块， 使用完之后负责释放内存。
-在 [tf\_module\_util.h](../main/task_flow_module/common/tf_module_util.h)文件中定义了一些常见的数据拷贝和释放.
+在 [tf\_module\_util.h](../main/task_flow_module/common/tf_module_util.h)文件中定义了一些常见的数据拷贝和释放. 比如接收到的事件数据类型不是自己想要的时, 可直接调用 **tf\_data\_free()** 函数释放内存(该函数实现所有数据类型的释放), 示例如下:
 
-### 任务流模块
+```
+static void __event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
+{
+    uint8_t type = ((uint8_t *)p_event_data)[0];
+    if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE ) {
+        ESP_LOGW(TAG, "Unsupport type %d", type);
+        tf_data_free(p_event_data);
+        return;
+    }
+    //...
+}
+```
 
-#### 模块类
 
-我们在 [tf\_module.h](../main/task_flow_engine/include/tf_module.h) 定义模块类, 任务流引擎不关心具体的模型实现，只需调用模块的相关接口就可以实现对模块进行操作, 而每一个具体的模块只需要实现操作函数和管理函数即可。
+### 模块基类
+
+我们在 [tf\_module.h](../main/task_flow_engine/include/tf_module.h) 定义模块基类, 任务流引擎不关心具体的模型实现，只需调用模块的相关接口就可以实现对模块进行操作, 而每一个具体的模块只需要实现操作函数和管理函数即可。
 
 ```
 struct tf_module_ops
@@ -322,14 +366,122 @@ typedef struct tf_module_mgmt {
 
 如何编写一个模块请参考 [功能模块开发指导](./function_module_dev_guide.md)
 
-#### 常见的模块
+## 功能模块
+
+### 列表
 
 目前常见的内置模块有ai camera、alarm trigger、image analyzer、local alarm、sensecraft alarm以及uart alarm等.
-下面简单常见块的功能和参数.
 
-##### ai camera 块
 
-ai camera 块主要负责和Himax 通信，获取图片和推理结果, 块的参数定义如下:
+<table>
+  <thead>
+    <tr>
+      <th>类别</th>
+      <th>功能模块</th>
+      <th>输入数据类型</th>
+      <th>输出数据类型</th>
+      <th>是否支持多实例化</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="2">激励源</td>
+      <td>ai camera</td>
+      <td>Any data type</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
+      <td>N</td>
+    </tr>
+    <tr>
+      <td>timer</td>
+      <td>-</td>
+      <td>TF_DATA_TYPE_UINT32</td>
+      <td>Y</td>
+    </tr>
+    <tr>
+      <td rowspan="2" >触发模块</td>
+      <td>alarm trigger</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>Y</td>
+    </tr>
+    <tr>
+      <td>image analyzer</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>Y</td>
+    </tr>
+    <tr>
+      <td rowspan="3" >告警模块</td>
+      <td>local alarm</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>-</td>
+      <td>N</td>
+    </tr>
+    <tr>
+      <td>sensecraft alarm</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>-</td>
+      <td>Y</td>
+    </tr>
+    <tr>
+      <td>uart alarm</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>-</td>
+      <td>Y</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+### 功能模块介绍
+
+#### timer
+
+timer 块是一个激励源模块,主要是周期定时的作用，参数定义如下:
+
+```json
+{
+    "type": "timer",
+    "version": "1.0.0",
+    "params": {
+        "period": 5
+    }
+}
+```
+配置参数如下：
+*   **params**: 包含设备参数的对象。
+    *   **period**: 开启定时器的周期。
+
+连接端子说明:
+
+<table>
+  <thead>
+    <tr>
+      <th>端子</th>
+      <th>数据类型</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>输入</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>输出</td>
+      <td>TF_DATA_TYPE_UINT32</td>
+      <td>输出当前时间戳</td>
+    </tr>
+  </tbody>
+</table>
+
+
+#### ai camera
+
+
+ai camera 块主要负责和Himax 通信，模型OTA 以及获取图片和推理结果,并含有一些简单的条件过滤的功能, 参数定义如下:
 
 ```json
 {
@@ -420,9 +572,36 @@ params 参数的各个字段含义如下：
 *   **output\_type**: 输出图片类型，0 表示只有需要小图 (412x412)，1 表示大图+小图 (640x480; 412x412)。
 *   **shutter**: 快门模式，0 表示持续打开，1 表示通过 UI 触发，2 表示通过输入事件触发，3 表示快门一次。
 
-##### alarm trigger 块
 
-alarm trigger 块可能是ai camera的下一级块，主要作用是附带一些音频和文本以提供给下一级的告警块, 块的参数定义如下:
+连接端子说明:
+
+<table>
+  <thead>
+    <tr>
+      <th>端子</th>
+      <th>数据类型</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>输入</td>
+      <td>Any data type</td>
+      <td>输入可触发一个shutter</td>
+    </tr>
+    <tr>
+      <td>输出</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
+      <td>输出大图、小图以及推理信息(只有推理模型该字段数据有效)</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+#### alarm trigger
+
+alarm trigger 块可能是ai camera的下一级块，主要作用是附带一些音频和文本以提供给下一级的告警块, 参数定义如下:
 
 ```json
 {
@@ -434,14 +613,39 @@ alarm trigger 块可能是ai camera的下一级块，主要作用是附带一些
     }
 }
 ```
-
+配置参数如下：
 *   **params**: 包含设备参数的对象。
     *   **text**: 音频文本，用于生成音频内容的文本信息。
     *   **audio**: 音频文件的 base64 编码，表示音频内容的 mp3 文件。
 
-##### image analyzer 块
 
-image analyzer 块主要是调用LLM 进行分析图片, 块的参数定义如下:
+连接端子说明:
+
+<table>
+  <thead>
+    <tr>
+      <th>端子</th>
+      <th>数据类型</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>输入</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
+      <td>ai camera 块输出的数据</td>
+    </tr>
+    <tr>
+      <td>输出</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>输出大图、小图、告警mp3音频和文本</td>
+    </tr>
+  </tbody>
+</table>
+
+#### image analyzer
+
+image analyzer 块可能是ai camera的下一级块，主要是调用LLM 进行分析图片, 当请求分析返回的结果为触发告警时，则会向下一级模块输出数据， 参数定义如下:
 
 ```json
 {
@@ -458,7 +662,7 @@ image analyzer 块主要是调用LLM 进行分析图片, 块的参数定义如�
     }
 }
 ```
-
+配置参数如下：
 *   **params**: 包含设备参数的对象。
     *   **url**: 请求的 URL 地址, 预留(一般使用设备配置好的URL)。
     *   **header**: 请求的头信息，预留。
@@ -467,9 +671,35 @@ image analyzer 块主要是调用LLM 进行分析图片, 块的参数定义如�
         *   **type**: 请求的类型，1 表示监控。
         *   **audio\_txt**: 请求时附带音频文本信息, 当监控场景触发时，接口服务将对该字段做TTS转换, 并在接口中返回。
 
-##### local alarm 块
 
-local alarm 块主要实现设备报警，如控制RGB闪烁，控制报警音频； 块的参数定义如下:
+连接端子说明:
+
+<table>
+  <thead>
+    <tr>
+      <th>端子</th>
+      <th>数据类型</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>输入</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
+      <td>ai camera 块输出的数据</td>
+    </tr>
+    <tr>
+      <td>输出</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>输出大图、小图、告警mp3音频和文本</td>
+    </tr>
+  </tbody>
+</table>
+
+
+#### local alarm
+
+local alarm 块为一个告警块, 主要实现设备报警，如控制RGB闪烁，播放报警音频， LCD 显示报警文本以及触发时的告警图； 参数定义如下:
 
 ```json
 {
@@ -484,7 +714,7 @@ local alarm 块主要实现设备报警，如控制RGB闪烁，控制报警音�
     }
 }
 ```
-
+配置参数如下：
 *   **params**: 包含设备参数的对象。
     *   **sound**: 播放音频的开关，1 表示开启，0 表示关闭。
     *   **rgb**: RGB 报警灯的开关，1 表示开启，0 表示关闭。
@@ -492,9 +722,33 @@ local alarm 块主要实现设备报警，如控制RGB闪烁，控制报警音�
     *   **text**: 显示报警文本的开关，1 表示开启，0 表示关闭。
     *   **duration**: 告警持续时间，单位为秒，这里是 10 秒。
 
-##### sensecraft alarm 块
+连接端子说明:
 
-sensecraft alarm 块主要是将告警信息通知到SenseCraft平台； 块的参数定义如下:
+<table>
+  <thead>
+    <tr>
+      <th>端子</th>
+      <th>数据类型</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>输入</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>上一级触发块所输出的数据</td>
+    </tr>
+    <tr>
+      <td>输出</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
+
+#### sensecraft alarm
+
+sensecraft alarm 块为一个告警块,主要是将告警信息通知到SenseCraft平台；参数定义如下:
 
 ```json
 {
@@ -506,8 +760,90 @@ sensecraft alarm 块主要是将告警信息通知到SenseCraft平台； 块的�
     }
 }
 ```
-
+配置参数如下：
 *   **params**: 包含设备参数的对象。
     *   **silence\_duration**: 静默时间，单位为秒，这里是 60 秒, 表示最短的上报间隔为60s。
     *   **text**: 平台报警通知的文本。
 
+连接端子说明:
+
+<table>
+  <thead>
+    <tr>
+      <th>端子</th>
+      <th>数据类型</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>输入</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>上一级触发块所输出的数据</td>
+    </tr>
+    <tr>
+      <td>输出</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
+
+#### uart alarm
+
+uart alarm 块为一个告警块；主要实现的是通过串口的方式输出告警信息, 参数定义如下:
+
+```json
+{
+    "id": "",
+    "type": "uart alarm",
+    "version": "0.0.1",
+    "params": {
+        "output_format": 0,
+        "include_big_image": 0,
+        "include_small_image": 0,
+        "include_boxes": 0
+    }
+}
+```
+
+配置参数如下：
+
+- **params**: 包含设备参数的对象。
+  - **output_format**: 输出格式。
+    - 0：二进制格式。
+    - 1：JSON 格式。
+  - **include_big_image**: 是否包含大图。
+    - 0：否。
+    - 1：是。
+  - **include_small_image**: 是否包含小图。
+    - 0：否。
+    - 1：是。
+  - **include_boxes**: 是否包含 box 信息。
+    - 0：否。
+    - 1：是。
+
+
+连接端子说明:
+
+<table>
+  <thead>
+    <tr>
+      <th>端子</th>
+      <th>数据类型</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>输入</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>上一级触发块所输出的数据</td>
+    </tr>
+    <tr>
+      <td>输出</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
