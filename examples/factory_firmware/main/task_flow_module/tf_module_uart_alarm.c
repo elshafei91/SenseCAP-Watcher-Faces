@@ -173,33 +173,33 @@ static int __cfg(void *p_module, cJSON *p_json)
     }
 
     cJSON *include_big_image = cJSON_GetObjectItem(p_json, "include_big_image");
-    if (include_big_image == NULL || !cJSON_IsBool(include_big_image))
+    if (include_big_image == NULL || !tf_cJSON_IsGeneralBool(include_big_image))
     {
         ESP_LOGE(TAG, "params include_big_image missing, default false");
         p_module_ins->include_big_image = false;
     } else {
-        ESP_LOGI(TAG, "params include_big_image=%s", cJSON_IsTrue(include_big_image)?"true":"false");
-        p_module_ins->include_big_image = cJSON_IsTrue(include_big_image);
+        ESP_LOGI(TAG, "params include_big_image=%s", tf_cJSON_IsGeneralTrue(include_big_image)?"true":"false");
+        p_module_ins->include_big_image = tf_cJSON_IsGeneralTrue(include_big_image);
     }
 
     cJSON *include_small_image = cJSON_GetObjectItem(p_json, "include_small_image");
-    if (include_small_image == NULL || !cJSON_IsBool(include_small_image))
+    if (include_small_image == NULL || !tf_cJSON_IsGeneralBool(include_small_image))
     {
         ESP_LOGE(TAG, "params include_small_image missing, default false");
         p_module_ins->include_small_image = false;
     } else {
-        ESP_LOGI(TAG, "params include_small_image=%s", cJSON_IsTrue(include_small_image)?"true":"false");
-        p_module_ins->include_small_image = cJSON_IsTrue(include_small_image);
+        ESP_LOGI(TAG, "params include_small_image=%s", tf_cJSON_IsGeneralTrue(include_small_image)?"true":"false");
+        p_module_ins->include_small_image = tf_cJSON_IsGeneralTrue(include_small_image);
     }
 
     cJSON *include_boxes = cJSON_GetObjectItem(p_json, "include_boxes");
-    if (include_boxes == NULL || !cJSON_IsBool(include_boxes))
+    if (include_boxes == NULL || !tf_cJSON_IsGeneralBool(include_boxes))
     {
         ESP_LOGE(TAG, "params include_boxes missing, default false");
         p_module_ins->include_boxes = false;
     } else {
-        ESP_LOGI(TAG, "params include_boxes=%s", cJSON_IsTrue(include_boxes)?"true":"false");
-        p_module_ins->include_boxes = cJSON_IsTrue(include_boxes);
+        ESP_LOGI(TAG, "params include_boxes=%s", tf_cJSON_IsGeneralTrue(include_boxes)?"true":"false");
+        p_module_ins->include_boxes = tf_cJSON_IsGeneralTrue(include_boxes);
     }
     return 0;
 }
