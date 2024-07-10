@@ -85,6 +85,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         }
     }
 
+    // TODO: wait for data structure TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT including boxes
 #if 0
     //boxes
     if (p_module_ins->include_boxes) {
@@ -119,6 +120,9 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         free(str);
         cJSON_Delete(json);
     }
+
+    // data is used up, consumer frees it
+    tf_data_free(p_event_data);
 }
 
 /*************************************************************************
