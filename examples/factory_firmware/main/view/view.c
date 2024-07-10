@@ -1,6 +1,7 @@
 #include "view.h"
 #include "view_image_preview.h"
 #include "view_alarm.h"
+#include "view_pages.h"
 #include "sensecap-watcher.h"
 
 #include "util.h"
@@ -19,6 +20,8 @@ static const char *TAG = "view";
 static int png_loading_count = 0;
 static bool battery_flag_toggle = 0;
 static int battery_blink_count = 0;
+static uint8_t system_mode = 0;     // 0: normal; 1: sleep; 2: standby
+static uint32_t inactive_time = 0;
 
 lv_obj_t * pre_foucsed_obj = NULL;
 uint8_t g_group_layer_ = 0;
@@ -30,6 +33,8 @@ extern int g_guide_disable;
 extern uint8_t g_avarlive;
 extern uint8_t g_tasktype;
 extern uint8_t g_backpage;
+
+extern uint8_t emoji_switch_scr;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -48,6 +53,9 @@ extern lv_obj_t * ui_viewpt1;
 extern lv_obj_t * ui_viewpbtn2;
 extern lv_obj_t * ui_viewpt2;
 extern lv_obj_t * ui_viewpbtn3;
+
+// view standby 
+extern lv_obj_t * ui_Page_Standby;
 
 extern lv_obj_t * ui_Page_Emoji;
 extern lv_obj_t * ui_failed;
@@ -79,14 +87,21 @@ extern int g_greet_image_count;
 extern int g_detected_image_count;
 
 static void waiting_timer_callback(void *arg);
-static const esp_timer_create_args_t waiting_timer_args = { .callback = &waiting_timer_callback, .name = "waiting for ble" };
+static const esp_timer_create_args_t waiting_timer_args = { .callback = &waiting_timer_callback, .name = "waiting_for_ble" };
 static esp_timer_handle_t waiting_timer;
+
+static void get_inactive_timer_callback(void *arg);
+static const esp_timer_create_args_t get_inactive_timer_args = { .callback = &get_inactive_timer_callback, .name = "get_inactive_time" };
+static esp_timer_handle_t get_inactive_timer;
+#define INACTIVE_THRESHOLD (5 * 60 * 1000)
+#define ACTIVE_THRESHOLD (1500)
 
 static void waiting_timer_callback(void *arg)
 {
+    lvgl_port_lock(0);
     lv_obj_clear_state(ui_setblesw, LV_STATE_DISABLED);
+    lvgl_port_unlock();
 }
-
 
 void wait_timer_start()
 {
@@ -95,6 +110,43 @@ void wait_timer_start()
         esp_timer_stop(waiting_timer);
     }
     ESP_ERROR_CHECK(esp_timer_start_once(waiting_timer, (uint64_t)1000000));
+}
+
+static void get_inactive_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+
+    inactive_time = lv_disp_get_inactive_time(NULL);
+    if(inactive_time > INACTIVE_THRESHOLD && system_mode == 0 && lv_scr_act() != ui_Page_Avatar && g_taskdown)
+    {
+        ESP_LOGI(TAG, "Enter Sleep mode");
+
+        emoji_switch_scr = SCREEN_STANDBY;
+        emoji_timer(EMOJI_STANDBY);
+        lv_obj_clear_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+
+        system_mode = 1;
+    }
+    else if(inactive_time < ACTIVE_THRESHOLD &&system_mode != 0)
+    {
+        ESP_LOGI(TAG, "Exit Sleep mode");
+
+        lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+        emoji_timer(EMOJI_STOP);
+
+        system_mode = 0;
+    }
+
+    lvgl_port_unlock();
+}
+
+void get_inactive_timer_start()
+{
+    if (esp_timer_is_active(get_inactive_timer))
+    {
+        esp_timer_stop(get_inactive_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_periodic(get_inactive_timer, 1000000));
 }
 
 static void update_ai_ota_progress(int percentage)
@@ -136,6 +188,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         {
             case VIEW_EVENT_SCREEN_START: {
                 _ui_screen_change(&ui_Page_Avatar, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Avatar_screen_init);
+                get_inactive_timer_start();
                 break;
             }
 
@@ -166,7 +219,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 if(g_group_layer_ == 0)
                 {
                     pre_foucsed_obj = lv_group_get_focused(g_main);
-                    ESP_LOGI(TAG, "pre_foucsed_obj : %d", pre_foucsed_obj);
                 }
                 lv_group_add_obj(g_main, ui_emoticonok);
                 lv_group_focus_obj(ui_emoticonok);
@@ -176,7 +228,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_move_foreground(ui_Page_Emoji);
                 lv_obj_set_style_bg_color(ui_emoticonok, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
 
-                // ESP_LOGI(TAG, "emoji_download_per : %d", *emoji_download_per);
                 if(*emoji_download_per < 100){
                     lv_obj_clear_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);
@@ -596,7 +647,9 @@ int view_init(void)
     lv_pm_init();
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
+    view_pages_init();
     ESP_ERROR_CHECK(esp_timer_create(&waiting_timer_args, &waiting_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&get_inactive_timer_args, &get_inactive_timer));
     lvgl_port_unlock();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 

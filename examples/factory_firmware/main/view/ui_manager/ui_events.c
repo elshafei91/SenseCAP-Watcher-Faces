@@ -140,8 +140,17 @@ static void async_emoji_switch_scr(void *arg)
     }
 }
 
+static uint32_t emoji_period[] = {200, 1000, 2000, 500};
+static uint8_t  emoji_count = 0;
+static uint32_t eomji_interval = 500;
+
 static void emoji_timer_callback(lv_timer_t *timer)
 {
+    if(emoji_count == 4)
+    {
+        emoji_count = 0;
+    }
+    eomji_interval = emoji_period[emoji_count];
     uint32_t * user_data = (uint32_t *)timer->user_data;
     const lv_img_dsc_t *current_img = NULL;
     // ESP_LOGI(TAG, "user_data is %d", *user_data);
@@ -187,6 +196,8 @@ static void emoji_timer_callback(lv_timer_t *timer)
         lv_async_call(async_emoji_switch_scr, (void *)current_img);
     }
 
+    // lv_timer_set_period(g_timer, eomji_interval);
+
     if(*user_data == EMOJI_GREETING)
     {
         vir_load_count ++;
@@ -196,6 +207,7 @@ static void emoji_timer_callback(lv_timer_t *timer)
             lv_event_send(ui_Page_Avatar, LV_EVENT_CLICKED, NULL);
         }
     }
+    emoji_count ++;
 }
 
 void emoji_timer(uint8_t emoji_type)
