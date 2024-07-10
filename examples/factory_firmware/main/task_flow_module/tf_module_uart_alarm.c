@@ -38,8 +38,13 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 
     //prompt
     tf_info_t tf_info;
-    tf_engine_info_get(&tf_info);
-    const char *prompt = tf_info.p_tf_name;
+    char *prompt;
+    if (p_module_ins->text != NULL && strlen(p_module_ins->text) > 0) {
+        prompt = p_module_ins->text;
+    } else {
+        tf_engine_info_get(&tf_info);
+        prompt = tf_info.p_tf_name;
+    }
     if (p_module_ins->output_format == 0) {
         //binary output
         uint16_t prompt_len = strlen(prompt);
@@ -85,6 +90,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         }
     }
 
+    // TODO: wait for data structure TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT including boxes
 #if 0
     //boxes
     if (p_module_ins->include_boxes) {
@@ -119,6 +125,9 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         free(str);
         cJSON_Delete(json);
     }
+
+    // data is used up, consumer frees it
+    tf_data_free(p_event_data);
 }
 
 /*************************************************************************
@@ -133,6 +142,9 @@ static int __start(void *p_module)
 static int __stop(void *p_module)
 {
     tf_module_uart_alarm_t *p_module_ins = (tf_module_uart_alarm_t *)p_module;
+    if (p_module_ins->text != NULL) {
+        tf_free(p_module_ins->text);
+    }
     return tf_event_handler_unregister(p_module_ins->input_evt_id, __event_handler);
 }
 
@@ -148,6 +160,16 @@ static int __cfg(void *p_module, cJSON *p_json)
     } else {
         ESP_LOGI(TAG, "params output_format=%d", output_format->valueint);
         p_module_ins->output_format = output_format->valueint;
+    }
+
+    cJSON *text = cJSON_GetObjectItem(p_json, "text");
+    if (text == NULL || !cJSON_IsString(text))
+    {
+        ESP_LOGE(TAG, "params text missing, default NULL");
+        p_module_ins->text = NULL;
+    } else {
+        ESP_LOGI(TAG, "params text=%s", text->valuestring);
+        p_module_ins->text = strdup(text->valuestring);
     }
 
     cJSON *include_big_image = cJSON_GetObjectItem(p_json, "include_big_image");
