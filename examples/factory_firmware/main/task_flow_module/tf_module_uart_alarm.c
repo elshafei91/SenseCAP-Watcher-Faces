@@ -38,12 +38,16 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 
     //prompt
     tf_info_t tf_info;
-    char *prompt;
+    memset(&tf_info, 0, sizeof(tf_info_t));
+    char *prompt = NULL;
     if (p_module_ins->text != NULL && strlen(p_module_ins->text) > 0) {
         prompt = p_module_ins->text;
     } else {
         tf_engine_info_get(&tf_info);
         prompt = tf_info.p_tf_name;
+        if ( prompt == NULL ){
+            prompt = "";
+        }
     }
     if (p_module_ins->output_format == 0) {
         //binary output
@@ -56,6 +60,10 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         //json output
         json = cJSON_CreateObject();
         cJSON_AddItemToObject(json, "prompt", cJSON_CreateString(prompt));
+    }
+    
+    if( tf_info.p_tf_name ) {
+        free(tf_info.p_tf_name);
     }
 
     //big image
