@@ -939,27 +939,28 @@ void __app_device_info_task(void *pvParameter)
             if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_BRIGHTNESS)) != 0) {
                 __set_brightness();
             }
-            else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_RGB_SWITCH)) != 0) {
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_RGB_SWITCH)) != 0) {
                 __set_rgb_switch();
             }
-            else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SOUND)) != 0) {
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SOUND)) != 0) {
                 __set_sound();
             }
-            else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_BLE_SWITCH)) != 0) {
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_BLE_SWITCH)) != 0) {
                 __set_ble_switch();
             }
-            else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_CLOUD_SVC_SWITCH)) != 0) {
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_CLOUD_SVC_SWITCH)) != 0) {
                 __set_cloud_service_switch();
             }
-            else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_LOCAL_SVC)) != 0) { }
-            else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_USAGE_GUIDE_FLAG)) != 0) {
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_LOCAL_SVC)) != 0) { }
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_USAGE_GUIDE_FLAG)) != 0) {
                 __set_usage_guide();
             }
-            else if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_FACTORY_RESET_FLAG)) != 0) {
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_FACTORY_RESET_FLAG)) != 0) {
                 __check_reset_factory();
             }
         }
-        else if ((bits & EVENT_TIMER_500MS) != 0)
+        
+        if ((bits & EVENT_TIMER_500MS) != 0)
         {
             if (!himax_version_got && !atomic_load(&g_timeout_firstreport))
             {
@@ -1001,7 +1002,8 @@ void __app_device_info_task(void *pvParameter)
                 }
             }
         }
-        else if ((bits & EVENT_TIMER_1S) != 0)
+        
+        if ((bits & EVENT_TIMER_1S) != 0)
         {
             uint8_t sdcard_inserted = (uint8_t)bsp_sdcard_is_inserted();
             if (sdcard_inserted == sdcard_debounce)
@@ -1026,7 +1028,8 @@ void __app_device_info_task(void *pvParameter)
             }
             sdcard_debounce = sdcard_inserted;
         }
-        else if ((bits & EVENT_TIMER_30S) != 0)
+        
+        if ((bits & EVENT_TIMER_30S) != 0)
         {
             batnow = bsp_battery_get_percent();
             bool is_charging = (bsp_exp_io_get_level(BSP_PWR_VBUS_IN_DET) == 0);
