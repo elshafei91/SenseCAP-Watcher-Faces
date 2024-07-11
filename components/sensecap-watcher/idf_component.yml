@@ -11,27 +11,27 @@ dependencies:
     override_path: "../esp_lvgl_port"
 
   espressif/esp_lcd_spd2010:
-    version: ^1.0.1
+    version: "1.0.1"
     public: true
 
   espressif/esp_lcd_touch_spd2010:
-    version: ^0.0.1
+    version: "0.0.1"
     public: true
   
   espressif/esp_codec_dev:
-    version: "^1.1.0"
+    version: "1.2.0"
     public: true
   
   led_strip:
-    version: "^2.5.3"
+    version: "2.5.4"
     public: true
 
   button:
-    version: "^3.2.0"
+    version: "3.2.3"
     public: true
 
   knob:
-    version: "^0.1.4"
+    version: "0.1.4"
     public: true
 
   sscma_client:
