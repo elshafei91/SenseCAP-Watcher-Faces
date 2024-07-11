@@ -69,7 +69,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     tf_module_alarm_trigger_t *p_module_ins = (tf_module_alarm_trigger_t *)handler_args;
     ESP_LOGI(TAG, "Input trigger");
 
-    uint8_t type = ((uint8_t *)p_event_data)[0];
+    uint32_t type = ((uint32_t *)p_event_data)[0];
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE) {
         ESP_LOGW(TAG, "Unsupport type %d", type);
         tf_data_free(p_event_data);

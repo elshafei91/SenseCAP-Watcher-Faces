@@ -2,10 +2,11 @@
 #include "tf_module_data_type.h"
 #include "tf_util.h"
 
-const char * tf_data_type_to_str(uint8_t type)
+const char * tf_data_type_to_str(uint32_t type)
 {
     switch (type)
     {
+    case TF_DATA_TYPE_TIME: return "TIME"; break;
     case TF_DATA_TYPE_BUFFER: return "BUFFER"; break;
     case TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE: return "DUALIMAGE_WITH_INFERENCE"; break;
     case TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT: return "DUALIMAGE_WITH_AUDIO_TEXT"; break;
@@ -17,7 +18,7 @@ const char * tf_data_type_to_str(uint8_t type)
 
 void tf_data_free(void *event_data)
 {
-    uint8_t type = ((uint8_t *)event_data)[0];
+    uint32_t type = ((uint32_t *)event_data)[0];
 
     switch (type)
     {
@@ -92,7 +93,7 @@ void tf_data_image_free(struct tf_data_image *p_data)
     p_data->p_buf = NULL;
 }
 
-void tf_data_inference_copy(struct tf_module_ai_camera_inference_info *p_dst, struct tf_module_ai_camera_inference_info *p_src)
+void tf_data_inference_copy(struct tf_data_inference_info *p_dst, struct tf_data_inference_info *p_src)
 {
     p_dst->is_valid = p_src->is_valid;
     p_dst->type     = p_src->type;
@@ -101,13 +102,13 @@ void tf_data_inference_copy(struct tf_module_ai_camera_inference_info *p_dst, st
         int size = 0;
         switch (p_src->type)
         {
-        case AI_CAMERA_INFERENCE_TYPE_BOX:
+        case INFERENCE_TYPE_BOX:
             size = sizeof(sscma_client_box_t);
             break;
-        case AI_CAMERA_INFERENCE_TYPE_CLASS:
+        case INFERENCE_TYPE_CLASS:
             size = sizeof(sscma_client_class_t);
             break;
-        case AI_CAMERA_INFERENCE_TYPE_POINT:
+        case INFERENCE_TYPE_POINT:
             size = sizeof(sscma_client_point_t);
             break;
         default:
@@ -127,8 +128,8 @@ void tf_data_inference_copy(struct tf_module_ai_camera_inference_info *p_dst, st
         p_dst->cnt    = 0;
     }
     
-    memset(p_dst->classes, 0, sizeof(char *) * CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM);
-    for (int i = 0; p_src->classes[i] != NULL && i < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM; i++)
+    memset(p_dst->classes, 0, sizeof(char *) * CONFIG_MODEL_CLASSES_MAX_NUM);
+    for (int i = 0; p_src->classes[i] != NULL && i < CONFIG_MODEL_CLASSES_MAX_NUM; i++)
     {
         char *p_name = tf_malloc(strlen(p_src->classes[i]) + 1); //Using strup may cause internal memory fragmentation
         memset(p_name, 0, strlen(p_src->classes[i]) + 1);
@@ -137,20 +138,20 @@ void tf_data_inference_copy(struct tf_module_ai_camera_inference_info *p_dst, st
     }
 }
 
-void tf_data_inference_free(struct tf_module_ai_camera_inference_info *p_inference)
+void tf_data_inference_free(struct tf_data_inference_info *p_inference)
 {
     if( p_inference->p_data != NULL) {
         tf_free(p_inference->p_data);
     }
     p_inference->p_data   = NULL;
 
-    for (int i = 0; p_inference->classes[i] != NULL && i < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM; i++)
+    for (int i = 0; p_inference->classes[i] != NULL && i < CONFIG_MODEL_CLASSES_MAX_NUM; i++)
     {
         tf_free(p_inference->classes[i]);
         p_inference->classes[i] = NULL;
     }
     p_inference->cnt      = 0;
     p_inference->is_valid = false;
-    p_inference->type     = AI_CAMERA_INFERENCE_TYPE_UNKNOWN;
+    p_inference->type     = INFERENCE_TYPE_UNKNOWN;
 }
 

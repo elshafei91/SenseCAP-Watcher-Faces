@@ -107,7 +107,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)handler_args;
     struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
    
-    uint8_t type = ((uint8_t *)p_event_data)[0];
+    uint32_t type = ((uint32_t *)p_event_data)[0];
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT) {
         ESP_LOGW(TAG, "unsupport type %d", type);
         tf_data_free(p_event_data);
