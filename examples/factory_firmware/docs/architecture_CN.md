@@ -8,14 +8,14 @@
 * UI及交互: 主要是UI 界面和UI 交互的实现.
 * 任务流: 主要是任务流引擎和各个任务流功能模块的实现.
 
-## 任务流框架
+## 1.任务流框架
 
-### 概述
+### 1.1 概述
 
 为了能满足各种场景需求，设计了一套类似于Node-RED功能的任务流框架， 能灵活的组织设备所具备的技能并能让它们相互运作起来.
 我们把设备所具备的技能抽象成一个块, 然后这个块可能是数据生产者或者数据消费者, 或者即生产也消费数据. 然后根据具体的任务,提取出所需要运作的块，再通过生产消费的关系，把这些块连接起来, 以达到实现具体的场景任务.
 
-### 任务流引擎
+### 1.2 任务流引擎
 
 任务流引擎的主要作用根据任务流JSON能让各个功能模块运作起来; 它管理了功能模块的注册、功能模块的实例化和销毁、以及功能模块之间的连线.
 
@@ -33,7 +33,7 @@
 9. 依次启动各个功能模块
 10. 启动完成,任务流运行.
 
-### 任务流JSON
+### 1.3 任务流JSON
 
 任务流采用JSON格式进行描述，任务流引擎通过解析该JSON文件来运行任务流。
 
@@ -212,7 +212,7 @@
 }
 ```
 
-该任务流中使用了 ai camera、image analyzer、local alarm 和 sensecraft alarm四个块,连线拓扑图如下发所示:
+该任务流中使用了 ai camera、image analyzer、local alarm 和 sensecraft alarm四个块,连线拓扑如下图所示:
 
 <img src="img/modules_connection1.png" alt="taskflow\_timing" width="400">
 
@@ -220,7 +220,7 @@
 
 ![taskflow\_timing](img/taskflow_timing.png)
 
-### 模块的事件管道
+### 1.4 模块的事件管道
 
 功能模块之间的连接表示它们之间的数据传输，前一个模块生成数据并发送给下一个模块。消息传输使用事件机制，前者发布事件，后者订阅事件。事件采用IDF的esp\_event组件实现，支持队列缓存。
 
@@ -270,7 +270,7 @@
 >     esp_err_t tf_event_handler_unregister(int32_t event_id,
 >                                             esp_event_handler_t event_handler);
 
-#### 事件管道传输的消息类型
+#### 1.4.1 事件管道传输的消息类型
 
 两个模块能连在一起，表示它们的数据类型是一致；我们在 [tf\_module\_data\_type.h](../main/task_flow_module/common/tf_module_data_type.h)文件中定义了数据类型以及对应的数据结构体.
 一般情况下，数据类型以 **TF\_DATA\_TYPE\_** 作为前缀进行定义； 数据结构体以 **tf\_data\_** 前缀进行定义.
@@ -295,9 +295,14 @@
   </thead>
   <tbody>
     <tr>
+      <td>TF_DATA_TYPE_TIME</td>
+      <td>tf_data_time_t</td>
+      <td>时间戳</td>
+    </tr>
+    <tr>
       <td>TF_DATA_TYPE_BUFFER</td>
       <td>tf_data_buffer_t</td>
-      <td>buf 数据</td>
+      <td>buffer</td>
     </tr>
     <tr>
       <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
@@ -312,7 +317,14 @@
   </tbody>
 </table>
 
-#### 事件管道高效传输
+
+> 大图: 从himax获取的 640 * 480 的jpeg 格式的图片, 使用 base64 编码存储.
+> 小图: 从himax获取的 416 * 416 的jpeg 格式的图片, 使用 base64 编码存储.
+> 推理信息: 从himax获取的推理结果，包含了 box坐标信息或class分类信息或point点坐标信息的数组，以及classes name信息.
+> 音频: 从触发块获取的数据,为mp3格式的音频数据。
+
+
+#### 1.4.2 事件管道高效传输
 
 使用idf的 esp\_event 组件来进行消息传输时，在入队的时将发生的内存的拷贝 (详情请阅读esp\_event源码); 当传输大数据时，如图片音频相关的，是非常不友好的.
 为此，我们采用只传输指针的方式进行高效传输。如 **TF\_DATA\_TYPE\_BUFFER** 类型 中，要传输的data 定义如下，第一个字段p\_buf为 数据buffer的首地址，第二个字段len为数据的长度。
@@ -339,7 +351,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 }
 ```
 
-### 模块基类
+### 1.5 模块基类
 
 我们在 [tf\_module.h](../main/task_flow_engine/include/tf_module.h) 定义模块基类, 任务流引擎不关心具体的模型实现，只需调用模块的相关接口就可以实现对模块进行操作, 而每一个具体的模块只需要实现操作函数和管理函数即可。
 
@@ -361,9 +373,9 @@ typedef struct tf_module_mgmt {
 
 如何编写一个模块请参考 [功能模块开发指导](./function_module_dev_guide.md)
 
-## 功能模块
+## 2.功能模块
 
-### 列表
+### 2.1 列表
 
 目前常见的内置模块有ai camera、alarm trigger、image analyzer、local alarm、sensecraft alarm以及uart alarm等.
 
@@ -388,7 +400,7 @@ typedef struct tf_module_mgmt {
     <tr>
       <td>timer</td>
       <td>-</td>
-      <td>TF_DATA_TYPE_UINT32</td>
+      <td>TF_DATA_TYPE_TIME</td>
       <td>Y</td>
     </tr>
     <tr>
@@ -426,9 +438,9 @@ typedef struct tf_module_mgmt {
   </tbody>
 </table>
 
-### 功能模块介绍
+### 2.2 功能模块介绍
 
-#### timer
+#### 2.2.1 timer
 
 timer 块是一个激励源模块,主要是周期定时的作用，参数定义如下:
 
@@ -465,13 +477,13 @@ timer 块是一个激励源模块,主要是周期定时的作用，参数定义�
     </tr>
     <tr>
       <td>输出</td>
-      <td>TF_DATA_TYPE_UINT32</td>
+      <td>TF_DATA_TYPE_TIME</td>
       <td>输出当前时间戳</td>
     </tr>
   </tbody>
 </table>
 
-#### ai camera
+#### 2.2.2 ai camera
 
 ai camera 块主要负责和Himax 通信，模型OTA 以及获取图片和推理结果,并含有一些简单的条件过滤的功能, 参数定义如下:
 
@@ -588,7 +600,7 @@ params 参数的各个字段含义如下：
   </tbody>
 </table>
 
-#### alarm trigger
+#### 2.2.3 alarm trigger
 
 alarm trigger 块可能是ai camera的下一级块，主要作用是附带一些音频和文本以提供给下一级的告警块, 参数定义如下:
 
@@ -633,7 +645,7 @@ alarm trigger 块可能是ai camera的下一级块，主要作用是附带一些
   </tbody>
 </table>
 
-#### image analyzer
+#### 2.2.4 image analyzer
 
 image analyzer 块可能是ai camera的下一级块，主要是调用LLM 进行分析图片, 当请求分析返回的结果为触发告警时，则会向下一级模块输出数据， 参数定义如下:
 
@@ -687,7 +699,7 @@ image analyzer 块可能是ai camera的下一级块，主要是调用LLM 进行�
   </tbody>
 </table>
 
-#### local alarm
+#### 2.2.5 local alarm
 
 local alarm 块为一个告警块, 主要实现设备报警，如控制RGB闪烁，播放报警音频， LCD 显示报警文本以及触发时的告警图； 参数定义如下:
 
@@ -738,7 +750,7 @@ local alarm 块为一个告警块, 主要实现设备报警，如控制RGB闪烁
   </tbody>
 </table>
 
-#### sensecraft alarm
+#### 2.2.6 sensecraft alarm
 
 sensecraft alarm 块为一个告警块,主要是将告警信息通知到SenseCraft平台；参数定义如下:
 
