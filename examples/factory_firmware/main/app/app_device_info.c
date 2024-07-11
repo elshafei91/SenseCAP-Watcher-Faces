@@ -132,6 +132,7 @@ static cJSON *__local_service_cfg_to_json(local_service_cfg_t *local_svc_cfg)
         local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
         if (!cJSON_AddBoolToObject(item, "enable", (cJSON_bool)item_type1->enable)) goto to_json_err;
         if (!cJSON_AddStringToObject(item, "url", item_type1->url)) goto to_json_err;
+        if (!cJSON_AddStringToObject(item, "token", item_type1->token)) goto to_json_err;
     }
 
     return root;
@@ -159,10 +160,14 @@ static esp_err_t __local_service_cfg_from_json(local_service_cfg_t *local_svc_cf
         if (!item_enable) goto from_json_err;
         cJSON *item_url = cJSON_GetObjectItem(item, "url");
         if (!item_url) goto from_json_err;
+        cJSON *item_token = cJSON_GetObjectItem(item, "token");
+        if (!item_token) goto from_json_err;
         local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
         item_type1->enable = cJSON_IsTrue(item_enable);
         if (item_type1->url != NULL) free(item_type1->url);
         item_type1->url = strdup(item_url->valuestring);
+        if (item_type1->token != NULL) free(item_type1->token);
+        item_type1->token = strdup(item_token->valuestring);
     }
 
     return ESP_OK;
@@ -178,8 +183,10 @@ static void __deep_copy_local_service_cfg(local_service_cfg_t *dst, local_servic
     for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
     {
         if (dst->cfg_items_type1[i].url != NULL) free(dst->cfg_items_type1[i].url);
+        if (dst->cfg_items_type1[i].token != NULL) free(dst->cfg_items_type1[i].token);
         dst->cfg_items_type1[i].enable = src->cfg_items_type1[i].enable;
         dst->cfg_items_type1[i].url = strdup(src->cfg_items_type1[i].url);
+        dst->cfg_items_type1[i].token = strdup(src->cfg_items_type1[i].token);
     }
     
 }
@@ -432,7 +439,8 @@ void init_local_service_cfg_from_nvs()
     {
         local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
         if (item_type1->url == NULL) item_type1->url = strdup("");
-        ESP_LOGI(TAG, "type1/cfg_%d: enable=%d, url=%s", i, item_type1->enable, item_type1->url);
+        if (item_type1->token == NULL) item_type1->token = strdup("");
+        ESP_LOGI(TAG, "type1/cfg_%d: enable=%d, url=%s, token=%s", i, item_type1->enable, item_type1->url, item_type1->token);
     }
 
     cfg->current.uint_value = (uint32_t)local_svc_cfg;
@@ -809,16 +817,17 @@ esp_err_t get_local_service_cfg_type1(int caller, int cfg_index, local_service_c
     xSemaphoreTake(cfg->mutex, portMAX_DELAY);
     pcfg->enable = local_svc_cfg->cfg_items_type1[cfg_index].enable;
     pcfg->url = strdup(local_svc_cfg->cfg_items_type1[cfg_index].url);
+    pcfg->token = strdup(local_svc_cfg->cfg_items_type1[cfg_index].token);
     xSemaphoreGive(cfg->mutex);
 
     return ESP_OK;
 }
 
-esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, char *url)
+esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, char *url, char *token)
 {
     devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_LOCAL_SVC);
     esp_err_t ret;
-    ESP_LOGI(TAG, "%s: cfg_index=%d, enable=%d, url=%s", __func__, cfg_index, enable, url);
+    ESP_LOGI(TAG, "%s: cfg_index=%d, enable=%d, url=%s, token=%s", __func__, cfg_index, enable, url, token);
     local_service_cfg_t *local_svc_cfg = (local_service_cfg_t *)cfg->current.uint_value;
     if (cfg_index > CFG_ITEM_TYPE1_MAX) return ESP_ERR_NOT_FOUND;
 
@@ -826,6 +835,8 @@ esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, ch
     local_svc_cfg->cfg_items_type1[cfg_index].enable = enable;
     if (local_svc_cfg->cfg_items_type1[cfg_index].url != NULL) free(local_svc_cfg->cfg_items_type1[cfg_index].url);
     local_svc_cfg->cfg_items_type1[cfg_index].url = strdup(url);
+    if (local_svc_cfg->cfg_items_type1[cfg_index].token != NULL) free(local_svc_cfg->cfg_items_type1[cfg_index].token);
+    local_svc_cfg->cfg_items_type1[cfg_index].token = strdup(token);
     esp_timer_stop(cfg->timer_handle);
     ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
     xSemaphoreGive(cfg->mutex);
@@ -836,7 +847,8 @@ esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, ch
 static bool __local_service_cfg_type1_equal(local_service_cfg_t *current, local_service_cfg_t *last, int index)
 {
     return current->cfg_items_type1[index].enable == last->cfg_items_type1[index].enable && \
-            strcmp(current->cfg_items_type1[index].url, last->cfg_items_type1[index].url) == 0;
+            strcmp(current->cfg_items_type1[index].url, last->cfg_items_type1[index].url) == 0 && \
+            strcmp(current->cfg_items_type1[index].token, last->cfg_items_type1[index].token) == 0;
 }
 
 static esp_err_t __set_local_service_cfg()
@@ -845,7 +857,7 @@ static esp_err_t __set_local_service_cfg()
     esp_err_t ret = ESP_OK;
     local_service_cfg_t *current_cfg = (local_service_cfg_t *)cfg->current.uint_value;
     local_service_cfg_t *last_cfg = (local_service_cfg_t *)cfg->last.uint_value;
-    bool changed_push2talk = false, changed_task_flow = false, changed_token = false;
+    bool changed_push2talk = false, changed_task_flow = false;
     char *json_str = NULL;
 
     xSemaphoreTake(cfg->mutex, portMAX_DELAY);
@@ -861,11 +873,8 @@ static esp_err_t __set_local_service_cfg()
     if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_NOTIFICATION_PROXY)) {
         changed_task_flow = true;
     }
-    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_TOKEN)) {
-        changed_token = true;
-    }
 
-    if (changed_push2talk || changed_task_flow || changed_token) {
+    if (changed_push2talk || changed_task_flow) {
         cJSON *json = __local_service_cfg_to_json(current_cfg);
         if (json) {
             json_str = cJSON_PrintUnformatted(json);
@@ -886,9 +895,6 @@ static esp_err_t __set_local_service_cfg()
     }
     if (changed_task_flow) {
         esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW, NULL, 0, pdMS_TO_TICKS(10000));
-    }
-    if (changed_token) {
-        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_LOCAL_SVC_CFG_TOKEN, NULL, 0, pdMS_TO_TICKS(10000));
     }
 
     xSemaphoreTake(cfg->mutex, portMAX_DELAY);

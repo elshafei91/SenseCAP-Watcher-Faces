@@ -1474,6 +1474,7 @@ at_cmd_error_code handle_localservice_query(char *params)
         if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
         if (!cJSON_AddNumberToObject(data_item, "switch", (int)cfg.enable)) break;
         if (!cJSON_AddStringToObject(data_item, "url", cfg.url)) break;
+        if (!cJSON_AddStringToObject(data_item, "token", cfg.token)) break;
         //image_analyzer
         data_item = cJSON_AddObjectToObject(data, "image_analyzer");
         if (!data_item) break;
@@ -1481,6 +1482,7 @@ at_cmd_error_code handle_localservice_query(char *params)
         if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
         if (!cJSON_AddNumberToObject(data_item, "switch", (int)cfg.enable)) break;
         if (!cJSON_AddStringToObject(data_item, "url", cfg.url)) break;
+        if (!cJSON_AddStringToObject(data_item, "token", cfg.token)) break;
         //training
         data_item = cJSON_AddObjectToObject(data, "training");
         if (!data_item) break;
@@ -1488,6 +1490,7 @@ at_cmd_error_code handle_localservice_query(char *params)
         if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
         if (!cJSON_AddNumberToObject(data_item, "switch", (int)cfg.enable)) break;
         if (!cJSON_AddStringToObject(data_item, "url", cfg.url)) break;
+        if (!cJSON_AddStringToObject(data_item, "token", cfg.token)) break;
         //notification_proxy
         data_item = cJSON_AddObjectToObject(data, "notification_proxy");
         if (!data_item) break;
@@ -1495,46 +1498,45 @@ at_cmd_error_code handle_localservice_query(char *params)
         if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
         if (!cJSON_AddNumberToObject(data_item, "switch", (int)cfg.enable)) break;
         if (!cJSON_AddStringToObject(data_item, "url", cfg.url)) break;
-        //token
-        ret_tmp = get_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_TOKEN, &cfg);
-        if (ret_tmp != ESP_OK) { ret = ret_tmp; break; }
-        if (!cJSON_AddStringToObject(data, "token", cfg.url)) break;
+        if (!cJSON_AddStringToObject(data_item, "token", cfg.token)) break;
 
         passthrough = true;
     } while (0);
     if (!passthrough) {
+        if (cfg.url) free(cfg.url);
+        if (cfg.token) free(cfg.token);
         cJSON_Delete(root);
         return ret;
     }
 
     char *json_string = cJSON_Print(root);
-
     ESP_LOGD(TAG, "%s: JSON String: %s\n", __func__, json_string);
-
-    esp_err_t send_result = send_at_response(json_string);
-    if (send_result != ESP_OK)
+    if (send_at_response(json_string) != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to send AT response\n");
-        cJSON_Delete(root);
-        free(json_string);
-        return ERROR_CMD_RESPONSE;
+        ret = ERROR_CMD_RESPONSE;
+    } else {
+        ret = AT_CMD_SUCCESS;
     }
-
+    if (cfg.url) free(cfg.url);
+    if (cfg.token) free(cfg.token);
     cJSON_Delete(root);
     free(json_string);
 
-    return AT_CMD_SUCCESS;
+    return ret;
 }
 
 static esp_err_t __localservice_set_one(cJSON *data, const char *data_key, int cfg_index)
 {
     cJSON *data_item = cJSON_GetObjectItem(data, data_key);
     if (data_item) {
-        cJSON *item_enable, *item_url;
+        cJSON *item_enable, *item_url, *item_token;
         item_enable = cJSON_GetObjectItem(data_item, "switch");
         item_url = cJSON_GetObjectItem(data_item, "url");
-        if (item_enable && item_url && cJSON_IsNumber(item_enable) && cJSON_IsString(item_url)) {
-            return set_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER, cJSON_IsTrue(item_enable), item_url->valuestring);
+        item_token = cJSON_GetObjectItem(data_item, "token");
+        if (item_enable && item_url && cJSON_IsNumber(item_enable) && cJSON_IsString(item_url) && cJSON_IsString(item_token)) {
+            return set_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER, cJSON_IsTrue(item_enable),
+                                                item_url->valuestring, item_token->valuestring);
         }
     }
     return ESP_OK;
@@ -1567,12 +1569,7 @@ at_cmd_error_code handle_localservice_set(char *params)
                         localservice_set_end, TAG, "%s: error when setting local service cfg!!!", __func__);
     ESP_GOTO_ON_ERROR(__localservice_set_one(data, "notification_proxy", CFG_ITEM_TYPE1_NOTIFICATION_PROXY),
                         localservice_set_end, TAG, "%s: error when setting local service cfg!!!", __func__);
-    cJSON *data_token = cJSON_GetObjectItem(data, "token");
-    if (data_token && cJSON_IsString(data_token)) {
-        ret = set_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_TOKEN, true, data_token->valuestring);
-        // if (ret != ESP_OK) goto localservice_set_end;
-    }
-    // fall through
+
 localservice_set_end:
     cJSON_AddNumberToObject(json, "code", (int)ret);
     char *json_string = cJSON_Print(json);

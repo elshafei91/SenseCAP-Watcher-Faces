@@ -993,9 +993,6 @@ static void __ctrl_event_handler(void* handler_args,
             __taskflow_start(p_taskflow, p_task_flow_str);
             break;
         }
-        case CTRL_EVENT_LOCAL_SVC_CFG_TOKEN:
-            ESP_LOGI(TAG, "event: CTRL_EVENT_LOCAL_SVC_CFG_TOKEN");
-            // fall through
         case CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW: {
             ESP_LOGI(TAG, "event: CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW");
             if (!p_taskflow->need_pause_taskflow) {
@@ -1167,12 +1164,6 @@ esp_err_t app_taskflow_init(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                     CTRL_EVENT_BASE, 
                                                     CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW, 
-                                                    __ctrl_event_handler,
-                                                    p_taskflow));
-
-    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
-                                                    CTRL_EVENT_BASE, 
-                                                    CTRL_EVENT_LOCAL_SVC_CFG_TOKEN, 
                                                     __ctrl_event_handler,
                                                     p_taskflow));
 

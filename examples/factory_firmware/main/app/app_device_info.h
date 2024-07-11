@@ -10,6 +10,7 @@
 typedef struct {
     bool enable;
     char *url;
+    char *token;
 } local_service_cfg_type1_t;
 
 // index of cfg items
@@ -19,7 +20,6 @@ enum {
     CFG_ITEM_TYPE1_IMAGE_ANALYZER,
     CFG_ITEM_TYPE1_TRAINING,
     CFG_ITEM_TYPE1_NOTIFICATION_PROXY,
-    CFG_ITEM_TYPE1_TOKEN,
     CFG_ITEM_TYPE1_MAX,
 };
 
@@ -49,7 +49,7 @@ int get_cloud_service_switch(int caller);
 esp_err_t set_cloud_service_switch(int caller, int value);
 
 esp_err_t get_local_service_cfg_type1(int caller, int cfg_index, local_service_cfg_type1_t *pcfg);
-esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, char *url);
+esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, char *url, char *token);
 
 int get_usage_guide(int caller);
 esp_err_t set_usage_guide(int caller, int value);

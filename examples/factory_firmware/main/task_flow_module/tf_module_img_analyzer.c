@@ -482,42 +482,45 @@ static void img_analyzer_task_destroy( tf_module_img_analyzer_t *p_module_ins)
  ************************************************************************/
 static int __start(void *p_module)
 {
-    char *p_token =NULL;
+    char *p_token = NULL, *p_host = NULL;
 
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)p_module;
     struct tf_module_img_analyzer_params *p_params = &p_module_ins->params;
 
-    // url
+    // test local service cfg
     local_service_cfg_type1_t local_svc_cfg = { .enable = false, .url = NULL };
     esp_err_t ret = get_local_service_cfg_type1(MAX_CALLER, CFG_ITEM_TYPE1_IMAGE_ANALYZER, &local_svc_cfg);
-    if (ret == ESP_OK && local_svc_cfg.enable && local_svc_cfg.url != NULL && strlen(local_svc_cfg.url) > 7) {
-        ESP_LOGI(TAG, "got local service cfg, url=%s", local_svc_cfg.url);
-        int len = strlen(local_svc_cfg.url);
-        if (local_svc_cfg.url[len - 1] == '/') local_svc_cfg.url[len - 1] = '\0';  //remove trail '/'
-        snprintf(p_module_ins->url,sizeof(p_module_ins->url),"%s%s", local_svc_cfg.url, CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
-    } else {
-        snprintf(p_module_ins->url,sizeof(p_module_ins->url),"%s%s", CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST, CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
+    if (ret == ESP_OK && local_svc_cfg.enable) {
+        if (local_svc_cfg.url != NULL && strlen(local_svc_cfg.url) > 7) {
+            ESP_LOGI(TAG, "got local service cfg, url=%s", local_svc_cfg.url);
+            int len = strlen(local_svc_cfg.url);
+            if (local_svc_cfg.url[len - 1] == '/') local_svc_cfg.url[len - 1] = '\0';  //remove trail '/'
+            p_host = local_svc_cfg.url;
+        }
+        // token
+        if (local_svc_cfg.token != NULL && strlen(local_svc_cfg.token) > 0) {
+            ESP_LOGI(TAG, "got local service cfg, token=%s", local_svc_cfg.token);
+            p_token = local_svc_cfg.token;
+        }
     }
-    if (local_svc_cfg.url != NULL) {
-        free(local_svc_cfg.url);
-        local_svc_cfg.url = NULL;
-    }
+
+    // host
+    if (p_host == NULL) p_host = CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST;
+    snprintf(p_module_ins->url, sizeof(p_module_ins->url), "%s%s", p_host, CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
     
     // token
-    ret = get_local_service_cfg_type1(MAX_CALLER, CFG_ITEM_TYPE1_TOKEN, &local_svc_cfg);
-    if (ret == ESP_OK && local_svc_cfg.url != NULL && strlen(local_svc_cfg.url) > 0) {
-        p_token = local_svc_cfg.url;
-    } else {
-        p_token =  __token_gen();
-    }
-    if( p_token ) {
+    if (p_token == NULL) p_token = __token_gen();
+    if (p_token) {
         snprintf(p_module_ins->token, sizeof(p_module_ins->token), "Device %s", p_token);
     } else {
         p_module_ins->token[0] = '\0';
     }
+    
     if (local_svc_cfg.url != NULL) {
         free(local_svc_cfg.url);
-        local_svc_cfg.url = NULL;
+    }
+    if (local_svc_cfg.token != NULL) {
+        free(local_svc_cfg.token);
     }
 
     p_module_ins->head[0] = '\0';
