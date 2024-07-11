@@ -109,7 +109,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     
     ESP_LOGI(TAG, "Input trigger");
 
-    uint8_t type = ((uint8_t *)p_event_data)[0];
+    uint32_t type = ((uint32_t *)p_event_data)[0];
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE ) {
         ESP_LOGW(TAG, "Unsupport type %d", type);
         tf_data_free(p_event_data);
@@ -613,8 +613,8 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
-    p_module_ins->module_serv.p_module = p_module_ins;
-    p_module_ins->module_serv.ops = &__g_module_ops;
+    p_module_ins->module_base.p_module = p_module_ins;
+    p_module_ins->module_base.ops = &__g_module_ops;
     
     __parmas_default(&p_module_ins->params);
 
@@ -647,7 +647,7 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
                                                 p_module_ins->p_task_buf);
     ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
     
-    return &p_module_ins->module_serv;
+    return &p_module_ins->module_base;
 
 err:
     if(p_module_ins->task_handle ) {

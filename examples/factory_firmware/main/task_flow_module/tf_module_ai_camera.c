@@ -85,8 +85,8 @@ static int __model_flag_clear(void)
 
 static void __classes_name_copy(char *classes_dst[], char *classes_src[])
 {
-    memset(classes_dst, NULL, sizeof(char *) * CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM);
-    for (int i = 0; classes_src[i] != NULL && i < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM; i++)
+    memset(classes_dst, NULL, sizeof(char *) * CONFIG_MODEL_CLASSES_MAX_NUM);
+    for (int i = 0; classes_src[i] != NULL && i < CONFIG_MODEL_CLASSES_MAX_NUM; i++)
     {
         char *p_name = tf_malloc(strlen(classes_src[i]) + 1); //Using strup may cause internal memory fragmentation
         memset(p_name, 0, strlen(classes_src[i]) + 1);
@@ -156,7 +156,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     __data_unlock(p_module_ins); 
 }
 
-static int __class_num_get(struct tf_module_ai_camera_inference_info *p_inference, const char *p_class_name, uint8_t *p_target_id,uint8_t score)
+static int __class_num_get(struct tf_data_inference_info *p_inference, const char *p_class_name, uint8_t *p_target_id,uint8_t score)
 {
     bool find_flag = false;
     uint8_t target = 0;
@@ -185,7 +185,7 @@ static int __class_num_get(struct tf_module_ai_camera_inference_info *p_inferenc
 
     switch (p_inference->type)
     {
-    case AI_CAMERA_INFERENCE_TYPE_BOX:{
+    case INFERENCE_TYPE_BOX:{
         sscma_client_box_t   *p_box = ( sscma_client_box_t *)p_inference->p_data;
         for (int i = 0; i < p_inference->cnt; i++)
         {
@@ -195,7 +195,7 @@ static int __class_num_get(struct tf_module_ai_camera_inference_info *p_inferenc
         }
         break;
     }
-    case AI_CAMERA_INFERENCE_TYPE_CLASS:{
+    case INFERENCE_TYPE_CLASS:{
         sscma_client_class_t *p_class = ( sscma_client_class_t *)p_inference->p_data;
         for (int i = 0; i < p_inference->cnt; i++)
         {
@@ -211,7 +211,7 @@ static int __class_num_get(struct tf_module_ai_camera_inference_info *p_inferenc
     return cnt;
 }
 static bool __condition_check(tf_module_ai_camera_t                     *p_module_ins,  
-                              struct tf_module_ai_camera_inference_info *p_inference)
+                              struct tf_data_inference_info *p_inference)
 {
     struct tf_module_ai_camera_params *p_params = &p_module_ins->params;
 
@@ -248,7 +248,7 @@ static bool __condition_check(tf_module_ai_camera_t                     *p_modul
             case TF_MODULE_AI_CAMERA_CONDITION_MODE_PRESENCE_DETECTION:
             {
                 
-                if(  target_id < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM ) {
+                if(  target_id < CONFIG_MODEL_CLASSES_MAX_NUM ) {
                     int last_cnt = p_module_ins->classes_num[target_id];
                     // 0-N, N-0(N>=1): will be triggered
                     if( (!!cnt) ^ (!!last_cnt) ) {
@@ -294,7 +294,7 @@ static bool __condition_check(tf_module_ai_camera_t                     *p_modul
             }
             case TF_MODULE_AI_CAMERA_CONDITION_MODE_NUM_CHANGE:
             {
-                if(  target_id < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM) {
+                if(  target_id < CONFIG_MODEL_CLASSES_MAX_NUM) {
                     int last_cnt = p_module_ins->classes_num[target_id];
                     // when num change, will be triggered
                     if( cnt != last_cnt ) {
@@ -318,7 +318,7 @@ static bool __condition_check(tf_module_ai_camera_t                     *p_modul
     return trigge_flag;
 }
 
-static bool __condition_check_whith_filter(tf_module_ai_camera_t *p_module_ins, struct tf_module_ai_camera_inference_info *p_inference)
+static bool __condition_check_whith_filter(tf_module_ai_camera_t *p_module_ins, struct tf_data_inference_info *p_inference)
 {
     struct tf_module_ai_camera_params *p_params = &p_module_ins->params;
     int trigge_cnt = 0;
@@ -394,7 +394,7 @@ static bool __silent_period_check(tf_module_ai_camera_t *p_module_ins)
     return true;
 }
 
-static bool __output_check(tf_module_ai_camera_t *p_module_ins, struct tf_module_ai_camera_inference_info *p_inference)
+static bool __output_check(tf_module_ai_camera_t *p_module_ins, struct tf_data_inference_info *p_inference)
 {
     struct tf_module_ai_camera_params *p_params = &p_module_ins->params;
 
@@ -424,7 +424,7 @@ static bool __output_check(tf_module_ai_camera_t *p_module_ins, struct tf_module
     }
 
     //update  classes num 
-    if( p_module_ins->target_id_cache < CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM ) {
+    if( p_module_ins->target_id_cache < CONFIG_MODEL_CLASSES_MAX_NUM ) {
         p_module_ins->classes_num[p_module_ins->target_id_cache] = p_module_ins->classes_num_cache[p_module_ins->target_id_cache];
     }
     return true;
@@ -533,7 +533,7 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                 info.inference.is_valid = true;
 
                 if (sscma_utils_fetch_boxes_from_reply(reply, &boxes, &box_count) == ESP_OK) {
-                    info.inference.type = AI_CAMERA_INFERENCE_TYPE_BOX;
+                    info.inference.type = INFERENCE_TYPE_BOX;
                     info.inference.p_data = (void *)boxes;
                     info.inference.cnt = box_count;
                     if (box_count > 0) {
@@ -544,7 +544,7 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                     }
 
                 } else if (sscma_utils_fetch_classes_from_reply(reply, &classes, &class_count) == ESP_OK) {
-                    info.inference.type = AI_CAMERA_INFERENCE_TYPE_CLASS;
+                    info.inference.type = INFERENCE_TYPE_CLASS;
                     info.inference.p_data = (void *)classes;
                     info.inference.cnt = class_count;
                     if (class_count > 0) {
@@ -554,7 +554,7 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                         }
                     }
                 } else if (sscma_utils_fetch_points_from_reply(reply, &points, &point_count) == ESP_OK ) {
-                    info.inference.type = AI_CAMERA_INFERENCE_TYPE_POINT;
+                    info.inference.type = INFERENCE_TYPE_POINT;
                     info.inference.p_data = (void *)points;
                     info.inference.cnt = point_count;
                     if (point_count > 0) {
@@ -1195,9 +1195,9 @@ static void ai_camera_task(void *p_arg)
                             ESP_LOGI(TAG, "  - %s", model_info->classes[i]);
                         }
 
-                        if( i >= CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM) {
-                            i = CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM -1;
-                            ESP_LOGE(TAG, "Classes num more than %d\n", CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM);
+                        if( i >= CONFIG_MODEL_CLASSES_MAX_NUM) {
+                            i = CONFIG_MODEL_CLASSES_MAX_NUM -1;
+                            ESP_LOGE(TAG, "Classes num more than %d\n", CONFIG_MODEL_CLASSES_MAX_NUM);
                         }
 
                         //update classes
@@ -1453,8 +1453,8 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
-    p_module_ins->module_serv.p_module = p_module_ins;
-    p_module_ins->module_serv.ops = &__g_module_ops;
+    p_module_ins->module_base.p_module = p_module_ins;
+    p_module_ins->module_base.ops = &__g_module_ops;
 
     // params default
     __parmas_default(&p_module_ins->params);
@@ -1548,7 +1548,7 @@ tf_module_t *tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins)
     ret = esp_timer_create(&timer_args, &p_module_ins->timer_handle);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "esp_timer_create failed");
 
-    return &p_module_ins->module_serv;
+    return &p_module_ins->module_base;
 
 err:
     if(p_module_ins->task_handle ) {
