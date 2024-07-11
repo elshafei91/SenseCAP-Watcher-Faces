@@ -4,9 +4,9 @@
 
 <img src="img/architecture.png" alt="architecture" width="600">
 
-*   APP应用程序: 主要是一些应用程序,如 WiFi连接、蓝牙配置、 与平台通信、OTA等, 同时会产生一些数据给UI显示.
-*   UI及交互: 主要是UI 界面和UI 交互的实现.
-*   任务流: 主要是任务流引擎和各个任务流功能模块的实现.
+* APP应用程序: 主要是一些应用程序,如 WiFi连接、蓝牙配置、 与平台通信、OTA等, 同时会产生一些数据给UI显示.
+* UI及交互: 主要是UI 界面和UI 交互的实现.
+* 任务流: 主要是任务流引擎和各个任务流功能模块的实现.
 
 ## 任务流框架
 
@@ -22,15 +22,15 @@
 如下图为任务流引擎的处理流程:
 <img src="img/taskflow_engine.png" alt="taskflow\_engine" width="400">
 
-1.  初始化任务流引擎。
-2.  将各个功能模块注册到任务流引擎中，使用链表存储各功能模块的管理函数和信息。
-3.  任务流引擎等待接收任务流。
-4.  接收到新任务流时，解析任务流JSON，提取所需运行的功能模块，存储在数组中。
-5.  在功能模块数组中，根据模块名从链表中找到模块的管理函数，并进行排序。
-6.  实例化功能模块。
-7.  配置功能模块。
-8.  建立功能模块之间的事件管道，用于消息传输。
-9.  依次启动各个功能模块
+1. 初始化任务流引擎。
+2. 将各个功能模块注册到任务流引擎中，使用链表存储各功能模块的管理函数和信息。
+3. 任务流引擎等待接收任务流。
+4. 接收到新任务流时，解析任务流JSON，提取所需运行的功能模块，存储在数组中。
+5. 在功能模块数组中，根据模块名从链表中找到模块的管理函数，并进行排序。
+6. 实例化功能模块。
+7. 配置功能模块。
+8. 建立功能模块之间的事件管道，用于消息传输。
+9. 依次启动各个功能模块
 10. 启动完成,任务流运行.
 
 ### 任务流JSON
@@ -97,21 +97,21 @@
 
 字段说明:
 
-*   **ctd**: 任务流的创建时间(created)。
-*   **tlid**: 任务流ID, 可与ctd相同(taskflow id)。
-*   **tn**: 任务流的名称 (task flow name)
-*   **type**: 任务流的类型
-    *   **0**: 本地示例的任务流。
-    *   **1**: MQTT 下发的任务流。
-    *   **2**: 蓝牙下发的任务流。
-    *   **3**: 语音下发的任务流。
-*   **task\_flow**: 包含任务流中各个功能模块的详细信息。
-    *   **id**: 功能模块ID (module id)。
-    *   **type**: 功能模块名称。
-    *   **index**: 功能模块在任务流中的顺序, 功能模块在流的位置越靠前,值越小, 用于功能模块的排序。
-    *   **version**: 功能模块的版本。
-    *   **params**: 功能模块的参数,不同的版本参数配置可能不同，可根据版本号来兼容解析。
-    *   **wires**: 功能模块之间的连接关系. 详细见 **任务流功能模块的事件管道** 。
+* **ctd**: 任务流的创建时间(created)。
+* **tlid**: 任务流ID, 可与ctd相同(taskflow id)。
+* **tn**: 任务流的名称 (task flow name)
+* **type**: 任务流的类型
+  * **0**: 本地示例的任务流。
+  * **1**: MQTT 下发的任务流。
+  * **2**: 蓝牙下发的任务流。
+  * **3**: 语音下发的任务流。
+* **task\_flow**: 包含任务流中各个功能模块的详细信息。
+  * **id**: 功能模块ID (module id)。
+  * **type**: 功能模块名称。
+  * **index**: 功能模块在任务流中的顺序, 功能模块在流的位置越靠前,值越小, 用于功能模块的排序。
+  * **version**: 功能模块的版本。
+  * **params**: 功能模块的参数,不同的版本参数配置可能不同，可根据版本号来兼容解析。
+  * **wires**: 功能模块之间的连接关系. 详细见 **任务流功能模块的事件管道** 。
 
 如下为监控火的一条任务流json 示例.
 
@@ -257,16 +257,16 @@
 ```
 
 > 相关的操作函数在 **tf.h** 定义(主要对idf的 esp\_event 相关的函数进行了封装)，如下:
->
+> 
 >     esp_err_t tf_event_post(int32_t event_id,
 >                             const void *event_data,
 >                             size_t event_data_size,
 >                             TickType_t ticks_to_wait);
->
+>     
 >     esp_err_t tf_event_handler_register(int32_t event_id,
 >                                         esp_event_handler_t event_handler,
 >                                         void *event_handler_arg);
->
+>     
 >     esp_err_t tf_event_handler_unregister(int32_t event_id,
 >                                             esp_event_handler_t event_handler);
 
@@ -312,9 +312,6 @@
   </tbody>
 </table>
 
-
-
-
 #### 事件管道高效传输
 
 使用idf的 esp\_event 组件来进行消息传输时，在入队的时将发生的内存的拷贝 (详情请阅读esp\_event源码); 当传输大数据时，如图片音频相关的，是非常不友好的.
@@ -342,7 +339,6 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
 }
 ```
 
-
 ### 模块基类
 
 我们在 [tf\_module.h](../main/task_flow_engine/include/tf_module.h) 定义模块基类, 任务流引擎不关心具体的模型实现，只需调用模块的相关接口就可以实现对模块进行操作, 而每一个具体的模块只需要实现操作函数和管理函数即可。
@@ -361,7 +357,6 @@ typedef struct tf_module_mgmt {
     tf_module_t *(*tf_module_instance)(void);
     void (*tf_module_destroy)(tf_module_t *p_module);
 }tf_module_mgmt_t;
-
 ```
 
 如何编写一个模块请参考 [功能模块开发指导](./function_module_dev_guide.md)
@@ -371,7 +366,6 @@ typedef struct tf_module_mgmt {
 ### 列表
 
 目前常见的内置模块有ai camera、alarm trigger、image analyzer、local alarm、sensecraft alarm以及uart alarm等.
-
 
 <table>
   <thead>
@@ -432,8 +426,6 @@ typedef struct tf_module_mgmt {
   </tbody>
 </table>
 
-
-
 ### 功能模块介绍
 
 #### timer
@@ -449,9 +441,11 @@ timer 块是一个激励源模块,主要是周期定时的作用，参数定义�
     }
 }
 ```
+
 配置参数如下：
-*   **params**: 包含设备参数的对象。
-    *   **period**: 开启定时器的周期。
+
+* **params**: 包含设备参数的对象。
+  * **period**: 开启定时器的周期。
 
 连接端子说明:
 
@@ -477,9 +471,7 @@ timer 块是一个激励源模块,主要是周期定时的作用，参数定义�
   </tbody>
 </table>
 
-
 #### ai camera
-
 
 ai camera 块主要负责和Himax 通信，模型OTA 以及获取图片和推理结果,并含有一些简单的条件过滤的功能, 参数定义如下:
 
@@ -536,42 +528,41 @@ ai camera 块主要负责和Himax 通信，模型OTA 以及获取图片和推理
 
 params 参数的各个字段含义如下：
 
-*   **model\_type**: 模型类型，0 表示云端模型（ 将从model 字段提取模型url 进行下载使用），1、2、3表示Himax内置的模型。
-*   **model**: 模型的具体信息。
-    *   **model\_id**: 模型的唯一标识符。
-    *   **version**: 模型版本。
-    *   **arguments**: 模型的参数配置。
-        *   **size**: 模型的大小。
-        *   **url**: 模型的下载 URL。
-        *   **icon**: 模型的图标 URL。
-        *   **task**: 模型的任务类型，这里是“detect”表示检测。
-        *   **createdAt**: 模型的创建时间戳。
-        *   **updatedAt**: 模型的更新时间戳。
-        *   **iou**: IOU（交并比）阈值。
-        *   **conf**: 置信度阈值。
-    *   **model\_name**: 模型名称，这里是“General Object Detection”。
-    *   **model\_format**: 模型格式，这里是“TensorRT”。
-    *   **ai\_framework**: 使用的 AI 框架。
-    *   **author**: 模型的作者，这里是“SenseCraft AI”。
-    *   **algorithm**: 算法描述，这里是“Object Detect(TensorRT, SMALL, COCO)”。
-    *   **classes**: 模型可以检测的类别，这里包含“person”（人）。
-    *   **checksum**: 模型文件的校验和（MD5），目前为空。
-*   **modes**: 工作模式，0 表示推理模式，1 表示采样模式；当为 1 时，设备不解析 model 字段。
-*   **conditions**: 检测条件列表。
-    *   **class**: 检测的类别，这里是“person”。
-    *   **mode**: 检测模式，0 表示存在检测，1 表示数值比较，2 表示数量变化。
-    *   **type**: 比较类型，0 表示小于，1 表示等于，2 表示大于，3 表示不等于（仅在 mode=1 时有效）。
-    *   **num**: 比较数值（仅在 mode=1 时有效）。
-*   **conditions\_combo**: 多条件检测的关系，0 表示与，1 表示或。
-*   **silent\_period**: 静默期设置。
-    *   **time\_period**: 时间段设置。
-        *   **repeat**: 重复时间段，从周日到周六，1 表示开启。
-        *   **time\_start**: 静默期开始时间。
-        *   **time\_end**: 静默期结束时间。
-    *   **silence\_duration**: 静默持续时间，以秒为单位。
-*   **output\_type**: 输出图片类型，0 表示只有需要小图 (412x412)，1 表示大图+小图 (640x480; 412x412)。
-*   **shutter**: 快门模式，0 表示持续打开，1 表示通过 UI 触发，2 表示通过输入事件触发，3 表示快门一次。
-
+* **model\_type**: 模型类型，0 表示云端模型（ 将从model 字段提取模型url 进行下载使用），1、2、3表示Himax内置的模型。
+* **model**: 模型的具体信息。
+  * **model\_id**: 模型的唯一标识符。
+  * **version**: 模型版本。
+  * **arguments**: 模型的参数配置。
+    * **size**: 模型的大小。
+    * **url**: 模型的下载 URL。
+    * **icon**: 模型的图标 URL。
+    * **task**: 模型的任务类型，这里是“detect”表示检测。
+    * **createdAt**: 模型的创建时间戳。
+    * **updatedAt**: 模型的更新时间戳。
+    * **iou**: IOU（交并比）阈值。
+    * **conf**: 置信度阈值。
+  * **model\_name**: 模型名称，这里是“General Object Detection”。
+  * **model\_format**: 模型格式，这里是“TensorRT”。
+  * **ai\_framework**: 使用的 AI 框架。
+  * **author**: 模型的作者，这里是“SenseCraft AI”。
+  * **algorithm**: 算法描述，这里是“Object Detect(TensorRT, SMALL, COCO)”。
+  * **classes**: 模型可以检测的类别，这里包含“person”（人）。
+  * **checksum**: 模型文件的校验和（MD5），目前为空。
+* **modes**: 工作模式，0 表示推理模式，1 表示采样模式；当为 1 时，设备不解析 model 字段。
+* **conditions**: 检测条件列表。
+  * **class**: 检测的类别，这里是“person”。
+  * **mode**: 检测模式，0 表示存在检测，1 表示数值比较，2 表示数量变化。
+  * **type**: 比较类型，0 表示小于，1 表示等于，2 表示大于，3 表示不等于（仅在 mode=1 时有效）。
+  * **num**: 比较数值（仅在 mode=1 时有效）。
+* **conditions\_combo**: 多条件检测的关系，0 表示与，1 表示或。
+* **silent\_period**: 静默期设置。
+  * **time\_period**: 时间段设置。
+    * **repeat**: 重复时间段，从周日到周六，1 表示开启。
+    * **time\_start**: 静默期开始时间。
+    * **time\_end**: 静默期结束时间。
+  * **silence\_duration**: 静默持续时间，以秒为单位。
+* **output\_type**: 输出图片类型，0 表示只有需要小图 (412x412)，1 表示大图+小图 (640x480; 412x412)。
+* **shutter**: 快门模式，0 表示持续打开，1 表示通过 UI 触发，2 表示通过输入事件触发，3 表示快门一次。
 
 连接端子说明:
 
@@ -597,8 +588,6 @@ params 参数的各个字段含义如下：
   </tbody>
 </table>
 
-
-
 #### alarm trigger
 
 alarm trigger 块可能是ai camera的下一级块，主要作用是附带一些音频和文本以提供给下一级的告警块, 参数定义如下:
@@ -613,11 +602,12 @@ alarm trigger 块可能是ai camera的下一级块，主要作用是附带一些
     }
 }
 ```
-配置参数如下：
-*   **params**: 包含设备参数的对象。
-    *   **text**: 音频文本，用于生成音频内容的文本信息。
-    *   **audio**: 音频文件的 base64 编码，表示音频内容的 mp3 文件。
 
+配置参数如下：
+
+* **params**: 包含设备参数的对象。
+  * **text**: 音频文本，用于生成音频内容的文本信息。
+  * **audio**: 音频文件的 base64 编码，表示音频内容的 mp3 文件。
 
 连接端子说明:
 
@@ -662,15 +652,16 @@ image analyzer 块可能是ai camera的下一级块，主要是调用LLM 进行�
     }
 }
 ```
-配置参数如下：
-*   **params**: 包含设备参数的对象。
-    *   **url**: 请求的 URL 地址, 预留(一般使用设备配置好的URL)。
-    *   **header**: 请求的头信息，预留。
-    *   **body**: 包含请求主体内容的对象。
-        *   **prompt**: 请求时需要附带的prompt，用于图像分析的额外信息。
-        *   **type**: 请求的类型，1 表示监控。
-        *   **audio\_txt**: 请求时附带音频文本信息, 当监控场景触发时，接口服务将对该字段做TTS转换, 并在接口中返回。
 
+配置参数如下：
+
+* **params**: 包含设备参数的对象。
+  * **url**: 请求的 URL 地址, 预留(一般使用设备配置好的URL)。
+  * **header**: 请求的头信息，预留。
+  * **body**: 包含请求主体内容的对象。
+    * **prompt**: 请求时需要附带的prompt，用于图像分析的额外信息。
+    * **type**: 请求的类型，1 表示监控。
+    * **audio\_txt**: 请求时附带音频文本信息, 当监控场景触发时，接口服务将对该字段做TTS转换, 并在接口中返回。
 
 连接端子说明:
 
@@ -696,7 +687,6 @@ image analyzer 块可能是ai camera的下一级块，主要是调用LLM 进行�
   </tbody>
 </table>
 
-
 #### local alarm
 
 local alarm 块为一个告警块, 主要实现设备报警，如控制RGB闪烁，播放报警音频， LCD 显示报警文本以及触发时的告警图； 参数定义如下:
@@ -714,13 +704,15 @@ local alarm 块为一个告警块, 主要实现设备报警，如控制RGB闪烁
     }
 }
 ```
+
 配置参数如下：
-*   **params**: 包含设备参数的对象。
-    *   **sound**: 播放音频的开关，1 表示开启，0 表示关闭。
-    *   **rgb**: RGB 报警灯的开关，1 表示开启，0 表示关闭。
-    *   **img**: 显示报警图片的开关，1 表示开启，0 表示关闭。
-    *   **text**: 显示报警文本的开关，1 表示开启，0 表示关闭。
-    *   **duration**: 告警持续时间，单位为秒，这里是 10 秒。
+
+* **params**: 包含设备参数的对象。
+  * **sound**: 播放音频的开关，1 表示开启，0 表示关闭。
+  * **rgb**: RGB 报警灯的开关，1 表示开启，0 表示关闭。
+  * **img**: 显示报警图片的开关，1 表示开启，0 表示关闭。
+  * **text**: 显示报警文本的开关，1 表示开启，0 表示关闭。
+  * **duration**: 告警持续时间，单位为秒，这里是 10 秒。
 
 连接端子说明:
 
@@ -760,10 +752,12 @@ sensecraft alarm 块为一个告警块,主要是将告警信息通知到SenseCra
     }
 }
 ```
+
 配置参数如下：
-*   **params**: 包含设备参数的对象。
-    *   **silence\_duration**: 静默时间，单位为秒，这里是 60 秒, 表示最短的上报间隔为60s。
-    *   **text**: 平台报警通知的文本。
+
+* **params**: 包含设备参数的对象。
+  * **silence\_duration**: 静默时间，单位为秒，这里是 60 秒, 表示最短的上报间隔为60s。
+  * **text**: 平台报警通知的文本。
 
 连接端子说明:
 
@@ -789,20 +783,20 @@ sensecraft alarm 块为一个告警块,主要是将告警信息通知到SenseCra
   </tbody>
 </table>
 
-#### uart alarm
+#### 2.2.7 uart alarm
 
 uart alarm 块为一个告警块；主要实现的是通过串口的方式输出告警信息, 参数定义如下:
 
 ```json
 {
-    "id": "",
+    "id": "<random number>",
     "type": "uart alarm",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "params": {
         "output_format": 0,
+        "text": "a string that you want pass to the consumer of the uart packet.",
         "include_big_image": 0,
-        "include_small_image": 0,
-        "include_boxes": 0
+        "include_small_image": 0
     }
 }
 ```
@@ -813,16 +807,13 @@ uart alarm 块为一个告警块；主要实现的是通过串口的方式输出
   - **output_format**: 输出格式。
     - 0：二进制格式。
     - 1：JSON 格式。
+  - **text**: 告警文本，这段文本会被填充到串口输出包的Prompt字段，如果这个参数不设置，那么当前任务流的简短名称将被填充。
   - **include_big_image**: 是否包含大图。
     - 0：否。
     - 1：是。
   - **include_small_image**: 是否包含小图。
     - 0：否。
     - 1：是。
-  - **include_boxes**: 是否包含 box 信息。
-    - 0：否。
-    - 1：是。
-
 
 连接端子说明:
 
@@ -847,3 +838,63 @@ uart alarm 块为一个告警块；主要实现的是通过串口的方式输出
     </tr>
   </tbody>
 </table>
+![image-20240711103247227](img/image-uart.png)
+
+uart alarm将从SenseCAP Watcher背后的串口输出数据包，接线方法如上图所示。串口的参数为：
+
+- 波特率：115200
+- 8比特、1停止位
+- 无奇偶校验
+
+> 注意：由于ESP32S3引脚IO_19和IO_20的上电默认行为，此串口在SenseCAP Watcher上电之初会输出几个随机的字节，请使用有效的数据包检出机制进行过滤。
+
+串口输出的数据包格式按照上面的`output_format`参数，分为2种格式：
+
+**A. 二进制格式**
+
+二进制数据包的格式如下所示：
+
+![image-20240711105254366](img/image-uart-packet-binary.png)
+
+字段：
+- Packet Magic Header - 包头，5个字节 "SEEED"
+- Prompt Str Len - 提示词长度
+- Prompt Str - 提示词，或者告警文本，当设置了参数`text`时，它是`text`参数的拷贝，如果没有设置`text`参数，它将被自动填充一句简短的用于描述任务用途的文本（由云服务的任务编制接口生成）
+- Big Image Len - 大图片base64编码后字符串的字节长度
+- Big Image - 大图片JPG经过base64编码之后的字符串
+- Small Image Len - 小图片base64编码后字符串的字节长度
+- Small Image - 小图片JPG经过base64编码之后的字符串
+
+以上字段中，`Packet Magic Header`,`Prompt Str Len`和`Prompt Str`字段为必然输出字段，其他字段则受参数使能控制。例如参数中设置了`include_big_image: 1`，则二进制数据包中将追加`Big Image Len`和`Big Image` 字段。
+
+**B. JSON格式**
+
+JSON数据包格式如下：
+
+```
+#in the stream of uart output
+.....{packet object}\r\n{packet object}\r\n...
+```
+
+packet object:
+
+```json
+{
+     "prompt": "monitor a cat",
+     "big_image": "base64 encoded JPG image, if include_big_image is enabled, otherwise this field is omitted",
+     "small_image": "base64 encoded JPG image, if include_small_image is enabled, otherwise this field is omitted"
+} 
+```
+
+同样地，"prompt"字段为必然输出字段，"big_image"和"small_image"字段受参数控制。
+
+
+
+
+
+
+
+
+
+
+
