@@ -30,7 +30,29 @@ typedef enum
   PM_CLEAR_GROUP        // 2: change screen, and clear all the objs of group
 } pm_operation_t;
 
+/**
+ * @brief Initialize the page manager (PM) system.
+ * 
+ * This function initializes the page manager system by creating the main LVGL group, assigning it to the encoder input device,
+ * and initializing the different groups for various UI components.
+ */
 void lv_pm_init(void);
+
+/**
+ * @brief Open a new page and manage the group of objects.
+ * 
+ * This function handles the transition to a new page, including setting the focused objects and page records, 
+ * managing the group of objects based on the specified operation, and applying the screen transition animation.
+ * 
+ * @param group Pointer to the LVGL group.
+ * @param groupInfo Pointer to the GroupInfo structure containing the objects to be managed.
+ * @param operation The operation to be performed on the group (e.g., add objects, clear group).
+ * @param target Pointer to the target LVGL object (page) to be opened.
+ * @param fademode The screen load animation mode.
+ * @param spd The speed of the screen transition animation.
+ * @param delay The delay before starting the screen transition animation.
+ * @param target_init Pointer to the function that initializes the target page.
+ */
 void lv_pm_open_page(lv_group_t * group, GroupInfo *groupInfo, pm_operation_t operation, lv_obj_t **target,
                     lv_scr_load_anim_t fademode, int spd, int delay, void (*target_init)(void));
 
