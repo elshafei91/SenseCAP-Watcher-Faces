@@ -37,21 +37,21 @@ static void __parmas_default(struct tf_module_local_alarm_params *p_params)
 static int __params_parse(struct tf_module_local_alarm_params *p_params, cJSON *p_json)
 {
     cJSON *json_sound = cJSON_GetObjectItem(p_json, "sound");
-    if (json_sound != NULL  && cJSON_IsNumber(json_sound)) {
-        p_params->sound = json_sound->valueint;
+    if (json_sound != NULL  && tf_cJSON_IsGeneralBool(json_sound)) {
+        p_params->sound = tf_cJSON_IsGeneralTrue(json_sound);
     }
 
     cJSON *json_rgb = cJSON_GetObjectItem(p_json, "rgb");
-    if (json_rgb != NULL  && cJSON_IsNumber(json_rgb)) {
-        p_params->rgb = json_rgb->valueint;
+    if (json_rgb != NULL  && tf_cJSON_IsGeneralBool(json_rgb)) {
+        p_params->rgb = tf_cJSON_IsGeneralTrue(json_rgb);
     }
     cJSON *json_img = cJSON_GetObjectItem(p_json, "img");
-    if (json_img != NULL  && cJSON_IsNumber(json_img)) {
-        p_params->img = json_img->valueint;
+    if (json_img != NULL  && tf_cJSON_IsGeneralBool(json_img)) {
+        p_params->img = tf_cJSON_IsGeneralTrue(json_img);
     }
     cJSON *json_text = cJSON_GetObjectItem(p_json, "text");
-    if (json_text != NULL  && cJSON_IsNumber(json_text)) {
-        p_params->text = json_text->valueint;
+    if (json_text != NULL  && tf_cJSON_IsGeneralBool(json_text)) {
+        p_params->text = tf_cJSON_IsGeneralTrue(json_text);
     }
     cJSON *json_duration = cJSON_GetObjectItem(p_json, "duration");
     if (json_duration != NULL  && cJSON_IsNumber(json_duration)) {
