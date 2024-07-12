@@ -2,11 +2,13 @@
 
 ![watcherbanner](docs/img/watcherbanner.jpg)
 
+[中文文档](README_CN.md)
+
 SenseCAP Watcher is the world’s first physical AI agent to revolutionize space management. This project is the factory firmware for it.
 
 ## Features
 
-- tinyML + LLMs (companion service)
+- tinyML + LLMs (cloud based and local deployment)
 - NODE-Red like functional module architecture
 - Work flow based task execution
 - Natural language interaction
@@ -17,7 +19,7 @@ SenseCAP Watcher is the world’s first physical AI agent to revolutionize space
 
 ## User Guide
 
-Please visit our [WiKi page](https://seeedstudio.com) to figure out how to use it.
+Please visit our [WiKi page](https://wiki.seeedstudio.com/watcher/) to figure out how to use it.
 
 ## Developer Guide
 
