@@ -1535,7 +1535,7 @@ static esp_err_t __localservice_set_one(cJSON *data, const char *data_key, int c
         item_url = cJSON_GetObjectItem(data_item, "url");
         item_token = cJSON_GetObjectItem(data_item, "token");
         if (item_enable && item_url && cJSON_IsNumber(item_enable) && cJSON_IsString(item_url) && cJSON_IsString(item_token)) {
-            return set_local_service_cfg_type1(AT_CMD_CALLER, CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER, cJSON_IsTrue(item_enable),
+            return set_local_service_cfg_type1(AT_CMD_CALLER, cfg_index, cJSON_IsTrue(item_enable),
                                                 item_url->valuestring, item_token->valuestring);
         }
     }
