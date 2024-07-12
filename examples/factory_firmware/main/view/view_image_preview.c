@@ -196,7 +196,7 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
 
     switch (p_info->inference.type)
     {
-        case AI_CAMERA_INFERENCE_TYPE_BOX:
+        case INFERENCE_TYPE_BOX:
             for (size_t i = 0; i < IMAGE_INVOKED_BOXES; i++)
             {
                 if (i < p_info->inference.cnt)
@@ -256,7 +256,7 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
             }
             break;
 
-        case AI_CAMERA_INFERENCE_TYPE_CLASS:
+        case INFERENCE_TYPE_CLASS:
             for (size_t i = 0; i < IMAGE_INVOKED_BOXES; i++)
             {
                 if (i < p_info->inference.cnt)

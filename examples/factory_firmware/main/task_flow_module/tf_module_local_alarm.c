@@ -107,7 +107,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)handler_args;
     struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
    
-    uint8_t type = ((uint8_t *)p_event_data)[0];
+    uint32_t type = ((uint32_t *)p_event_data)[0];
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT) {
         ESP_LOGW(TAG, "unsupport type %d", type);
         tf_data_free(p_event_data);
@@ -297,8 +297,8 @@ tf_module_t * tf_module_local_alarm_init(tf_module_local_alarm_t *p_module_ins)
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
-    p_module_ins->module_serv.p_module = p_module_ins;
-    p_module_ins->module_serv.ops = &__g_module_ops;
+    p_module_ins->module_base.p_module = p_module_ins;
+    p_module_ins->module_base.ops = &__g_module_ops;
     
     __parmas_default(&p_module_ins->params);
 
@@ -325,7 +325,7 @@ tf_module_t * tf_module_local_alarm_init(tf_module_local_alarm_t *p_module_ins)
 
     audio_register_play_finish_cb(__audio_play_finish_cb);
 
-    return &p_module_ins->module_serv;
+    return &p_module_ins->module_base;
 }
 
 esp_err_t tf_module_local_alarm_register(void)

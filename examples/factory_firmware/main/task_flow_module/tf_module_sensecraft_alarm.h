@@ -26,7 +26,7 @@ struct tf_module_sensecraft_alarm_params
 
 typedef struct tf_module_sensecraft_alarm
 {
-    tf_module_t module_serv;
+    tf_module_t module_base;
     int input_evt_id; // no output
     struct tf_module_sensecraft_alarm_params params;
     time_t last_alarm_time;

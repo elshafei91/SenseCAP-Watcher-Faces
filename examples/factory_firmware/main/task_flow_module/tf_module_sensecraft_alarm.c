@@ -48,7 +48,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     struct tf_module_sensecraft_alarm_params *p_params = &p_module_ins->params;
     ESP_LOGI(TAG, "Input shutter");
 
-    uint8_t type = ((uint8_t *)p_event_data)[0];
+    uint32_t type = ((uint32_t *)p_event_data)[0];
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT) {
         ESP_LOGW(TAG, "unsupport type %d", type);
         tf_data_free(p_event_data);
@@ -192,8 +192,8 @@ tf_module_t * tf_module_sensecraft_alarm_init(tf_module_sensecraft_alarm_t *p_mo
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
-    p_module_ins->module_serv.p_module = p_module_ins;
-    p_module_ins->module_serv.ops = &__g_module_ops;
+    p_module_ins->module_base.p_module = p_module_ins;
+    p_module_ins->module_base.ops = &__g_module_ops;
     
     __parmas_default(&p_module_ins->params);
 
@@ -202,7 +202,7 @@ tf_module_t * tf_module_sensecraft_alarm_init(tf_module_sensecraft_alarm_t *p_mo
     p_module_ins->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
 
-    return &p_module_ins->module_serv;
+    return &p_module_ins->module_base;
 err:
     if (p_module_ins->sem_handle) {
         vSemaphoreDelete(p_module_ins->sem_handle);

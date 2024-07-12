@@ -142,45 +142,15 @@ struct tf_module_ai_camera_params
 // default silence duration(if not set)
 #define CONFIG_TF_MODULE_AI_CAMERA_SILENCE_DURATION_DEFAULT     60
 
-// classes max num
-#define CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM       20
-
-
-enum tf_module_ai_camera_inference_type {
-    AI_CAMERA_INFERENCE_TYPE_UNKNOWN = 0,
-    AI_CAMERA_INFERENCE_TYPE_BOX,    //sscma_client_box_t
-    AI_CAMERA_INFERENCE_TYPE_CLASS,  //sscma_client_class_t
-    AI_CAMERA_INFERENCE_TYPE_POINT   //sscma_client_point_t
-};
-
-
-struct tf_module_ai_camera_inference_info
-{
-    bool is_valid;
-    enum tf_module_ai_camera_inference_type   type;
-    void  *p_data;
-    uint32_t cnt;
-    char *classes[CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM];
-};
-
-
 struct tf_module_ai_camera_preview_info
 {
     struct tf_data_image                      img;
-    struct tf_module_ai_camera_inference_info inference;
+    struct tf_data_inference_info inference;
 };
-
-typedef struct tf_data_dualimage_with_inference
-{
-    uint8_t type; //TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE
-    struct  tf_data_image img_small;
-    struct  tf_data_image img_large;
-    struct tf_module_ai_camera_inference_info inference;
-} tf_data_dualimage_with_inference_t;
 
 typedef struct tf_module_ai_camera
 {
-    tf_module_t module_serv;
+    tf_module_t module_base;
     int input_evt_id;
     int *p_output_evt_id;
     int output_evt_num;
@@ -197,10 +167,10 @@ typedef struct tf_module_ai_camera
     bool condition_trigger_buf[CONFIG_TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_BUF_SIZE];
     int condition_trigger_buf_idx;
     time_t last_output_time;
-    char *classes[CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM];
-    int classes_num_cache[CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM];
+    char *classes[CONFIG_MODEL_CLASSES_MAX_NUM];
+    int classes_num_cache[CONFIG_MODEL_CLASSES_MAX_NUM];
     uint8_t target_id_cache;
-    int classes_num[CONFIG_TF_MODULE_AI_CAMERA_MODEL_CLASSES_MAX_NUM];
+    int classes_num[CONFIG_MODEL_CLASSES_MAX_NUM];
     tf_data_dualimage_with_inference_t output_data;
     struct tf_module_ai_camera_preview_info preview_info_cache;
     bool start_flag;
@@ -212,6 +182,7 @@ typedef struct tf_module_ai_camera
 } tf_module_ai_camera_t;
 
 tf_module_t * tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins);
+
 
 esp_err_t tf_module_ai_camera_register(void);
 
