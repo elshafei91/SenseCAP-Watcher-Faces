@@ -1008,6 +1008,9 @@ static void __ctrl_event_handler(void* handler_args,
                     tf_engine_stop();
                     //resume the task flow after 1s
                     esp_timer_start_once(g_timer, 1000000);  //1s
+                } else {
+                    ESP_LOGI(TAG, "seems no taskflow is running currently, skip ...");
+                    p_taskflow->need_pause_taskflow = false;
                 }
             }
             break;
@@ -1164,6 +1167,12 @@ esp_err_t app_taskflow_init(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                     CTRL_EVENT_BASE, 
                                                     CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW, 
+                                                    __ctrl_event_handler,
+                                                    p_taskflow));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    CTRL_EVENT_BASE, 
+                                                    CTRL_EVENT_TASK_FLOW_START_BY_LOCAL_SVC_CFG, 
                                                     __ctrl_event_handler,
                                                     p_taskflow));
 

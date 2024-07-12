@@ -1529,14 +1529,21 @@ at_cmd_error_code handle_localservice_query(char *params)
 static esp_err_t __localservice_set_one(cJSON *data, const char *data_key, int cfg_index)
 {
     cJSON *data_item = cJSON_GetObjectItem(data, data_key);
+    char *token = NULL;
     if (data_item) {
         cJSON *item_enable, *item_url, *item_token;
         item_enable = cJSON_GetObjectItem(data_item, "switch");
         item_url = cJSON_GetObjectItem(data_item, "url");
         item_token = cJSON_GetObjectItem(data_item, "token");
-        if (item_enable && item_url && cJSON_IsNumber(item_enable) && cJSON_IsString(item_url) && cJSON_IsString(item_token)) {
-            return set_local_service_cfg_type1(AT_CMD_CALLER, cfg_index, cJSON_IsTrue(item_enable),
-                                                item_url->valuestring, item_token->valuestring);
+        if (item_enable && item_url && cJSON_IsGeneralBool(item_enable) && cJSON_IsString(item_url)) {
+            // simple validation on url
+            if (strchr(item_url->valuestring, ' ') != NULL) return ESP_ERR_INVALID_ARG;
+            if (item_token && cJSON_IsString(item_token)) {
+                token = item_token->valuestring;
+            } else {
+                token = "";
+            }
+            return set_local_service_cfg_type1(AT_CMD_CALLER, cfg_index, cJSON_IsGeneralTrue(item_enable), item_url->valuestring, token);
         }
     }
     return ESP_OK;

@@ -8,6 +8,7 @@
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+#include "cJSON.h">
 
 #include "util.h"
 
@@ -192,4 +193,17 @@ void util_print_task_stats(char *pcWriteBuffer)
 #endif
     }
 #endif
+}
+
+
+bool cJSON_IsGeneralBool(const cJSON * const item)
+{
+    return cJSON_IsBool(item) || cJSON_IsNumber(item);
+}
+
+bool cJSON_IsGeneralTrue(const cJSON * const item)
+{
+    if (cJSON_IsBool(item)) return cJSON_IsTrue(item);
+    else if (cJSON_IsNumber(item)) return (item->valueint != 0);
+    else return false;
 }

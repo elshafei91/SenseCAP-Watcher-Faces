@@ -863,15 +863,19 @@ static esp_err_t __set_local_service_cfg()
     xSemaphoreTake(cfg->mutex, portMAX_DELAY);
     if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER)) {
         changed_push2talk = true;
+        ESP_LOGI(TAG, "%s: %s changed, cfg_index=%d", __func__, "CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER", CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER);
     }
     if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_IMAGE_ANALYZER)) {
         changed_task_flow = true;
+        ESP_LOGI(TAG, "%s: %s changed, cfg_index=%d", __func__, "CFG_ITEM_TYPE1_IMAGE_ANALYZER", CFG_ITEM_TYPE1_IMAGE_ANALYZER);
     }
     if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_TRAINING)) {
         changed_task_flow = true;
+        ESP_LOGI(TAG, "%s: %s changed, cfg_index=%d", __func__, "CFG_ITEM_TYPE1_TRAINING", CFG_ITEM_TYPE1_TRAINING);
     }
     if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_NOTIFICATION_PROXY)) {
         changed_task_flow = true;
+        ESP_LOGI(TAG, "%s: %s changed, cfg_index=%d", __func__, "CFG_ITEM_TYPE1_NOTIFICATION_PROXY", CFG_ITEM_TYPE1_NOTIFICATION_PROXY);
     }
 
     if (changed_push2talk || changed_task_flow) {
@@ -880,13 +884,15 @@ static esp_err_t __set_local_service_cfg()
             json_str = cJSON_PrintUnformatted(json);
             cJSON_Delete(json);
         }
+    } else {
+        ESP_LOGI(TAG, "%s: no cfg changed, skip ...", __func__);
     }
     xSemaphoreGive(cfg->mutex);
 
     if (json_str) {
         ESP_GOTO_ON_ERROR(storage_write(LOCAL_SERVICE_STORAGE_KEY, json_str, strlen(json_str)),
                             set_local_service_cfg_err, TAG, "%s cfg write err", __func__);
-        ESP_LOGD(TAG, "%s done \n%s\nstrlen=%d", __func__, json_str, strlen(json_str));
+        ESP_LOGD(TAG, "%s: save to NVS, done\n%s\nstrlen=%d", __func__, json_str, strlen(json_str));
         free(json_str);
     }
 
@@ -897,9 +903,11 @@ static esp_err_t __set_local_service_cfg()
         esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW, NULL, 0, pdMS_TO_TICKS(10000));
     }
 
-    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
-    __deep_copy_local_service_cfg(last_cfg, current_cfg);
-    xSemaphoreGive(cfg->mutex);
+    if (changed_push2talk || changed_task_flow) {
+        xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+        __deep_copy_local_service_cfg(last_cfg, current_cfg);
+        xSemaphoreGive(cfg->mutex);
+    }
 
     return ESP_OK;
 
