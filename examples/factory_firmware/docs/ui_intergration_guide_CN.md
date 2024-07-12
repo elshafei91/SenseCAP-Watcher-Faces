@@ -53,7 +53,7 @@
 
 ## **2. 组管理**
 
-### 2.1 概述和实现
+### 2.1 概述
 SenseCAP Watcher支持触摸屏和编码器输入设备。为了同步这些输入设备的动作并确保正确，需要进行组管理以保持对正确对象的聚焦以避免触发事件冲突。
 
 组管理功能在以下文件中实现：
@@ -162,7 +162,6 @@ GroupInfo group_page_example;
 ```c
 lv_obj_t * example_objects[] = {example_obj1, example_obj2, ...};
 ```
-![alt text](image.png)
 3.将对象添加到组中
 ```c
 addObjToGroup(&group_page_example, example_objects, sizeof(example_objects) / sizeof(example_objects[0]));
@@ -176,7 +175,7 @@ lv_pm_open_page(g_example, &group_page_example, PM_ADD_OBJS_TO_GROUP, &ui_Page_E
 
 
 ## 3. 设备报警
-### 3.1 概述和实现
+### 3.1 概述
 本章节介绍了如何在你的Watcher中集成和使用报警UI组件。通过理解和使用以下功能函数来管理设备的UI报警行为
 
 报警UI在以下文件中实现：
@@ -221,7 +220,7 @@ view_alarm_off();
 
 
 ## 4. AI推理实时画面渲染
-### 4.1 概述和实现
+### 4.1 概述
 本章节介绍了如何在设备上解码图片并在LVGL中显示
 
 该功能在以下文件中实现：
@@ -254,7 +253,7 @@ view_image_preview_flush(&info);
 ```
 
 ## 5. UI消息事件定义
-### 5.1 概述和实现
+### 5.1 概述
 设备的前端UI需要和后端APP任务进行数据交互。通过对特定事件进行监听消费，从而实现各种ui界面更新和页面跳转逻辑。想详细了解ESP32的事件处理使用请参考乐鑫官方文档中的`Event Loop Library`章节
 
 UI消息事件处理在以下文件中实现：
@@ -358,7 +357,7 @@ void btn1click_cb(lv_event_t * e);
 void btn2click_cb(lv_event_t * e);
 void btn3click_cb(lv_event_t * e);
 ```
-And the code will be like this in `ui_events.c`:
+对应在`ui_events.c`中的代码就会是:
 ```c
 void btn1click_cb(lv_event_t * e)
 {

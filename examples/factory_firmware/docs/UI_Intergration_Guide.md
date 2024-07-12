@@ -54,7 +54,7 @@ In this tutorial, you will learn how to integrate your own UI design and related
 
 ## 2. **Group Management**
 
-### 2.1 Overview and Implementation
+### 2.1 Overview
 SenseCAP Watcher supports touchscreen and encoder input devices. To synchronize these input device actions and ensure correctness, group management is required to maintain focus on the correct object and avoid event conflicts.
 
 Group management functions are implemented in the following files:
@@ -175,7 +175,7 @@ By following these steps, you can ensure that the touchscreen and encoder input 
 
 
 ## 3. Device Alarm
-### 3.1 Overview and Implementation
+### 3.1 Overview
 This section explains how to integrate and use the alarm UI components in your Watcher. By understanding and using the following functions, you can manage the device's UI alarm behavior.
 
 The alarm UI is implemented in the following files:
@@ -219,7 +219,7 @@ view_alarm_off();
 
 
 ## 4. AI Inference Real-time Image Rendering
-### 4.1 Overview and Implementation
+### 4.1 Overview
 This section explains how to decode images on the device and display them in LVGL.
 
 This functionality is implemented in the following files:
@@ -253,7 +253,7 @@ view_image_preview_flush(&info);
 
 
 ## 5. UI Message Event Definition
-### 5.1 Overview and Implementation
+### 5.1 Overview
 The front-end UI of the device needs to interact with back-end APP tasks. By listening to and consuming specific events, various UI updates and page transition logic can be realized. For detailed information on ESP32 event handling, refer to the `Event Loop Library` section in Espressif's official documentation.
 
 UI message event handling is implemented in the following files:
