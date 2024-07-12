@@ -1,6 +1,6 @@
-# 软件框架
+# 软件架构
 
-软件框架如下图所示, 主要分成三部分: APP应用程序、 UI及交互、任务流。
+SenseCAP Watcher的软件架构如下图所示, 主要分成三部分: APP应用程序、 UI及交互、任务流。
 
 <img src="img/architecture.png" alt="architecture" width="600">
 

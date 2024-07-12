@@ -1,32 +1,32 @@
-# Function Module Development Guide
+# 功能模块开发指南
 
-It's recommended that you firstly read the [software architecture](architecture.md) to have an understanding about how the function module works.
+建议您首先阅读[软件架构](architecture_CN.md)以了解功能模块的工作原理。
 
-In this documentation we're gonna show a step-by-step guide on how to develop a new function module. We're gonna take the `UART Alarm` module as an example.
+在本文档中，我们将逐步展示如何开发一个新的功能模块。我们将以 `UART Alarm` 模块为例。
 
-## 1. Installation and first build
+## 1. 安装和首次构建
 
-Please pass through the steps in  [Installation and First Build](installation.md) if you've skipped it.
+请按照[安装和首次构建](installation_CN.md)中的步骤进行操作，如果您已经跳过了这一部分。
 
 ```shell
-# you're in PROJ_ROOT_DIR/examples/factory_firmware/
+# 您在 PROJ_ROOT_DIR/examples/factory_firmware/ 目录下
 cd main/task_flow_module
 ```
 
-## 2. Choose a proper template
+## 2. 选择合适的模板
 
-In the [software architecture](architecture.md) we introduced the existing function module (short as **FM** in the following of the documentation) and what they're used for. When we're developing a new FM, we'd better start from a closest FM existing as a reference. In this tutorial we're going to develop an alarmer FM, so we choose one of the alarmer FMs, `local alarmer` is the simplest one, we'll take it.
+在[软件架构](architecture_CN.md)部分，我们介绍了现有的功能模块（在接下来的文档中简写为 **FM**，Function Module）及其用途。当我们开发一个新的 FM 时，最好从一个现有的、最接近的 FM 开始作为参考。在本教程中，我们将开发一个报警 FM，因此我们选择最简单的一个报警 FM——`local alarmer` 作为参考。
 
 ```shell
 cp tf_module_local_alarm.h tf_module_uart_alarm.h
 cp tf_module_local_alarm.c tf_module_uart_alarm.c
 ```
 
-It doesn't matter what name the files have, any `.h` and `.c` file will be scanned by the build system and taken into the compile code tree. But it's still recommended to have a meaningful file name.
+文件名无关紧要，任何 `.h` 和 `.c` 文件都会被构建系统扫描并纳入编译代码树。但仍然建议使用有意义的文件名。
 
-## 3. Implement the registration
+## 3. 实现注册
 
-The **TFE** (task flow engine) provides an API function to register a new FM.
+任务流引擎（**TFE**，Task Flow Engine）提供了一个 API 函数来注册一个新的 FM。
 
 ```c
 esp_err_t tf_module_register(const char *p_name,
@@ -35,15 +35,15 @@ esp_err_t tf_module_register(const char *p_name,
                                 tf_module_mgmt_t *mgmt_handle);
 ```
 
-The first three parameters are the name, the description and the version of your FM, they're used internally currently, e.g. matching FM from the registration table, log printing etc., but will be used in the future when the FMs are communicating with a local service. 
+前三个参数是您的 FM 的名称、描述和版本，它们目前在内部使用，例如从注册表中匹配 FM、日志打印等，但将在将来用于 FM 与本地服务通信时。
 
 ```c
-// in tf_module_uart_alarm.h
+// 在 tf_module_uart_alarm.h 中
 #define TF_MODULE_UART_ALARM_NAME "uart alarm"
 #define TF_MODULE_UART_ALARM_VERSION "1.0.0"
 #define TF_MODULE_UART_ALARM_DESC "uart alarm function module"
 
-// in tf_module_uart_alarm.c
+// 在 tf_module_uart_alarm.c 中
 esp_err_t tf_module_uart_alarm_register(void)
 {
     return tf_module_register(TF_MODULE_UART_ALARM_NAME,
@@ -53,19 +53,19 @@ esp_err_t tf_module_uart_alarm_register(void)
 }
 ```
 
-The fourth parameter is a struct that contains necessary API functions to manage the life cycle of this FM.
+第四个参数是一个包含必要 API 函数的结构体，用于管理此 FM 的生命周期。
 
 ```c
-// in tf_module.h
+// 在 tf_module.h 中
 typedef struct tf_module_mgmt {
     tf_module_t *(*tf_module_instance)(void);
     void (*tf_module_destroy)(tf_module_t *p_module);
 }tf_module_mgmt_t;
 ```
 
-`tf_module_instance` is a function that will be called by the TFE when the engine is initializing all the FMs specified in a task flow, basically this means the engine has just received a task flow creation request and is starting the flow. `tf_module_destroy` is a function that will be called when the TFE is stopping the flow.
+`tf_module_instance` 是一个函数，当引擎初始化任务流中指定的所有 FM 时，TFE 将调用该函数，这基本上意味着引擎刚刚收到一个任务流创建请求并开始流程。`tf_module_destroy` 是一个函数，当 TFE 停止流程时将调用该函数。
 
-### 3.1 Instance
+### 3.1 实例化
 
 ```c
 tf_module_t *tf_module_uart_alarm_instance(void)
@@ -79,7 +79,7 @@ tf_module_t *tf_module_uart_alarm_instance(void)
     p_module_ins->module_base.ops = &__g_module_ops;
 
     if (atomic_fetch_add(&g_ins_cnt, 1) == 0) {
-        // the 1st time instance, we should init the hardware
+        // 第一次实例化，我们应该初始化硬件
         esp_err_t ret;
         uart_config_t uart_config = {
             .baud_rate = 115200,
@@ -102,20 +102,20 @@ err:
 }
 ```
 
-The above is our implementation of the `instance` functions. It allocates memory for a struct `tf_module_uart_alarm_t` which we define for holding the parameters of this FM, like the members of a C++  class. In the struct `tf_module_uart_alarm_t` the 1st field is important - `tf_module_t module_base`, in the perspective of C++ programming, `tf_module_t` is the parent class for all the FMs. The `instance` function just give the TFE a pointer to a `tf_module_t` struct. 
+上述代码是我们的 `instance` 函数的实现。它为我们为此 FM 定义的结构体 `tf_module_uart_alarm_t` 分配内存，该结构体用于保存该 FM 的参数，类似于 C++ 类的成员。在结构体 `tf_module_uart_alarm_t` 中，第一个字段很重要——`tf_module_t module_base`，在 C++ 编程的角度来看，`tf_module_t` 是所有 FM 的父类。`instance` 函数只是给 TFE 一个指向 `tf_module_t` 结构体的指针。
 
 ```c
-// in tf_module_uart_alarm.h
+// 在 tf_module_uart_alarm.h 中
 typedef struct {
     tf_module_t module_base;
-    int input_evt_id;           //this can also be the module instance id
-    int output_format;          //default 0, see comment above
-    bool include_big_image;     //default: false
-    bool include_small_image;   //default: false
-    bool include_boxes;         //default: false, coming soon
+    int input_evt_id;           //这也可以是模块实例 ID
+    int output_format;          //默认值为 0，参见上面的注释
+    bool include_big_image;     //默认值：false
+    bool include_small_image;   //默认值：false
+    bool include_boxes;         //默认值：false，敬请期待
 } tf_module_uart_alarm_t;
 
-// in tf_module_uart_alarm.c
+// 在 tf_module_uart_alarm.c 中
 tf_module_t *tf_module_uart_alarm_instance(void)
 {
     ...
@@ -124,28 +124,28 @@ tf_module_t *tf_module_uart_alarm_instance(void)
 }
 ```
 
-Two members of `tf_module_t` must be assigned. 
+必须分配 `tf_module_t` 的两个成员。
 
 ```c
-// in tf_module_uart_alarm.c
+// 在 tf_module_uart_alarm.c 中
 tf_module_t *tf_module_uart_alarm_instance(void)
 {
     ...
     p_module_ins->module_base.p_module = p_module_ins;
     p_module_ins->module_base.ops = &__g_module_ops;
 ```
-`p_module` - a pointer that refers to the instance of the FM itself, this is used for the `destroy` function to get a handler of the instance and release the memory of it.
-`ops` - a struct that contains API functions for operating the FM by the TFE, we will talk this later.
+`p_module` - 一个指针，指向 FM 实例本身，用于 `destroy` 函数获取实例的句柄并释放其内存。
+`ops` - 一个包含由 TFE 操作 FM 的 API 函数的结构体，我们将在后面讨论。
 
-The rest of the instance function is to initialize the hardware and the stuff related to your logic of your FM.
+实例函数的其余部分是初始化硬件和与您的 FM 逻辑相关的内容。
 
-One thing needs a mention is that, the FM may be instanced multiple times. You need to handle the re-enter of the `instance` function, and if your FM doesn't support multiple instances, you need to return a NULL pointer for the 2nd call of the `instance` function.
+需要提到的一点是，FM 可能会被实例化多次。您需要处理 `instance` 函数的重新进入，如果您的 FM 不支持多实例，您需要在 `instance` 函数的第二次调用时返回一个 NULL 指针。
 
-In this `uart alarmer` example, we will use reference counter to handle the re-enter logic.
+在这个 `uart alarmer` 示例中，我们将使用引用计数器来处理重新进入逻辑。
 
 ```c
 if (atomic_fetch_add(&g_ins_cnt, 1) == 0) {
-        // the 1st time instance, we should init the hardware
+        // 第一次实例化，我们应该初始化硬件
         esp_err_t ret;
         uart_config_t uart_config = {
             .baud_rate = 115200,
@@ -161,14 +161,14 @@ if (atomic_fetch_add(&g_ins_cnt, 1) == 0) {
     }
 ```
 
-### 3.2 Destroy
+### 3.2 销毁
 
 ```c
 void tf_module_uart_alarm_destroy(tf_module_t *p_module_base)
 {
     if (p_module_base) {
         if (atomic_fetch_sub(&g_ins_cnt, 1) <= 1) {
-            // this is the last destroy call, de-init the uart
+            // 这是最后一次销毁调用，反初始化 uart
             uart_driver_delete(UART_NUM_2);
             ESP_LOGI(TAG, "uart driver is deleted.");
         }
@@ -179,11 +179,11 @@ void tf_module_uart_alarm_destroy(tf_module_t *p_module_base)
 }
 ```
 
-`destroy` is always simple 😂 We just need to free the memory, and de-init the hardware if necessary.
+`destroy` 总是很简单 😂 我们只需要释放内存，并在必要时反初始化硬件。
 
-## 4. Implement the operations
+## 4. 实现操作
 
-The `ops` member of our parent class is defined as the following,
+我们父类的`ops`成员定义如下，
 
 ```c
 struct tf_module_ops
@@ -196,15 +196,15 @@ struct tf_module_ops
 };
 ```
 
-When the TFE initialize the FM, it will call these functions in the following order, `cfg` -> `msgs_sub_set` -> `msgs_pub_set` -> `start` ----> `stop`.
+当TFE初始化FM时，它将按照以下顺序调用这些函数，`cfg` -> `msgs_sub_set` -> `msgs_pub_set` -> `start` ----> `stop`。
 
-`cfg` - take the paramers from the task flow json, use these parameters to configure your FM
+`cfg` - 从任务流JSON中获取参数，使用这些参数来配置您的FM。
 
-`msgs_sub_set` - create the connection to the up-stream FM, by registering an event handler to the event id of the up-stream FM. The input parameter `evt_id` is prepared by the TFE by extracting from the task flow json. The 1st parameter `p_module` is the pointer to the FM instance itself.
+`msgs_sub_set` - 通过将事件处理程序注册到上游FM的事件ID来创建连接。输入参数`evt_id`由TFE从任务流JSON中提取准备好。第一个参数`p_module`是指向FM实例本身的指针。
 
-`msgs_pub_set` - store the connections to the down-stream FMs, if this FM has no output, we can leave this function empty. The 1st parameter `p_module` is the pointer to the FM instance itself. The 2nd parameter `output_index` is the port number, e.g. this FM has 2 outputs, `msgs_pub_set` will be called twice, with `output_index` = 0 and 1 successively. The 3rd parameter `p_evt_id` is a pointer to an array which holds all the event ids of the down-stream FMs on this port, the size of the array is `num` which is the last parameter.
+`msgs_pub_set` - 存储到下游FM的连接，如果此FM没有输出，可以将此函数留空。第一个参数`p_module`是指向FM实例本身的指针。第二个参数`output_index`是端口号，例如，此FM有2个输出，将连续调用`msgs_pub_set`两次，其中`output_index`分别为0和1。第三个参数`p_evt_id`是指向数组的指针，该数组保存此端口下游FM的所有事件ID，数组的大小为`num`，即最后一个参数。
 
-`start` and `stop` - are just their literal meanings. They all take in the `p_module` as parameter which is the pointer to the FM instance itself.
+`start`和`stop` - 就是它们字面上的意思。它们都接受`p_module`作为参数，即指向FM实例本身的指针。
 
 ### 4.1 cfg
 
@@ -256,7 +256,7 @@ static int __cfg(void *p_module, cJSON *p_json)
 }
 ```
 
-As you see, the `cfg` function is just extracting field values from the cJSON object which comes from the `params` field of the FM object of a task flow. e.g. The following is a simple task flow which includes the `uart alarmer` FM.
+正如您所见，`cfg`函数只是从任务流中的cJSON对象中提取字段值。例如，以下是包含`uart alarmer` FM的简单任务流示例。
 
 ```json
 {
@@ -327,7 +327,7 @@ As you see, the `cfg` function is just extracting field values from the cJSON ob
 }
 ```
 
-In the above task flow, the `params` for `uart alarmer` is 
+在上述任务流中，`uart alarmer`的`params`为 
 
 ```json
 {
@@ -337,7 +337,7 @@ In the above task flow, the `params` for `uart alarmer` is
 }
 ```
 
-We analyze the cJSON, extract values we need and store them into the module instance typically.
+我们分析cJSON，提取所需的值并通常将它们存储到模块实例中。
 
 ### 4.2 msgs_sub_set
 
@@ -350,19 +350,19 @@ static int __msgs_sub_set(void *p_module, int evt_id)
 }
 ```
 
-Mark down the event id of the up-stream FM for future use, and register an event handler for the event.
+标记上游FM的事件ID以供将来使用，并为事件注册事件处理程序。
 
-### 4.3 event handler
+### 4.3 事件处理程序
 
-In the [software architecture](architecture.md) we learned that the data flow is driven by an event loop. Basically a FM will receive data from its event handler, then it consumes the data, does calculations, gets some result. It needs to post the result into the event loop in the end - the target is the down-stream FMs who's interested in the data of this FM.
+在[软件架构](architecture_CN.md)中，我们了解到数据流由事件循环驱动。基本上，FM将从其事件处理程序接收数据，然后消耗数据，进行计算并得到一些结果。最后，它需要将结果发布到事件循环中，目标是对此FM数据感兴趣的下游FM。
 
-In this `uart alarmer` example, we consume data from an alarm trigger FM which has the output data type `TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT`.  Since the uart data preparation is simple, we do all the data generation in the event loop handler. This is not recommended though, if your data processing is time consuming or IO eager. In that case, you need to create a worker task (thread) to do the background processing.
+在这个`uart alarmer`的示例中，我们从一个警报触发器FM中获取数据，该FM的输出数据类型为`TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT`。由于UART数据准备很简单，我们在事件循环处理程序中完成所有数据生成工作。不过，如果您的数据处理耗时较长或者对IO有较高要求，建议创建一个工作任务（线程）来进行后台处理。
 
-We prepare a binary output buffer or a JSON string according to the input parameter `output_format`. Finally we write these data into the UART. Our FM has only one output which is the hardware, not another FM, in this reason our `msgs_pub_set` is dummy one. In the end, we need to release the data coming from the event loop, the reason will be explained in the next section.
+我们根据输入参数`output_format`准备一个二进制输出缓冲区或JSON字符串。最后，我们将这些数据写入UART。我们的FM只有一个输出，即硬件，而不是另一个FM，因此我们的`msgs_pub_set`是虚拟的。最后，我们需要释放来自事件循环的数据，下一节将解释原因。
 
 ### 4.4 msgs_pub_set
 
-In this example the `msgs_pub_set` is dummy because our FM has no down-stream consumer. Let's take the `ai camera` FM as an example.
+在这个示例中，`msgs_pub_set`是虚拟的，因为我们的FM没有下游消费者。让我们以`ai camera` FM为例。
 
 ```c
 // in tf_module_ai_camera.c
@@ -391,12 +391,12 @@ static int __msgs_pub_set(void *p_module, int output_index, int *p_evt_id, int n
 }
 ```
 
-It's not complicated but just store the event ids into the FM instance's structure. This is where you need to add a member field into your FM's type struct, in this case `tf_module_ai_camera_t`.
+这并不复杂，只是将事件ID存储到FM实例的结构中。您需要在FM类型结构体中添加一个成员字段，例如`tf_module_ai_camera_t`。
 
-When we gonna use these event ids? The moment that data is generated, and passes through the time gating. In the example of `ai camera`, the data originated from the SPI output of the Himax SoC which runs the local AI inference, and passes a few condition gate, if all the conditions are met, the data then reaches the time that needs to be posted into the event loop.
+当我们使用这些事件ID时？在数据生成并通过时间门控时刻。例如在`ai camera`中的示例中，数据源自Himax SoC的SPI输出，该SoC运行本地AI推理，并经过几个条件门控，如果所有条件都满足，则数据达到需要发布到事件循环的时刻。
 
 ```c
-// in tf_module_ai_camera.c
+// 在 tf_module_ai_camera.c 中
 ...
                     for (int i = 0; i < p_module_ins->output_evt_num; i++)
                     {
@@ -414,66 +414,66 @@ When we gonna use these event ids? The moment that data is generated, and passes
 ...
 ```
 
-We need to post to every subscriber of our output. As you can see, we make a copy of the data for every subscriber.
+我们需要向我们的每个输出订阅者发布消息。如您所见，我们为每个订阅者复制了数据。
 
-**THE RULE OF MEMORY ALLOCATION AND RELEASE**
-- The data maker FM does the memory allocation for each subscriber
-- The data consumer FM does the memory release after the data is used up.
+**内存分配和释放规则**
+- 数据生成FM为每个订阅者进行内存分配
+- 数据消费FM在数据使用完后进行内存释放。
 
-### 4.5 start and stop
+### 4.5 启动和停止
 
-These are runtime controls for the FM, to support flow pause/resume in the future. Currently you can make the FM run after it's instanced, but we still suggest split logics into FM's life cycle management and FM's runtime control.
+这些是FM的运行时控制，以支持未来的流程暂停/恢复。目前您可以在实例化后使FM运行，但我们仍建议将逻辑分成FM的生命周期管理和FM的运行时控制。
 
-## 5. Test
+## 5. 测试
 
-Now we have our `uart alarmer` FM, before we pull a request, how could we test it locally.
+现在我们有了`uart alarmer` FM，在我们提交请求之前，如何在本地测试它。
 
-We implement a console command to issue a task flow locally.
+我们实现了一个控制台命令来本地发起一个任务流。
 
 ```shell
 SenseCAP> help taskflow
 taskflow  [-iej] [-f <string>]
-  import taskflow by json string or SD file, eg:taskflow -i -f "test.json".
+  通过json字符串或SD文件导入任务流，例如：taskflow -i -f "test.json"。
 
 export taskflow to stdout or SD file, eg: taskflow -e -f "test.json"
-  -i, --import  import taskflow
-  -e, --export  export taskflow
-  -f, --file=<string>  File path, import or export taskflow json string by SD, eg: test.json
-    -j, --json  import taskflow json string by stdin
+  -i, --import  导入任务流
+  -e, --export  导出任务流
+  -f, --file=<string>  文件路径，通过SD导入或导出任务流json字符串，例如：test.json
+    -j, --json  通过标准输入导入任务流json字符串
 ```
 
-Please refer to  [Installation and First Build](installation.md) - `5. Monitor the log output` to get the console. Prepare a task flow with space and white characters removed, and issue the task flow with,
+请参阅[安装和首次构建](installation_CN.md) - `5. 监控日志输出`以获取控制台。准备一个去除空格和空白字符的任务流，并使用以下命令发出任务流：
 
 ```shell
 taskflow -i -j<enter>
-Please input taskflow json:
-#<paste your task flow json here, for an example>
-{"tlid":3,"ctd":3,"tn":"Local Human Detection","type":0,"task_flow":[{"id":1,"type":"ai camera","index":0,"version":"1.0.0","params":{"model_type":1,"modes":0,"model":{"arguments":{"iou":45,"conf":50}},"conditions":[{"class":"person","mode":1,"type":2,"num":0}],"conditions_combo":0,"silent_period":{"silence_duration":5},"output_type":0,"shutter":0},"wires":[[2]]},{"id":2,"type":"alarm trigger","index":1,"version":"1.0.0","params":{"text":"human detected","audio":""},"wires":[[3]]},{"id":3,"type":"uart alarm","index":2,"version":"1.0.0","params":{"output_format":1},"wires":[]}]}
+请键入任务流json：
+#<在此粘贴您的任务流json示例>
+{"tlid":3,"ctd":3,"tn":"Local Human Detection","type":0,"task_flow":[{"id":1,"type":"ai camera","index":0,"version":"1.0.0","params":{"model_type":1,"modes":0,"model":{"arguments":{"iou":45,"conf":50}},"conditions":[{"class":"person","mode":1,"type":2,"num":0}],"conditions_combo":0,"silent_period":{"silence_duration":5},"output_type":0,"shutter":0},"wires":[[2]]},{"id":2,"type":"alarm trigger","index":1,"version":"1.0.0","params":{"text":"human detected","audio":""},"wires":[[3,4]]},{"id":3,"type":"uart alarm","index":2,"version":"1.0.0","params":{"output_format":1},"wires":[]}]}
 ```
 
-How to compose a task flow? In the [software architecture](architecture.md) we introduced every FM and their parameters. Composing a task flow is pretty much drawing wires between FM blocks, like the Node-RED.
+如何组合任务流？在[软件架构](architecture_CN.md)中介绍了每个FM及其参数。组合任务流基本上就是在FM块之间绘制连线，就像Node-RED一样。
 
-Before we have a GUI for composing the task flow, we can use the export command to collect examples. Just use the Mobile App to issue a flow with a local alarm function enabled (RGB light), when the flow is running, export the task flow with,
+在我们有GUI用于组合任务流之前，我们可以使用导出命令收集示例。只需使用移动应用程序启动启用本地报警功能（RGB灯）的流程，当流程运行时，使用以下命令导出任务流：
 
 ```shell
 taskflow -e
 ```
 
-This command will export the running task flow to the console. If the task flow is super long its output might be interrupted by other log, in this case we need a TF card. Format the TF card into FAT/exFAT file system, plug it into the Watcher. Now we can export the running task flow into the TF card,
+此命令将运行中的任务流导出到控制台。如果任务流非常长，其输出可能会被其他日志中断，在这种情况下，我们需要一个TF卡。将TF卡格式化为FAT/exFAT文件系统，插入Watcher。现在我们可以将运行中的任务流导出到TF卡中，
 
 ```shell
 taskflow -e -f tf1.json
-# only support file name in the root dir
-# please don't specify leading dir in the path, the command can't create dir
+# 仅支持根目录中的文件名
+# 请不要在路径中指定前导目录，命令无法创建目录
 ```
 
-Now you have examples, modify one of the alarmer FM (generally it's the last FM), replace it with your `uart alarmer` FM, add a few parameters to the JSON object of your FM, use a JSON editor to remove the white space, and import it with the `taskflow -i -j` command above.
+现在您有了示例，请修改其中一个alarmer FM（通常是最后一个FM），用您的`uart alarmer` FM替换它，并向FM的JSON对象添加一些参数，使用JSON编辑器去除空白字符，并使用上述`taskflow -i -j`命令导入。
 
-That's it, enjoy the exploration.
+就是这样，享受探索吧。
 
-## Appendix - More task flow examples
+## 附录 - 更多任务流示例
 
-Here we provide a few more task flow examples that you can start with.
+这里我们提供了几个可以开始的任务流示例。
 
 ```json
 {"tlid":3,"ctd":3,"tn":"Local Human Detection","type":0,"task_flow":[{"id":1,"type":"ai camera","index":0,"version":"1.0.0","params":{"model_type":1,"modes":0,"model":{"arguments":{"iou":45,"conf":50}},"conditions":[{"class":"person","mode":1,"type":2,"num":0}],"conditions_combo":0,"silent_period":{"silence_duration":5},"output_type":0,"shutter":0},"wires":[[2]]},{"id":2,"type":"alarm trigger","index":1,"version":"1.0.0","params":{"text":"human detected","audio":""},"wires":[[3,4]]},{"id":3,"type":"local alarm","index":2,"version":"1.0.0","params":{"sound":1,"rgb":1,"img":0,"text":0,"duration":1},"wires":[]},{"id":4,"type":"sensecraft alarm","index":3,"version":"1.0.0","params":{"silence_duration":30},"wires":[]}]}
@@ -486,3 +486,10 @@ Here we provide a few more task flow examples that you can start with.
 ```json
 {"tlid":1719396404172,"ctd":1719396419707,"tn":"Man with glasses spotted, notify immediately","task_flow":[{"id":753589649,"type":"ai camera","type_id":0,"index":0,"vision":"0.0.1","params":{"model_type":0,"model":{"model_id":"60086","version":"1.0.0","arguments":{"size":1644.08,"url":"https://sensecraft-statics.oss-accelerate.aliyuncs.com/refer/model/1705306215159_jVQf4u_swift_yolo_nano_person_192_int8_vela(2).tflite","icon":"https://sensecraft-statics.oss-accelerate.aliyuncs.com/refer/pic/1705306138275_iykYXV_detection_person.png","task":"detect","createdAt":1705306231,"updatedAt":null},"model_name":"Person Detection--Swift YOLO","model_format":"tfLite","ai_framework":"6","author":"SenseCraft AI","description":"The model is a Swift-YOLO model trained on the person detection dataset. It can detect human body  existence.","task":1,"algorithm":"Object Dectect(TensorRT,SMALL,COCO)","classes":["person"]},"modes":0,"conditions":[{"class":"person","mode":1,"type":2,"num":0}],"conditions_combo":0,"silent_period":{"time_period":{"repeat":[1,1,1,1,1,1,1],"time_start":"00:00:00","time_end":"23:59:59"},"silence_duration":60},"output_type":1,"shutter":0},"wires":[[193818631]]},{"id":193818631,"type":"image analyzer","type_id":3,"index":1,"version":"0.0.1","params":{"url":"","header":"","body":{"prompt":"Is there a man with glasses?","type":1,"audio_txt":"Man with glasses"}},"wires":[[420037647,452707375]]},{"id":452707375,"type_id":99,"type":"sensecraft alarm","index":2,"version":"0.0.1","params":{"silence_duration":10,"text":"Man with glasses"},"wires":[]},{"id":420037647,"type_id":5,"type":"local alarm","index":3,"version":"0.0.1","params":{"sound":1,"rgb":1,"img":1,"text":1,"duration":10},"wires":[]}],"type":0}
 ```
+
+
+
+
+
+
+
