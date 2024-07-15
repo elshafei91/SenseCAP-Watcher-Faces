@@ -1,6 +1,7 @@
 #include "view.h"
 #include "view_image_preview.h"
 #include "view_alarm.h"
+#include "view_pages.h"
 #include "sensecap-watcher.h"
 
 #include "util.h"
@@ -19,17 +20,22 @@ static const char *TAG = "view";
 static int png_loading_count = 0;
 static bool battery_flag_toggle = 0;
 static int battery_blink_count = 0;
+static uint8_t system_mode = 0;     // 0: normal; 1: sleep; 2: standby
 
 lv_obj_t * pre_foucsed_obj = NULL;
 uint8_t g_group_layer_ = 0;
 uint8_t g_shutdown = 0;
 uint8_t g_dev_binded = 0;
+int g_sleep_time = 0;
+int g_sleep_switch = 1;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_guide_disable;
 extern uint8_t g_avarlive;
 extern uint8_t g_tasktype;
 extern uint8_t g_backpage;
+
+extern uint8_t emoji_switch_scr;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -41,6 +47,10 @@ extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 extern lv_obj_t * ui_taskerrt2;
 extern lv_obj_t * ui_task_error;
+
+// view standby 
+extern lv_obj_t * ui_Page_Standby;
+
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
 extern lv_obj_t * ui_viewpbtn1;
@@ -78,23 +88,98 @@ extern int g_standby_image_count;
 extern int g_greet_image_count;
 extern int g_detected_image_count;
 
-static void waiting_timer_callback(void *arg);
-static const esp_timer_create_args_t waiting_timer_args = { .callback = &waiting_timer_callback, .name = "waiting for ble" };
-static esp_timer_handle_t waiting_timer;
+static void view_ble_switch_timer_callback(void *arg);
+static const esp_timer_create_args_t view_ble_switch_timer_args = { .callback = &view_ble_switch_timer_callback, .name = "view ble switch" };
+static esp_timer_handle_t view_ble_switch_timer;
 
-static void waiting_timer_callback(void *arg)
+#define ACTIVE_THRESHOLD (1500)
+static void view_sleep_timer_callback(void *arg);
+static const esp_timer_create_args_t view_sleep_timer_args = { .callback = &view_sleep_timer_callback, .name = "view sleep" };
+static esp_timer_handle_t view_sleep_timer;
+static uint32_t inactive_time = 0;
+static int get_inactive_time;
+static int inactive_threshold;
+
+static void view_ble_switch_timer_callback(void *arg)
 {
+    lvgl_port_lock(0);
     lv_obj_clear_state(ui_setblesw, LV_STATE_DISABLED);
+    lvgl_port_unlock();
 }
 
-
-void wait_timer_start()
+void view_ble_switch_timer_start()
 {
-    if (esp_timer_is_active(waiting_timer))
+    if (esp_timer_is_active(view_ble_switch_timer))
     {
-        esp_timer_stop(waiting_timer);
+        esp_timer_stop(view_ble_switch_timer);
     }
-    ESP_ERROR_CHECK(esp_timer_start_once(waiting_timer, (uint64_t)1000000));
+    ESP_ERROR_CHECK(esp_timer_start_once(view_ble_switch_timer, (uint64_t)1000000));
+}
+
+static void view_sleep_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+    
+    get_inactive_time = g_sleep_time;
+    // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
+
+    switch (get_inactive_time) {
+        case 0:
+            lvgl_port_unlock();
+            return;
+        case 1:
+            inactive_threshold = (1 * 60 * 1000);
+            break;
+        case 2:
+            inactive_threshold = (5 * 60 * 1000);
+            break;
+        case 3:
+            inactive_threshold = (10 * 60 * 1000);
+            break;
+        case 4:
+            inactive_threshold = (15 * 60 * 1000);
+            break;
+        case 5:
+            inactive_threshold = (30 * 60 * 1000);
+            break;
+        case 6:
+            inactive_threshold = (24 * 60 * 60 * 1000);
+            break;
+        default:
+            lvgl_port_unlock();
+            return;
+    }
+    inactive_time = lv_disp_get_inactive_time(NULL);
+    if(inactive_time > inactive_threshold && system_mode == 0 && lv_scr_act() != ui_Page_Avatar && g_taskdown)
+    {
+        ESP_LOGI(TAG, "Enter Sleep mode");
+
+        emoji_switch_scr = SCREEN_STANDBY;
+        emoji_timer(EMOJI_STANDBY);
+        lv_obj_clear_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+
+        system_mode = 1;
+    }
+    else if(inactive_time < ACTIVE_THRESHOLD &&system_mode != 0)
+    {
+        ESP_LOGI(TAG, "Exit Sleep mode");
+
+        lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+        emoji_timer(EMOJI_STOP);
+
+        system_mode = 0;
+    }
+
+    lvgl_port_unlock();
+}
+
+void view_sleep_timer_start()
+{
+    if (esp_timer_is_active(view_sleep_timer))
+    {
+        esp_timer_stop(view_sleep_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_periodic(view_sleep_timer, 1000000));
 }
 
 static void update_ai_ota_progress(int percentage)
@@ -593,7 +678,9 @@ int view_init(void)
     lv_pm_init();
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
-    ESP_ERROR_CHECK(esp_timer_create(&waiting_timer_args, &waiting_timer));
+    view_pages_init();
+    ESP_ERROR_CHECK(esp_timer_create(&view_ble_switch_timer_args, &view_ble_switch_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&view_sleep_timer_args, &view_sleep_timer));
     lvgl_port_unlock();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 

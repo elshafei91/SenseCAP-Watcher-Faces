@@ -9,7 +9,8 @@
 extern "C" {
 #endif
 
-void wait_timer_start();
+void view_ble_switch_timer_start();
+void view_sleep_timer_start();
 
 int view_init(void);
 
