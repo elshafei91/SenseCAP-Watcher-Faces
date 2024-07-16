@@ -23,6 +23,7 @@ GroupInfo group_page_volume;
 GroupInfo group_page_connectapp;
 GroupInfo group_page_about;
 GroupInfo group_page_guide;
+GroupInfo group_page_sleep;
 
 static void lv_pm_obj_group(lv_group_t * group, GroupInfo *groupInfo);
 
@@ -134,6 +135,7 @@ void initGroup()
     lv_obj_t * about_objects[]          = {ui_aboutdevname, ui_aboutespversion, ui_aboutaiversion, ui_aboutsn, ui_abouteui, ui_aboutblemac,
                                         ui_aboutwifimac, ui_Paboutb};
     lv_obj_t * guide_objects[]          = {ui_Page_Guideavatar, ui_Page_Guidelive};
+    lv_obj_t * sleep_objects[]          = {ui_sleeptimeroller, ui_slpback};
 
 
     addObjToGroup(&group_page_main, main_objects, sizeof(main_objects) / sizeof(main_objects[0]));
@@ -147,6 +149,7 @@ void initGroup()
     addObjToGroup(&group_page_connectapp, connectapp_objects, sizeof(connectapp_objects) / sizeof(connectapp_objects[0]));
     addObjToGroup(&group_page_about, about_objects, sizeof(about_objects) / sizeof(about_objects[0]));
     addObjToGroup(&group_page_guide, guide_objects, sizeof(guide_objects) / sizeof(guide_objects[0]));
+    addObjToGroup(&group_page_sleep, sleep_objects, sizeof(sleep_objects) / sizeof(sleep_objects[0]));
 }
 
 

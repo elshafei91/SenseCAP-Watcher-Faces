@@ -97,6 +97,7 @@ extern GroupInfo group_page_volume;
 extern GroupInfo group_page_connectapp;
 extern GroupInfo group_page_about;
 extern GroupInfo group_page_guide;
+extern GroupInfo group_page_sleep;
 
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
@@ -702,7 +703,7 @@ void sclick_cb(lv_event_t *e)
 
 void setsl_cb(lv_event_t * e)
 {
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
+    // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
 }
 
 void maingestureup_cb(lv_event_t *e)
@@ -905,7 +906,8 @@ void setwwdf_cb(lv_event_t *e)
 void settimec_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "settimec_cb");
-    lv_pm_open_page(g_main, NULL, PM_ADD_OBJS_TO_GROUP, &ui_Page_Sleep, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Sleep_screen_init);
+    lv_pm_open_page(g_main, &group_page_sleep, PM_ADD_OBJS_TO_GROUP, &ui_Page_Sleep, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Sleep_screen_init);
+    lv_roller_set_selected(ui_sleeptimeroller, g_sleep_time, LV_ANIM_OFF);
 }
 
 void settimef_cb(lv_event_t *e)
@@ -1150,6 +1152,26 @@ void otaback_cb(lv_event_t * e)
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
+void sleeptimeset_cb(lv_event_t * e)
+{
+    static uint16_t sleep_time_roller_id;
+    lv_obj_t * obj = lv_event_get_target(e);
+    sleep_time_roller_id = lv_roller_get_selected(obj);
+    ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
+    set_sleep_time(UI_CALLER, sleep_time_roller_id);
+    g_sleep_time = get_sleep_time(UI_CALLER);
+}
+
+void push2talkcancel_cb(lv_event_t * e)
+{
+
+}
+
+void push2talkcheck_cb(lv_event_t * e)
+{
+
+}
+
 void volvc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "volvc_cb");
@@ -1206,41 +1228,6 @@ void bridf_cb(lv_event_t * e)
 void hap_cb(lv_event_t *e)
 {
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-}
-
-void slpt1c_cb(lv_event_t *e) 
-{
-
-}
-
-void slpt2c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt3c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt4c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt5c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt6c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt7c_cb(lv_event_t *e) 
-{ 
-
 }
 
 void pageguideavaf_cb(lv_event_t * e)

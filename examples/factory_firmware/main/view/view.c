@@ -125,8 +125,8 @@ static void view_sleep_timer_callback(void *arg)
 
     switch (get_inactive_time) {
         case 0:
-            lvgl_port_unlock();
-            return;
+            inactive_threshold = 0;
+            break;
         case 1:
             inactive_threshold = (1 * 60 * 1000);
             break;
@@ -150,7 +150,7 @@ static void view_sleep_timer_callback(void *arg)
             return;
     }
     inactive_time = lv_disp_get_inactive_time(NULL);
-    if(inactive_time > inactive_threshold && system_mode == 0 && lv_scr_act() != ui_Page_Avatar && g_taskdown)
+    if(inactive_time > inactive_threshold && inactive_threshold > 0 && system_mode == 0 && lv_scr_act() != ui_Page_Avatar && g_taskdown)
     {
         ESP_LOGI(TAG, "Enter Sleep mode");
 
