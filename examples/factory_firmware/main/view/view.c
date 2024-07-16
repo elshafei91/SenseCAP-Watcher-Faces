@@ -20,7 +20,8 @@ static const char *TAG = "view";
 static int png_loading_count = 0;
 static bool battery_flag_toggle = 0;
 static int battery_blink_count = 0;
-static uint8_t system_mode = 0;     // 0: normal; 1: sleep; 2: standby
+static uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
+static uint8_t standby_mode = 0;    // 0: on;     1: off
 
 lv_obj_t * pre_foucsed_obj = NULL;
 uint8_t g_group_layer_ = 0;
@@ -120,6 +121,7 @@ static void view_sleep_timer_callback(void *arg)
 {
     lvgl_port_lock(0);
     
+    inactive_time = lv_disp_get_inactive_time(NULL);
     get_inactive_time = g_sleep_time;
     // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
 
@@ -149,25 +151,42 @@ static void view_sleep_timer_callback(void *arg)
             lvgl_port_unlock();
             return;
     }
-    inactive_time = lv_disp_get_inactive_time(NULL);
-    if(inactive_time > inactive_threshold && inactive_threshold > 0 && system_mode == 0 && lv_scr_act() != ui_Page_Avatar && g_taskdown)
+    // TODO: standby mode
+    if(inactive_time > (5 * 60 * 1000) && standby_mode == 0)
     {
-        ESP_LOGI(TAG, "Enter Sleep mode");
+        ESP_LOGI(TAG, "Standby mode active");
 
         emoji_switch_scr = SCREEN_STANDBY;
         emoji_timer(EMOJI_STANDBY);
         lv_obj_clear_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
 
-        system_mode = 1;
+        standby_mode = 1;
     }
-    else if(inactive_time < ACTIVE_THRESHOLD &&system_mode != 0)
+    // TODO: sleep mode
+    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0&& lv_scr_act() != ui_Page_Avatar && g_taskdown && g_sleep_switch == 0)
     {
-        ESP_LOGI(TAG, "Exit Sleep mode");
+        ESP_LOGI(TAG, "Sleep mode active");
 
-        lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
-        emoji_timer(EMOJI_STOP);
+        sleep_mode = 1;
+    }
+    else if(inactive_time < ACTIVE_THRESHOLD)
+    {
+        if(sleep_mode != 0)
+        {
+            ESP_LOGI(TAG, "Sleep mode deactive");
 
-        system_mode = 0;
+            sleep_mode = 0;
+        }
+
+        if(standby_mode != 0)
+        {
+            ESP_LOGI(TAG, "Standby mode deactive");
+
+            lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+            emoji_timer(EMOJI_STOP);
+
+            standby_mode = 0;
+        }
     }
 
     lvgl_port_unlock();
