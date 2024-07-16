@@ -325,6 +325,103 @@ static void __parse_mqtt_version_notify(char *mqtt_msg_buff, int msg_buff_len)
                                     pdMS_TO_TICKS(10000));
 }
 
+static void __parse_mqtt_prewiew_exit(struct app_sensecraft *p_sensecraft, char *mqtt_msg_buff, int msg_buff_len)
+{
+    ESP_LOGI(TAG, "start to parse camera-preview-exit from MQTT msg ...");
+    ESP_LOGD(TAG, "MQTT msg: \r\n %.*s\r\nlen=%d", msg_buff_len, mqtt_msg_buff, msg_buff_len);
+
+    cJSON *tmp_cjson = cJSON_Parse(mqtt_msg_buff);
+
+    if (tmp_cjson == NULL) {
+        ESP_LOGE(TAG, "failed to parse cJSON object for MQTT msg:");
+        ESP_LOGE(TAG, "%.*s\r\n", msg_buff_len, mqtt_msg_buff);
+        return;
+    }
+    cJSON_Delete(tmp_cjson);
+    
+    if (esp_timer_is_active( p_sensecraft->timer_handle ) == true){
+        esp_timer_stop(p_sensecraft->timer_handle);
+        ESP_LOGI(TAG, "stop timer");
+    }
+
+    __data_lock(p_sensecraft);
+    p_sensecraft->preview_flag = false;
+    p_sensecraft->preview_interval = 1;
+    p_sensecraft->preview_continuous = 1;
+    p_sensecraft->preview_timeout_s = 0;
+    p_sensecraft->preview_last_send_time = 0; 
+    __data_unlock(p_sensecraft);
+}
+
+static void __parse_mqtt_prewiew_start(struct app_sensecraft *p_sensecraft, char *mqtt_msg_buff, int msg_buff_len)
+{
+    ESP_LOGI(TAG, "start to parse camera-preview-start from MQTT msg ...");
+    ESP_LOGD(TAG, "MQTT msg: \r\n %.*s\r\nlen=%d", msg_buff_len, mqtt_msg_buff, msg_buff_len);
+
+    cJSON *json_root = cJSON_Parse(mqtt_msg_buff);
+    if (json_root == NULL) {
+        ESP_LOGE(TAG, "Failed to parse cJSON object for MQTT msg:");
+        ESP_LOGE(TAG, "%.*s\r\n", msg_buff_len, mqtt_msg_buff);
+        return;
+    }
+    cJSON *order_arr = cJSON_GetObjectItem(json_root, "order");
+    if ( order_arr == NULL || !cJSON_IsArray(order_arr)) {
+        ESP_LOGE(TAG, "Order field is not an array\n");
+        cJSON_Delete(json_root);
+        return;
+    }
+
+    cJSON *order_arr_0 = cJSON_GetArrayItem(order_arr, 0);
+    if( order_arr_0 == NULL || !cJSON_IsObject(order_arr_0)) {
+        cJSON_Delete(json_root);
+        return;
+    }
+    cJSON *value = cJSON_GetObjectItem(order_arr_0, "value");
+    if( value == NULL || !cJSON_IsObject(value) ) {
+        ESP_LOGE(TAG, "value field is not an object\n");
+        cJSON_Delete(json_root);
+        return;
+    }
+
+    if (esp_timer_is_active( p_sensecraft->timer_handle ) == true){
+        esp_timer_stop(p_sensecraft->timer_handle);
+        ESP_LOGI(TAG, "stop timer");
+    }
+
+    __data_lock(p_sensecraft);
+    cJSON *interval_json = cJSON_GetObjectItem(value, "interval");
+    if( interval_json == NULL || !cJSON_IsNumber(interval_json) ) {
+        ESP_LOGE(TAG, "interval field is not an number\n");
+        p_sensecraft->preview_interval = 1;
+    } else {
+        p_sensecraft->preview_interval = interval_json->valueint;
+    }
+    cJSON *continuous_json = cJSON_GetObjectItem(value, "continuous");
+    if( continuous_json == NULL || !cJSON_IsNumber(continuous_json) ) {
+        p_sensecraft->preview_continuous = 1;
+    } else {
+        p_sensecraft->preview_continuous = continuous_json->valueint;
+    }
+
+    cJSON *timeout_json = cJSON_GetObjectItem(value, "timeout");
+    if( timeout_json == NULL || !cJSON_IsNumber(timeout_json) ) {
+        p_sensecraft->preview_timeout_s = 0;
+    } else {
+        p_sensecraft->preview_timeout_s = timeout_json->valueint;
+    }
+    p_sensecraft->preview_flag = true;
+    p_sensecraft->preview_last_send_time = 0;
+
+    ESP_LOGI(TAG, "interval=%d, continuous=%d, timeout=%d", p_sensecraft->preview_interval, p_sensecraft->preview_continuous, p_sensecraft->preview_timeout_s);
+    __data_unlock(p_sensecraft);
+
+    if( p_sensecraft->preview_timeout_s > 0 ) {
+        ESP_LOGI(TAG, "start timer");
+        esp_timer_start_once(p_sensecraft->timer_handle, p_sensecraft->preview_timeout_s * 1000000);
+    }
+    cJSON_Delete(json_root);
+}
+
 static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     struct app_sensecraft *p_sensecraft = (struct app_sensecraft *)handler_args;
@@ -348,6 +445,12 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
 
             msg_id = esp_mqtt_client_subscribe(client, p_sensecraft->topic_down_task_report, 0);
             ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d, topic=%s", msg_id, p_sensecraft->topic_down_task_report);
+
+            msg_id = esp_mqtt_client_subscribe(client, p_sensecraft->topic_down_preview_start, 0);
+            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d, topic=%s", msg_id, p_sensecraft->topic_down_preview_start);
+
+            msg_id = esp_mqtt_client_subscribe(client, p_sensecraft->topic_down_preview_exit, 0);
+            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d, topic=%s", msg_id, p_sensecraft->topic_down_preview_exit);
 
             if( p_sensecraft->p_mqtt_recv_buf ) {
                 free(p_sensecraft->p_mqtt_recv_buf);
@@ -435,12 +538,17 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
             }
 
             // handle data
+
             if (strstr(p_sensecraft->topic_cache, "task-publish")) {
                 __parse_mqtt_tasklist(p_data, len);
             } else if (strstr(p_sensecraft->topic_cache, "version-notify")) {
                 __parse_mqtt_version_notify(p_data, len);
             } else if (strstr(p_sensecraft->topic_cache, "task-inquiry")) {
                 __parse_mqtt_task_report(p_data, len);
+            } else if (strstr(p_sensecraft->topic_cache, "camera-preview-exit")) {
+                __parse_mqtt_prewiew_exit(p_sensecraft, p_data, len);
+            } else if (strstr(p_sensecraft->topic_cache, "camera-preview-start")) {
+                __parse_mqtt_prewiew_start(p_sensecraft, p_data, len);
             }
 
             if( p_sensecraft->p_mqtt_recv_buf ) {
@@ -482,6 +590,11 @@ static void __sensecraft_task(void *p_arg)
                 "sensecraft/ipnode/%s/get/order/version-notify", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_down_task_report, MQTT_TOPIC_STR_LEN, 
                 "sensecraft/ipnode/%s/get/order/task-inquiry", p_sensecraft->deviceinfo.eui);
+    sniprintf(p_sensecraft->topic_down_preview_start, MQTT_TOPIC_STR_LEN,
+                "sensecraft/ipnode/%s/get/order/camera-preview-start", p_sensecraft->deviceinfo.eui);
+    sniprintf(p_sensecraft->topic_down_preview_exit, MQTT_TOPIC_STR_LEN,
+                "sensecraft/ipnode/%s/get/order/camera-preview-exit", p_sensecraft->deviceinfo.eui);
+
     sniprintf(p_sensecraft->topic_up_task_publish_ack, MQTT_TOPIC_STR_LEN, 
                 "sensecraft/ipnode/%s/update/order/task-publish-ack", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_taskflow_report, MQTT_TOPIC_STR_LEN, 
@@ -494,16 +607,21 @@ static void __sensecraft_task(void *p_arg)
                 "sensecraft/ipnode/%s/update/event/model-ota-status", p_sensecraft->deviceinfo.eui);
     sniprintf(p_sensecraft->topic_up_firmware_ota_status, MQTT_TOPIC_STR_LEN,
                 "sensecraft/ipnode/%s/update/event/firmware-ota-status", p_sensecraft->deviceinfo.eui);
+    sniprintf(p_sensecraft->topic_up_preview_upload, MQTT_TOPIC_STR_LEN,
+                "sensecraft/ipnode/%s/update/event/camera-preview-upload", p_sensecraft->deviceinfo.eui);
 
     ESP_LOGI(TAG, "topic_down_task_publish=%s", p_sensecraft->topic_down_task_publish);
     ESP_LOGI(TAG, "topic_down_version_notify=%s", p_sensecraft->topic_down_version_notify);
     ESP_LOGI(TAG, "topic_down_task_report=%s", p_sensecraft->topic_down_task_report);
+    ESP_LOGI(TAG, "topic_down_preview_start=%s", p_sensecraft->topic_down_preview_start);
+    ESP_LOGI(TAG, "topic_down_preview_exit=%s", p_sensecraft->topic_down_preview_exit);
     ESP_LOGI(TAG, "topic_up_task_publish_ack=%s", p_sensecraft->topic_up_task_publish_ack);
     ESP_LOGI(TAG, "topic_up_taskflow_report=%s", p_sensecraft->topic_up_taskflow_report);
     ESP_LOGI(TAG, "topic_up_change_device_status=%s", p_sensecraft->topic_up_change_device_status);
     ESP_LOGI(TAG, "topic_up_warn_event_report=%s", p_sensecraft->topic_up_warn_event_report);
     ESP_LOGI(TAG, "topic_up_model_ota_status=%s", p_sensecraft->topic_up_model_ota_status);
     ESP_LOGI(TAG, "topic_up_firmware_ota_status=%s", p_sensecraft->topic_up_firmware_ota_status);
+    ESP_LOGI(TAG, "topic_up_preview_upload=%s", p_sensecraft->topic_up_preview_upload);
 
     while (1) {
         
@@ -611,6 +729,19 @@ static void __event_loop_handler(void *handler_args, esp_event_base_t base, int3
     }
 }
 
+static void __timer_callback(void* p_arg)
+{
+    struct app_sensecraft *p_sensecraft = (struct app_sensecraft *)p_arg;
+    ESP_LOGI(TAG, "preview timeout");
+
+    __data_lock(p_sensecraft);
+    p_sensecraft->preview_flag = false;
+    p_sensecraft->preview_interval = 1;
+    p_sensecraft->preview_continuous = 1;
+    p_sensecraft->preview_timeout_s = 0;
+    p_sensecraft->preview_last_send_time = 0;
+    __data_unlock(p_sensecraft);
+}
 
 /*************************************************************************
  * API
@@ -631,6 +762,12 @@ esp_err_t app_sensecraft_init(void)
     p_sensecraft = gp_sensecraft;
     memset(p_sensecraft, 0, sizeof( struct app_sensecraft ));
     
+    p_sensecraft->preview_flag = false;
+    p_sensecraft->preview_interval = 1;
+    p_sensecraft->preview_continuous = 1;
+    p_sensecraft->preview_timeout_s = 0;
+    p_sensecraft->preview_last_send_time = 0;
+
     ret  = sensecraft_deviceinfo_get(&p_sensecraft->deviceinfo);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "deviceinfo read fail %d!", ret);
 
@@ -659,6 +796,13 @@ esp_err_t app_sensecraft_init(void)
                                                 p_sensecraft->p_task_buf);
     ESP_GOTO_ON_FALSE(p_sensecraft->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
 
+    const esp_timer_create_args_t timer_args = {
+            .callback = &__timer_callback,
+            .arg = (void*) p_sensecraft,
+            .name = "sensecraft_timer"
+    };
+    ret = esp_timer_create(&timer_args, &p_sensecraft->timer_handle);
+    ESP_GOTO_ON_ERROR(ret, err, TAG, "esp_timer_create failed");
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_SNTP_TIME_SYNCED,
                                                             __event_loop_handler, p_sensecraft, NULL));
@@ -1217,5 +1361,81 @@ esp_err_t app_sensecraft_mqtt_report_firmware_ota_status_generic(char *ota_statu
         ret = ESP_FAIL;
     }
 
+    return ret;
+}
+
+
+esp_err_t app_sensecraft_mqtt_preview_upload_with_reduce_freq(char *p_img, size_t img_len)
+{
+
+    int ret = ESP_OK;
+    time_t now = 0;
+    struct app_sensecraft * p_sensecraft = gp_sensecraft;
+    if( p_sensecraft == NULL) {
+        return ESP_FAIL;
+    }
+
+    if( !p_sensecraft->preview_flag ) {
+        return ESP_OK;
+    }
+    
+    time(&now);
+    if( difftime(now, p_sensecraft->preview_last_send_time) < (p_sensecraft->preview_interval) ) {
+        return ESP_OK;
+    }
+
+    const char *json_fmt =  \
+    "{"
+        "\"requestId\": \"%s\","
+        "\"timestamp\": %jd,"
+        "\"intent\": \"event\","
+        "\"deviceEui\": \"%s\","
+        "\"events\":  [{"
+            "\"name\": \"camera-preview-upload\","
+            "\"value\": [{"
+                "\"data\": {"
+                    "\"image\": \"%.*s\""
+                "},"
+                "\"measureTime\": %jd"
+            "}]"
+        "}]"
+    "}";
+
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_handle, ESP_FAIL, TAG, "mqtt_client is not inited yet [3]");
+    ESP_RETURN_ON_FALSE(p_sensecraft->mqtt_connected_flag, ESP_FAIL, TAG, "mqtt_client is not connected yet [3]");
+
+    size_t json_buf_len = img_len + 512;
+    char *json_buff = psram_malloc( json_buf_len );
+    ESP_RETURN_ON_FALSE(json_buff != NULL, ESP_FAIL, TAG, "psram_malloc failed");
+
+    char uuid[37];
+    time_t timestamp_ms = util_get_timestamp_ms();
+
+    UUIDGen(uuid);
+    size_t json_len = sniprintf(json_buff, json_buf_len, json_fmt, uuid, timestamp_ms, p_sensecraft->deviceinfo.eui,
+                               img_len, p_img, timestamp_ms);
+
+    ESP_LOGV(TAG, "app_sensecraft_mqtt_preview_upload: \r\n%s\r\nstrlen=%d", json_buff, json_len);
+
+    ESP_LOGI(TAG, "upload preview image");
+    
+    int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_preview_upload, json_buff, json_len,
+                                        MQTT_PUB_QOS0, false/*retain*/, true/*store*/);
+
+    free(json_buff);
+
+    if (msg_id < 0) {
+        ESP_LOGW(TAG, "app_sensecraft_mqtt_preview_upload enqueue failed, err=%d", msg_id);
+        ret = ESP_FAIL;
+    } else {
+
+        __data_lock(p_sensecraft);
+        p_sensecraft->preview_last_send_time = now;
+        if( !p_sensecraft->preview_continuous) {
+            ESP_LOGI(TAG, "upload preview image done");
+            p_sensecraft->preview_flag = false;
+        }
+        __data_unlock(p_sensecraft);
+    }
     return ret;
 }

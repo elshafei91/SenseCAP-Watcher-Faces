@@ -14,6 +14,7 @@
 #include "view_image_preview.h"
 #include "app_ota.h"
 #include "storage.h"
+#include "app_sensecraft.h"
 
 
 static const char *TAG = "tfm.ai_camera";
@@ -606,7 +607,10 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                 }
             }
             __data_unlock(p_module_ins);
-                       
+
+            // Upload image
+            app_sensecraft_mqtt_preview_upload_with_reduce_freq((char *)info.img.p_buf, info.img.len);
+
             // Reduce event bus usage
             lvgl_port_lock(0);
             view_image_preview_flush(&info);
