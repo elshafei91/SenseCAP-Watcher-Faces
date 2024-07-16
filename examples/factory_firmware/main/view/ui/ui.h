@@ -13,8 +13,6 @@ extern "C" {
 #include "lvgl/lvgl.h"
 
 #include "ui_helpers.h"
-#include "components/ui_comp.h"
-#include "components/ui_comp_hook.h"
 #include "ui_events.h"
 
 void start_anim_Animation(lv_obj_t * TargetObject, int delay);
@@ -316,31 +314,19 @@ extern lv_obj_t * ui_otaback;
 // SCREEN: ui_Page_Sleep
 void ui_Page_Sleep_screen_init(void);
 extern lv_obj_t * ui_Page_Sleep;
-extern lv_obj_t * ui_slptpanel;
-void ui_event_slpt1(lv_event_t * e);
-extern lv_obj_t * ui_slpt1;
-void ui_event_slpt2(lv_event_t * e);
-extern lv_obj_t * ui_slpt2;
-void ui_event_slpt3(lv_event_t * e);
-extern lv_obj_t * ui_slpt3;
-void ui_event_slpt4(lv_event_t * e);
-extern lv_obj_t * ui_slpt4;
-void ui_event_slpt5(lv_event_t * e);
-extern lv_obj_t * ui_slpt5;
-void ui_event_slpt6(lv_event_t * e);
-extern lv_obj_t * ui_slpt6;
-void ui_event_slpt7(lv_event_t * e);
-extern lv_obj_t * ui_slpt7;
+void ui_event_sleeptimeroller(lv_event_t * e);
+extern lv_obj_t * ui_sleeptimeroller;
 void ui_event_slpback(lv_event_t * e);
 extern lv_obj_t * ui_slpback;
-// SCREEN: ui_Page_Wakup
-void ui_Page_Wakup_screen_init(void);
-extern lv_obj_t * ui_Page_Wakup;
-extern lv_obj_t * ui_wakeuppanel;
-extern lv_obj_t * ui_wakeupt1;
-extern lv_obj_t * ui_wakeupt2;
-extern lv_obj_t * ui_wakeupt3;
-extern lv_obj_t * ui_wakeupt4;
+// SCREEN: ui_Page_Push2talk
+void ui_Page_Push2talk_screen_init(void);
+extern lv_obj_t * ui_Page_Push2talk;
+extern lv_obj_t * ui_push2talkpanel;
+extern lv_obj_t * ui_push2talkt2;
+void ui_event_push2talkcancel(lv_event_t * e);
+extern lv_obj_t * ui_push2talkcancel;
+void ui_event_push2talkcheck(lv_event_t * e);
+extern lv_obj_t * ui_push2talkcheck;
 // SCREEN: ui_Page_Guideavatar
 void ui_Page_Guideavatar_screen_init(void);
 void ui_event_Page_Guideavatar(lv_event_t * e);

@@ -346,33 +346,21 @@ lv_obj_t * ui_otaback;
 // SCREEN: ui_Page_Sleep
 void ui_Page_Sleep_screen_init(void);
 lv_obj_t * ui_Page_Sleep;
-lv_obj_t * ui_slptpanel;
-void ui_event_slpt1(lv_event_t * e);
-lv_obj_t * ui_slpt1;
-void ui_event_slpt2(lv_event_t * e);
-lv_obj_t * ui_slpt2;
-void ui_event_slpt3(lv_event_t * e);
-lv_obj_t * ui_slpt3;
-void ui_event_slpt4(lv_event_t * e);
-lv_obj_t * ui_slpt4;
-void ui_event_slpt5(lv_event_t * e);
-lv_obj_t * ui_slpt5;
-void ui_event_slpt6(lv_event_t * e);
-lv_obj_t * ui_slpt6;
-void ui_event_slpt7(lv_event_t * e);
-lv_obj_t * ui_slpt7;
+void ui_event_sleeptimeroller(lv_event_t * e);
+lv_obj_t * ui_sleeptimeroller;
 void ui_event_slpback(lv_event_t * e);
 lv_obj_t * ui_slpback;
 
 
-// SCREEN: ui_Page_Wakup
-void ui_Page_Wakup_screen_init(void);
-lv_obj_t * ui_Page_Wakup;
-lv_obj_t * ui_wakeuppanel;
-lv_obj_t * ui_wakeupt1;
-lv_obj_t * ui_wakeupt2;
-lv_obj_t * ui_wakeupt3;
-lv_obj_t * ui_wakeupt4;
+// SCREEN: ui_Page_Push2talk
+void ui_Page_Push2talk_screen_init(void);
+lv_obj_t * ui_Page_Push2talk;
+lv_obj_t * ui_push2talkpanel;
+lv_obj_t * ui_push2talkt2;
+void ui_event_push2talkcancel(lv_event_t * e);
+lv_obj_t * ui_push2talkcancel;
+void ui_event_push2talkcheck(lv_event_t * e);
+lv_obj_t * ui_push2talkcheck;
 
 
 // SCREEN: ui_Page_Guideavatar
@@ -1332,60 +1320,12 @@ void ui_event_otaback(lv_event_t * e)
         otaback_cb(e);
     }
 }
-void ui_event_slpt1(lv_event_t * e)
+void ui_event_sleeptimeroller(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        slpt1c_cb(e);
-    }
-}
-void ui_event_slpt2(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        slpt2c_cb(e);
-    }
-}
-void ui_event_slpt3(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        slpt3c_cb(e);
-    }
-}
-void ui_event_slpt4(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        slpt4c_cb(e);
-    }
-}
-void ui_event_slpt5(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        slpt5c_cb(e);
-    }
-}
-void ui_event_slpt6(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        slpt6c_cb(e);
-    }
-}
-void ui_event_slpt7(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        slpt7c_cb(e);
+    if(event_code == LV_EVENT_VALUE_CHANGED) {
+        sleeptimeset_cb(e);
     }
 }
 void ui_event_slpback(lv_event_t * e)
@@ -1394,6 +1334,22 @@ void ui_event_slpback(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
         backset_cb(e);
+    }
+}
+void ui_event_push2talkcancel(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        push2talkcancel_cb(e);
+    }
+}
+void ui_event_push2talkcheck(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        push2talkcheck_cb(e);
     }
 }
 void ui_event_Page_Guideavatar(lv_event_t * e)
@@ -1511,8 +1467,6 @@ void ui_event____initial_actions0(lv_event_t * e)
 
 void ui_init(void)
 {
-    LV_EVENT_GET_COMP_CHILD = lv_event_register_id();
-
     lv_disp_t * dispp = lv_disp_get_default();
     lv_theme_t * theme = lv_theme_default_init(dispp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
                                                false, LV_FONT_DEFAULT);
@@ -1537,7 +1491,7 @@ void ui_init(void)
     ui_Page_Extension_screen_init();
     ui_Page_OTA_screen_init();
     ui_Page_Sleep_screen_init();
-    ui_Page_Wakup_screen_init();
+    ui_Page_Push2talk_screen_init();
     ui_Page_Guideavatar_screen_init();
     ui_Page_Guidelive_screen_init();
     ui_Page_Flag_screen_init();
