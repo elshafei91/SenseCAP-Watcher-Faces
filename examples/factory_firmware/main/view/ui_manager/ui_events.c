@@ -319,6 +319,9 @@ void virclick_cb(lv_event_t *e)
     if(!g_dev_binded)   // if the device is not wifi-configed, then appear panel
     {
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_virbtn1);
+        lv_group_add_obj(g_main, ui_virbtn2);
         emoji_timer(EMOJI_STOP);    // stop timer
         vir_load_count = 0;
     }else{              // else the device is wifi-configed, jump to Home page
@@ -617,6 +620,9 @@ void loctask2c_cb(lv_event_t *e)
     if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guidebtn1);
+        lv_group_add_obj(g_main, ui_guidebtn2);
         emoji_switch_scr = SCREEN_GUIDE;
         emoji_timer(EMOJI_DETECTING);
     }
@@ -643,6 +649,11 @@ void loctask3c_cb(lv_event_t *e)
     if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guidebtn1);
+        lv_group_add_obj(g_main, ui_guidebtn2);
+        emoji_switch_scr = SCREEN_GUIDE;
+        emoji_timer(EMOJI_DETECTING);
         return;
     }
 
@@ -668,6 +679,11 @@ void loctask4c_cb(lv_event_t *e)
     if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guidebtn1);
+        lv_group_add_obj(g_main, ui_guidebtn2);
+        emoji_switch_scr = SCREEN_GUIDE;
+        emoji_timer(EMOJI_DETECTING);
         return;
     }
 
@@ -1157,9 +1173,9 @@ void sleeptimeset_cb(lv_event_t * e)
     static uint16_t sleep_time_roller_id;
     lv_obj_t * obj = lv_event_get_target(e);
     sleep_time_roller_id = lv_roller_get_selected(obj);
-    ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
     set_sleep_time(UI_CALLER, sleep_time_roller_id);
     g_sleep_time = get_sleep_time(UI_CALLER);
+    // ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
 }
 
 void push2talkcancel_cb(lv_event_t * e)
