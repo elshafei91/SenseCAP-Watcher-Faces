@@ -112,6 +112,14 @@ extern lv_obj_t * ui_Page_Standby;
 // view emoji ota extern
 extern lv_obj_t * ui_Page_Emoji;
 
+// push2talk
+static lv_obj_t *push2talk_textarea;
+static const char *push2talk_text;
+static uint32_t push2talk_text_index = 0;
+static lv_timer_t *push2talk_timer;
+static bool push2talk_timer_active = false;
+static uint32_t push2talk_anim_interval = 100;
+
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
 static void Task_end();
@@ -1711,5 +1719,57 @@ void ui_event_emoticonok(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
         emoticonback_cb(e);
+    }
+}
+
+
+/*----------------------------------------------push 2 talk------------------------------------------------------*/
+// TODO
+void push2talk_init(void)
+{
+    push2talk_textarea = lv_textarea_create(lv_scr_act());
+    lv_obj_set_size(push2talk_textarea, 250, 120);
+    lv_obj_align(push2talk_textarea, LV_ALIGN_CENTER, 0, -62);
+    lv_obj_clear_flag(push2talk_textarea, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_text_color(push2talk_textarea, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(push2talk_textarea, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(push2talk_textarea, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_textarea_set_text(push2talk_textarea, "");
+    lv_textarea_set_one_line(push2talk_textarea, false);
+    lv_textarea_set_cursor_pos(push2talk_textarea, LV_TEXTAREA_CURSOR_LAST);
+}
+
+static void push2talk_add_character(lv_timer_t * timer)
+{
+    if (push2talk_text[push2talk_text_index] != '\0' && push2talk_timer_active) {
+        char temp[2];
+        temp[0] = push2talk_text[push2talk_text_index];
+        temp[1] = '\0';
+        lv_textarea_add_text(push2talk_textarea, temp);
+
+        push2talk_text_index++;
+    } else {
+        lv_timer_del(timer);
+        push2talk_timer_active = false;
+    }
+}
+
+void push2talk_start_animation(const char *text, uint32_t duration_s)
+{
+    if (text == NULL || text[0] == '\0' || duration_s == 0) {
+        ESP_LOGE("PUSH2TALK", "Invalid parameters for start animation");
+        return;
+    }
+
+    if (!push2talk_timer_active) {
+        push2talk_timer_active = true;
+        push2talk_text = text;
+        push2talk_text_index = 0;
+        lv_textarea_set_text(push2talk_textarea, "");
+
+        uint32_t text_length = strlen(text);
+        push2talk_anim_interval = (duration_s * 1000) / text_length;
+
+        push2talk_timer = lv_timer_create(push2talk_add_character, push2talk_anim_interval, NULL);
     }
 }

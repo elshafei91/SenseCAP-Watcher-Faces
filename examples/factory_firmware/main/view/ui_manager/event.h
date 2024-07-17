@@ -41,6 +41,29 @@ void view_info_obtain();
 
 void emoji_timer(uint8_t emoji_type);
 
+
+/**
+ * @brief Initialize the Push-to-Talk interface.
+ *
+ * This function sets up the user interface for the Push-to-Talk feature, including the textarea
+ * for displaying text and a button to start the animation.
+ *
+ * @return void
+ */
+void push2talk_init(void);
+
+/**
+ * @brief Start the character-by-character text animation.
+ *
+ * This function displays the given text character by character over the specified duration.
+ * It checks the parameters for validity before starting the animation.
+ *
+ * @param text The text to display. Must be a null-terminated string.
+ * @param duration_s The total duration for the animation in seconds. Must be greater than 0.
+ */
+void push2talk_start_animation(const char *text, uint32_t duration_s);
+
+
 enum
 {
     SCREEN_VIRTUAL, // display emoticon on virtual page
