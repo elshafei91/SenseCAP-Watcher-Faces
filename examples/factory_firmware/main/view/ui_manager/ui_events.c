@@ -38,20 +38,23 @@ uint8_t g_avarlive = 0;     // 0: current page is avatar,       1: current page 
 uint8_t g_tasktype = 0;     // 0: local task,                   1: remote task
 uint8_t g_backpage = 0;
 uint8_t g_avalivjump = 0;
+uint8_t emoji_switch_scr = NULL;
 extern uint8_t g_dev_binded;
 extern uint8_t g_shutdown;
+extern int g_sleep_time;
+extern int g_sleep_switch;
 
 static lv_obj_t *qr;
 static uint8_t loading_flag = 0;
-static uint8_t emoji_switch_scr = NULL;
 static uint32_t emoji_user_data = NULL;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
 static struct view_data_emoticon_display emo_disp;
 
-static lv_obj_t *avatar_image = NULL;
-static lv_obj_t *virtual_image = NULL;
-static lv_obj_t *flag_image = NULL;
+static lv_obj_t *avatar_image   = NULL;
+static lv_obj_t *virtual_image  = NULL;
+static lv_obj_t *flag_image     = NULL;
+static lv_obj_t *standby_image  = NULL;
 
 static int current_img_index = 0;
 static uint8_t vir_load_count = 0;
@@ -94,6 +97,7 @@ extern GroupInfo group_page_volume;
 extern GroupInfo group_page_connectapp;
 extern GroupInfo group_page_about;
 extern GroupInfo group_page_guide;
+extern GroupInfo group_page_sleep;
 
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
@@ -103,6 +107,8 @@ extern lv_obj_t * ui_viewpbtn2;
 extern lv_obj_t * ui_viewpt2;
 extern lv_obj_t * ui_viewpbtn3;
 
+// view sleep
+extern lv_obj_t * ui_Page_Standby;
 // view emoji ota extern
 extern lv_obj_t * ui_Page_Emoji;
 
@@ -112,25 +118,6 @@ static void Task_end();
 static void Page_shutdown();
 static void Page_facreset();
 static void view_info_obtain_early();
-
-enum
-{
-    SCREEN_VIRTUAL, // display emoticon on virtual page
-    SCREEN_AVATAR,  // display emoticon on avatar page
-    SCREEN_GUIDE    // display emoticon on guide page
-};
-
-enum
-{
-    EMOJI_GREETING,
-    EMOJI_DETECTING,
-    EMOJI_DETECTED,
-    EMOJI_SPEAKING,
-    EMOJI_LISTENING,
-    EMOJI_ANALYZING,
-    EMOJI_STANDBY,
-    EMOJI_STOP
-};
 
 static void async_emoji_switch_scr(void *arg)
 {
@@ -146,6 +133,10 @@ static void async_emoji_switch_scr(void *arg)
     if(emoji_switch_scr == SCREEN_GUIDE)
     {
         lv_img_set_src(flag_image, current_img);
+    }
+    if(emoji_switch_scr == SCREEN_STANDBY)
+    {
+        lv_img_set_src(standby_image, current_img);
     }
 }
 
@@ -203,11 +194,12 @@ static void emoji_timer_callback(lv_timer_t *timer)
         if(vir_load_count > 8)
         {
             lv_event_send(ui_Page_Avatar, LV_EVENT_CLICKED, NULL);
+            view_sleep_timer_start();
         }
     }
 }
 
-static void emoji_timer(uint8_t emoji_type)
+void emoji_timer(uint8_t emoji_type)
 {
     if (g_timer != NULL)
     {
@@ -327,6 +319,9 @@ void virclick_cb(lv_event_t *e)
     if(!g_dev_binded)   // if the device is not wifi-configed, then appear panel
     {
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_virbtn1);
+        lv_group_add_obj(g_main, ui_virbtn2);
         emoji_timer(EMOJI_STOP);    // stop timer
         vir_load_count = 0;
     }else{              // else the device is wifi-configed, jump to Home page
@@ -348,11 +343,14 @@ void virscrload_cb(lv_event_t *e)
     if(avatar_image == NULL)avatar_image = lv_img_create(ui_Page_ViewAva);
     if(virtual_image == NULL)virtual_image = lv_img_create(ui_Page_Avatar);
     if(flag_image == NULL)flag_image = lv_img_create(ui_Page_Flag);
+    if(standby_image == NULL)standby_image = lv_img_create(ui_Page_Standby);
     lv_obj_set_align(avatar_image, LV_ALIGN_CENTER);
     lv_obj_set_align(virtual_image, LV_ALIGN_CENTER);
     lv_obj_set_align(flag_image, LV_ALIGN_CENTER);
+    lv_obj_set_align(standby_image, LV_ALIGN_CENTER);
     lv_obj_move_background(flag_image);
     lv_obj_move_background(virtual_image);
+    lv_obj_move_background(standby_image);
 }
 
 void virscrunload_cb(lv_event_t * e)
@@ -622,6 +620,9 @@ void loctask2c_cb(lv_event_t *e)
     if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guidebtn1);
+        lv_group_add_obj(g_main, ui_guidebtn2);
         emoji_switch_scr = SCREEN_GUIDE;
         emoji_timer(EMOJI_DETECTING);
     }
@@ -648,6 +649,11 @@ void loctask3c_cb(lv_event_t *e)
     if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guidebtn1);
+        lv_group_add_obj(g_main, ui_guidebtn2);
+        emoji_switch_scr = SCREEN_GUIDE;
+        emoji_timer(EMOJI_DETECTING);
         return;
     }
 
@@ -673,6 +679,11 @@ void loctask4c_cb(lv_event_t *e)
     if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guidebtn1);
+        lv_group_add_obj(g_main, ui_guidebtn2);
+        emoji_switch_scr = SCREEN_GUIDE;
+        emoji_timer(EMOJI_DETECTING);
         return;
     }
 
@@ -708,7 +719,7 @@ void sclick_cb(lv_event_t *e)
 
 void setsl_cb(lv_event_t * e)
 {
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
+    // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
 }
 
 void maingestureup_cb(lv_event_t *e)
@@ -911,7 +922,8 @@ void setwwdf_cb(lv_event_t *e)
 void settimec_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "settimec_cb");
-    lv_pm_open_page(g_main, NULL, PM_ADD_OBJS_TO_GROUP, &ui_Page_Sleep, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Sleep_screen_init);
+    lv_pm_open_page(g_main, &group_page_sleep, PM_ADD_OBJS_TO_GROUP, &ui_Page_Sleep, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Sleep_screen_init);
+    lv_roller_set_selected(ui_sleeptimeroller, g_sleep_time, LV_ANIM_OFF);
 }
 
 void settimef_cb(lv_event_t *e)
@@ -1004,14 +1016,14 @@ void setblec_cb(lv_event_t *e)
             set_ble_switch(UI_CALLER, 1);
             lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
             lv_obj_add_state(ui_setblesw, LV_STATE_DISABLED);
-            wait_timer_start();
+            view_ble_switch_timer_start();
             break;
         case 1:
             ESP_LOGI(TAG, "ble_btn_status: off");
             set_ble_switch(UI_CALLER, 0);
             lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
             lv_obj_add_state(ui_setblesw, LV_STATE_DISABLED);
-            wait_timer_start();
+            view_ble_switch_timer_start();
             break;
 
         default:
@@ -1156,6 +1168,26 @@ void otaback_cb(lv_event_t * e)
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
+void sleeptimeset_cb(lv_event_t * e)
+{
+    static uint16_t sleep_time_roller_id;
+    lv_obj_t * obj = lv_event_get_target(e);
+    sleep_time_roller_id = lv_roller_get_selected(obj);
+    set_sleep_time(UI_CALLER, sleep_time_roller_id);
+    g_sleep_time = get_sleep_time(UI_CALLER);
+    // ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
+}
+
+void push2talkcancel_cb(lv_event_t * e)
+{
+
+}
+
+void push2talkcheck_cb(lv_event_t * e)
+{
+
+}
+
 void volvc_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "volvc_cb");
@@ -1212,41 +1244,6 @@ void bridf_cb(lv_event_t * e)
 void hap_cb(lv_event_t *e)
 {
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-}
-
-void slpt1c_cb(lv_event_t *e) 
-{
-
-}
-
-void slpt2c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt3c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt4c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt5c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt6c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt7c_cb(lv_event_t *e) 
-{ 
-
 }
 
 void pageguideavaf_cb(lv_event_t * e)
@@ -1537,17 +1534,6 @@ uint8_t* retry_get_data(uint8_t* (*func)(int), int caller, int retries) {
     return data;
 }
 
-char* retry_get_char_data(char* (*func)(int), int caller, int retries) {
-    char *data = NULL;
-    for (int i = 0; i < retries; ++i) {
-        data = func(caller);
-        if (data != NULL) {
-            break;
-        }
-    }
-    return data;
-}
-
 void viewInfoInit()
 {
     lv_slider_set_range(ui_bslider, 1, 100);
@@ -1568,6 +1554,8 @@ void view_info_obtain()
     retry_get_data((uint8_t* (*)(int))get_sound, UI_CALLER, MAX_RETRIES);
     const uint8_t *rgb_switch = retry_get_data((uint8_t* (*)(int))get_rgb_switch, UI_CALLER, MAX_RETRIES);
     const uint8_t *ble_switch = retry_get_data((uint8_t* (*)(int))get_ble_switch, UI_CALLER, MAX_RETRIES);
+    g_sleep_time = (int *)retry_get_data(get_sleep_time, UI_CALLER, MAX_RETRIES);
+    g_sleep_switch = (int *)retry_get_data(get_sleep_switch, UI_CALLER, MAX_RETRIES);
 
     if(rgb_switch)
     {
@@ -1595,8 +1583,8 @@ void view_info_obtain()
     const uint8_t *eui_code = retry_get_data(get_eui, 0, MAX_RETRIES);
     const uint8_t *bt_mac = retry_get_data(get_bt_mac, 0, MAX_RETRIES);
     const uint8_t *wifi_mac = retry_get_data(get_wifi_mac, 0, MAX_RETRIES);
-    const char *sw_version = retry_get_char_data(get_software_version, UI_CALLER, MAX_RETRIES);
-    const char *himax_version = retry_get_char_data(get_himax_software_version, UI_CALLER, MAX_RETRIES);
+    const char *sw_version = (char *)retry_get_data((uint8_t* (*)(int))get_software_version, UI_CALLER, MAX_RETRIES);
+    const char *himax_version = (char *)retry_get_data((uint8_t* (*)(int))get_himax_software_version, UI_CALLER, MAX_RETRIES);
 
     if (sn_code != NULL) {
         snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X", sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
