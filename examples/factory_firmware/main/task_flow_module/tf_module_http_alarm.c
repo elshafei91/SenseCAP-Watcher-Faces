@@ -11,6 +11,7 @@
 #include "tf_module_util.h"
 #include "uuid.h"
 #include "app_sensecraft.h"
+#include "app_sensor.h"
 
 static const char *TAG = "tfm.http_alarm";
 
@@ -197,15 +198,30 @@ static int __http_report_warn_event(tf_module_http_alarm_t *p_module_ins,
     }
     
     if (p_params->sensor_en) {
-        // TODO get sensor data
-        double temp = 25.1;
-        uint32_t humi = 50, co2 = 800;
-        cJSON *sensor = NULL;
-        sensor = cJSON_CreateObject();
-        cJSON_AddItemToObject(events, "sensor", sensor);
-        cJSON_AddItemToObject(sensor, "temperature", cJSON_CreateNumber(temp));
-        cJSON_AddItemToObject(sensor, "humidity", cJSON_CreateNumber(humi));
-        cJSON_AddItemToObject(sensor, "CO2", cJSON_CreateNumber(co2));
+        double temp = 0;
+        uint32_t humi = 0, co2 = 0;
+        uint8_t sensor_num = 0;
+        app_sensor_data_t app_sensor_data[APP_SENSOR_SUPPORT_MAX] = {0};
+        sensor_num = app_sensor_read_measurement(app_sensor_data, sizeof(app_sensor_data_t) * APP_SENSOR_SUPPORT_MAX);
+        if( sensor_num ) {
+            cJSON *sensor = NULL;
+            sensor = cJSON_CreateObject();
+            cJSON_AddItemToObject(events, "sensor", sensor);
+            for (uint8_t i = 0; i < sensor_num; i ++) {
+                if (app_sensor_data[i].state) {
+                    if (app_sensor_data[i].type == SENSOR_SHT41) {
+                        temp = (app_sensor_data[i].context.sht41.temperature + 50) / 100;
+                        temp /= 10;
+                        humi = app_sensor_data[i].context.sht41.humidity / 1000;
+                        cJSON_AddItemToObject(sensor, "temperature", cJSON_CreateNumber(temp));
+                        cJSON_AddItemToObject(sensor, "humidity", cJSON_CreateNumber(humi));
+                    } else if(app_sensor_data[i].type == SENSOR_SCD40) {
+                        co2 = app_sensor_data[i].context.scd40.co2 / 1000;
+                        cJSON_AddItemToObject(sensor, "CO2", cJSON_CreateNumber(co2));
+                    }
+                }
+            }
+        }
     }
 
     __data_unlock(p_module_ins);
