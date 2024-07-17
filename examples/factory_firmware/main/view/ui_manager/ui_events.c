@@ -1082,6 +1082,7 @@ void setdownc_cb(lv_event_t *e)
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Swipe_screen_init);
     lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_shutdown();
+    lv_group_add_obj(g_main, ui_spback);
 }
 
 void setfac_cb(lv_event_t *e)
@@ -1091,6 +1092,7 @@ void setfac_cb(lv_event_t *e)
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Swipe_screen_init);
     lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_facreset();
+    lv_group_add_obj(g_main, ui_spback);
 }
 
 void setappf_cb(lv_event_t *e)
