@@ -41,6 +41,10 @@ void view_info_obtain();
 
 void emoji_timer(uint8_t emoji_type);
 
+void view_timer_create();
+void view_ble_switch_timer_start();
+void view_sleep_timer_start();
+
 enum
 {
     SCREEN_VIRTUAL, // display emoticon on virtual page

@@ -38,6 +38,12 @@ uint8_t g_avarlive = 0;     // 0: current page is avatar,       1: current page 
 uint8_t g_tasktype = 0;     // 0: local task,                   1: remote task
 uint8_t g_backpage = 0;
 uint8_t g_avalivjump = 0;
+
+static uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
+static uint8_t standby_mode = 0;    // 0: on;     1: off
+int g_sleep_time = 0;
+int g_sleep_switch = 1;
+
 uint8_t emoji_switch_scr = NULL;
 extern uint8_t g_dev_binded;
 extern uint8_t g_shutdown;
@@ -118,6 +124,20 @@ static void Task_end();
 static void Page_shutdown();
 static void Page_facreset();
 static void view_info_obtain_early();
+
+// Bluetooth switch frequency filter
+static void view_ble_switch_timer_callback(void *arg);
+static const esp_timer_create_args_t view_ble_switch_timer_args = { .callback = &view_ble_switch_timer_callback, .name = "view ble switch" };
+static esp_timer_handle_t view_ble_switch_timer;
+
+// Sleep mode scanner
+#define ACTIVE_THRESHOLD (1500)
+static void view_sleep_timer_callback(void *arg);
+static const esp_timer_create_args_t view_sleep_timer_args = { .callback = &view_sleep_timer_callback, .name = "view sleep" };
+static esp_timer_handle_t view_sleep_timer;
+static uint32_t inactive_time = 0;
+static int get_inactive_time;
+static int inactive_threshold;
 
 static void async_emoji_switch_scr(void *arg)
 {
@@ -1710,4 +1730,113 @@ void ui_event_emoticonok(lv_event_t * e)
     if(event_code == LV_EVENT_CLICKED) {
         emoticonback_cb(e);
     }
+}
+
+
+/*--------------------------------------------view timer----------------------------------------------------------------*/
+static void view_ble_switch_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+    lv_obj_clear_state(ui_setblesw, LV_STATE_DISABLED);
+    lvgl_port_unlock();
+}
+
+void view_ble_switch_timer_start()
+{
+    if (esp_timer_is_active(view_ble_switch_timer))
+    {
+        esp_timer_stop(view_ble_switch_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_once(view_ble_switch_timer, (uint64_t)1000000));
+}
+
+static void view_sleep_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+    
+    inactive_time = lv_disp_get_inactive_time(NULL);
+    get_inactive_time = g_sleep_time;
+    // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
+
+    switch (get_inactive_time) {
+        case 0:
+            inactive_threshold = 0;
+            break;
+        case 1:
+            inactive_threshold = (1 * 60 * 1000);
+            break;
+        case 2:
+            inactive_threshold = (5 * 60 * 1000);
+            break;
+        case 3:
+            inactive_threshold = (10 * 60 * 1000);
+            break;
+        case 4:
+            inactive_threshold = (15 * 60 * 1000);
+            break;
+        case 5:
+            inactive_threshold = (30 * 60 * 1000);
+            break;
+        case 6:
+            inactive_threshold = (24 * 60 * 60 * 1000);
+            break;
+        default:
+            lvgl_port_unlock();
+            return;
+    }
+    // standby mode
+    if(inactive_time > (5 * 60 * 1000) && standby_mode == 0 && g_taskdown)
+    {
+        ESP_LOGI(TAG, "Standby mode active");
+
+        emoji_switch_scr = SCREEN_STANDBY;
+        emoji_timer(EMOJI_STANDBY);
+        lv_obj_clear_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+
+        standby_mode = 1;
+    }
+    // sleep mode
+    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0&& lv_scr_act() != ui_Page_Avatar && g_sleep_switch == 0)
+    {
+        ESP_LOGI(TAG, "Sleep mode active");
+        bsp_lcd_brightness_set(0);
+        sleep_mode = 1;
+    }
+    else if(inactive_time < ACTIVE_THRESHOLD)
+    {
+        if(sleep_mode != 0)
+        {
+            ESP_LOGI(TAG, "Sleep mode deactive");
+            int brightness = get_brightness(UI_CALLER);
+            bsp_lcd_brightness_set(brightness);
+            sleep_mode = 0;
+        }
+
+        if(standby_mode != 0)
+        {
+            ESP_LOGI(TAG, "Standby mode deactive");
+
+            lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+            emoji_timer(EMOJI_STOP);
+
+            standby_mode = 0;
+        }
+    }
+
+    lvgl_port_unlock();
+}
+
+void view_sleep_timer_start()
+{
+    if (esp_timer_is_active(view_sleep_timer))
+    {
+        esp_timer_stop(view_sleep_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_periodic(view_sleep_timer, 1000000));
+}
+
+void view_timer_create()
+{
+    ESP_ERROR_CHECK(esp_timer_create(&view_ble_switch_timer_args, &view_ble_switch_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&view_sleep_timer_args, &view_sleep_timer));
 }
