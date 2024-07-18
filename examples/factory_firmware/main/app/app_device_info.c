@@ -842,6 +842,7 @@ static esp_err_t __set_sleep_switch()
     {
         ESP_GOTO_ON_ERROR(storage_write(SLEEP_SWITCH_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
                             set_sleepswitch_err, TAG, "%s cfg write err", __func__);
+        cfg->last.value = cfg->current.value;
         ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
     }
 set_sleepswitch_err:
