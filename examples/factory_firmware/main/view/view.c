@@ -418,6 +418,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 view_alarm_on(alarm_st);
                 tf_data_buf_free(&(alarm_st->text));
                 tf_data_image_free(&(alarm_st->img));
+
+                // sleep mode deactivate
+                lv_disp_trig_activity(NULL);
+
                 break;
             }
 
