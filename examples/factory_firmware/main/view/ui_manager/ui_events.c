@@ -213,7 +213,7 @@ static void emoji_timer_callback(lv_timer_t *timer)
         // if delay 2s and the device is not wifi-configed
         if(vir_load_count > 8)
         {
-            lv_event_send(ui_Page_Avatar, LV_EVENT_CLICKED, NULL);
+            lv_event_send(ui_Page_Avatar, LV_EVENT_SHORT_CLICKED, NULL);
             view_sleep_timer_start();
         }
     }
@@ -334,7 +334,7 @@ void loadscrload_cb(lv_event_t *e)
 
 void virclick_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "virtc_cb");
+    // ESP_LOGI(CLICK_TAG, "virtc_cb");
     if(vir_load_count < 8)return;
     if(!g_dev_binded)   // if the device is not wifi-configed, then appear panel
     {
@@ -732,9 +732,8 @@ void sgesdown_cb(lv_event_t *e)
 
 void sclick_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "sclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
-    lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
+    lv_event_send(focused_obj, LV_EVENT_SHORT_CLICKED, NULL);
 }
 
 void setsl_cb(lv_event_t * e)
@@ -781,14 +780,14 @@ void mainclick_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "mainclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
-    lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
+    lv_event_send(focused_obj, LV_EVENT_SHORT_CLICKED, NULL);
 }
 
 void lclick_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "lclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
-    lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
+    lv_event_send(focused_obj, LV_EVENT_SHORT_CLICKED, NULL);
 }
 
 void lunlds_cb(lv_event_t *e) { }
@@ -1614,6 +1613,13 @@ void view_info_obtain()
         lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
     }
 
+    if(g_sleep_switch)
+    {
+        lv_obj_add_state(ui_sleepswitch, LV_STATE_CHECKED);
+    }else{
+        lv_obj_clear_state(ui_sleepswitch, LV_STATE_CHECKED);
+    }
+
     // Update SN、EUI、BTMAC、WIFIMAC、ESP_VERSION、AI_VERSION  to about device page
     static char about_sn[20];
     static char about_eui[40];
@@ -1702,7 +1708,7 @@ void ui_event_alarm_panel(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
         if(target == ui_viewpbtn1)
         {
             viewp1c_cb(e);
@@ -1750,7 +1756,7 @@ void ui_event_emoticonok(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
         emoticonback_cb(e);
     }
 }
@@ -1819,7 +1825,7 @@ static void view_sleep_timer_callback(void *arg)
         standby_mode = 1;
     }
     // sleep mode
-    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0&& lv_scr_act() != ui_Page_Avatar && g_sleep_switch == 0)
+    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar && g_sleep_switch == 0)
     {
         ESP_LOGI(TAG, "Sleep mode active");
         bsp_lcd_brightness_set(0);
