@@ -318,6 +318,11 @@ void ui_event_sleeptimeroller(lv_event_t * e);
 extern lv_obj_t * ui_sleeptimeroller;
 void ui_event_slpback(lv_event_t * e);
 extern lv_obj_t * ui_slpback;
+void ui_event_sleepswitchp(lv_event_t * e);
+extern lv_obj_t * ui_sleepswitchp;
+extern lv_obj_t * ui_sleepswitcht;
+void ui_event_sleepswitch(lv_event_t * e);
+extern lv_obj_t * ui_sleepswitch;
 // SCREEN: ui_Page_Push2talk
 void ui_Page_Push2talk_screen_init(void);
 extern lv_obj_t * ui_Page_Push2talk;

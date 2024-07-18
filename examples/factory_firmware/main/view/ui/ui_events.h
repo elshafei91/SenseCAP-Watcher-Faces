@@ -128,6 +128,7 @@ void sliderr_cb(lv_event_t * e);
 void hap_cb(lv_event_t * e);
 void otaback_cb(lv_event_t * e);
 void sleeptimeset_cb(lv_event_t * e);
+void sleepswitch_cb(lv_event_t * e);
 void push2talkcancel_cb(lv_event_t * e);
 void push2talkcheck_cb(lv_event_t * e);
 void pageguideavaf_cb(lv_event_t * e);

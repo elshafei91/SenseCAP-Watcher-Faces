@@ -334,7 +334,7 @@ void loadscrload_cb(lv_event_t *e)
 
 void virclick_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "virtc_cb");
+    ESP_LOGI(CLICK_TAG, "virtc_cb");
     if(vir_load_count < 8)return;
     if(!g_dev_binded)   // if the device is not wifi-configed, then appear panel
     {
@@ -1196,6 +1196,29 @@ void sleeptimeset_cb(lv_event_t * e)
     set_sleep_time(UI_CALLER, sleep_time_roller_id);
     g_sleep_time = get_sleep_time(UI_CALLER);
     // ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
+}
+
+void sleepswitch_cb(lv_event_t * e)
+{
+    ESP_LOGI(CLICK_TAG, "sleepswitch_cb");
+    static int btn_state;
+    btn_state = (get_sleep_switch(UI_CALLER));
+    switch (btn_state)
+    {
+        case 0:
+            ESP_LOGI(TAG, "sleep_switch: on");
+            set_sleep_switch(UI_CALLER, 1);
+            lv_obj_add_state(ui_sleepswitch, LV_STATE_CHECKED);
+            break;
+        case 1:
+            ESP_LOGI(TAG, "sleep_switch: off");
+            set_sleep_switch(UI_CALLER, 0);
+            lv_obj_clear_state(ui_sleepswitch, LV_STATE_CHECKED);
+            break;
+
+        default:
+            break;
+    }
 }
 
 void push2talkcancel_cb(lv_event_t * e)
