@@ -1360,8 +1360,8 @@ esp_err_t sscma_utils_fetch_classes_from_reply(const sscma_client_reply_t *reply
             cJSON *item = cJSON_GetArrayItem(classes_data, i);
             if (item != NULL)
             {
-                (*classes)[i].target = get_int_from_array(item, 0);
-                (*classes)[i].score = get_int_from_array(item, 1);
+                (*classes)[i].score = get_int_from_array(item, 0);
+                (*classes)[i].target = get_int_from_array(item, 1);
             }
         }
     }
@@ -1394,8 +1394,8 @@ esp_err_t sscma_utils_copy_classes_from_reply(const sscma_client_reply_t *reply,
             cJSON *item = cJSON_GetArrayItem(classes_data, i);
             if (item != NULL)
             {
-                classes[i].target = get_int_from_array(item, 0);
-                classes[i].score = get_int_from_array(item, 1);
+                classes[i].score = get_int_from_array(item, 0);
+                classes[i].target = get_int_from_array(item, 1);
             }
         }
     }
