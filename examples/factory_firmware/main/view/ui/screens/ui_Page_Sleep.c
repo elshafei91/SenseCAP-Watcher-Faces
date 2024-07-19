@@ -18,7 +18,7 @@ void ui_Page_Sleep_screen_init(void)
     lv_obj_set_width(ui_sleeptimeroller, 250);
     lv_obj_set_height(ui_sleeptimeroller, 153);
     lv_obj_set_x(ui_sleeptimeroller, 0);
-    lv_obj_set_y(ui_sleeptimeroller, -40);
+    lv_obj_set_y(ui_sleeptimeroller, 9);
     lv_obj_set_align(ui_sleeptimeroller, LV_ALIGN_CENTER);
     lv_obj_add_state(ui_sleeptimeroller, LV_STATE_FOCUSED);       /// States
     lv_obj_set_style_text_align(ui_sleeptimeroller, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -43,7 +43,7 @@ void ui_Page_Sleep_screen_init(void)
     lv_obj_set_width(ui_slpback, 60);
     lv_obj_set_height(ui_slpback, 60);
     lv_obj_set_x(ui_slpback, 0);
-    lv_obj_set_y(ui_slpback, 120);
+    lv_obj_set_y(ui_slpback, 140);
     lv_obj_set_align(ui_slpback, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_slpback, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_slpback, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
@@ -56,7 +56,57 @@ void ui_Page_Sleep_screen_init(void)
     lv_obj_set_style_outline_width(ui_slpback, 4, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
     lv_obj_set_style_outline_pad(ui_slpback, 1, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
 
+    ui_sleepswitchp = lv_obj_create(ui_Page_Sleep);
+    lv_obj_set_width(ui_sleepswitchp, 283);
+    lv_obj_set_height(ui_sleepswitchp, 50);
+    lv_obj_set_x(ui_sleepswitchp, 0);
+    lv_obj_set_y(ui_sleepswitchp, -105);
+    lv_obj_set_align(ui_sleepswitchp, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_sleepswitchp, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_clear_flag(ui_sleepswitchp, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_radius(ui_sleepswitchp, 45, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_sleepswitchp, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_sleepswitchp, 120, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_color(ui_sleepswitchp, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_main_stop(ui_sleepswitchp, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_stop(ui_sleepswitchp, 200, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ui_sleepswitchp, LV_GRAD_DIR_HOR, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_sleepswitchp, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_sleepswitchp, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_sleepswitcht = lv_label_create(ui_sleepswitchp);
+    lv_obj_set_width(ui_sleepswitcht, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_sleepswitcht, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_align(ui_sleepswitcht, LV_ALIGN_LEFT_MID);
+    lv_label_set_text(ui_sleepswitcht, "Sleep activate");
+    lv_obj_set_style_text_color(ui_sleepswitcht, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_sleepswitcht, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_sleepswitcht, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_sleepswitch = lv_switch_create(ui_sleepswitchp);
+    lv_obj_set_width(ui_sleepswitch, 66);
+    lv_obj_set_height(ui_sleepswitch, 34);
+    lv_obj_set_align(ui_sleepswitch, LV_ALIGN_RIGHT_MID);
+    lv_obj_set_style_bg_color(ui_sleepswitch, lv_color_hex(0x8FC31F), LV_PART_MAIN | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_opa(ui_sleepswitch, 50, LV_PART_MAIN | LV_STATE_CHECKED);
+    lv_obj_set_style_outline_color(ui_sleepswitch, lv_color_hex(0x2D89EF), LV_PART_MAIN | LV_STATE_FOCUS_KEY);
+    lv_obj_set_style_outline_opa(ui_sleepswitch, 255, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
+    lv_obj_set_style_outline_width(ui_sleepswitch, 4, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
+    lv_obj_set_style_outline_pad(ui_sleepswitch, 1, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
+
+    lv_obj_set_style_bg_color(ui_sleepswitch, lv_color_hex(0x8FC31F), LV_PART_INDICATOR | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_opa(ui_sleepswitch, 50, LV_PART_INDICATOR | LV_STATE_CHECKED);
+
+    lv_obj_set_style_bg_color(ui_sleepswitch, lv_color_hex(0x8FC31F), LV_PART_KNOB | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_opa(ui_sleepswitch, 255, LV_PART_KNOB | LV_STATE_CHECKED);
+    lv_obj_set_style_pad_left(ui_sleepswitch, 0, LV_PART_KNOB | LV_STATE_CHECKED);
+    lv_obj_set_style_pad_right(ui_sleepswitch, 0, LV_PART_KNOB | LV_STATE_CHECKED);
+    lv_obj_set_style_pad_top(ui_sleepswitch, 0, LV_PART_KNOB | LV_STATE_CHECKED);
+    lv_obj_set_style_pad_bottom(ui_sleepswitch, 0, LV_PART_KNOB | LV_STATE_CHECKED);
+
     lv_obj_add_event_cb(ui_sleeptimeroller, ui_event_sleeptimeroller, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_slpback, ui_event_slpback, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_sleepswitch, ui_event_sleepswitch, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_sleepswitchp, ui_event_sleepswitchp, LV_EVENT_ALL, NULL);
 
 }

@@ -20,15 +20,11 @@ static const char *TAG = "view";
 static int png_loading_count = 0;
 static bool battery_flag_toggle = 0;
 static int battery_blink_count = 0;
-static uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
-static uint8_t standby_mode = 0;    // 0: on;     1: off
 
 lv_obj_t * pre_foucsed_obj = NULL;
 uint8_t g_group_layer_ = 0;
 uint8_t g_shutdown = 0;
 uint8_t g_dev_binded = 0;
-int g_sleep_time = 0;
-int g_sleep_switch = 1;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_guide_disable;
@@ -88,118 +84,6 @@ extern int g_analyze_image_count;
 extern int g_standby_image_count;
 extern int g_greet_image_count;
 extern int g_detected_image_count;
-
-static void view_ble_switch_timer_callback(void *arg);
-static const esp_timer_create_args_t view_ble_switch_timer_args = { .callback = &view_ble_switch_timer_callback, .name = "view ble switch" };
-static esp_timer_handle_t view_ble_switch_timer;
-
-#define ACTIVE_THRESHOLD (1500)
-static void view_sleep_timer_callback(void *arg);
-static const esp_timer_create_args_t view_sleep_timer_args = { .callback = &view_sleep_timer_callback, .name = "view sleep" };
-static esp_timer_handle_t view_sleep_timer;
-static uint32_t inactive_time = 0;
-static int get_inactive_time;
-static int inactive_threshold;
-
-static void view_ble_switch_timer_callback(void *arg)
-{
-    lvgl_port_lock(0);
-    lv_obj_clear_state(ui_setblesw, LV_STATE_DISABLED);
-    lvgl_port_unlock();
-}
-
-void view_ble_switch_timer_start()
-{
-    if (esp_timer_is_active(view_ble_switch_timer))
-    {
-        esp_timer_stop(view_ble_switch_timer);
-    }
-    ESP_ERROR_CHECK(esp_timer_start_once(view_ble_switch_timer, (uint64_t)1000000));
-}
-
-static void view_sleep_timer_callback(void *arg)
-{
-    lvgl_port_lock(0);
-    
-    inactive_time = lv_disp_get_inactive_time(NULL);
-    get_inactive_time = g_sleep_time;
-    // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
-
-    switch (get_inactive_time) {
-        case 0:
-            inactive_threshold = 0;
-            break;
-        case 1:
-            inactive_threshold = (1 * 60 * 1000);
-            break;
-        case 2:
-            inactive_threshold = (5 * 60 * 1000);
-            break;
-        case 3:
-            inactive_threshold = (10 * 60 * 1000);
-            break;
-        case 4:
-            inactive_threshold = (15 * 60 * 1000);
-            break;
-        case 5:
-            inactive_threshold = (30 * 60 * 1000);
-            break;
-        case 6:
-            inactive_threshold = (24 * 60 * 60 * 1000);
-            break;
-        default:
-            lvgl_port_unlock();
-            return;
-    }
-    // TODO: standby mode
-    if(inactive_time > (5 * 60 * 1000) && standby_mode == 0)
-    {
-        ESP_LOGI(TAG, "Standby mode active");
-
-        emoji_switch_scr = SCREEN_STANDBY;
-        emoji_timer(EMOJI_STANDBY);
-        lv_obj_clear_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
-
-        standby_mode = 1;
-    }
-    // TODO: sleep mode
-    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0&& lv_scr_act() != ui_Page_Avatar && g_taskdown && g_sleep_switch == 0)
-    {
-        ESP_LOGI(TAG, "Sleep mode active");
-
-        sleep_mode = 1;
-    }
-    else if(inactive_time < ACTIVE_THRESHOLD)
-    {
-        if(sleep_mode != 0)
-        {
-            ESP_LOGI(TAG, "Sleep mode deactive");
-
-            sleep_mode = 0;
-        }
-
-        if(standby_mode != 0)
-        {
-            ESP_LOGI(TAG, "Standby mode deactive");
-
-            lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
-            emoji_timer(EMOJI_STOP);
-
-            standby_mode = 0;
-        }
-    }
-
-    lvgl_port_unlock();
-}
-
-void view_sleep_timer_start()
-{
-    if (esp_timer_is_active(view_sleep_timer))
-    {
-        esp_timer_stop(view_sleep_timer);
-    }
-    ESP_ERROR_CHECK(esp_timer_start_periodic(view_sleep_timer, 1000000));
-}
 
 static void update_ai_ota_progress(int percentage)
 {
@@ -534,6 +418,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 view_alarm_on(alarm_st);
                 tf_data_buf_free(&(alarm_st->text));
                 tf_data_image_free(&(alarm_st->img));
+
+                // sleep mode deactivate
+                lv_disp_trig_activity(NULL);
+
                 break;
             }
 
@@ -706,8 +594,7 @@ int view_init(void)
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
     view_pages_init();
-    ESP_ERROR_CHECK(esp_timer_create(&view_ble_switch_timer_args, &view_ble_switch_timer));
-    ESP_ERROR_CHECK(esp_timer_create(&view_sleep_timer_args, &view_sleep_timer));
+    view_timer_create();
     lvgl_port_unlock();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 

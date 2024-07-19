@@ -63,6 +63,9 @@ void push2talk_init(void);
  */
 void push2talk_start_animation(const char *text, uint32_t duration_s);
 
+void view_timer_create();
+void view_ble_switch_timer_start();
+void view_sleep_timer_start();
 
 enum
 {

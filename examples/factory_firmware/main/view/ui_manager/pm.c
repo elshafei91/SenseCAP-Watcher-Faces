@@ -135,7 +135,7 @@ void initGroup()
     lv_obj_t * about_objects[]          = {ui_aboutdevname, ui_aboutespversion, ui_aboutaiversion, ui_aboutsn, ui_abouteui, ui_aboutblemac,
                                         ui_aboutwifimac, ui_Paboutb};
     lv_obj_t * guide_objects[]          = {ui_Page_Guideavatar, ui_Page_Guidelive};
-    lv_obj_t * sleep_objects[]          = {ui_sleeptimeroller, ui_slpback};
+    lv_obj_t * sleep_objects[]          = {ui_sleepswitch, ui_sleeptimeroller, ui_slpback};
 
     addObjToGroup(&group_page_main, main_objects, sizeof(main_objects) / sizeof(main_objects[0]));
     addObjToGroup(&group_page_template, template_objects, sizeof(template_objects) / sizeof(template_objects[0]));

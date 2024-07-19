@@ -350,6 +350,11 @@ void ui_event_sleeptimeroller(lv_event_t * e);
 lv_obj_t * ui_sleeptimeroller;
 void ui_event_slpback(lv_event_t * e);
 lv_obj_t * ui_slpback;
+void ui_event_sleepswitchp(lv_event_t * e);
+lv_obj_t * ui_sleepswitchp;
+lv_obj_t * ui_sleepswitcht;
+void ui_event_sleepswitch(lv_event_t * e);
+lv_obj_t * ui_sleepswitch;
 
 
 // SCREEN: ui_Page_Push2talk
@@ -1334,6 +1339,28 @@ void ui_event_slpback(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_SHORT_CLICKED) {
         backset_cb(e);
+    }
+}
+void ui_event_sleepswitchp(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        setrgbc_cb(e);
+    }
+    if(event_code == LV_EVENT_FOCUSED) {
+        setrgbf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        setrgbdf_cb(e);
+    }
+}
+void ui_event_sleepswitch(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        sleepswitch_cb(e);
     }
 }
 void ui_event_push2talkcancel(lv_event_t * e)
