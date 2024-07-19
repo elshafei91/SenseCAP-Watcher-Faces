@@ -69,7 +69,6 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_width(ui_push2talkpanel2, 412);
     lv_obj_set_height(ui_push2talkpanel2, 412);
     lv_obj_set_align(ui_push2talkpanel2, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_push2talkpanel2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_push2talkpanel2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_push2talkpanel2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -82,9 +81,11 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_x(ui_push2talkarc, 0);
     lv_obj_set_y(ui_push2talkarc, -50);
     lv_obj_set_align(ui_push2talkarc, LV_ALIGN_CENTER);
-    lv_arc_set_value(ui_push2talkarc, 20);
-    lv_arc_set_bg_angles(ui_push2talkarc, 0, 320);
-    lv_arc_set_rotation(ui_push2talkarc, 290);
+    lv_obj_clear_flag(ui_push2talkarc, LV_OBJ_FLAG_CLICKABLE);      /// Flags
+    lv_arc_set_range(ui_push2talkarc, 0, 5);
+    lv_arc_set_value(ui_push2talkarc, 0);
+    lv_arc_set_bg_angles(ui_push2talkarc, 0, 340);
+    lv_arc_set_rotation(ui_push2talkarc, 280);
     lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0x929292), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_opa(ui_push2talkarc, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -122,6 +123,7 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_align(ui_push2talkpanel3, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_push2talkpanel3, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(ui_push2talkpanel3, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_set_scrollbar_mode(ui_push2talkpanel3, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_bg_color(ui_push2talkpanel3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_push2talkpanel3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -438,10 +440,37 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_style_bg_img_src(ui_p2tcheck, &ui_img_wifiok_png, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_recolor(ui_p2tcheck, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_recolor_opa(ui_p2tcheck, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_scroll_snap_y(ui_push2talkpanel3, LV_SCROLL_SNAP_CENTER);
+
+    ui_p2texit = lv_label_create(ui_Page_Push2talk);
+    lv_obj_set_width(ui_p2texit, 176);
+    lv_obj_set_height(ui_p2texit, 47);
+    lv_obj_set_x(ui_p2texit, 0);
+    lv_obj_set_y(ui_p2texit, -11);
+    lv_obj_set_align(ui_p2texit, LV_ALIGN_BOTTOM_MID);
+    lv_label_set_text(ui_p2texit, "click to exit");
+    lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);     /// Flags
+    lv_obj_set_style_text_color(ui_p2texit, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_p2texit, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_p2texit, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_p2texit, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_p2tspeak = lv_label_create(ui_Page_Push2talk);
+    lv_obj_set_width(ui_p2tspeak, 289);
+    lv_obj_set_height(ui_p2tspeak, 47);
+    lv_obj_set_x(ui_p2tspeak, 0);
+    lv_obj_set_y(ui_p2tspeak, -11);
+    lv_obj_set_align(ui_p2tspeak, LV_ALIGN_BOTTOM_MID);
+    lv_label_set_long_mode(ui_p2tspeak, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_label_set_text(ui_p2tspeak, "I am Watcher, an AI camera.....");
+    lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);     /// Flags
+    lv_obj_set_style_text_color(ui_p2tspeak, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_p2tspeak, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_p2tspeak, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_p2tspeak, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_push2talkcancel, ui_event_push2talkcancel, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_push2talkcheck, ui_event_push2talkcheck, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_push2talkarc, ui_event_push2talkarc, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_p2tobj, ui_event_p2tobj, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_p2tbehavior, ui_event_p2tbehavior, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_p2tfeat, ui_event_p2tfeat, LV_EVENT_ALL, NULL);
@@ -451,5 +480,6 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_add_event_cb(ui_p2tfreq, ui_event_p2tfreq, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_p2tcancel, ui_event_p2tcancel, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_p2tcheck, ui_event_p2tcheck, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_Page_Push2talk, ui_event_Page_Push2talk, LV_EVENT_ALL, NULL);
 
 }

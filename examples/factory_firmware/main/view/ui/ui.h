@@ -325,6 +325,7 @@ void ui_event_sleepswitch(lv_event_t * e);
 extern lv_obj_t * ui_sleepswitch;
 // SCREEN: ui_Page_Push2talk
 void ui_Page_Push2talk_screen_init(void);
+void ui_event_Page_Push2talk(lv_event_t * e);
 extern lv_obj_t * ui_Page_Push2talk;
 extern lv_obj_t * ui_push2talkpanel;
 extern lv_obj_t * ui_push2talkt2;
@@ -333,6 +334,7 @@ extern lv_obj_t * ui_push2talkcancel;
 void ui_event_push2talkcheck(lv_event_t * e);
 extern lv_obj_t * ui_push2talkcheck;
 extern lv_obj_t * ui_push2talkpanel2;
+void ui_event_push2talkarc(lv_event_t * e);
 extern lv_obj_t * ui_push2talkarc;
 extern lv_obj_t * ui_push2talkp2t1;
 extern lv_obj_t * ui_push2talkp2t2;
@@ -370,6 +372,8 @@ void ui_event_p2tcancel(lv_event_t * e);
 extern lv_obj_t * ui_p2tcancel;
 void ui_event_p2tcheck(lv_event_t * e);
 extern lv_obj_t * ui_p2tcheck;
+extern lv_obj_t * ui_p2texit;
+extern lv_obj_t * ui_p2tspeak;
 // SCREEN: ui_Page_Guideavatar
 void ui_Page_Guideavatar_screen_init(void);
 void ui_event_Page_Guideavatar(lv_event_t * e);

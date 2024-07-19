@@ -359,6 +359,7 @@ lv_obj_t * ui_sleepswitch;
 
 // SCREEN: ui_Page_Push2talk
 void ui_Page_Push2talk_screen_init(void);
+void ui_event_Page_Push2talk(lv_event_t * e);
 lv_obj_t * ui_Page_Push2talk;
 lv_obj_t * ui_push2talkpanel;
 lv_obj_t * ui_push2talkt2;
@@ -367,6 +368,7 @@ lv_obj_t * ui_push2talkcancel;
 void ui_event_push2talkcheck(lv_event_t * e);
 lv_obj_t * ui_push2talkcheck;
 lv_obj_t * ui_push2talkpanel2;
+void ui_event_push2talkarc(lv_event_t * e);
 lv_obj_t * ui_push2talkarc;
 lv_obj_t * ui_push2talkp2t1;
 lv_obj_t * ui_push2talkp2t2;
@@ -404,6 +406,8 @@ void ui_event_p2tcancel(lv_event_t * e);
 lv_obj_t * ui_p2tcancel;
 void ui_event_p2tcheck(lv_event_t * e);
 lv_obj_t * ui_p2tcheck;
+lv_obj_t * ui_p2texit;
+lv_obj_t * ui_p2tspeak;
 
 
 // SCREEN: ui_Page_Guideavatar
@@ -1401,6 +1405,14 @@ void ui_event_sleepswitch(lv_event_t * e)
         sleepswitch_cb(e);
     }
 }
+void ui_event_Page_Push2talk(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        p2tclick_cb(e);
+    }
+}
 void ui_event_push2talkcancel(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1415,6 +1427,14 @@ void ui_event_push2talkcheck(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_SHORT_CLICKED) {
         push2talkcheck_cb(e);
+    }
+}
+void ui_event_push2talkarc(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_VALUE_CHANGED) {
+        p2tvaluechange_cb(e);
     }
 }
 void ui_event_p2tobj(lv_event_t * e)
