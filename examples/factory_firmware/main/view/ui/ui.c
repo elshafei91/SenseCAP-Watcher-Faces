@@ -366,6 +366,44 @@ void ui_event_push2talkcancel(lv_event_t * e);
 lv_obj_t * ui_push2talkcancel;
 void ui_event_push2talkcheck(lv_event_t * e);
 lv_obj_t * ui_push2talkcheck;
+lv_obj_t * ui_push2talkpanel2;
+lv_obj_t * ui_push2talkarc;
+lv_obj_t * ui_push2talkp2t1;
+lv_obj_t * ui_push2talkp2t2;
+lv_obj_t * ui_push2talkpanel3;
+void ui_event_p2tobj(lv_event_t * e);
+lv_obj_t * ui_p2tobj;
+lv_obj_t * ui_p2tobj1;
+lv_obj_t * ui_p2tobj2;
+void ui_event_p2tbehavior(lv_event_t * e);
+lv_obj_t * ui_p2tbehavior;
+lv_obj_t * ui_p2tbehavior1;
+lv_obj_t * ui_p2tbehavior2;
+void ui_event_p2tfeat(lv_event_t * e);
+lv_obj_t * ui_p2tfeat;
+lv_obj_t * ui_p2tfeat1;
+lv_obj_t * ui_p2tfeat2;
+void ui_event_p2tcomparison(lv_event_t * e);
+lv_obj_t * ui_p2tcomparison;
+lv_obj_t * ui_p2tcomparison1;
+lv_obj_t * ui_p2tcomparison2;
+void ui_event_p2tnotify(lv_event_t * e);
+lv_obj_t * ui_p2tnotify;
+lv_obj_t * ui_p2tnotify1;
+lv_obj_t * ui_p2tnotify2;
+void ui_event_p2ttime(lv_event_t * e);
+lv_obj_t * ui_p2ttime;
+lv_obj_t * ui_p2ttime1;
+lv_obj_t * ui_p2ttime2;
+void ui_event_p2tfreq(lv_event_t * e);
+lv_obj_t * ui_p2tfreq;
+lv_obj_t * ui_p2tfreq1;
+lv_obj_t * ui_p2tfreq2;
+lv_obj_t * ui_p2tsw;
+void ui_event_p2tcancel(lv_event_t * e);
+lv_obj_t * ui_p2tcancel;
+void ui_event_p2tcheck(lv_event_t * e);
+lv_obj_t * ui_p2tcheck;
 
 
 // SCREEN: ui_Page_Guideavatar
@@ -1372,6 +1410,99 @@ void ui_event_push2talkcancel(lv_event_t * e)
     }
 }
 void ui_event_push2talkcheck(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        push2talkcheck_cb(e);
+    }
+}
+void ui_event_p2tobj(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        abdnf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        abdndf_cb(e);
+    }
+}
+void ui_event_p2tbehavior(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        abdnf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        abdndf_cb(e);
+    }
+}
+void ui_event_p2tfeat(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        abdnf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        abdndf_cb(e);
+    }
+}
+void ui_event_p2tcomparison(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        abdnf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        abdndf_cb(e);
+    }
+}
+void ui_event_p2tnotify(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        abdnf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        abdndf_cb(e);
+    }
+}
+void ui_event_p2ttime(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        abdnf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        abdndf_cb(e);
+    }
+}
+void ui_event_p2tfreq(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        abdnf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        abdndf_cb(e);
+    }
+}
+void ui_event_p2tcancel(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        backmenu_cb(e);
+    }
+}
+void ui_event_p2tcheck(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);

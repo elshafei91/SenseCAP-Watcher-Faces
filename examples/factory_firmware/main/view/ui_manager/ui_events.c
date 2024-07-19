@@ -104,6 +104,7 @@ extern GroupInfo group_page_connectapp;
 extern GroupInfo group_page_about;
 extern GroupInfo group_page_guide;
 extern GroupInfo group_page_sleep;
+extern GroupInfo group_page_push2talk;
 
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
@@ -1821,6 +1822,7 @@ void push2talk_start_animation(const char *text, uint32_t duration_s)
 
         push2talk_timer = lv_timer_create(push2talk_add_character, push2talk_anim_interval, NULL);
     }
+}
 /*--------------------------------------------view timer----------------------------------------------------------------*/
 static void view_ble_switch_timer_callback(void *arg)
 {
