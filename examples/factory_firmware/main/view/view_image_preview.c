@@ -224,11 +224,6 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
                         y = 0;
                     }
 
-                    char *p_class_name = "unknown";
-                    if(  p_info->inference.classes[p_box[i].target] != NULL) {
-                        p_class_name = p_info->inference.classes[p_box[i].target];
-                    }
-
                     lv_color_t color = cls_color[p_box[i].target];
 
                     lv_obj_set_pos(ui_rectangle[i], x, y);
@@ -240,7 +235,13 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
 
                     // name
                     char buf1[32];
-                    lv_snprintf(buf1, sizeof(buf1), "%s:%d", p_class_name, p_box[i].score);
+                    char *p_class_name = "unknown";
+                    if (p_info->inference.classes[p_box[i].target] != NULL) {
+                        p_class_name = p_info->inference.classes[p_box[i].target];
+                        lv_snprintf(buf1, sizeof(buf1), "%s:%d", p_class_name, p_box[i].score);
+                    } else {
+                        lv_snprintf(buf1, sizeof(buf1), "%s(%d):%d", p_class_name, p_box[i].target, p_box[i].score);
+                    }    
 
                     lv_obj_set_pos(ui_class_name[i], x, (y - 10) < 0 ? 0 : (y - 10));
                     lv_label_set_text(ui_class_name[i], buf1);
@@ -262,18 +263,19 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
                 if (i < p_info->inference.cnt)
                 {
                     sscma_client_class_t *p_class = (sscma_client_class_t *)p_info->inference.p_data;
-                    
-                    char *p_class_name = "unknown";
-                    if(  p_info->inference.classes[p_class[i].target] != NULL) {
-                        p_class_name = p_info->inference.classes[p_class[i].target];
-                    }
-                    
+                                        
                     lv_color_t color = cls_color[p_class[i].target];
+
                     char buf1[32];
-                    lv_snprintf(buf1, sizeof(buf1), "%s:%d", p_class_name, p_class[i].score);
+                    char *p_class_name = "unknown";
+                    if (p_info->inference.classes[p_class[i].target] != NULL) {
+                        p_class_name = p_info->inference.classes[p_class[i].target];
+                        lv_snprintf(buf1, sizeof(buf1), "%s:%d", p_class_name, p_class[i].score);
+                    } else {
+                        lv_snprintf(buf1, sizeof(buf1), "%s(%d):%d", p_class_name, p_class[i].target, p_class[i].score);
+                    }               
                     
-                    
-                    lv_obj_set_pos(ui_class_name[i], 180, 60 + i*40);
+                    lv_obj_set_pos(ui_class_name[i], 80, 60 + i*40);
                     lv_label_set_text(ui_class_name[i], buf1);
                     lv_obj_set_style_bg_color(ui_class_name[i], color, LV_PART_MAIN | LV_STATE_DEFAULT);
                     lv_obj_set_style_bg_opa(ui_class_name[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
