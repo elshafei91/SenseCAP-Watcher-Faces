@@ -66,6 +66,25 @@ extern "C"
 #define TF_MODULE_AI_CAMERA_OUTPUT_TYPE_SMALL_IMG_ONLY           0
 #define TF_MODULE_AI_CAMERA_OUTPUT_TYPE_SMALL_IMG_AND_LARGE_IMG  1
 
+typedef enum {
+    TF_MODULE_AI_CAMERA_ALGORITHM_TYPE_UNDEFINED  = 0u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_TYPE_FOMO       = 1u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_TYPE_PFLD       = 2u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_TYPE_YOLO       = 3u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_TYPE_IMCLS      = 4u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_TYPE_YOLO_POSE  = 5u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_TYPE_YOLO_V8    = 6u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_TYPE_NVIDIA_DET = 7u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_TYPE_YOLO_WORLD = 8u,
+} tf_module_ai_camera_algorithm_type_t;
+
+typedef enum {
+    TF_MODULE_AI_CAMERA_ALGORITHM_CAT_UNDEFINED = 0u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_CAT_DET       = 1u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_CAT_POSE      = 2u,
+    TF_MODULE_AI_CAMERA_ALGORITHM_CAT_CLS       = 3u,
+} tf_module_ai_camera_algorithm_category_t;
+
 struct tf_module_ai_camera_model
 {
     char model_id[32]; // TODO max len?
@@ -77,6 +96,12 @@ struct tf_module_ai_camera_model
     int iou;
     int confidence;
     char *p_info_all;
+};
+
+struct tf_module_ai_camera_algorithm
+{
+    tf_module_ai_camera_algorithm_type_t        type;
+    tf_module_ai_camera_algorithm_category_t    category;
 };
 
 struct tf_module_ai_camera_condition
@@ -113,6 +138,7 @@ struct tf_module_ai_camera_params
     struct tf_module_ai_camera_silent_period silent_period;
     int shutter;
     int output_type;
+    struct tf_module_ai_camera_algorithm algorithm;
 };
 
 /*************************************************************************
