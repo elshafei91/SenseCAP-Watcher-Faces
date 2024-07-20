@@ -447,6 +447,85 @@ static void register_bsp_cmd()
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* record cmd **************/
+static struct {
+    struct arg_int *time;
+    struct arg_str *file;
+    struct arg_end *end;
+} record_args;
+
+static int record_cmd(int argc, char **argv)
+{
+    char file[128] = {0};
+    int record_time = 0;
+  
+
+    memset(file, 0, sizeof(file));
+
+    int nerrors = arg_parse(argc, argv, (void **) &record_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, record_args.end, argv[0]);
+        return 1;
+    }
+
+    if ( record_args.time->count ) {
+        record_time = record_args.time->ival;
+    } else {
+        record_time = 5;
+    }
+    ESP_LOGI(TAG, "Record time:%d s", record_time);
+
+    if ( record_args.file->count ) {
+        int len = strlen(record_args.file->sval[0]);
+        if( len > 0 ){
+            snprintf(file, sizeof(file), "/sdcard/%s", record_args.file->sval[0]);
+        }
+    } else {
+        snprintf(file, sizeof(file), "/sdcard/audio_record.pcm");
+    }
+    ESP_LOGI(TAG, "save to file:%s", file);
+
+    FILE *fp = fopen(file, "w");
+    if( fp == NULL ) {
+        ESP_LOGE(TAG, "open file fail:%s!", file);
+        return  -1;
+    }
+    int audo_format_len = 320; //TODO
+    int16_t *audio_buffer = heap_caps_malloc( audo_format_len, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); //TODO 
+
+    time_t now = 0;
+    time_t start = 0;
+    int total_len = 0;
+    time(&start); 
+    do {
+        bsp_get_feed_data(false, audio_buffer, audo_format_len);
+        fwrite(audio_buffer, audo_format_len, 1, fp);
+        total_len+=audo_format_len;
+        ESP_LOGI(TAG, "fwrite:%d", audo_format_len);
+        time(&now); 
+    } while ( difftime(now, start) <= record_time );
+    fclose(fp);
+
+    ESP_LOGI(TAG, "record end ,size%d", total_len);
+    return 0;
+}
+
+static void register_cmd_record(void)
+{
+    record_args.time =  arg_int0("t", "time", "<int>", "record time, s");
+    record_args.file =  arg_str0("f", "file", "<string>", "File path, Store PCM audio data in SD card");
+    record_args.end = arg_end(2);
+
+    const esp_console_cmd_t cmd = {
+        .command = "record",
+        .help = "record audio and save to SD.",
+        .hint = NULL,
+        .func = &record_cmd,
+        .argtable = &record_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
 
 int app_cmd_init(void)
 {
@@ -470,6 +549,7 @@ int app_cmd_init(void)
     register_bsp_cmd();
     register_cmd_reboot();
     register_cmd_factory_reset();
+    register_cmd_record();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
     esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
