@@ -28,6 +28,8 @@ void util_print_task_stats(char *dst_buffer);
 bool cJSON_IsGeneralBool(const cJSON * const item);
 bool cJSON_IsGeneralTrue(const cJSON * const item);
 
+char *strdup_psram(const char *s);
+
 #ifdef __cplusplus
 }
 #endif
