@@ -229,6 +229,13 @@ menu "SenseCAP Watcher BSP Configuration"
                     Enable this option to allocate the task stack from external memory by default
         endmenu
 
+        config SSCMA_ALLOC_SMALL_SHORTTERM_MEM_EXTERNALLY
+            bool "Allocate Small but Short-term Heap Memory from External SPIRAM"
+                default n
+                help
+                    Whether to allocate the small but short-term heap mem from external SPIRAM.
+                    Enable this in order to optimize the fragmentation of the internal RAM.
+
     endmenu
 
 endmenu
