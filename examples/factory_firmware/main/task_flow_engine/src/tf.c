@@ -552,7 +552,7 @@ esp_err_t tf_engine_info_get(tf_info_t *p_info)
     assert(gp_engine);
     __data_lock(gp_engine);
     memcpy(p_info, &gp_engine->tf_info, sizeof(tf_info_t));
-    p_info->p_tf_name = strdup(gp_engine->tf_info.p_tf_name);
+    p_info->p_tf_name = tf_strdup(gp_engine->tf_info.p_tf_name);
     __data_unlock(gp_engine);
     return ESP_OK;
 }
