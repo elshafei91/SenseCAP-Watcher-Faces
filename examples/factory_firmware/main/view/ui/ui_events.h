@@ -133,6 +133,7 @@ void p2tclick_cb(lv_event_t * e);
 void push2talkcancel_cb(lv_event_t * e);
 void push2talkcheck_cb(lv_event_t * e);
 void p2tvaluechange_cb(lv_event_t * e);
+void p2tfocus_cb(lv_event_t * e);
 void pageguideavaf_cb(lv_event_t * e);
 void pageguideavascrload_cb(lv_event_t * e);
 void guideavaclick_cb(lv_event_t * e);

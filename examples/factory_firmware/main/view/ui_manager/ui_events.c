@@ -1233,7 +1233,7 @@ void sleepswitch_cb(lv_event_t * e)
 
 void p2tclick_cb(lv_event_t * e)
 {
-
+    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
 void push2talkcancel_cb(lv_event_t * e)
@@ -1248,7 +1248,19 @@ void push2talkcheck_cb(lv_event_t * e)
 
 void p2tvaluechange_cb(lv_event_t * e)
 {
+    ESP_LOGI(TAG, "p2tvaluechange_cb");
+    static int16_t push2talk_arc;
+    push2talk_arc = lv_arc_get_value(ui_push2talkarc);
+    if(push2talk_arc > 5)
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+        lv_group_set_editing(g_main, false);
+    }
+}
 
+void p2tfocus_cb(lv_event_t * e)
+{
+    lv_group_set_editing(g_main, true);
 }
 
 void volvc_cb(lv_event_t *e)

@@ -82,7 +82,7 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_y(ui_push2talkarc, -50);
     lv_obj_set_align(ui_push2talkarc, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_push2talkarc, LV_OBJ_FLAG_CLICKABLE);      /// Flags
-    lv_arc_set_range(ui_push2talkarc, 0, 5);
+    lv_arc_set_range(ui_push2talkarc, 0, 6);
     lv_arc_set_value(ui_push2talkarc, 0);
     lv_arc_set_bg_angles(ui_push2talkarc, 0, 340);
     lv_arc_set_rotation(ui_push2talkarc, 280);

@@ -1436,6 +1436,9 @@ void ui_event_push2talkarc(lv_event_t * e)
     if(event_code == LV_EVENT_VALUE_CHANGED) {
         p2tvaluechange_cb(e);
     }
+    if(event_code == LV_EVENT_FOCUSED) {
+        p2tfocus_cb(e);
+    }
 }
 void ui_event_p2tobj(lv_event_t * e)
 {
