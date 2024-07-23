@@ -9,6 +9,7 @@
 #include "app_device_info.h"
 #include "tf_module_http_alarm.h"
 #include "tf_module_util.h"
+#include "util.h"
 #include "uuid.h"
 #include "app_sensecraft.h"
 #include "app_sensor.h"
@@ -176,9 +177,8 @@ static int __http_report_warn_event(tf_module_http_alarm_t *p_module_ins,
     cJSON_AddItemToObject(json, "events", events);
 
     if (p_params->time_en) {
-        time_t now = 0;
-        time(&now);
-        cJSON_AddItemToObject(events, "timestamp", cJSON_CreateNumber(now));
+        time_t timestamp_ms = util_get_timestamp_ms();
+        cJSON_AddItemToObject(events, "timestamp", cJSON_CreateNumber(timestamp_ms));
     }
 
     if (p_params->text_en) {
