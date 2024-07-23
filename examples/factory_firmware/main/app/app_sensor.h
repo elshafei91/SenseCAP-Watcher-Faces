@@ -17,8 +17,8 @@ extern "C" {
 
 enum eAppSensorType
 {
-    SENSOR_SHT41 = 0,
-    SENSOR_SCD40 = 1,
+    SENSOR_SHT4x = 0,
+    SENSOR_SCD4x = 1,
     SENSOR_NONE = 0xff
 };
 
@@ -30,10 +30,10 @@ typedef struct app_sensor_data
         struct {
             int32_t temperature;
             uint32_t humidity;
-        }sht41;
+        }sht4x;
         struct {
             uint32_t co2;
-        }scd40;
+        }scd4x;
     }context;
 }app_sensor_data_t;
 

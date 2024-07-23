@@ -1,10 +1,10 @@
 /**
- * SCD41 driver
+ * SCD4x driver
  * Author: WayenWeng <jinyuan.weng@seeed.cc>
 */
 
-#ifndef SENSOR_SCD41_H
-#define SENSOR_SCD41_H
+#ifndef SENSOR_SCD4x_H
+#define SENSOR_SCD4x_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -13,21 +13,21 @@
 extern "C" {
 #endif
 
-#define SENSOR_SCD40_I2C_ADDR 0x62
+#define SENSOR_SCD4x_I2C_ADDR 0x62
 
 /**
  * @brief Initializes the sensor.
  *
  * @return 0 on success, an error code otherwise
  */
-int16_t sensor_scd40_init(void);
+int16_t sensor_scd4x_init(void);
 
 /**
  * @brief Uninitializes the sensor.
  *
  * @return 0 on success, an error code otherwise
  */
-int16_t sensor_scd40_uninit(void);
+int16_t sensor_scd4x_uninit(void);
 
 /**
  * @brief Check whether new measurement data is available for read-out.
@@ -36,7 +36,7 @@ int16_t sensor_scd40_uninit(void);
  *
  * @return 0 on success, an error code otherwise
  */
-int16_t sensor_scd40_get_data_ready_flag(bool* data_ready_flag);
+int16_t sensor_scd4x_get_data_ready_flag(bool* data_ready_flag);
 
 /**
  * @brief Read sensor output and convert.
@@ -45,7 +45,7 @@ int16_t sensor_scd40_get_data_ready_flag(bool* data_ready_flag);
  *
  * @return 0 on success, an error code otherwise
  */
-int16_t sensor_scd40_read_measurement(uint32_t *co2);
+int16_t sensor_scd4x_read_measurement(uint32_t *co2);
 
 #ifdef __cplusplus
 }
