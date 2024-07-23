@@ -13,7 +13,7 @@
 
 // sample rate: 16000, bit depth: 16, channels: 1; 32000 size per second;
 // 5*32000  can cache 5s of audio. 
-#define AUDIO_RECORDER_RINGBUF_SIZE         5*32000
+#define AUDIO_RECORDER_RINGBUF_SIZE         30*32000  //TODO
 #define AUDIO_RECORDER_RINGBUF_CHUNK_SIZE   16000
 
 enum app_audio_recorder_status {
@@ -49,4 +49,5 @@ esp_err_t app_audio_recorder_stream_free(uint8_t *p_data);
 
 esp_err_t app_audio_recorder_stream_stop(void);
 
-esp_err_t app_audio_recorder_file(void *p_filepath);
+esp_err_t app_audio_recorder_file_start(void *p_filepath);
+esp_err_t app_audio_recorder_file_end(void);

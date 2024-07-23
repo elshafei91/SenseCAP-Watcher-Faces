@@ -8,9 +8,9 @@
 #include "freertos/ringbuf.h"
 #include "data_defs.h"
 
-#define VOICE_INTERACTION_TASK_STACK_SIZE  5*1024
+#define VOICE_INTERACTION_TASK_STACK_SIZE  10*1024
 #define VOICE_INTERACTION_TASK_PRIO        11
-#define VOICE_INTERACTION_TASK_CORE        0
+#define VOICE_INTERACTION_TASK_CORE        1  //must be 1
 
 enum app_voice_interaction_status {
     VOICE_INTERACTION_STATUS_IDLE = 0,

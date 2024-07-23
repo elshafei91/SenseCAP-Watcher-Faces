@@ -110,12 +110,13 @@ static void app_audio_player_task(void *p_arg)
                 // TODO catche 
                 vRingbufferGetInfo( p_audio_player->rb_handle, NULL, NULL, NULL, NULL, &available_bytes);
                 if( available_bytes== 0 ) {
-                    ESP_LOGI(TAG, "no data");
+                    // ESP_LOGI(TAG, "no data");
                     __data_lock(p_audio_player);
                     if( p_audio_player->stream_finished) {
                         p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
                     } 
                     __data_unlock(p_audio_player);
+                    vTaskDelay(200 / portTICK_PERIOD_MS);
                     break;
                 }
             
@@ -140,6 +141,7 @@ static void app_audio_player_task(void *p_arg)
                 break;
             }
             default:
+                vTaskDelay(10 / portTICK_PERIOD_MS);
                 break;
         }
     }

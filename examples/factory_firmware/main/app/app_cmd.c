@@ -19,6 +19,7 @@
 #include "tf.h"
 #include "sensecap-watcher.h"
 #include "factory_info.h"
+#include "app_audio_player.h"
 
 static const char *TAG = "cmd";
 
@@ -456,10 +457,10 @@ static struct {
 
 static int record_cmd(int argc, char **argv)
 {
-    char file[128] = {0};
+    char file[32] = {0};
+    char file_wav[32] = {0};
     int record_time = 0;
   
-
     memset(file, 0, sizeof(file));
 
     int nerrors = arg_parse(argc, argv, (void **) &record_args);
@@ -469,7 +470,7 @@ static int record_cmd(int argc, char **argv)
     }
 
     if ( record_args.time->count ) {
-        record_time = record_args.time->ival;
+        record_time = record_args.time->ival[0]; 
     } else {
         record_time = 5;
     }
@@ -478,10 +479,12 @@ static int record_cmd(int argc, char **argv)
     if ( record_args.file->count ) {
         int len = strlen(record_args.file->sval[0]);
         if( len > 0 ){
-            snprintf(file, sizeof(file), "/sdcard/%s", record_args.file->sval[0]);
+            snprintf(file, sizeof(file), "/sdcard/%s.pcm", record_args.file->sval[0]);
+            snprintf(file_wav, sizeof(file_wav), "/sdcard/%s.wav", record_args.file->sval[0]);
         }
     } else {
         snprintf(file, sizeof(file), "/sdcard/audio_record.pcm");
+        snprintf(file_wav, sizeof(file_wav), "/sdcard/audio_record.wav");
     }
     ESP_LOGI(TAG, "save to file:%s", file);
 
@@ -490,23 +493,82 @@ static int record_cmd(int argc, char **argv)
         ESP_LOGE(TAG, "open file fail:%s!", file);
         return  -1;
     }
-    int audo_format_len = 320; //TODO
-    int16_t *audio_buffer = heap_caps_malloc( audo_format_len, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); //TODO 
+    int chunk_len = 1024;
+    int write_len = 0;
+    int16_t *audio_buffer = heap_caps_malloc( chunk_len, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); //TODO 
 
     time_t now = 0;
     time_t start = 0;
     int total_len = 0;
+
+    bsp_codec_set_fs(16000, 16, 1);
     time(&start); 
     do {
-        bsp_get_feed_data(false, audio_buffer, audo_format_len);
-        fwrite(audio_buffer, audo_format_len, 1, fp);
-        total_len+=audo_format_len;
-        ESP_LOGI(TAG, "fwrite:%d", audo_format_len);
+        bsp_get_feed_data(false, audio_buffer, chunk_len);
+        fwrite(audio_buffer, 1, chunk_len, fp);
+        total_len+=chunk_len;
+        ESP_LOGI(TAG, "fwrite:%d", chunk_len);
         time(&now); 
     } while ( difftime(now, start) <= record_time );
     fclose(fp);
-
+    bsp_codec_dev_stop();
     ESP_LOGI(TAG, "record end ,size%d", total_len);
+
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    //save wav file
+    audio_wav_header_t wav_head = {};
+    memcpy(&wav_head.ChunkID, "RIFF", 4);
+    wav_head.ChunkSize = sizeof(audio_wav_header_t) + total_len - 8;
+    memcpy(&wav_head.Format, "WAVE", 4);
+
+    memcpy(&wav_head.Subchunk1ID, "fmt ", 4);
+    wav_head.Subchunk1Size = 16;
+    wav_head.AudioFormat = 1;
+    wav_head.NumChannels = 1;
+    wav_head.SampleRate = 16000;
+    wav_head.ByteRate = wav_head.SampleRate * wav_head.BitsPerSample * wav_head.NumChannels / 8;
+    wav_head.BitsPerSample = 16;
+    wav_head.BlockAlign = wav_head.BitsPerSample * wav_head.NumChannels / 8;
+    
+    memcpy(&wav_head.Subchunk2ID, "data", 4);
+    wav_head.Subchunk2Size = total_len;
+   
+    FILE *fp_wav = fopen(file_wav, "w");
+    if( fp_wav == NULL ) {
+        ESP_LOGE(TAG, "open file fail:%s!", file_wav);
+        free(audio_buffer);
+        return  -1;
+    }
+    fp = fopen(file, "r");
+    if( fp == NULL ) {
+        ESP_LOGE(TAG, "open file fail:%s!", file);
+        free(audio_buffer);
+        return  -1;
+    }
+    fseek(fp, 0, SEEK_SET);
+
+    int read_len = 0;
+
+    if (fwrite((void *)&wav_head, 1, sizeof(audio_wav_header_t), fp_wav) != sizeof(audio_wav_header_t)) {
+        ESP_LOGW(TAG, "Error in writing to file");
+    }
+
+    while ( total_len > 0) {
+        read_len = fread(audio_buffer, 1, chunk_len,  fp);
+        if (read_len <= 0) {
+            break;
+        }
+        fwrite(audio_buffer, 1, chunk_len, fp_wav);
+        total_len -= read_len;
+        ESP_LOGI(TAG, "fwrite:%d", read_len);
+    }
+    fclose(fp_wav);
+    fclose(fp);
+    free(audio_buffer);
+    ESP_LOGI(TAG, "save wav end");
+
     return 0;
 }
 

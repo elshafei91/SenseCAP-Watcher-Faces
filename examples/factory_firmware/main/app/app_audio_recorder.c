@@ -229,11 +229,11 @@ esp_err_t app_audio_recorder_stream_stop(void)
     xEventGroupWaitBits(p_audio_recorder->event_group, EVENT_RECORD_STEAM_STOP_DONE, 1, 1, pdMS_TO_TICKS(1000));
 
     //clear the ringbuffer
-    void *tmp = NULL;
-    size_t len = 0;
-    while ((tmp = xRingbufferReceiveUpTo(p_audio_recorder->rb_handle, &len, 0, AUDIO_RECORDER_RINGBUF_SIZE))) {
-        vRingbufferReturnItem(p_audio_recorder->rb_handle, tmp);
-    }
+    // void *tmp = NULL;
+    // size_t len = 0;
+    // while ((tmp = xRingbufferReceiveUpTo(p_audio_recorder->rb_handle, &len, 0, AUDIO_RECORDER_RINGBUF_SIZE))) {
+    //     vRingbufferReturnItem(p_audio_recorder->rb_handle, tmp);
+    // }
     bsp_codec_dev_stop(); //TODO
     return ESP_OK;
 }

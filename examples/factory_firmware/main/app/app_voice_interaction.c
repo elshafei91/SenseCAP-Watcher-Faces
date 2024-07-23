@@ -14,6 +14,7 @@
 #include "util.h"
 #include "app_audio_player.h"
 #include "app_audio_recorder.h"
+#include "app_rgb.h"
 
 static const char *TAG = "voice_interaction";
 
@@ -144,6 +145,8 @@ static char *__audio_stream_request(struct app_voice_interaction *p_voice_intera
     size_t send_len = 0;
 
     start = esp_timer_get_time();
+    app_rgb_set(SR, RGB_BREATH_BLUE);
+
     app_audio_recorder_stream_start();
     do {
         
@@ -155,17 +158,38 @@ static char *__audio_stream_request(struct app_voice_interaction *p_voice_intera
             } else {
                 chunk_size_str_len = snprintf(chunk_size_str,sizeof(chunk_size_str), "\r\n%X\r\n", data_len);
             }
+            int64_t chunk_send_start= esp_timer_get_time();
             send_len += esp_http_client_write(client, (const char *)chunk_size_str, chunk_size_str_len);
             send_len += esp_http_client_write(client, (const char *)p_data, data_len);
+            int64_t chunk_send_end= esp_timer_get_time();
+
             app_audio_recorder_stream_free((uint8_t *)p_data);
-            ESP_LOGI(TAG, "send:%d", data_len);
+            ESP_LOGI(TAG, "send:%d, time:%lld ms", data_len, (chunk_send_end - chunk_send_start) / 1000);
         }
     } while ( (xEventGroupWaitBits( p_voice_interaction->event_group,EVENT_RECORD_STOP, pdTRUE, pdFALSE, 0) & EVENT_RECORD_STOP) == 0 );
-    send_len += esp_http_client_write(client, "\r\n0\r\n\r\n", strlen("\r\n0\r\n\r\n"));
-    app_audio_recorder_stream_stop();
 
+    app_audio_recorder_stream_stop();
+    ESP_LOGI(TAG, "EVENT_RECORD_STOP");
+
+    while(1) {
+        p_data = app_audio_recorder_stream_recv(&data_len, pdMS_TO_TICKS(500));
+        if( p_data != NULL ) {
+            chunk_size_str_len = snprintf(chunk_size_str,sizeof(chunk_size_str), "\r\n%X\r\n", data_len);
+            int64_t chunk_send_start= esp_timer_get_time();
+            send_len += esp_http_client_write(client, (const char *)chunk_size_str, chunk_size_str_len);
+            send_len += esp_http_client_write(client, (const char *)p_data, data_len);
+            int64_t chunk_send_end= esp_timer_get_time();
+            app_audio_recorder_stream_free((uint8_t *)p_data);
+            ESP_LOGI(TAG, "send:%d, time:%lld ms", data_len, (chunk_send_end - chunk_send_start) / 1000);
+        } else {
+            ESP_LOGI(TAG, "send finish");
+            break;
+        }
+    }
+    send_len += esp_http_client_write(client, "\r\n0\r\n\r\n", strlen("\r\n0\r\n\r\n"));
+   
     end = esp_timer_get_time();
-    ESP_LOGI(TAG, "record stop, send:%d, time:%lld ms", send_len, (end - start) / 1000);
+    ESP_LOGI(TAG, "record stop, send:%d, time:%lld ms, rate=%.1fKB/s", send_len, (end - start) / 1000, (send_len * 1000.0) / (end - start));
 
 
     // wait response
@@ -180,6 +204,8 @@ static char *__audio_stream_request(struct app_voice_interaction *p_voice_intera
     ESP_LOGI(TAG, "content_length=%d, time=%lld ms", content_length, (end - start) / 1000);
     ESP_GOTO_ON_FALSE(content_length >= 0, ESP_FAIL, err, TAG, "HTTP client fetch headers failed!");
 
+    // TODO check code.
+
 
     // read data
     int read_len = 0;
@@ -187,12 +213,13 @@ static char *__audio_stream_request(struct app_voice_interaction *p_voice_intera
     size_t chunk_len = AUDIO_PLAYER_RINGBUF_CHUNK_SIZE * 2;
     char* recv_buf = (char *)psram_malloc(chunk_len);
     
+    app_rgb_set(SR, RGB_FLARE_BLUE);
     start = esp_timer_get_time();
     app_audio_player_stream_start(content_length);
     while (read_total_len <= content_length) {
         read_len = esp_http_client_read(client, recv_buf, chunk_len);
         if (read_len <= 0) {
-            ESP_LOGE(TAG, "esp_http_client_read=%d", read_len);
+            ESP_LOGI(TAG, "esp_http_client_read=%d", read_len);
             break;
         } else {
             ESP_LOGI(TAG, "recv:%d", read_len);
@@ -203,8 +230,9 @@ static char *__audio_stream_request(struct app_voice_interaction *p_voice_intera
     free(recv_buf);
     app_audio_player_stream_finish();
     end = esp_timer_get_time();
-    ESP_LOGI(TAG, "read stop, read:%d, time:%lld ms", read_total_len, (end - start) / 1000);
+    ESP_LOGI(TAG, "download audio end, content_length: %d, read:%d, time:%lld ms, rate=%.1fKB/s", content_length, read_total_len, (end - start) / 1000, (read_total_len * 1000.0) / (end - start));
 
+    app_rgb_set(SR, RGB_OFF);
 err:
     esp_http_client_close(client);
     esp_http_client_cleanup(client);
