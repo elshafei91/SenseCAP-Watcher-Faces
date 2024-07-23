@@ -1,10 +1,10 @@
 /**
- * SHT41 driver
+ * SHT4x driver
  * Author: WayenWeng <jinyuan.weng@seeed.cc>
 */
 
-#ifndef SENSOR_SHT41_H
-#define SENSOR_SHT41_H
+#ifndef SENSOR_SHT4x_H
+#define SENSOR_SHT4x_H
 
 #include <stdint.h>
 
@@ -12,21 +12,21 @@
 extern "C" {
 #endif
 
-#define SENSOR_SHT41_I2C_ADDR 0x44
+#define SENSOR_SHT4x_I2C_ADDR 0x44
 
 /**
  * @brief Initializes the sensor.
  *
  * @return 0 on success, an error code otherwise
  */
-int16_t sensor_sht41_init(void);
+int16_t sensor_sht4x_init(void);
 
 /**
  * @brief Uninitializes the sensor.
  *
  * @return 0 on success, an error code otherwise
  */
-int16_t sensor_sht41_unint(void);
+int16_t sensor_sht4x_unint(void);
 
 /**
  * @brief Read sensor output and convert.
@@ -37,7 +37,7 @@ int16_t sensor_sht41_unint(void);
  *
  * @return 0 on success, an error code otherwise
  */
-int16_t sensor_sht41_read_measurement(int32_t *temperature, int32_t *humidity);
+int16_t sensor_sht4x_read_measurement(int32_t *temperature, int32_t *humidity);
 
 #ifdef __cplusplus
 }

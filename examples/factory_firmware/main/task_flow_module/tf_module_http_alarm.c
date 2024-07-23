@@ -209,14 +209,14 @@ static int __http_report_warn_event(tf_module_http_alarm_t *p_module_ins,
             cJSON_AddItemToObject(events, "sensor", sensor);
             for (uint8_t i = 0; i < sensor_num; i ++) {
                 if (app_sensor_data[i].state) {
-                    if (app_sensor_data[i].type == SENSOR_SHT41) {
-                        temp = (app_sensor_data[i].context.sht41.temperature + 50) / 100;
+                    if (app_sensor_data[i].type == SENSOR_SHT4x) {
+                        temp = (app_sensor_data[i].context.sht4x.temperature + 50) / 100;
                         temp /= 10;
-                        humi = app_sensor_data[i].context.sht41.humidity / 1000;
+                        humi = app_sensor_data[i].context.sht4x.humidity / 1000;
                         cJSON_AddItemToObject(sensor, "temperature", cJSON_CreateNumber(temp));
                         cJSON_AddItemToObject(sensor, "humidity", cJSON_CreateNumber(humi));
-                    } else if(app_sensor_data[i].type == SENSOR_SCD40) {
-                        co2 = app_sensor_data[i].context.scd40.co2 / 1000;
+                    } else if(app_sensor_data[i].type == SENSOR_SCD4x) {
+                        co2 = app_sensor_data[i].context.scd4x.co2 / 1000;
                         cJSON_AddItemToObject(sensor, "CO2", cJSON_CreateNumber(co2));
                     }
                 }
