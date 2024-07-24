@@ -588,6 +588,67 @@ static void register_cmd_record(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* voice interaction cmd **************/
+static struct {
+    struct arg_lit *vi_start;
+    struct arg_lit *vi_end;
+    struct arg_lit *vi_stop;
+    struct arg_lit *vi_exit;
+    struct arg_end *end;
+} vi_ctrl_args;
+
+static int vi_ctrl_cmd(int argc, char **argv)
+{
+    char file[32] = {0};
+    char file_wav[32] = {0};
+    int record_time = 0;
+  
+    memset(file, 0, sizeof(file));
+
+    int nerrors = arg_parse(argc, argv, (void **) &vi_ctrl_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, vi_ctrl_args.end, argv[0]);
+        return 1;
+    }
+    
+    if (vi_ctrl_args.vi_start->count) {
+        printf("start record\n");
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, \
+                    CTRL_EVENT_VI_RECORD_WAKEUP, NULL, NULL, pdMS_TO_TICKS(10000));
+    } else if( vi_ctrl_args.vi_end->count ){
+        printf("end record\n");
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, \
+                    CTRL_EVENT_VI_RECORD_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
+    } else if( vi_ctrl_args.vi_stop->count ){
+        printf("stop voice interaction\n");
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
+                    VIEW_EVENT_VI_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
+    } else if( vi_ctrl_args.vi_exit->count ){
+        printf("exit voice interaction\n");
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
+                    VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
+    }
+
+    return 0;
+}
+
+static void register_cmd_vi_ctrl(void)
+{
+    vi_ctrl_args.vi_start =  arg_lit0("s", "start", "start wakeup, and start record");
+    vi_ctrl_args.vi_end = arg_lit0("e", "end", "end record");
+    vi_ctrl_args.vi_stop = arg_lit0("c", "stop", "stop voice interaction when analyzing or palying, Put it into idle.");
+    vi_ctrl_args.vi_exit = arg_lit0("z", "exit", "exit voice interaction, Exit the current session");
+    vi_ctrl_args.end = arg_end(4);
+
+    const esp_console_cmd_t cmd = {
+        .command = "vi_ctrl",
+        .help = "voice interaction ctrl.",
+        .hint = NULL,
+        .func = &vi_ctrl_cmd,
+        .argtable = &vi_ctrl_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
 
 int app_cmd_init(void)
 {
@@ -612,6 +673,7 @@ int app_cmd_init(void)
     register_cmd_reboot();
     register_cmd_factory_reset();
     register_cmd_record();
+    register_cmd_vi_ctrl();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
     esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();

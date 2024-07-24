@@ -12,8 +12,8 @@ static const char *TAG = "audio_recorder";
 struct app_audio_recorder *gp_audio_recorder = NULL;
 
 #define EVENT_RECORD_STREAM_START     BIT0
-#define EVENT_RECORD_STEAM_STOP       BIT1
-#define EVENT_RECORD_STEAM_STOP_DONE  BIT2
+#define EVENT_RECORD_STREAM_STOP       BIT1
+#define EVENT_RECORD_STREAM_STOP_DONE  BIT2
 
 static void __data_lock(struct app_audio_recorder  *p_audio_recorder)
 {
@@ -29,6 +29,7 @@ static void app_audio_recorder_task(void *p_arg)
     struct app_audio_recorder *p_audio_recorder = (struct app_audio_recorder *)p_arg;
     EventBits_t bits = 0;
     while(1) {
+        
         bits = xEventGroupWaitBits(p_audio_recorder->event_group, 
                 EVENT_RECORD_STREAM_START, pdTRUE, pdTRUE, pdMS_TO_TICKS(5000));
         
@@ -39,9 +40,9 @@ static void app_audio_recorder_task(void *p_arg)
 
             while(1) {
                 bits = xEventGroupWaitBits(p_audio_recorder->event_group, 
-                        EVENT_RECORD_STEAM_STOP, pdTRUE, pdTRUE, 0);
-                if(bits & EVENT_RECORD_STEAM_STOP) {
-                    ESP_LOGI(TAG, "EVENT_RECORD_STEAM_STOP");
+                        EVENT_RECORD_STREAM_STOP, pdTRUE, pdTRUE, 0);
+                if(bits & EVENT_RECORD_STREAM_STOP) {
+                    ESP_LOGI(TAG, "EVENT_RECORD_STREAM_STOP");
                     break;
                 }
 
@@ -52,7 +53,7 @@ static void app_audio_recorder_task(void *p_arg)
             }
 
             free(audio_buffer);
-            xEventGroupSetBits(p_audio_recorder->event_group, EVENT_RECORD_STEAM_STOP_DONE);
+            xEventGroupSetBits(p_audio_recorder->event_group, EVENT_RECORD_STREAM_STOP_DONE);
         }
     }
 }
@@ -225,20 +226,21 @@ esp_err_t app_audio_recorder_stream_stop(void)
     p_audio_recorder->status = AUDIO_RECORDER_STATUS_IDLE;
     __data_unlock(p_audio_recorder);
 
-    xEventGroupSetBits(p_audio_recorder->event_group, EVENT_RECORD_STEAM_STOP);
-    xEventGroupWaitBits(p_audio_recorder->event_group, EVENT_RECORD_STEAM_STOP_DONE, 1, 1, pdMS_TO_TICKS(1000));
+    xEventGroupSetBits(p_audio_recorder->event_group, EVENT_RECORD_STREAM_STOP);
+    xEventGroupWaitBits(p_audio_recorder->event_group, EVENT_RECORD_STREAM_STOP_DONE, 1, 1, pdMS_TO_TICKS(1000));
 
-    //clear the ringbuffer
-    // void *tmp = NULL;
-    // size_t len = 0;
-    // while ((tmp = xRingbufferReceiveUpTo(p_audio_recorder->rb_handle, &len, 0, AUDIO_RECORDER_RINGBUF_SIZE))) {
-    //     vRingbufferReturnItem(p_audio_recorder->rb_handle, tmp);
-    // }
+    // don't clear ringbuffer
+
     bsp_codec_dev_stop(); //TODO
     return ESP_OK;
 }
 
-esp_err_t app_audio_recorder_file(void *p_filepath)
+esp_err_t app_audio_recorder_file_start(void *p_filepath)
+{
+    return ESP_OK;
+}
+
+esp_err_t app_audio_recorder_file_end(void)
 {
     return ESP_OK;
 }

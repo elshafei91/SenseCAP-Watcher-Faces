@@ -11,6 +11,14 @@ static const char *TAG = "audio_player";
 
 struct app_audio_player *gp_audio_player = NULL;
 
+#define EVENT_STREAM_START      BIT0
+#define EVENT_STREAM_STOP       BIT1
+#define EVENT_STREAM_STOP_DONE  BIT1
+
+static int __volume_get(void)
+{
+    return get_sound(MAX_CALLER);
+}
 
 static void __data_lock(struct app_audio_player  *p_audio_player)
 {
@@ -41,7 +49,7 @@ static esp_err_t __audio_player_set_fs(uint32_t sample_rate,
     if (ret != ESP_OK) {
         return ret;
     }    
-    ret = bsp_codec_volume_set(get_sound(MAX_CALLER), NULL);
+    ret = bsp_codec_volume_set(__volume_get(), NULL);
     if (ret != ESP_OK) {
         return ret;
     }
@@ -91,35 +99,26 @@ static bool __is_wav(struct app_audio_player *p_audio_player, uint8_t *p_buf, si
 static void app_audio_player_task(void *p_arg)
 {
     struct app_audio_player *p_audio_player = (struct app_audio_player *)p_arg;
-    
+    EventBits_t bits = 0;
     while(1) {
+        bits = xEventGroupWaitBits(p_audio_player->event_group, 
+                            EVENT_STREAM_START, pdTRUE, pdTRUE, pdMS_TO_TICKS(5000));
+        if(bits & EVENT_STREAM_START) {
+            ESP_LOGI(TAG, "EVENT_STREAM_START");
 
-        switch (p_audio_player->status)
-        {
-            case AUDIO_PLAYER_STATUS_IDLE:{
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-                break;
-            }
-            case AUDIO_PLAYER_STATUS_PLAYING_STREAM:{
+            UBaseType_t available_bytes = 0;
+            uint8_t *p_data = NULL;
+            size_t recv_len = 0;
+            size_t data_write = 0; // useless
+            bool is_play_done = false;
 
-                UBaseType_t available_bytes = 0;
-                uint8_t *p_data = NULL;
-                size_t recv_len = 0;
-                size_t data_write = 0; // useless
-                
-                // TODO catche 
-                vRingbufferGetInfo( p_audio_player->rb_handle, NULL, NULL, NULL, NULL, &available_bytes);
-                if( available_bytes== 0 ) {
-                    // ESP_LOGI(TAG, "no data");
-                    __data_lock(p_audio_player);
-                    if( p_audio_player->stream_finished) {
-                        p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
-                    } 
-                    __data_unlock(p_audio_player);
-                    vTaskDelay(200 / portTICK_PERIOD_MS);
+            while(1) {
+                bits = xEventGroupWaitBits(p_audio_player->event_group, 
+                                        EVENT_STREAM_STOP, pdTRUE, pdTRUE, pdMS_TO_TICKS(0));
+                if(bits & EVENT_STREAM_STOP) {
+                    ESP_LOGI(TAG, "EVENT_STREAM_STOP");
                     break;
                 }
-            
                 // xRingbufferReceiveUpTo and vRingbufferReturnItem can be interrupted by other tasks.
                 p_data = xRingbufferReceiveUpTo( p_audio_player->rb_handle, &recv_len, pdMS_TO_TICKS(500), AUDIO_PLAYER_RINGBUF_CHUNK_SIZE);
                 if(p_data != NULL) {
@@ -135,14 +134,16 @@ static void app_audio_player_task(void *p_arg)
                     __data_lock(p_audio_player);
                     if( p_audio_player->stream_finished) {
                         p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
-                    } 
+                        is_play_done = true;
+                    }
                     __data_unlock(p_audio_player);
                 }
-                break;
+
+                if(is_play_done) {  
+                    ESP_LOGI(TAG, "play done");
+                    break;
+                }
             }
-            default:
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-                break;
         }
     }
 }
@@ -244,10 +245,20 @@ int app_audio_player_status_get(void)
 
 esp_err_t app_audio_player_stop(void)
 {
+    struct app_audio_player * p_audio_player = gp_audio_player;
+    if( p_audio_player == NULL) {
+        return ESP_FAIL;
+    }
+    __data_lock(p_audio_player);
+    if( p_audio_player->status != AUDIO_PLAYER_STATUS_IDLE) {
+        xEventGroupSetBits(p_audio_player->event_group, EVENT_STREAM_STOP); // TODO
+    }
+    p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
+    __data_unlock(p_audio_player);
     return ESP_OK;
 }
 
-esp_err_t app_audio_player_stream_start(size_t len)
+esp_err_t app_audio_player_stream_init(size_t len)
 { 
     struct app_audio_player * p_audio_player = gp_audio_player;
     if( p_audio_player == NULL) {
@@ -281,6 +292,18 @@ esp_err_t app_audio_player_stream_start(size_t len)
     __data_unlock(p_audio_player);
 
     return ret;
+}
+
+
+esp_err_t app_audio_player_stream_start(void)
+{
+    struct app_audio_player * p_audio_player = gp_audio_player;
+    if( p_audio_player == NULL) {
+        return ESP_FAIL;
+    }
+
+    xEventGroupSetBits(p_audio_player->event_group, EVENT_STREAM_START);
+    return ESP_OK;
 }
 
 esp_err_t app_audio_player_stream_send(uint8_t *p_buf, 
@@ -344,8 +367,10 @@ esp_err_t app_audio_player_stream_stop(void)
 
     __data_lock(p_audio_player);
     p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
-    p_audio_player->stream_finished = true;
     __data_unlock(p_audio_player);
+
+    xEventGroupSetBits(p_audio_player->event_group, EVENT_STREAM_STOP);
+    xEventGroupWaitBits(p_audio_player->event_group, EVENT_STREAM_STOP_DONE, 1, 1, pdMS_TO_TICKS(1000));
 
     //clear the ringbuffer
     void *tmp = NULL;

@@ -9,13 +9,13 @@
 #include "sensecap-watcher.h"
 
 #define AUDIO_PLAYER_TASK_STACK_SIZE  5*1024
-#define AUDIO_PLAYER_TASK_PRIO        10
+#define AUDIO_PLAYER_TASK_PRIO        16
 #define AUDIO_PLAYER_TASK_CORE        1
 
 // sample rate: 16000, bit depth: 16, channels: 1; 32000 size per second;
 // 10*32000  can cache 10s of audio. 
-#define AUDIO_PLAYER_RINGBUF_SIZE    10*32000      
-#define AUDIO_PLAYER_RINGBUF_CACHE_SIZE   2*32000  //If the audio content is large, maybe cache 2s
+#define AUDIO_PLAYER_RINGBUF_SIZE         8*32000      
+#define AUDIO_PLAYER_RINGBUF_CACHE_SIZE   1*32000  //If the audio content is large, maybe cache 2s
 #define AUDIO_PLAYER_RINGBUF_CHUNK_SIZE   16000
 
 typedef struct {
@@ -77,12 +77,15 @@ int app_audio_player_status_get(void);
 
 esp_err_t app_audio_player_stop(void);
 
-esp_err_t app_audio_player_stream_start(size_t len);
+esp_err_t app_audio_player_stream_init(size_t len);
 
 // will decode audio data from p_buf, and send to ring buffer
 esp_err_t app_audio_player_stream_send(uint8_t *p_buf, 
                                         size_t len, 
                                         TickType_t xTicksToWait);
+
+// start play stream from ring buffer
+esp_err_t app_audio_player_stream_start(void);
 
 esp_err_t app_audio_player_stream_finish(void);
 
