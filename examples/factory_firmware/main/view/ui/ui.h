@@ -300,6 +300,16 @@ extern lv_obj_t * ui_Page_Extension;
 extern lv_obj_t * ui_Label2;
 void ui_event_extensionback(lv_event_t * e);
 extern lv_obj_t * ui_extensionback;
+void ui_event_Panel3(lv_event_t * e);
+extern lv_obj_t * ui_Panel3;
+extern lv_obj_t * ui_extenlabel3;
+extern lv_obj_t * ui_Panel2;
+extern lv_obj_t * ui_extenlabel2;
+extern lv_obj_t * ui_Panel1;
+extern lv_obj_t * ui_extenlabel1;
+extern lv_obj_t * ui_Panel4;
+extern lv_obj_t * ui_extenlabel4;
+extern lv_obj_t * ui_extensionlist;
 // SCREEN: ui_Page_OTA
 void ui_Page_OTA_screen_init(void);
 extern lv_obj_t * ui_Page_OTA;

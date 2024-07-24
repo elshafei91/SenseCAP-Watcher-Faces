@@ -328,6 +328,16 @@ lv_obj_t * ui_Page_Extension;
 lv_obj_t * ui_Label2;
 void ui_event_extensionback(lv_event_t * e);
 lv_obj_t * ui_extensionback;
+void ui_event_Panel3(lv_event_t * e);
+lv_obj_t * ui_Panel3;
+lv_obj_t * ui_extenlabel3;
+lv_obj_t * ui_Panel2;
+lv_obj_t * ui_extenlabel2;
+lv_obj_t * ui_Panel1;
+lv_obj_t * ui_extenlabel1;
+lv_obj_t * ui_Panel4;
+lv_obj_t * ui_extenlabel4;
+lv_obj_t * ui_extensionlist;
 
 
 // SCREEN: ui_Page_OTA
@@ -1352,6 +1362,14 @@ void ui_event_Page_Extension(lv_event_t * e)
     }
 }
 void ui_event_extensionback(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        backmenu_cb(e);
+    }
+}
+void ui_event_Panel3(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
