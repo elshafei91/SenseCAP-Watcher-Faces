@@ -33,6 +33,10 @@
 #include "app_taskflow.h"
 #include "view.h"
 
+#include "app_audio_player.h"
+#include "app_audio_recorder.h"
+#include "app_voice_interaction.h"
+
 
 #ifdef CONFIG_INTR_TRACKING
 #include "esp_intr_types.h"
@@ -176,6 +180,11 @@ void app_init(void)
     app_ble_init();
     app_cmd_init();
     // app_sr_start(false);
+    
+    app_audio_player_init();
+    app_audio_recorder_init();
+    app_voice_interaction_init();
+
 }
 
 void task_app_init(void *p_arg)
