@@ -16,6 +16,18 @@ extern "C"
 #define TF_MODULE_HTTP_ALARM_RVERSION "1.0.0"
 #define TF_MODULE_HTTP_ALARM_DESC     "http alarm module"
 
+#define TF_MODULE_HTTP_ALARM_TASK_STACK_SIZE    1024 * 5
+#define TF_MODULE_HTTP_ALARM_TASK_PRIO          3
+#define TF_MODULE_HTTP_ALARM_QUEUE_SIZE         3
+
+#if CONFIG_ENABLE_TEST_ENV
+#define CONFIG_TF_MODULE_HTTP_ALARM_SERV_HOST       "https://sensecraft-aiservice-test-api.seeed.cc"
+#define CONFIG_TF_MODULE_HTTP_ALARM_SERV_REQ_PATH   "/v1/api/notification"
+#else
+#define CONFIG_TF_MODULE_HTTP_ALARM_SERV_HOST       "https://sensecraft-aiservice-api.seeed.cc"
+#define CONFIG_TF_MODULE_HTTP_ALARM_SERV_REQ_PATH   "/v1/api/notification"
+#endif
+
 #define TF_MODULE_HTTP_ALARM_DEFAULT_SILENCE_DURATION  30
 
 struct tf_module_http_alarm_params
@@ -35,6 +47,11 @@ typedef struct tf_module_http_alarm
     struct tf_module_http_alarm_params params;
     time_t last_alarm_time;
     SemaphoreHandle_t sem_handle;
+    EventGroupHandle_t event_group;
+    QueueHandle_t queue_handle;
+    TaskHandle_t task_handle;
+    StaticTask_t *p_task_buf;
+    StackType_t *p_task_stack_buf;
     char url[256];
     char token[128];
     char head[128];
