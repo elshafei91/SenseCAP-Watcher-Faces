@@ -38,6 +38,7 @@ uint8_t g_avarlive = 0;     // 0: current page is avatar,       1: current page 
 uint8_t g_tasktype = 0;     // 0: local task,                   1: remote task
 uint8_t g_backpage = 0;
 uint8_t g_avalivjump = 0;
+uint8_t g_push2talk_timer = 0;// 0: Speaking countdown,         1: Scrolling countdown
 
 static uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
 static uint8_t standby_mode = 0;    // 0: on;     1: off
@@ -49,6 +50,7 @@ extern uint8_t g_dev_binded;
 extern uint8_t g_shutdown;
 extern int g_sleep_time;
 extern int g_sleep_switch;
+extern uint8_t g_push2talk_status;
 
 static lv_obj_t *qr;
 static uint8_t loading_flag = 0;
@@ -61,6 +63,7 @@ static lv_obj_t *avatar_image   = NULL;
 static lv_obj_t *virtual_image  = NULL;
 static lv_obj_t *flag_image     = NULL;
 static lv_obj_t *standby_image  = NULL;
+static lv_obj_t *push2talk_image = NULL;
 
 static int current_img_index = 0;
 static uint8_t vir_load_count = 0;
@@ -148,6 +151,17 @@ static uint32_t inactive_time = 0;
 static int get_inactive_time;
 static int inactive_threshold;
 
+// Push2talk timer
+static void view_push2talk_timer_callback(void *arg);
+static const esp_timer_create_args_t view_push2talk_timer_args = { .callback = &view_push2talk_timer_callback, .name = "view push2talk" };
+static esp_timer_handle_t view_push2talk_timer;
+static uint8_t push2talk_timer_counter = 0;
+
+static void view_push2talk_msg_timer_callback(void *arg);
+static const esp_timer_create_args_t view_push2talk_msg_timer_args = { .callback = &view_push2talk_msg_timer_callback, .name = "view push2talk msg" };
+static esp_timer_handle_t view_push2talk_msg_timer;
+static uint8_t push2talk_panel_idx = 0;
+
 static void async_emoji_switch_scr(void *arg)
 {
     lv_img_dsc_t *current_img = (lv_img_dsc_t *)arg;
@@ -166,6 +180,10 @@ static void async_emoji_switch_scr(void *arg)
     if(emoji_switch_scr == SCREEN_STANDBY)
     {
         lv_img_set_src(standby_image, current_img);
+    }
+    if(emoji_switch_scr == SCREEN_PUSH2TALK)
+    {
+        lv_img_set_src(push2talk_image, current_img);
     }
 }
 
@@ -373,13 +391,16 @@ void virscrload_cb(lv_event_t *e)
     if(virtual_image == NULL)virtual_image = lv_img_create(ui_Page_Avatar);
     if(flag_image == NULL)flag_image = lv_img_create(ui_Page_Flag);
     if(standby_image == NULL)standby_image = lv_img_create(ui_Page_Standby);
+    if(push2talk_image == NULL)push2talk_image = lv_img_create(ui_Page_Push2talk);
     lv_obj_set_align(avatar_image, LV_ALIGN_CENTER);
     lv_obj_set_align(virtual_image, LV_ALIGN_CENTER);
     lv_obj_set_align(flag_image, LV_ALIGN_CENTER);
     lv_obj_set_align(standby_image, LV_ALIGN_CENTER);
+    lv_obj_set_align(push2talk_image, LV_ALIGN_CENTER);
     lv_obj_move_background(flag_image);
     lv_obj_move_background(virtual_image);
     lv_obj_move_background(standby_image);
+    lv_obj_move_background(push2talk_image);
 }
 
 void virscrunload_cb(lv_event_t * e)
@@ -1233,17 +1254,35 @@ void sleepswitch_cb(lv_event_t * e)
 
 void p2tclick_cb(lv_event_t * e)
 {
-    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    if(g_push2talk_status == EMOJI_SPEAKING || g_push2talk_status == EMOJI_ANALYZING){
+        lv_arc_set_value(ui_push2talkarc, 0);
+
+        g_push2talk_timer = 1;
+        view_push2talk_timer_start();
+
+        lv_obj_clear_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+
+        lv_group_add_obj(g_main, ui_push2talkarc);
+
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
+    }
 }
 
 void push2talkcancel_cb(lv_event_t * e)
 {
-
+    //TODO
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
 }
 
 void push2talkcheck_cb(lv_event_t * e)
 {
-
+    //TODO
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                            VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
 }
 
 void p2tvaluechange_cb(lv_event_t * e)
@@ -1251,10 +1290,14 @@ void p2tvaluechange_cb(lv_event_t * e)
     ESP_LOGI(TAG, "p2tvaluechange_cb");
     static int16_t push2talk_arc;
     push2talk_arc = lv_arc_get_value(ui_push2talkarc);
-    if(push2talk_arc > 5)
+    if(push2talk_arc == 9)
     {
+        view_push2talk_timer_stop();
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
         lv_group_set_editing(g_main, false);
+
+        // TODO
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
     }
 }
 
@@ -1947,8 +1990,89 @@ void view_sleep_timer_start()
     ESP_ERROR_CHECK(esp_timer_start_periodic(view_sleep_timer, 1000000));
 }
 
+static void view_push2talk_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+
+    static int16_t push2talk_arc;
+    if(g_push2talk_timer == 0)
+    {
+        push2talk_timer_counter++;
+        if(push2talk_timer_counter==10){
+            lv_event_send(ui_Page_Push2talk, LV_EVENT_SHORT_CLICKED, NULL);
+            push2talk_timer_counter = 0;
+        }
+    }else{
+        push2talk_arc = lv_arc_get_value(ui_push2talkarc);
+        lv_arc_set_value(ui_push2talkarc, push2talk_arc+1);
+        lv_event_send(ui_push2talkarc, LV_EVENT_VALUE_CHANGED, NULL);
+    }
+
+    lvgl_port_unlock();
+}
+
+void view_push2talk_timer_start()
+{
+    if (esp_timer_is_active(view_push2talk_timer))
+    {
+        esp_timer_stop(view_push2talk_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_periodic(view_push2talk_timer, 1000000));
+}
+
+void view_push2talk_timer_stop()
+{
+    if (esp_timer_is_active(view_push2talk_timer))
+    {
+        esp_timer_stop(view_push2talk_timer);
+    }
+}
+
+static void view_push2talk_msg_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+
+    ESP_LOGI(TAG, "push2talk_panel_idx is %d ", push2talk_panel_idx);
+
+    lv_obj_t *push2talk_panel_child = lv_obj_get_child(ui_push2talkpanel3, push2talk_panel_idx);
+
+    if(push2talk_panel_idx == 7)
+    {
+        lv_obj_clear_flag(push2talk_panel_child, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_scroll_to_view(push2talk_panel_child, LV_ANIM_ON);
+        lv_group_add_obj(g_main, ui_p2tcancel);
+        lv_group_add_obj(g_main, ui_p2tcheck);
+        lv_group_focus_obj(ui_p2tcheck);
+    }else{
+        lv_obj_clear_flag(push2talk_panel_child, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_scroll_to_view(push2talk_panel_child, LV_ANIM_ON);
+        lv_group_add_obj(g_main, push2talk_panel_child);
+        lv_group_focus_obj(push2talk_panel_child);
+    }
+
+    push2talk_panel_idx ++;
+    if(push2talk_panel_idx == 8)
+    {
+        esp_timer_stop(view_push2talk_msg_timer);
+        push2talk_panel_idx = 0;
+    }
+
+    lvgl_port_unlock();
+}
+
+void view_push2talk_msg_timer_start()
+{
+    if (esp_timer_is_active(view_push2talk_msg_timer))
+    {
+        esp_timer_stop(view_push2talk_msg_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_periodic(view_push2talk_msg_timer, 500000));
+}
+
 void view_timer_create()
 {
     ESP_ERROR_CHECK(esp_timer_create(&view_ble_switch_timer_args, &view_ble_switch_timer));
     ESP_ERROR_CHECK(esp_timer_create(&view_sleep_timer_args, &view_sleep_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&view_push2talk_timer_args, &view_push2talk_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&view_push2talk_msg_timer_args, &view_push2talk_msg_timer));
 }

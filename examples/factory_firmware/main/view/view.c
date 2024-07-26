@@ -25,12 +25,14 @@ lv_obj_t * pre_foucsed_obj = NULL;
 uint8_t g_group_layer_ = 0;
 uint8_t g_shutdown = 0;
 uint8_t g_dev_binded = 0;
+uint8_t g_push2talk_status = 0;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_guide_disable;
 extern uint8_t g_avarlive;
 extern uint8_t g_tasktype;
 extern uint8_t g_backpage;
+extern uint8_t g_push2talk_timer;
 
 extern uint8_t emoji_switch_scr;
 
@@ -530,9 +532,86 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            //TODO: push2talk
-            case VIEW_EVENT_PUSH2TALK:{
-                ESP_LOGI(TAG, "event: VIEW_EVENT_PUSH2TALK");
+            case VIEW_EVENT_VI_RECORDING:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_RECORDING");
+
+                view_push2talk_timer_stop();
+                lv_group_remove_all_objs(g_main);
+
+                lv_obj_add_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                
+                _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
+                emoji_switch_scr = SCREEN_PUSH2TALK;
+                emoji_timer(EMOJI_LISTENING);
+                g_push2talk_status = EMOJI_LISTENING;
+
+                break;
+            }
+
+            case VIEW_EVENT_VI_ANALYZING:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ANALYZING");
+
+                lv_obj_clear_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                
+                emoji_switch_scr = SCREEN_PUSH2TALK;
+                emoji_timer(EMOJI_ANALYZING);
+                g_push2talk_status = EMOJI_ANALYZING;
+
+                break;
+            }
+
+            case VIEW_EVENT_VI_PLAYING:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAYING");
+                struct view_data_vi_result *push2talk_result = (struct view_data_vi_result *)event_data;
+                ESP_LOGI("push2talk", "result mode : %d", push2talk_result->mode);
+                if (push2talk_result->p_audio_text != NULL) {
+                    ESP_LOGI("push2talk", "audio text : %s", push2talk_result->p_audio_text);
+                } else {
+                    ESP_LOGI("push2talk", "audio text is NULL");
+                }
+
+                // TODO:mode 0
+                // const char push2talk_msg = push2talk_result->p_audio_text;
+                // lv_label_set_text(ui_p2tspeak, push2talk_msg);
+
+                // lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                // lv_obj_clear_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+
+                // emoji_switch_scr = SCREEN_PUSH2TALK;
+                // emoji_timer(EMOJI_SPEAKING);
+                // g_push2talk_status = EMOJI_SPEAKING;
+
+                // g_push2talk_timer = 0;
+                // view_push2talk_timer_start();
+
+                // TODO:mode 1
+                emoji_timer(EMOJI_STOP);
+                lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                lv_group_remove_all_objs(g_main);
+
+                uint32_t child_cnt = lv_obj_get_child_cnt(ui_push2talkpanel3);
+                lv_obj_t *push2talk_panel_child;
+
+                for(uint8_t i =0; i< child_cnt; i++)
+                {
+                    push2talk_panel_child = lv_obj_get_child(ui_push2talkpanel3, i);
+                    lv_obj_add_flag(push2talk_panel_child, LV_OBJ_FLAG_HIDDEN);
+                }
+
+                lv_obj_clear_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_set_scroll_snap_y(ui_push2talkpanel3, LV_SCROLL_SNAP_CENTER);
+                view_push2talk_msg_timer_start();
+
+                break;
+            }
+
+            case VIEW_EVENT_VI_ERROR:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ERROR");
 
                 break;
             }
@@ -708,6 +787,23 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_MODE_STANDBY, 
                                                             __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_RECORDING, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_ANALYZING, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_PLAYING, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_ERROR, 
+                                                            __view_event_handler, NULL, NULL));
+    
 
     if((bat_per < 1) && (! is_charging))
     {

@@ -244,8 +244,6 @@ enum {
     VIEW_EVENT_AI_CAMERA_READY,
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
-
-    VIEW_EVENT_PUSH2TALK,       // pushtotalk
    
     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, //NULL
     VIEW_EVENT_TASK_FLOW_STOP, //NULL
