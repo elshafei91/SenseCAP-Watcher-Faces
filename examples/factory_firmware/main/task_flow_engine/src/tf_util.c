@@ -23,3 +23,12 @@ bool tf_cJSON_IsGeneralTrue(const cJSON * const item)
     else if (cJSON_IsNumber(item)) return (item->valueint != 0);
     else return false;
 }
+
+char *tf_strdup(const char *s)
+{
+    size_t len = strlen(s) + 1;
+    void *new = heap_caps_calloc(1, len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (new == NULL)
+        return NULL;
+    return (char *)memcpy(new, s, len);
+}

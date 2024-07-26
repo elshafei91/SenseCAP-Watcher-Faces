@@ -25,6 +25,7 @@
 #define ESP_ERR_VI_NO_MEM          (ESP_ERR_NO_MEM)
 #define ESP_ERR_VI_HTTP_CONNECT    (ESP_ERR_HTTP_CONNECT)
 #define ESP_ERR_VI_HTTP_RESP       (ESP_ERR_HTTP_FETCH_HEADER)
+#define ESP_ERR_VI_NET_CONNECT     (ESP_ERR_WIFI_NOT_CONNECT)
 
 
 #define VI_MODE_CHAT     0 
@@ -62,6 +63,9 @@ struct app_voice_interaction {
     int  content_length;
     int  err_code;
     bool is_wait_resp;
+    bool need_get_taskflow;
+    bool taskflow_pause;
+    bool new_session;
 };
 
 esp_err_t app_voice_interaction_init(void);

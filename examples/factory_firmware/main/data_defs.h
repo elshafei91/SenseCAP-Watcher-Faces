@@ -174,7 +174,8 @@ enum task_cfg_id{
 
 struct view_data_vi_result
 {
-    int  mode; // 0:chat; 1:task
+    int mode; // 0:chat; 1:task; 2:auto execute task
+    int audio_tm_s;
     char *p_audio_text; // need free after use
     char *items[TASK_CFG_ID_MAX]; // need free after use, if empty, means no need to display
 };
@@ -252,12 +253,14 @@ enum {
     VIEW_EVENT_TASK_FLOW_ERROR, // char msg[64]
 
     // voice interaction
+    VIEW_EVENT_VI_TASKFLOW_PAUSE, //NULL
     VIEW_EVENT_VI_RECORDING, //NULL
     VIEW_EVENT_VI_ANALYZING, //NULL
     VIEW_EVENT_VI_PLAYING, // struct view_data_vi_result
+    VIEW_EVENT_VI_PLAY_FINISH, // NULL
     VIEW_EVENT_VI_ERROR, // int ,voice interaction run error code.
     VIEW_EVENT_VI_STOP,  // NULL,  UI post the event. stop the voice interaction when analyzing or palying 
-    VIEW_EVENT_VI_EXIT,  // NULL, UI post the event. Exit the current session
+    VIEW_EVENT_VI_EXIT,  // int, 0: Direct exit, 1: Run new taskflow after exit.  UI post the event. Exit the current session
 
     VIEW_EVENT_ALL,
 };

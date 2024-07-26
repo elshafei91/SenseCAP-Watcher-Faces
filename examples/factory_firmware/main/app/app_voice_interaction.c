@@ -51,6 +51,10 @@ static void __vi_stop( struct app_voice_interaction *p_vi)
 static void __vi_exit( struct app_voice_interaction *p_vi)
 {
     xEventGroupSetBits(p_vi->event_group, EVENT_VI_EXIT);
+    if( p_vi->cur_status !=  VI_STATUS_IDLE ){
+        ESP_LOGI(TAG, "vi not idle, stop it first");
+        __vi_stop(p_vi);
+    }
 }
 
 static void __record_start( struct app_voice_interaction *p_vi)
@@ -217,15 +221,27 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             break;
         }
         case VI_STATUS_WAKE_START: {
-            ESP_LOGI(TAG, "VI_STATUS_WAKE_START");  
-            if( p_vi->session_id[0] == 0 ) {
+            ESP_LOGI(TAG, "VI_STATUS_WAKE_START");
+            if( !p_vi->net_flag ) {
+                ESP_LOGI(TAG, "network not ready");
+                p_vi->err_code = ESP_ERR_VI_NET_CONNECT;
+                p_vi->next_status = VI_STATUS_ERROR;
+                break;
+            }
+
+            if( p_vi->new_session || p_vi->session_id[0] == 0 ) {
                 UUIDGen( p_vi->session_id );
                 ESP_LOGI(TAG, "session_id:%s", p_vi->session_id);
             }
-            // pause taskflow TODO
-
-            app_rgb_set(SR, RGB_BREATH_BLUE); //set RGB
-            // TODO play wake sound
+            
+            if( p_vi->new_session ) {
+                p_vi->new_session = false;
+                //TODO pause taskflow 
+                if( p_vi->taskflow_pause) {
+                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
+                                            VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+                }
+            }
             p_vi->next_status = VI_STATUS_RECORDING;
 
             break;
@@ -242,6 +258,9 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             size_t send_len = 0;
             int64_t net_send_tm_us = 0;
             esp_http_client_handle_t client;
+
+            // TODO play wake sound
+            app_rgb_set(SR, RGB_BREATH_BLUE); //set RGB
 
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                                     VIEW_EVENT_VI_RECORDING, NULL, NULL, pdMS_TO_TICKS(10000));
@@ -285,6 +304,8 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                     break;
                 }
             }
+
+            app_rgb_set(SR, RGB_OFF);
 
             // The audio may not be sent completely, but the UI needs to show that it is being analyzed.
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
@@ -437,9 +458,16 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             p_vi->next_status = next_status;
             break;
         }
-        case VI_STATUS_STOP:
-        case VI_STATUS_FINISH: {
+        case VI_STATUS_FINISH:
+        {
             ESP_LOGI(TAG, "VI_STATUS_FINISH");
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
+                        VIEW_EVENT_VI_PLAY_FINISH, NULL, NULL, pdMS_TO_TICKS(10000));
+            // No need for break
+        }
+        case VI_STATUS_STOP: 
+        {
+            ESP_LOGI(TAG, "VI_STATUS_STOP");
             esp_http_client_handle_t client = p_vi->client;
 
             app_rgb_set(SR, RGB_OFF);
@@ -456,8 +484,18 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
         case VI_STATUS_EXIT: {
             ESP_LOGI(TAG, "VI_STATUS_EXIT");
             memset(p_vi->session_id, 0, sizeof(p_vi->session_id));
-            p_vi->next_status = VI_STATUS_IDLE;
-            //TODO: resume taskflow
+
+            if( p_vi->need_get_taskflow ) {
+                //Do not resume the last task, and run the new task directly
+                p_vi->need_get_taskflow = false;
+                p_vi->next_status = VI_STATUS_TASKFLOW_GET;
+            } else {
+                if( p_vi->taskflow_pause) {
+                    ESP_LOGI(TAG, "resume taskflow");    
+                    //TODO: resume taskflow
+                }
+                p_vi->next_status = VI_STATUS_IDLE;
+            }
             break;
         }
         case VI_STATUS_ERROR: {
@@ -472,6 +510,12 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                         VIEW_EVENT_VI_ERROR, &p_vi->err_code, sizeof(p_vi->err_code), pdMS_TO_TICKS(10000));
 
+            p_vi->next_status = VI_STATUS_IDLE;
+            break;
+        }
+        case VI_STATUS_TASKFLOW_GET:{
+            ESP_LOGI(TAG, "VI_STATUS_TASKFLOW_GET");
+            //TODO download taskflow
             p_vi->next_status = VI_STATUS_IDLE;
             break;
         }
@@ -491,7 +535,6 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
 static void app_voice_interaction_task(void *p_arg)
 {
     struct app_voice_interaction *p_vi = (struct app_voice_interaction *)p_arg;
-    EventBits_t bits;
     while(1) {
         __status_machine_handle(p_vi);
     }
@@ -544,6 +587,13 @@ static void __event_handler(void* handler_args,
             case VIEW_EVENT_VI_EXIT:
             {
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_EXIT");
+                int exit_mode = *(int *)event_data;
+                if( exit_mode ) {
+                    ESP_LOGI(TAG, "need get taskflow");
+                    p_vi->need_get_taskflow = true;
+                } else {
+                    p_vi->need_get_taskflow = false;
+                }
                 __vi_exit(p_vi);
                 break;
             }
@@ -600,6 +650,15 @@ esp_err_t app_voice_interaction_init(void)
     memset(p_vi, 0, sizeof( struct app_voice_interaction ));
     
     __url_token_set(p_vi); 
+    p_vi->cur_status = VI_STATUS_IDLE;
+    p_vi->next_status = VI_STATUS_IDLE;
+    p_vi->need_delete_client = false;
+    p_vi->content_length = 0;
+    p_vi->err_code = 0;
+    p_vi->is_wait_resp = false;
+    p_vi->need_get_taskflow = false;
+    p_vi->taskflow_pause = false;
+    p_vi->new_session = true;
 
     p_vi->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_vi->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
@@ -756,9 +815,29 @@ int app_vi_result_parse(const char *p_str, size_t len,
             p_ret->items[TASK_CFG_ID_FEATURE] = strdup(p_feature->valuestring);
         }
 
+        //"notification": ["app push message","rgb"]
         cJSON *p_notification = cJSON_GetObjectItem(p_task_summary, "notification");
-        if ( p_notification && cJSON_IsString(p_notification)) {
-            p_ret->items[TASK_CFG_ID_NOTIFICATION]= strdup(p_notification->valuestring);
+        if ( p_notification && cJSON_IsArray(p_notification)) {
+
+            char *result = NULL;
+            size_t length = cJSON_GetArraySize(p_notification);
+            for (size_t i = 0; i < length; i++) {
+                cJSON *item = cJSON_GetArrayItem(p_notification, i);
+                size_t item_len = strlen(item->valuestring);
+                size_t new_size = (result!=NULL) ? strlen(result): 0 + item_len + 2; 
+
+                result = (char *)psram_realloc(result, new_size);
+                if (result == NULL) {
+                    ESP_LOGE(TAG, "realloc failed");
+                    break;
+                }
+
+                strcat(result, item->valuestring);
+                if (i < length - 1) {
+                    strcat(result, "\n");
+                }
+            }
+            p_ret->items[TASK_CFG_ID_NOTIFICATION] = result;
         }
 
         cJSON *p_time = cJSON_GetObjectItem(p_task_summary, "time");

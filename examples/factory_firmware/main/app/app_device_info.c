@@ -171,9 +171,9 @@ static esp_err_t __local_service_cfg_from_json(local_service_cfg_t *local_svc_cf
         local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
         item_type1->enable = cJSON_IsTrue(item_enable);
         if (item_type1->url != NULL) free(item_type1->url);
-        item_type1->url = strdup(item_url->valuestring);
+        item_type1->url = strdup_psram(item_url->valuestring);
         if (item_type1->token != NULL) free(item_type1->token);
-        item_type1->token = strdup(item_token->valuestring);
+        item_type1->token = strdup_psram(item_token->valuestring);
     }
 
     return ESP_OK;
@@ -191,8 +191,8 @@ static void __deep_copy_local_service_cfg(local_service_cfg_t *dst, local_servic
         if (dst->cfg_items_type1[i].url != NULL) free(dst->cfg_items_type1[i].url);
         if (dst->cfg_items_type1[i].token != NULL) free(dst->cfg_items_type1[i].token);
         dst->cfg_items_type1[i].enable = src->cfg_items_type1[i].enable;
-        dst->cfg_items_type1[i].url = strdup(src->cfg_items_type1[i].url);
-        dst->cfg_items_type1[i].token = strdup(src->cfg_items_type1[i].token);
+        dst->cfg_items_type1[i].url = strdup_psram(src->cfg_items_type1[i].url);
+        dst->cfg_items_type1[i].token = strdup_psram(src->cfg_items_type1[i].token);
     }
     
 }
@@ -487,8 +487,8 @@ void init_local_service_cfg_from_nvs()
     for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
     {
         local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
-        if (item_type1->url == NULL) item_type1->url = strdup("");
-        if (item_type1->token == NULL) item_type1->token = strdup("");
+        if (item_type1->url == NULL) item_type1->url = strdup_psram("");
+        if (item_type1->token == NULL) item_type1->token = strdup_psram("");
         ESP_LOGI(TAG, "type1/cfg_%d: enable=%d, url=%s, token=%s", i, item_type1->enable, item_type1->url, item_type1->token);
     }
 
@@ -952,8 +952,8 @@ esp_err_t get_local_service_cfg_type1(int caller, int cfg_index, local_service_c
 
     xSemaphoreTake(cfg->mutex, portMAX_DELAY);
     pcfg->enable = local_svc_cfg->cfg_items_type1[cfg_index].enable;
-    pcfg->url = strdup(local_svc_cfg->cfg_items_type1[cfg_index].url);
-    pcfg->token = strdup(local_svc_cfg->cfg_items_type1[cfg_index].token);
+    pcfg->url = strdup_psram(local_svc_cfg->cfg_items_type1[cfg_index].url);
+    pcfg->token = strdup_psram(local_svc_cfg->cfg_items_type1[cfg_index].token);
     xSemaphoreGive(cfg->mutex);
 
     return ESP_OK;
@@ -970,9 +970,9 @@ esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, ch
     xSemaphoreTake(cfg->mutex, portMAX_DELAY);
     local_svc_cfg->cfg_items_type1[cfg_index].enable = enable;
     if (local_svc_cfg->cfg_items_type1[cfg_index].url != NULL) free(local_svc_cfg->cfg_items_type1[cfg_index].url);
-    local_svc_cfg->cfg_items_type1[cfg_index].url = strdup(url);
+    local_svc_cfg->cfg_items_type1[cfg_index].url = strdup_psram(url);
     if (local_svc_cfg->cfg_items_type1[cfg_index].token != NULL) free(local_svc_cfg->cfg_items_type1[cfg_index].token);
-    local_svc_cfg->cfg_items_type1[cfg_index].token = strdup(token);
+    local_svc_cfg->cfg_items_type1[cfg_index].token = strdup_psram(token);
     esp_timer_stop(cfg->timer_handle);
     ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
     xSemaphoreGive(cfg->mutex);
