@@ -20,6 +20,7 @@ void ui_Page_Extension_screen_init(void)
     lv_obj_set_y(ui_Label2, 0);
     lv_obj_set_align(ui_Label2, LV_ALIGN_CENTER);
     lv_label_set_text(ui_Label2, "Feature\nComing\nSoon");
+    lv_obj_add_flag(ui_Label2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_set_style_text_color(ui_Label2, lv_color_hex(0xA9DE2C), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_Label2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_Label2, &ui_font_Font1, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -30,7 +31,7 @@ void ui_Page_Extension_screen_init(void)
     lv_obj_set_x(ui_extensionback, 0);
     lv_obj_set_y(ui_extensionback, 120);
     lv_obj_set_align(ui_extensionback, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_extensionback, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
+    lv_obj_add_flag(ui_extensionback, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_extensionback, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_extensionback, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_extensionback, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);

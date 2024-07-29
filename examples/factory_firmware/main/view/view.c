@@ -26,6 +26,7 @@ uint8_t g_group_layer_ = 0;
 uint8_t g_shutdown = 0;
 uint8_t g_dev_binded = 0;
 uint8_t g_push2talk_status = 0;
+uint8_t g_taskflow_pause = 0;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_guide_disable;
@@ -532,6 +533,14 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
+            case VIEW_EVENT_VI_TASKFLOW_PAUSE:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_TASKFLOW_PAUSE");
+
+                g_taskflow_pause = 1;
+                
+                break;
+            }
+
             case VIEW_EVENT_VI_RECORDING:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_RECORDING");
 
@@ -568,44 +577,56 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAYING");
                 struct view_data_vi_result *push2talk_result = (struct view_data_vi_result *)event_data;
                 ESP_LOGI("push2talk", "result mode : %d", push2talk_result->mode);
-                if (push2talk_result->p_audio_text != NULL) {
-                    ESP_LOGI("push2talk", "audio text : %s", push2talk_result->p_audio_text);
-                } else {
-                    ESP_LOGI("push2talk", "audio text is NULL");
-                }
-
                 // TODO:mode 0
-                // const char push2talk_msg = push2talk_result->p_audio_text;
-                // lv_label_set_text(ui_p2tspeak, push2talk_msg);
+                if(push2talk_result->mode== 0){
+                    g_push2talk_timer = 0;
 
-                // lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
-                // lv_obj_clear_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                    if (push2talk_result->p_audio_text != NULL) {
+                        ESP_LOGI("push2talk", "audio text : %s", push2talk_result->p_audio_text);
 
-                // emoji_switch_scr = SCREEN_PUSH2TALK;
-                // emoji_timer(EMOJI_SPEAKING);
-                // g_push2talk_status = EMOJI_SPEAKING;
+                        const char push2talk_msg = push2talk_result->p_audio_text;
+                        lv_label_set_text(ui_p2tspeak, push2talk_msg);
+                    } else {
+                        ESP_LOGI("push2talk", "audio text is NULL");
+                    }
 
-                // g_push2talk_timer = 0;
-                // view_push2talk_timer_start();
+                    lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_clear_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+
+                    emoji_switch_scr = SCREEN_PUSH2TALK;
+                    emoji_timer(EMOJI_SPEAKING);
+                    g_push2talk_status = EMOJI_SPEAKING;
+                }
 
                 // TODO:mode 1
-                emoji_timer(EMOJI_STOP);
-                lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
-                lv_group_remove_all_objs(g_main);
+                else{
+                    emoji_timer(EMOJI_STOP);
+                    lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                    lv_group_remove_all_objs(g_main);
 
-                uint32_t child_cnt = lv_obj_get_child_cnt(ui_push2talkpanel3);
-                lv_obj_t *push2talk_panel_child;
+                    uint32_t child_cnt = lv_obj_get_child_cnt(ui_push2talkpanel3);
+                    lv_obj_t *push2talk_panel_child;
 
-                for(uint8_t i =0; i< child_cnt; i++)
-                {
-                    push2talk_panel_child = lv_obj_get_child(ui_push2talkpanel3, i);
-                    lv_obj_add_flag(push2talk_panel_child, LV_OBJ_FLAG_HIDDEN);
+                    for(uint8_t i =0; i< child_cnt; i++)
+                    {
+                        push2talk_panel_child = lv_obj_get_child(ui_push2talkpanel3, i);
+                        lv_obj_add_flag(push2talk_panel_child, LV_OBJ_FLAG_HIDDEN);
+                    }
+
+                    lv_obj_clear_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_set_scroll_snap_y(ui_push2talkpanel3, LV_SCROLL_SNAP_CENTER);
+                    view_push2talk_msg_timer_start();
                 }
 
-                lv_obj_clear_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_set_scroll_snap_y(ui_push2talkpanel3, LV_SCROLL_SNAP_CENTER);
-                view_push2talk_msg_timer_start();
+                free(push2talk_result->p_audio_text);
+                break;
+            }
+
+            case VIEW_EVENT_VI_PLAY_FINISH:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAY_FINISH");
+
+                if(g_push2talk_timer == 0)view_push2talk_timer_start();
 
                 break;
             }
@@ -802,6 +823,14 @@ int view_init(void)
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_VI_ERROR, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_TASKFLOW_PAUSE, 
+                                                            __view_event_handler, NULL, NULL));
+                                                        
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_PLAY_FINISH, 
                                                             __view_event_handler, NULL, NULL));
     
 

@@ -371,12 +371,6 @@ lv_obj_t * ui_sleepswitch;
 void ui_Page_Push2talk_screen_init(void);
 void ui_event_Page_Push2talk(lv_event_t * e);
 lv_obj_t * ui_Page_Push2talk;
-lv_obj_t * ui_push2talkpanel;
-lv_obj_t * ui_push2talkt2;
-void ui_event_push2talkcancel(lv_event_t * e);
-lv_obj_t * ui_push2talkcancel;
-void ui_event_push2talkcheck(lv_event_t * e);
-lv_obj_t * ui_push2talkcheck;
 lv_obj_t * ui_push2talkpanel2;
 void ui_event_push2talkarc(lv_event_t * e);
 lv_obj_t * ui_push2talkarc;
@@ -1431,22 +1425,6 @@ void ui_event_Page_Push2talk(lv_event_t * e)
         p2tclick_cb(e);
     }
 }
-void ui_event_push2talkcancel(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
-        push2talkcancel_cb(e);
-    }
-}
-void ui_event_push2talkcheck(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
-        push2talkcheck_cb(e);
-    }
-}
 void ui_event_push2talkarc(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1540,7 +1518,7 @@ void ui_event_p2tcancel(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_SHORT_CLICKED) {
-        backmenu_cb(e);
+        push2talkcancel_cb(e);
     }
 }
 void ui_event_p2tcheck(lv_event_t * e)

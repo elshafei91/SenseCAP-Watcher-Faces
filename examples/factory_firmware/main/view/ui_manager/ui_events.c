@@ -51,6 +51,7 @@ extern uint8_t g_shutdown;
 extern int g_sleep_time;
 extern int g_sleep_switch;
 extern uint8_t g_push2talk_status;
+extern uint8_t g_taskflow_pause;
 
 static lv_obj_t *qr;
 static uint8_t loading_flag = 0;
@@ -1273,21 +1274,32 @@ void p2tclick_cb(lv_event_t * e)
 
 void push2talkcancel_cb(lv_event_t * e)
 {
-    //TODO
+    if(g_taskflow_pause == 1)
+    {
+        lv_label_set_text(ui_revtext, "Resuming \nTask...");
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                            VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
+    }else{
+        lv_label_set_text(ui_revtext, "Receiving \nTask...");
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
+
+    g_taskflow_pause = 0;
 }
 
 void push2talkcheck_cb(lv_event_t * e)
 {
-    //TODO
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                             VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
+
+    g_taskflow_pause = 0;
 }
 
 void p2tvaluechange_cb(lv_event_t * e)
 {
-    ESP_LOGI(TAG, "p2tvaluechange_cb");
+    // ESP_LOGI(TAG, "p2tvaluechange_cb");
     static int16_t push2talk_arc;
     push2talk_arc = lv_arc_get_value(ui_push2talkarc);
     if(push2talk_arc == 9)
@@ -1298,6 +1310,18 @@ void p2tvaluechange_cb(lv_event_t * e)
 
         // TODO
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
+
+        if(g_taskflow_pause == 1)
+        {
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                            VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
+            lv_label_set_text(ui_revtext, "Resuming \nTask...");
+        }
+        else{
+            lv_label_set_text(ui_revtext, "Receiving \nTask...");
+        }
+
+        g_taskflow_pause = 0;
     }
 }
 
@@ -1949,6 +1973,15 @@ static void view_sleep_timer_callback(void *arg)
         lv_obj_clear_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
 
         standby_mode = 1;
+    }else if(standby_mode == 1 && !g_taskdown)
+    {
+        ESP_LOGI(TAG, "Standby mode deactive");
+
+        emoji_switch_scr = SCREEN_AVATAR;
+        lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+        emoji_timer(EMOJI_STOP);
+
+        standby_mode = 0;
     }
     // sleep mode
     if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar && g_sleep_switch == 0)
@@ -2032,31 +2065,64 @@ static void view_push2talk_msg_timer_callback(void *arg)
 {
     lvgl_port_lock(0);
 
+    lv_obj_t *push2talk_panel_child;
     ESP_LOGI(TAG, "push2talk_panel_idx is %d ", push2talk_panel_idx);
 
-    lv_obj_t *push2talk_panel_child = lv_obj_get_child(ui_push2talkpanel3, push2talk_panel_idx);
 
-    if(push2talk_panel_idx == 7)
+    switch (push2talk_panel_idx)
     {
-        lv_obj_clear_flag(push2talk_panel_child, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_scroll_to_view(push2talk_panel_child, LV_ANIM_ON);
+    case 0:
+        lv_obj_clear_flag(ui_p2tobj, LV_OBJ_FLAG_HIDDEN);
+        lv_group_add_obj(g_main, ui_p2tobj);
+        lv_group_focus_obj(ui_p2tobj);
+        break;
+    case 1:
+        lv_obj_clear_flag(ui_p2tbehavior, LV_OBJ_FLAG_HIDDEN);
+        lv_group_add_obj(g_main, ui_p2tbehavior);
+        lv_group_focus_obj(ui_p2tbehavior);
+        break;
+    case 2:
+        lv_obj_clear_flag(ui_p2tfeat, LV_OBJ_FLAG_HIDDEN);
+        lv_group_add_obj(g_main, ui_p2tfeat);
+        lv_group_focus_obj(ui_p2tfeat);
+        break;
+    case 3:
+        lv_obj_clear_flag(ui_p2tcomparison, LV_OBJ_FLAG_HIDDEN);
+        lv_group_add_obj(g_main, ui_p2tcomparison);
+        lv_group_focus_obj(ui_p2tcomparison);
+        break;
+    case 4:
+        lv_obj_clear_flag(ui_p2tnotify, LV_OBJ_FLAG_HIDDEN);
+        lv_group_add_obj(g_main, ui_p2tnotify);
+        lv_group_focus_obj(ui_p2tnotify);
+        break;
+    case 5:
+        lv_obj_clear_flag(ui_p2ttime, LV_OBJ_FLAG_HIDDEN);
+        lv_group_add_obj(g_main, ui_p2ttime);
+        lv_group_focus_obj(ui_p2ttime);
+        break;
+    case 6:
+        lv_obj_clear_flag(ui_p2tfreq, LV_OBJ_FLAG_HIDDEN);
+        lv_group_add_obj(g_main, ui_p2tfreq);
+        lv_group_focus_obj(ui_p2tfreq);
+        break;
+    case 7:
+        lv_obj_clear_flag(ui_p2tsw, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_scroll_to_view(ui_p2tsw, LV_ANIM_OFF);
         lv_group_add_obj(g_main, ui_p2tcancel);
         lv_group_add_obj(g_main, ui_p2tcheck);
-        lv_group_focus_obj(ui_p2tcheck);
-    }else{
-        lv_obj_clear_flag(push2talk_panel_child, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_scroll_to_view(push2talk_panel_child, LV_ANIM_ON);
-        lv_group_add_obj(g_main, push2talk_panel_child);
-        lv_group_focus_obj(push2talk_panel_child);
+        break;
+    
+    default:
+        break;
     }
 
-    push2talk_panel_idx ++;
-    if(push2talk_panel_idx == 8)
+    push2talk_panel_idx++;
+    if (push2talk_panel_idx >= 8)
     {
         esp_timer_stop(view_push2talk_msg_timer);
         push2talk_panel_idx = 0;
     }
-
     lvgl_port_unlock();
 }
 
