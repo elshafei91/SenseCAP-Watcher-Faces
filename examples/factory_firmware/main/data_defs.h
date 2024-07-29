@@ -180,6 +180,16 @@ struct view_data_taskflow_status
     int      module_status;
 };
 
+struct view_data_sensor
+{
+    int32_t temperature;
+    int32_t humidity;
+    uint32_t co2;
+    bool temperature_valid;
+    bool humidity_valid;
+    bool co2_valid;
+};
+
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
@@ -250,7 +260,7 @@ enum {
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
 
-    VIEW_EVENT_PUSH2TALK,       // pushtotalk
+    VIEW_EVENT_SENSOR,       // display update for sensor data
    
     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, //NULL
     VIEW_EVENT_TASK_FLOW_STOP, //NULL

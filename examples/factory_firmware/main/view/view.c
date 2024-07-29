@@ -530,9 +530,28 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            //TODO: push2talk
-            case VIEW_EVENT_PUSH2TALK:{
-                ESP_LOGI(TAG, "event: VIEW_EVENT_PUSH2TALK");
+            //TODO: sensor
+            case VIEW_EVENT_SENSOR:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_SENSOR");
+
+                struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
+                if (sensor_data->temperature_valid && sensor_data->temperature) {
+                    ESP_LOGI(TAG, "Temperature: %d\n", sensor_data->temperature);
+                } else {
+                    ESP_LOGI(TAG, "Temperature: None\n");
+                }
+
+                if (sensor_data->humidity_valid &&sensor_data->humidity) {
+                    ESP_LOGI(TAG, "Humidity: %d\n", sensor_data->humidity);
+                } else {
+                    ESP_LOGI(TAG, "Humidity: None\n");
+                }
+
+                if (sensor_data->co2_valid &&sensor_data->co2) {
+                    ESP_LOGI(TAG, "CO2: %u\n", sensor_data->co2);
+                } else {
+                    ESP_LOGI(TAG, "CO2: None\n");
+                }
 
                 break;
             }
@@ -707,6 +726,10 @@ int view_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_MODE_STANDBY, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SENSOR, 
                                                             __view_event_handler, NULL, NULL));
 
     if((bat_per < 1) && (! is_charging))
