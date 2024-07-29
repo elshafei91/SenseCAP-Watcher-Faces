@@ -38,7 +38,7 @@ static void __parmas_default(struct tf_module_http_alarm_params *p_params)
     p_params->time_en = true;
     p_params->text_en = true;
     p_params->image_en = true;
-    p_params->sensor_en = false;
+    p_params->sensor_en = true;
     p_params->silence_duration = TF_MODULE_HTTP_ALARM_DEFAULT_SILENCE_DURATION;
     p_params->text.p_buf = NULL;
     p_params->text.len = 0;
