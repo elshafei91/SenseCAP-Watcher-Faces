@@ -182,10 +182,10 @@ struct view_data_taskflow_status
 
 struct view_data_sensor
 {
-    int32_t temperature;
-    int32_t humidity;
+    float temperature;
+    float humidity;
     uint32_t co2;
-    bool temperature_valid;
+    bool temperature_valid; // 0: invalid; 1: valid
     bool humidity_valid;
     bool co2_valid;
 };
