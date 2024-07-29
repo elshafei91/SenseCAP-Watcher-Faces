@@ -13,6 +13,8 @@ void rec_task_Animation(lv_obj_t * TargetObject, int delay);
 void text_pulse_Animation(lv_obj_t * TargetObject, int delay);
 void gif_play_Animation(lv_obj_t * TargetObject, int delay);
 void blink_Animation(lv_obj_t * TargetObject, int delay);
+void extensionstart1_Animation(lv_obj_t * TargetObject, int delay);
+void extensionstart2_Animation(lv_obj_t * TargetObject, int delay);
 
 
 // SCREEN: ui_Page_Battery
@@ -325,19 +327,21 @@ lv_obj_t * ui_Spinner4;
 void ui_Page_Extension_screen_init(void);
 void ui_event_Page_Extension(lv_event_t * e);
 lv_obj_t * ui_Page_Extension;
-lv_obj_t * ui_Label2;
+lv_obj_t * ui_extensionbubble;
+lv_obj_t * ui_extensionbubbleValue;
+lv_obj_t * ui_extensionbubbleUnit;
+lv_obj_t * ui_extensionlist;
+lv_obj_t * ui_extensiontemp;
+lv_obj_t * ui_extensiontempValue;
+lv_obj_t * ui_extensiontempUnit;
+lv_obj_t * ui_extensionhumi;
+lv_obj_t * ui_extensionhumiValue;
+lv_obj_t * ui_extensionhumiUnit;
+lv_obj_t * ui_extensionco2;
+lv_obj_t * ui_extensionco2Value;
+lv_obj_t * ui_extensionco2Unit;
 void ui_event_extensionback(lv_event_t * e);
 lv_obj_t * ui_extensionback;
-void ui_event_Panel3(lv_event_t * e);
-lv_obj_t * ui_Panel3;
-lv_obj_t * ui_extenlabel3;
-lv_obj_t * ui_Panel2;
-lv_obj_t * ui_extenlabel2;
-lv_obj_t * ui_Panel1;
-lv_obj_t * ui_extenlabel1;
-lv_obj_t * ui_Panel4;
-lv_obj_t * ui_extenlabel4;
-lv_obj_t * ui_extensionlist;
 
 
 // SCREEN: ui_Page_OTA
@@ -371,12 +375,6 @@ lv_obj_t * ui_sleepswitch;
 void ui_Page_Push2talk_screen_init(void);
 void ui_event_Page_Push2talk(lv_event_t * e);
 lv_obj_t * ui_Page_Push2talk;
-lv_obj_t * ui_push2talkpanel;
-lv_obj_t * ui_push2talkt2;
-void ui_event_push2talkcancel(lv_event_t * e);
-lv_obj_t * ui_push2talkcancel;
-void ui_event_push2talkcheck(lv_event_t * e);
-lv_obj_t * ui_push2talkcheck;
 lv_obj_t * ui_push2talkpanel2;
 void ui_event_push2talkarc(lv_event_t * e);
 lv_obj_t * ui_push2talkarc;
@@ -673,6 +671,87 @@ void blink_Animation(lv_obj_t * TargetObject, int delay)
     lv_anim_set_early_apply(&PropertyAnimation_0, false);
     lv_anim_set_get_value_cb(&PropertyAnimation_0, &_ui_anim_callback_get_opacity);
     lv_anim_start(&PropertyAnimation_0);
+
+}
+void extensionstart1_Animation(lv_obj_t * TargetObject, int delay)
+{
+    ui_anim_user_data_t * PropertyAnimation_0_user_data = lv_mem_alloc(sizeof(ui_anim_user_data_t));
+    PropertyAnimation_0_user_data->target = TargetObject;
+    PropertyAnimation_0_user_data->val = -1;
+    lv_anim_t PropertyAnimation_0;
+    lv_anim_init(&PropertyAnimation_0);
+    lv_anim_set_time(&PropertyAnimation_0, 400);
+    lv_anim_set_user_data(&PropertyAnimation_0, PropertyAnimation_0_user_data);
+    lv_anim_set_custom_exec_cb(&PropertyAnimation_0, _ui_anim_callback_set_x);
+    lv_anim_set_values(&PropertyAnimation_0, -100, 0);
+    lv_anim_set_path_cb(&PropertyAnimation_0, lv_anim_path_ease_out);
+    lv_anim_set_delay(&PropertyAnimation_0, delay + 100);
+    lv_anim_set_deleted_cb(&PropertyAnimation_0, _ui_anim_callback_free_user_data);
+    lv_anim_set_playback_time(&PropertyAnimation_0, 0);
+    lv_anim_set_playback_delay(&PropertyAnimation_0, 0);
+    lv_anim_set_repeat_count(&PropertyAnimation_0, 0);
+    lv_anim_set_repeat_delay(&PropertyAnimation_0, 0);
+    lv_anim_set_early_apply(&PropertyAnimation_0, false);
+    lv_anim_set_get_value_cb(&PropertyAnimation_0, &_ui_anim_callback_get_x);
+    lv_anim_start(&PropertyAnimation_0);
+    ui_anim_user_data_t * PropertyAnimation_1_user_data = lv_mem_alloc(sizeof(ui_anim_user_data_t));
+    PropertyAnimation_1_user_data->target = TargetObject;
+    PropertyAnimation_1_user_data->val = -1;
+    lv_anim_t PropertyAnimation_1;
+    lv_anim_init(&PropertyAnimation_1);
+    lv_anim_set_time(&PropertyAnimation_1, 600);
+    lv_anim_set_user_data(&PropertyAnimation_1, PropertyAnimation_1_user_data);
+    lv_anim_set_custom_exec_cb(&PropertyAnimation_1, _ui_anim_callback_set_opacity);
+    lv_anim_set_values(&PropertyAnimation_1, 0, 255);
+    lv_anim_set_path_cb(&PropertyAnimation_1, lv_anim_path_ease_in);
+    lv_anim_set_delay(&PropertyAnimation_1, delay + 0);
+    lv_anim_set_deleted_cb(&PropertyAnimation_1, _ui_anim_callback_free_user_data);
+    lv_anim_set_playback_time(&PropertyAnimation_1, 0);
+    lv_anim_set_playback_delay(&PropertyAnimation_1, 0);
+    lv_anim_set_repeat_count(&PropertyAnimation_1, 0);
+    lv_anim_set_repeat_delay(&PropertyAnimation_1, 0);
+    lv_anim_set_early_apply(&PropertyAnimation_1, false);
+    lv_anim_start(&PropertyAnimation_1);
+
+}
+void extensionstart2_Animation(lv_obj_t * TargetObject, int delay)
+{
+    ui_anim_user_data_t * PropertyAnimation_0_user_data = lv_mem_alloc(sizeof(ui_anim_user_data_t));
+    PropertyAnimation_0_user_data->target = TargetObject;
+    PropertyAnimation_0_user_data->val = -1;
+    lv_anim_t PropertyAnimation_0;
+    lv_anim_init(&PropertyAnimation_0);
+    lv_anim_set_time(&PropertyAnimation_0, 400);
+    lv_anim_set_user_data(&PropertyAnimation_0, PropertyAnimation_0_user_data);
+    lv_anim_set_custom_exec_cb(&PropertyAnimation_0, _ui_anim_callback_set_x);
+    lv_anim_set_values(&PropertyAnimation_0, 315, 80);
+    lv_anim_set_path_cb(&PropertyAnimation_0, lv_anim_path_ease_out);
+    lv_anim_set_delay(&PropertyAnimation_0, delay + 100);
+    lv_anim_set_deleted_cb(&PropertyAnimation_0, _ui_anim_callback_free_user_data);
+    lv_anim_set_playback_time(&PropertyAnimation_0, 0);
+    lv_anim_set_playback_delay(&PropertyAnimation_0, 0);
+    lv_anim_set_repeat_count(&PropertyAnimation_0, 0);
+    lv_anim_set_repeat_delay(&PropertyAnimation_0, 0);
+    lv_anim_set_early_apply(&PropertyAnimation_0, false);
+    lv_anim_start(&PropertyAnimation_0);
+    ui_anim_user_data_t * PropertyAnimation_1_user_data = lv_mem_alloc(sizeof(ui_anim_user_data_t));
+    PropertyAnimation_1_user_data->target = TargetObject;
+    PropertyAnimation_1_user_data->val = -1;
+    lv_anim_t PropertyAnimation_1;
+    lv_anim_init(&PropertyAnimation_1);
+    lv_anim_set_time(&PropertyAnimation_1, 600);
+    lv_anim_set_user_data(&PropertyAnimation_1, PropertyAnimation_1_user_data);
+    lv_anim_set_custom_exec_cb(&PropertyAnimation_1, _ui_anim_callback_set_opacity);
+    lv_anim_set_values(&PropertyAnimation_1, 0, 255);
+    lv_anim_set_path_cb(&PropertyAnimation_1, lv_anim_path_linear);
+    lv_anim_set_delay(&PropertyAnimation_1, delay + 0);
+    lv_anim_set_deleted_cb(&PropertyAnimation_1, _ui_anim_callback_free_user_data);
+    lv_anim_set_playback_time(&PropertyAnimation_1, 0);
+    lv_anim_set_playback_delay(&PropertyAnimation_1, 0);
+    lv_anim_set_repeat_count(&PropertyAnimation_1, 0);
+    lv_anim_set_repeat_delay(&PropertyAnimation_1, 0);
+    lv_anim_set_early_apply(&PropertyAnimation_1, false);
+    lv_anim_start(&PropertyAnimation_1);
 
 }
 
@@ -1369,14 +1448,6 @@ void ui_event_extensionback(lv_event_t * e)
         backmenu_cb(e);
     }
 }
-void ui_event_Panel3(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
-        backmenu_cb(e);
-    }
-}
 void ui_event_otaback(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1429,22 +1500,6 @@ void ui_event_Page_Push2talk(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_SHORT_CLICKED) {
         p2tclick_cb(e);
-    }
-}
-void ui_event_push2talkcancel(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
-        push2talkcancel_cb(e);
-    }
-}
-void ui_event_push2talkcheck(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
-        push2talkcheck_cb(e);
     }
 }
 void ui_event_push2talkarc(lv_event_t * e)
@@ -1540,7 +1595,7 @@ void ui_event_p2tcancel(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_SHORT_CLICKED) {
-        backmenu_cb(e);
+        push2talkcancel_cb(e);
     }
 }
 void ui_event_p2tcheck(lv_event_t * e)
