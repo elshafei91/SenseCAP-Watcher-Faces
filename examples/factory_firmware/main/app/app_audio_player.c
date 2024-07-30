@@ -6,6 +6,8 @@
 #include "esp_check.h"
 #include "util.h"
 #include "app_device_info.h"
+#include "audio_player.h"
+#include "storage.h"
 
 static const char *TAG = "audio_player";
 
@@ -13,7 +15,10 @@ struct app_audio_player *gp_audio_player = NULL;
 
 #define EVENT_STREAM_START      BIT0
 #define EVENT_STREAM_STOP       BIT1
-#define EVENT_STREAM_STOP_DONE  BIT1
+#define EVENT_STREAM_STOP_DONE  BIT2
+#define EVENT_FILE_MEM_START    BIT3
+#define EVENT_FILE_MEM_DONE     BIT4
+
 
 static int __volume_get(void)
 {
@@ -27,6 +32,16 @@ static void __data_lock(struct app_audio_player  *p_audio_player)
 static void __data_unlock(struct app_audio_player *p_audio_player)
 {
     xSemaphoreGive(p_audio_player->sem_handle);  
+}
+
+static esp_err_t __audio_player_mute_set(AUDIO_PLAYER_MUTE_SETTING setting)
+{
+    bsp_codec_mute_set(setting == AUDIO_PLAYER_MUTE ? true : false);
+    // restore the voice volume upon unmuting
+    if (setting == AUDIO_PLAYER_UNMUTE) {
+        bsp_codec_volume_set(__volume_get(), NULL);
+    }
+    return ESP_OK;
 }
 
 static esp_err_t __audio_player_set_fs(uint32_t sample_rate,
@@ -147,6 +162,44 @@ static void app_audio_player_task(void *p_arg)
         }
     }
 }
+
+
+static void __audio_player_cb(audio_player_cb_ctx_t *ctx)
+{   
+    struct app_audio_player *p_audio_player = (struct app_audio_player *)ctx->user_ctx;
+    switch (ctx->audio_event) {
+    case AUDIO_PLAYER_CALLBACK_EVENT_IDLE:
+        ESP_LOGI(TAG, "Player IDLE");
+        __data_lock(p_audio_player);
+        if( p_audio_player->mem_need_free && p_audio_player->p_mem_buf != NULL) {
+            ESP_LOGI(TAG, "free mem");
+            free(p_audio_player->p_mem_buf);
+            p_audio_player->mem_need_free = false;
+            p_audio_player->p_mem_buf = NULL;
+        }
+        p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
+        __data_unlock(p_audio_player);
+        
+        xEventGroupSetBits(p_audio_player->event_group, EVENT_FILE_MEM_DONE);
+
+        break;
+    case AUDIO_PLAYER_CALLBACK_EVENT_COMPLETED_PLAYING_NEXT:
+        ESP_LOGI(TAG, "Player NEXT");
+        break;
+    case AUDIO_PLAYER_CALLBACK_EVENT_PLAYING:
+        ESP_LOGI(TAG, "Player PLAYING");
+        break;
+    case AUDIO_PLAYER_CALLBACK_EVENT_PAUSE:
+        ESP_LOGI(TAG, "Player PAUSE");
+        break;
+    case AUDIO_PLAYER_CALLBACK_EVENT_SHUTDOWN:
+        ESP_LOGI(TAG, "Player SHUTDOWN");
+        break;
+    default:
+        break;
+    }
+}
+
 /*************************************************************************
  * API
  ************************************************************************/
@@ -195,6 +248,16 @@ esp_err_t app_audio_player_init(void)
                                                                 p_audio_player->p_task_buf,
                                                                 AUDIO_PLAYER_TASK_CORE);
     ESP_GOTO_ON_FALSE(p_audio_player->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
+
+
+    audio_player_config_t config = { .mute_fn = __audio_player_mute_set,
+                                    .write_fn = bsp_i2s_write,
+                                    .clk_set_fn = __audio_player_set_fs,
+                                    .priority = 5
+                                };
+    ret = audio_player_new(config);
+    ESP_GOTO_ON_FALSE(ret==ESP_OK, ESP_FAIL, err, TAG, "Failed to create audio player");
+    audio_player_callback_register(__audio_player_cb, (void *)p_audio_player);
 
     return ESP_OK;  
 err:
@@ -325,6 +388,8 @@ esp_err_t app_audio_player_stream_send(uint8_t *p_buf,
                 if(xRingbufferSend(p_audio_player->rb_handle, p_buf + header_len, len - header_len, xTicksToWait) == pdTRUE) {
                     return ESP_FAIL;
                 }
+            } else {
+                ESP_LOGE(TAG, "unsupport audio stream");
             }
             break;
         }
@@ -384,13 +449,65 @@ esp_err_t app_audio_player_stream_stop(void)
 
 esp_err_t app_audio_player_file(void *p_filepath)
 {
-
-    return ESP_OK;
+    struct app_audio_player * p_audio_player = gp_audio_player;
+    if( p_audio_player == NULL) {
+        return ESP_FAIL;
+    }
+    FILE *fp = NULL;
+    storage_file_open(p_filepath, &fp);
+    // fp = fopen(p_filepath, "r");
+    if( fp ) {
+        esp_err_t status  = audio_player_play(fp);
+        if( status == ESP_OK ) {
+            __data_lock(p_audio_player);
+            p_audio_player->status = AUDIO_PLAYER_STATUS_PLAYING_FILE;
+            __data_unlock(p_audio_player);
+            ESP_LOGI(TAG, "play file %s", p_filepath);
+            return ESP_OK;
+        }
+    } else {
+        ESP_LOGE(TAG, "open file %s fail", p_filepath);
+    }
+    return ESP_FAIL;
 }
 
-esp_err_t app_audio_player_mem(uint8_t *p_buf, size_t len)
+esp_err_t app_audio_player_file_block(void *p_filepath, TickType_t xTicksToWait)
 {
+    struct app_audio_player * p_audio_player = gp_audio_player;
+    if( p_audio_player == NULL) {
+        return ESP_FAIL;
+    }
+    xEventGroupClearBits(p_audio_player->event_group, EVENT_FILE_MEM_DONE);
+    esp_err_t ret = app_audio_player_file(p_filepath);
+    if( ret == ESP_OK ) {
+        xEventGroupWaitBits(p_audio_player->event_group, 
+                            EVENT_FILE_MEM_DONE, pdTRUE, pdTRUE, xTicksToWait);
+    }
+    return ret;
+}
 
-    return ESP_OK;
+esp_err_t app_audio_player_mem(uint8_t *p_buf, size_t len, bool is_need_free)
+{
+    struct app_audio_player * p_audio_player = gp_audio_player;
+    if( p_audio_player == NULL) {
+        return ESP_FAIL;
+    }
+    FILE *fp = NULL;
+    fp = fmemopen((void *)p_buf, len, "rb");
+    if( fp ) {
+        esp_err_t status  = audio_player_play(fp);
+        if( status == ESP_OK ) {
+            __data_lock(p_audio_player);
+            p_audio_player->status = AUDIO_PLAYER_STATUS_PLAYING_MEM;
+            p_audio_player->mem_need_free = is_need_free;
+            p_audio_player->p_mem_buf = p_buf;
+            __data_unlock(p_audio_player);
+            ESP_LOGI(TAG, "play mem: %d", len);
+            return ESP_OK;
+        }
+    } else {
+        ESP_LOGE(TAG, "open mem fail");
+    }
+    return ESP_FAIL;
 }
 

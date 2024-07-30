@@ -169,8 +169,6 @@ void app_init(void)
 {
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    audio_player_init(); //TODO
-
     app_audio_player_init();
     app_audio_recorder_init();
 
