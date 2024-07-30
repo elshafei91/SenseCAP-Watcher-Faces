@@ -741,7 +741,7 @@ static struct {
     struct arg_lit *vi_start;
     struct arg_lit *vi_end;
     struct arg_lit *vi_stop;
-    struct arg_lit *vi_exit;
+    struct arg_int *vi_exit;
     struct arg_end *end;
 } vi_ctrl_args;
 
@@ -773,8 +773,11 @@ static int vi_ctrl_cmd(int argc, char **argv)
                     VIEW_EVENT_VI_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
     } else if( vi_ctrl_args.vi_exit->count ){
         printf("exit voice interaction\n");
+        
+        int exit_mode = vi_ctrl_args.vi_exit->ival[0]; 
+
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
-                    VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
+                    VIEW_EVENT_VI_EXIT, &exit_mode, sizeof(exit_mode), pdMS_TO_TICKS(10000));
     }
 
     return 0;
@@ -785,7 +788,7 @@ static void register_cmd_vi_ctrl(void)
     vi_ctrl_args.vi_start =  arg_lit0("s", "start", "start wakeup, and start record");
     vi_ctrl_args.vi_end = arg_lit0("e", "end", "end record");
     vi_ctrl_args.vi_stop = arg_lit0("c", "stop", "stop voice interaction when analyzing or palying, Put it into idle.");
-    vi_ctrl_args.vi_exit = arg_lit0("z", "exit", "exit voice interaction, Exit the current session");
+    vi_ctrl_args.vi_exit = arg_int0("z", "exit", "<int>", "0: exit vi, 1:exit vi then run new taskflow");
     vi_ctrl_args.end = arg_end(4);
 
     const esp_console_cmd_t cmd = {

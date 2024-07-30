@@ -175,7 +175,8 @@ enum task_cfg_id{
 struct view_data_vi_result
 {
     int mode; // 0:chat; 1:task; 2:auto execute task
-    int audio_tm_s;
+    int audio_tm_ms;
+    char *p_sst_text; // need free after use
     char *p_audio_text; // need free after use
     char *items[TASK_CFG_ID_MAX]; // need free after use, if empty, means no need to display
 };

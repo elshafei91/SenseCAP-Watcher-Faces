@@ -8,7 +8,7 @@
 #include "esp_http_client.h"
 #include "data_defs.h"
 
-#define VOICE_INTERACTION_TASK_STACK_SIZE  8*1024
+#define VOICE_INTERACTION_TASK_STACK_SIZE  10*1024
 #define VOICE_INTERACTION_TASK_PRIO        17
 #define VOICE_INTERACTION_TASK_CORE        1  //must be 1
 
@@ -17,8 +17,8 @@
 #define CONFIG_TALK_AUDIO_STREAM_PATH   "/api/v2/watcher/talk/audio_stream"
 #define CONFIG_TASKFLOW_DETAIL_PATH     "/v2/watcher/talk/view_task_detail" 
 #else
-#define CONFIG_TALK_SERV_HOST           "https://sensecap-watcher-demo.seeed.cc"
-#define CONFIG_TALK_AUDIO_STREAM_PATH   "/api/v2/watcher/talk/audio_stream"
+#define CONFIG_TALK_SERV_HOST           "https://sensecap-watcher-demo.seeed.cc" 
+#define CONFIG_TALK_AUDIO_STREAM_PATH   "/api/v2/watcher/talk/audio_stream" 
 #define CONFIG_TASKFLOW_DETAIL_PATH     "/v2/watcher/talk/view_task_detail"  
 #endif
 
@@ -30,6 +30,9 @@
 
 #define VI_MODE_CHAT     0 
 #define VI_MODE_TASK     1
+
+
+#define VI_WAKE_FILE_PATH      "/spiffs/pushToTalk.mp3"
 
 enum app_voice_interaction_status {
     VI_STATUS_IDLE = 0,
