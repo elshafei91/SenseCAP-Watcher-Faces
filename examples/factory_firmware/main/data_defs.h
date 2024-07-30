@@ -180,6 +180,16 @@ struct view_data_vi_result
     char *items[TASK_CFG_ID_MAX]; // need free after use, if empty, means no need to display
 };
 
+struct view_data_sensor
+{
+    float temperature;
+    float humidity;
+    uint32_t co2;
+    bool temperature_valid; // 0: invalid; 1: valid
+    bool humidity_valid;
+    bool co2_valid;
+};
+
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
@@ -245,6 +255,8 @@ enum {
     VIEW_EVENT_AI_CAMERA_READY,
     VIEW_EVENT_AI_CAMERA_PREVIEW, // struct tf_module_ai_camera_preview_info (tf_module_ai_camera.h), There can only be one listener
     VIEW_EVENT_AI_CAMERA_SAMPLE,  // NULL
+
+    VIEW_EVENT_SENSOR,       // display update for sensor data
    
     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, //NULL
     VIEW_EVENT_TASK_FLOW_STOP, //NULL

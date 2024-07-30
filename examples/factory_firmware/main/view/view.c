@@ -37,7 +37,9 @@ extern uint8_t g_tasktype;
 extern uint8_t g_backpage;
 extern uint8_t g_push2talk_timer;
 
-extern uint8_t emoji_switch_scr;
+// sleep mode
+extern int g_sleep_switch;
+extern uint8_t sleep_mode;
 
 extern uint8_t emoji_switch_scr;
 
@@ -427,8 +429,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 tf_data_buf_free(&(alarm_st->text));
                 tf_data_image_free(&(alarm_st->img));
 
-                // sleep mode deactivate
-                lv_disp_trig_activity(NULL);
+                if(g_sleep_switch == 1 && sleep_mode == 1)
+                {
+                    int brightness = get_brightness(UI_CALLER);
+                    bsp_lcd_brightness_set(brightness);
+                }
 
                 break;
             }
@@ -437,6 +442,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
                 uint8_t * task_st = (uint8_t *)event_data;
                 view_alarm_off(task_st);
+
+                if(g_sleep_switch == 1 && sleep_mode == 1)
+                {
+                    bsp_lcd_brightness_set(0);
+                }
+
                 break;
             }
 
@@ -642,6 +653,31 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_ERROR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ERROR");
 
+            }
+
+            //TODO: sensor
+            case VIEW_EVENT_SENSOR:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_SENSOR");
+
+                struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
+                if (sensor_data->temperature_valid && sensor_data->temperature) {
+                    ESP_LOGI(TAG, "Temperature: %0.1f", sensor_data->temperature);
+                } else {
+                    ESP_LOGI(TAG, "Temperature: None");
+                }
+
+                if (sensor_data->humidity_valid && sensor_data->humidity) {
+                    ESP_LOGI(TAG, "Humidity: %0.1f", sensor_data->humidity);
+                } else {
+                    ESP_LOGI(TAG, "Humidity: None");
+                }
+
+                if (sensor_data->co2_valid && sensor_data->co2) {
+                    ESP_LOGI(TAG, "CO2: %u", sensor_data->co2);
+                } else {
+                    ESP_LOGI(TAG, "CO2: None");
+                }
+
                 break;
             }
 
@@ -836,6 +872,9 @@ int view_init(void)
                                                             VIEW_EVENT_BASE, VIEW_EVENT_VI_PLAY_FINISH, 
                                                             __view_event_handler, NULL, NULL));
     
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SENSOR, 
+                                                            __view_event_handler, NULL, NULL));
 
     if((bat_per < 1) && (! is_charging))
     {

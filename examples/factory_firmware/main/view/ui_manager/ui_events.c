@@ -40,8 +40,8 @@ uint8_t g_backpage = 0;
 uint8_t g_avalivjump = 0;
 uint8_t g_push2talk_timer = 0;// 0: Speaking countdown,         1: Scrolling countdown
 
-static uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
-static uint8_t standby_mode = 0;    // 0: on;     1: off
+uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
+uint8_t standby_mode = 0;    // 0: on;     1: off
 int g_sleep_time = 0;
 int g_sleep_switch = 1;
 
@@ -1253,11 +1253,13 @@ void sleepswitch_cb(lv_event_t * e)
             ESP_LOGI(TAG, "sleep_switch: on");
             set_sleep_switch(UI_CALLER, 1);
             lv_obj_add_state(ui_sleepswitch, LV_STATE_CHECKED);
+            g_sleep_switch = get_sleep_switch(UI_CALLER);
             break;
         case 1:
             ESP_LOGI(TAG, "sleep_switch: off");
             set_sleep_switch(UI_CALLER, 0);
             lv_obj_clear_state(ui_sleepswitch, LV_STATE_CHECKED);
+            g_sleep_switch = get_sleep_switch(UI_CALLER);
             break;
 
         default:
@@ -1948,6 +1950,7 @@ static void view_sleep_timer_callback(void *arg)
     inactive_time = lv_disp_get_inactive_time(NULL);
     get_inactive_time = g_sleep_time;
     // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
+    // ESP_LOGD("view_sleep", "sleep switch is : %d, and sleep time is %d", g_sleep_switch, g_sleep_time);
 
     switch (get_inactive_time) {
         case 0:
@@ -1975,6 +1978,7 @@ static void view_sleep_timer_callback(void *arg)
             lvgl_port_unlock();
             return;
     }
+
     // standby mode
     if(inactive_time > (5 * 60 * 1000) && standby_mode == 0 && g_taskdown)
     {
@@ -1995,14 +1999,18 @@ static void view_sleep_timer_callback(void *arg)
 
         standby_mode = 0;
     }
+
     // sleep mode
-    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar && g_sleep_switch == 0)
+    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar)
     {
         ESP_LOGI(TAG, "Sleep mode active");
         bsp_lcd_brightness_set(0);
         sleep_mode = 1;
     }
-    else if(inactive_time < ACTIVE_THRESHOLD)
+
+
+    // deactivate sleep mode and stanby mode
+    if(inactive_time < ACTIVE_THRESHOLD)
     {
         if(sleep_mode != 0)
         {
