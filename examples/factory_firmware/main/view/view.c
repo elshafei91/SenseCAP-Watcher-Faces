@@ -604,7 +604,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         ESP_LOGI("push2talk", "audio text : %s", push2talk_result->p_audio_text);
 
                         const char push2talk_msg = push2talk_result->p_audio_text;
-                        lv_label_set_text(ui_p2tspeak, push2talk_msg);
+                        lv_label_set_text(ui_p2tspeak, &push2talk_msg);
                     } else {
                         ESP_LOGI("push2talk", "audio text is NULL");
                     }
