@@ -27,12 +27,17 @@ lv_obj_t * pre_foucsed_obj = NULL;
 uint8_t g_group_layer_ = 0;
 uint8_t g_shutdown = 0;
 uint8_t g_dev_binded = 0;
+uint8_t g_push2talk_status = 0;
+uint8_t g_taskflow_pause = 0;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_guide_disable;
 extern uint8_t g_avarlive;
 extern uint8_t g_tasktype;
 extern uint8_t g_backpage;
+extern uint8_t g_push2talk_timer;
+
+extern uint8_t emoji_switch_scr;
 
 extern uint8_t emoji_switch_scr;
 
@@ -46,6 +51,10 @@ extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 extern lv_obj_t * ui_taskerrt2;
 extern lv_obj_t * ui_task_error;
+
+// view standby 
+extern lv_obj_t * ui_Page_Standby;
+
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
 extern lv_obj_t * ui_viewpbtn1;
@@ -86,69 +95,6 @@ extern int g_standby_image_count;
 extern int g_greet_image_count;
 extern int g_detected_image_count;
 
-static void waiting_timer_callback(void *arg);
-static const esp_timer_create_args_t waiting_timer_args = { .callback = &waiting_timer_callback, .name = "waiting_for_ble" };
-static esp_timer_handle_t waiting_timer;
-
-static void get_inactive_timer_callback(void *arg);
-static const esp_timer_create_args_t get_inactive_timer_args = { .callback = &get_inactive_timer_callback, .name = "get_inactive_time" };
-static esp_timer_handle_t get_inactive_timer;
-#define INACTIVE_THRESHOLD (5 * 60 * 1000)
-#define ACTIVE_THRESHOLD (1500)
-
-static void waiting_timer_callback(void *arg)
-{
-    lvgl_port_lock(0);
-    lv_obj_clear_state(ui_setblesw, LV_STATE_DISABLED);
-    lvgl_port_unlock();
-}
-
-void wait_timer_start()
-{
-    if (esp_timer_is_active(waiting_timer))
-    {
-        esp_timer_stop(waiting_timer);
-    }
-    ESP_ERROR_CHECK(esp_timer_start_once(waiting_timer, (uint64_t)1000000));
-}
-
-static void get_inactive_timer_callback(void *arg)
-{
-    lvgl_port_lock(0);
-
-    inactive_time = lv_disp_get_inactive_time(NULL);
-    if(inactive_time > INACTIVE_THRESHOLD && system_mode == 0 && lv_scr_act() != ui_Page_Avatar && g_taskdown)
-    {
-        ESP_LOGI(TAG, "Enter Sleep mode");
-
-        emoji_switch_scr = SCREEN_STANDBY;
-        emoji_timer(EMOJI_STANDBY);
-        lv_obj_clear_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
-
-        system_mode = 1;
-    }
-    else if(inactive_time < ACTIVE_THRESHOLD &&system_mode != 0)
-    {
-        ESP_LOGI(TAG, "Exit Sleep mode");
-
-        lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
-        emoji_timer(EMOJI_STOP);
-
-        system_mode = 0;
-    }
-
-    lvgl_port_unlock();
-}
-
-void get_inactive_timer_start()
-{
-    if (esp_timer_is_active(get_inactive_timer))
-    {
-        esp_timer_stop(get_inactive_timer);
-    }
-    ESP_ERROR_CHECK(esp_timer_start_periodic(get_inactive_timer, 1000000));
-}
-
 static void update_ai_ota_progress(int percentage)
 {
     lv_arc_set_value(ui_waitarc, percentage);
@@ -188,7 +134,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
         {
             case VIEW_EVENT_SCREEN_START: {
                 _ui_screen_change(&ui_Page_Avatar, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Avatar_screen_init);
-                get_inactive_timer_start();
                 break;
             }
 
@@ -481,6 +426,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 view_alarm_on(alarm_st);
                 tf_data_buf_free(&(alarm_st->text));
                 tf_data_image_free(&(alarm_st->img));
+
+                // sleep mode deactivate
+                lv_disp_trig_activity(NULL);
+
                 break;
             }
 
@@ -591,6 +540,111 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_group_remove_all_objs(g_main);
                 break;
             }
+
+            case VIEW_EVENT_VI_TASKFLOW_PAUSE:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_TASKFLOW_PAUSE");
+
+                g_taskflow_pause = 1;
+                
+                break;
+            }
+
+            case VIEW_EVENT_VI_RECORDING:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_RECORDING");
+
+                view_push2talk_timer_stop();
+                lv_group_remove_all_objs(g_main);
+
+                lv_obj_add_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                
+                _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
+                emoji_switch_scr = SCREEN_PUSH2TALK;
+                emoji_timer(EMOJI_LISTENING);
+                g_push2talk_status = EMOJI_LISTENING;
+
+                break;
+            }
+
+            case VIEW_EVENT_VI_ANALYZING:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ANALYZING");
+
+                lv_obj_clear_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                
+                emoji_switch_scr = SCREEN_PUSH2TALK;
+                emoji_timer(EMOJI_ANALYZING);
+                g_push2talk_status = EMOJI_ANALYZING;
+
+                break;
+            }
+
+            case VIEW_EVENT_VI_PLAYING:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAYING");
+                struct view_data_vi_result *push2talk_result = (struct view_data_vi_result *)event_data;
+                ESP_LOGI("push2talk", "result mode : %d", push2talk_result->mode);
+                // TODO:mode 0
+                if(push2talk_result->mode== 0){
+                    g_push2talk_timer = 0;
+
+                    if (push2talk_result->p_audio_text != NULL) {
+                        ESP_LOGI("push2talk", "audio text : %s", push2talk_result->p_audio_text);
+
+                        const char push2talk_msg = push2talk_result->p_audio_text;
+                        lv_label_set_text(ui_p2tspeak, push2talk_msg);
+                    } else {
+                        ESP_LOGI("push2talk", "audio text is NULL");
+                    }
+
+                    lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_clear_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+
+                    emoji_switch_scr = SCREEN_PUSH2TALK;
+                    emoji_timer(EMOJI_SPEAKING);
+                    g_push2talk_status = EMOJI_SPEAKING;
+                }
+
+                // TODO:mode 1
+                else{
+                    emoji_timer(EMOJI_STOP);
+                    lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                    lv_group_remove_all_objs(g_main);
+
+                    uint32_t child_cnt = lv_obj_get_child_cnt(ui_push2talkpanel3);
+                    lv_obj_t *push2talk_panel_child;
+
+                    for(uint8_t i =0; i< child_cnt; i++)
+                    {
+                        push2talk_panel_child = lv_obj_get_child(ui_push2talkpanel3, i);
+                        lv_obj_add_flag(push2talk_panel_child, LV_OBJ_FLAG_HIDDEN);
+                    }
+
+                    lv_obj_clear_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_set_scroll_snap_y(ui_push2talkpanel3, LV_SCROLL_SNAP_CENTER);
+                    view_push2talk_msg_timer_start();
+                }
+
+                free(push2talk_result->p_audio_text);
+                break;
+            }
+
+            case VIEW_EVENT_VI_PLAY_FINISH:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAY_FINISH");
+
+                if(g_push2talk_timer == 0)view_push2talk_timer_start();
+
+                break;
+            }
+
+            case VIEW_EVENT_VI_ERROR:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ERROR");
+
+                break;
+            }
+
             default:
                 break;
         }
@@ -643,8 +697,7 @@ int view_init(void)
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
     view_pages_init();
-    ESP_ERROR_CHECK(esp_timer_create(&waiting_timer_args, &waiting_timer));
-    ESP_ERROR_CHECK(esp_timer_create(&get_inactive_timer_args, &get_inactive_timer));
+    view_timer_create();
     lvgl_port_unlock();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
@@ -758,6 +811,31 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_MODE_STANDBY, 
                                                             __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_RECORDING, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_ANALYZING, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_PLAYING, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_ERROR, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_TASKFLOW_PAUSE, 
+                                                            __view_event_handler, NULL, NULL));
+                                                        
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_PLAY_FINISH, 
+                                                            __view_event_handler, NULL, NULL));
+    
 
     if((bat_per < 1) && (! is_charging))
     {

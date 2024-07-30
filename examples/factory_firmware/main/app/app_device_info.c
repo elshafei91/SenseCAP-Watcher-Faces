@@ -43,6 +43,8 @@
 #define LOCAL_SERVICE_STORAGE_KEY "localservice"
 #define USAGE_GUIDE_SK            "usage_guide"
 #define BLE_STORAGE_KEY           "ble_switch"
+#define SLEEP_STORAGE_KEY         "sleep_time"
+#define SLEEP_SWITCH_STORAGE_KEY  "sleep_switch"
 
 #define EVENT_BIT(T)              (BIT0 << T)
 #define EVENT_DEVICECFG_CHANGE    BIT0
@@ -58,6 +60,8 @@
 #define DEVCFG_DEFAULT_CLOUD_SVC_SWITCH 1
 #define DEVCFG_DEFAULT_LOCAL_SVC_SWITCH 0
 #define DEVCFG_DEFAULT_USAGE_GUIDE_FLAG 0
+#define DEVCFG_DEFAULT_SLEEP_TIME       0
+#define DEVCFG_DEFAULT_SLEEP_SWITCH     1
 
 typedef enum {
     DEVCFG_TYPE_BRIGHTNESS = 0,
@@ -68,6 +72,8 @@ typedef enum {
     DEVCFG_TYPE_LOCAL_SVC,
     DEVCFG_TYPE_USAGE_GUIDE_FLAG,
     DEVCFG_TYPE_FACTORY_RESET_FLAG,
+    DEVCFG_TYPE_SLEEP_TIME,
+    DEVCFG_TYPE_SLEEP_SWITCH,
     DEVCFG_TYPE_MAX,
 } devicecfg_type_t;
 
@@ -383,6 +389,49 @@ void init_ble_switch_from_nvs()
     {
         cfg->last.value = cfg->current.value; // no one shall be accessing this during init, need no lock
     }
+}
+
+void init_sleep_time_from_nvs()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_TIME);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(SLEEP_STORAGE_KEY, &cfg->current.value, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI(TAG, "Sleep time loaded from NVS: %d", cfg->current.value);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        cfg->current.value = DEVCFG_DEFAULT_SLEEP_TIME;
+        ESP_LOGW(TAG, "No sleep time found in NVS. Using default: %d", DEVCFG_DEFAULT_SLEEP_TIME);
+    }
+    else
+    {
+        cfg->current.value = DEVCFG_DEFAULT_SLEEP_TIME;
+        ESP_LOGE(TAG, "Error reading sleep time from NVS: %s", esp_err_to_name(ret));
+    }
+}
+
+void init_sleep_switch_from_nvs()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_SWITCH);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(SLEEP_SWITCH_STORAGE_KEY, &cfg->current.value, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI(TAG, "Sleep switch loaded from NVS: %d", cfg->current.value);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        cfg->current.value = DEVCFG_DEFAULT_SLEEP_SWITCH;
+        ESP_LOGW(TAG, "No sleep switch found in NVS. Using default: %d", DEVCFG_DEFAULT_SLEEP_SWITCH);
+    }
+    else
+    {
+        cfg->current.value = DEVCFG_DEFAULT_SLEEP_SWITCH;
+        ESP_LOGE(TAG, "Error reading sleep switch from NVS: %s", esp_err_to_name(ret));
+    }
+
 }
 
 void init_cloud_service_switch_from_nvs()
@@ -710,6 +759,93 @@ static esp_err_t __set_sound()
         ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
     }
 set_sound_err:
+    xSemaphoreGive(cfg->mutex);
+
+    return ret;
+}
+
+/*-----------------------------------------------------sleep---------------------------------------------------*/
+
+int get_sleep_time(int caller)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_TIME);
+    int sleep_time = cfg->current.value;
+
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI(TAG, "AT_CMD_CALLER get sleep time");
+            break;
+        case UI_CALLER:
+            ESP_LOGI(TAG, "UI get sleep time");
+            break;
+    }
+
+    return sleep_time;
+}
+
+esp_err_t set_sleep_time(int caller, int value)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_TIME);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
+}
+
+static esp_err_t __set_sleep_time()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_TIME);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
+    {
+        ESP_GOTO_ON_ERROR(storage_write(SLEEP_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_sleeptime_err, TAG, "%s cfg write err", __func__);
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
+    }
+set_sleeptime_err:
+    xSemaphoreGive(cfg->mutex);
+
+    return ret;
+}
+
+int get_sleep_switch(int caller)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_SWITCH);
+    int sleep_switch = cfg->current.value;
+
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI(TAG, "AT_CMD_CALLER get sleep switch");
+            break;
+        case UI_CALLER:
+            ESP_LOGI(TAG, "UI get sleep switch");
+            break;
+    }
+
+    return sleep_switch;
+}
+
+esp_err_t set_sleep_switch(int caller, int value)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_SWITCH);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
+}
+
+static esp_err_t __set_sleep_switch()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_SWITCH);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
+    {
+        ESP_GOTO_ON_ERROR(storage_write(SLEEP_SWITCH_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_sleepswitch_err, TAG, "%s cfg write err", __func__);
+        cfg->last.value = cfg->current.value;
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
+    }
+set_sleepswitch_err:
     xSemaphoreGive(cfg->mutex);
 
     return ret;
@@ -1134,6 +1270,8 @@ void __app_device_info_task(void *pvParameter)
     init_sound_from_nvs();
     init_cloud_service_switch_from_nvs();
     init_ble_switch_from_nvs();
+    init_sleep_time_from_nvs();
+    init_sleep_switch_from_nvs();
 
     // get spiffs and sdcard status
     __try_check_sdcard_flash();
@@ -1184,6 +1322,12 @@ void __app_device_info_task(void *pvParameter)
             }
             if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_FACTORY_RESET_FLAG)) != 0) {
                 __check_reset_factory();
+            }
+            else if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SLEEP_SWITCH)) != 0){
+                __set_sleep_switch();
+            }
+            else if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SLEEP_TIME)) != 0){
+                __set_sleep_time();
             }
         }
         

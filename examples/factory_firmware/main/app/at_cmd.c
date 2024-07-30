@@ -871,6 +871,55 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
         {
             ESP_LOGI(TAG, "Sound volume not found or not a valid number in JSON\n");
         }
+
+        // set sleep time
+        cJSON *sleeptime = cJSON_GetObjectItemCaseSensitive(data, "sleeptime");
+        if (cJSON_IsNumber(sleeptime))
+        {
+            int sleeptime_value = sleeptime->valueint;
+            if (sleeptime_value < 0 || sleeptime_value > 6)
+            {
+                ESP_LOGE(TAG, "Sleep time value out of range\n");
+                cJSON_Delete(json);
+                return ERROR_CMD_PARAM_RANGE;
+            }
+            esp_err_t set_sleep_time_err = set_sleep_time(AT_CMD_CALLER, sleeptime_value);
+            if (set_sleep_time_err != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to set sleep time\n");
+                cJSON_Delete(json);
+                return ERROR_DATA_WRITE_FAIL;
+            }
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Sleeptime not found or not a valid number in JSON\n");
+        }
+
+        // set sleep switch
+        cJSON *sleepswitch = cJSON_GetObjectItemCaseSensitive(data, "sleepswitch");
+        if (cJSON_IsNumber(sleepswitch))
+        {
+            int sleepswitch_value = sleepswitch->valueint;
+            if (sleepswitch_value < 0 || sleepswitch_value > 1)
+            {
+                ESP_LOGE(TAG, "Sleep switch value out of range\n");
+                cJSON_Delete(json);
+                return ERROR_CMD_PARAM_RANGE;
+            }
+            esp_err_t set_sleep_switch_err = set_sleep_switch(AT_CMD_CALLER, sleepswitch_value);
+            if (set_sleep_switch_err != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to set Sleep switch\n");
+                cJSON_Delete(json);
+                return ERROR_DATA_WRITE_FAIL;
+            }
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Sleep switch not found or not a valid number in JSON\n");
+        }
+
         cJSON *reset_flag = cJSON_GetObjectItemCaseSensitive(data, "reset");
         if (cJSON_IsNumber(reset_flag))
         {
@@ -953,6 +1002,7 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
     }
     cJSON_Delete(root);
     free(json_string);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
     return AT_CMD_SUCCESS;
 }
 
@@ -1021,6 +1071,19 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
         return ERROR_DATA_READ_FAIL;
     }
 
+    int sleep_time = get_sleep_time(AT_CMD_CALLER); 
+    if (sleep_time < 0 || sleep_time > 6)
+    {
+        ESP_LOGE(TAG, "Failed to get sleep time value\n");
+        return ERROR_DATA_READ_FAIL;
+    }
+    int sleep_switch = get_sleep_switch(AT_CMD_CALLER);
+    if (sleep_switch < 0)
+    {
+        ESP_LOGE(TAG, "Failed to get sleep switch value\n");
+        return ERROR_DATA_READ_FAIL;
+    }
+
     int32_t voltage = bsp_battery_get_voltage();
     int battery_percent = bsp_battery_get_percent();
 
@@ -1053,6 +1116,8 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
     cJSON_AddNumberToObject(data, "rgbswitch", rgb_switch);
     cJSON_AddNumberToObject(data, "sound", sound_value_resp);
     cJSON_AddNumberToObject(data, "brightness", brightness_value_resp);
+    cJSON_AddNumberToObject(data, "sleeptime", sleep_time);
+    cJSON_AddNumberToObject(data, "sleepswitch", sleep_switch);
     cJSON_AddStringToObject(data, "timestamp", timestamp_str);
     cJSON_AddNumberToObject(data, "timezone", cfg.zone);
     

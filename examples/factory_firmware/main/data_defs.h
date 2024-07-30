@@ -94,25 +94,6 @@ struct view_data_time_cfg
 }__attribute__((packed));
 
 
-struct view_data_record
-{
-    uint8_t *p_buf; //record data
-    uint32_t len;
-};
-
-enum audio_data_type{
-    AUDIO_DATA_TYPE_FILE,
-    AUDIO_DATA_TYPE_MP3_BUF,
-};
-
-struct view_data_audio_play_data
-{
-    enum audio_data_type type;
-    char file_name[64];
-    uint8_t *p_buf;
-    uint32_t len;
-};
-
 struct view_data_deviceinfo {
     char eui[17];
     char key[33];
@@ -180,6 +161,25 @@ struct view_data_taskflow_status
     int      module_status;
 };
 
+enum task_cfg_id{
+    TASK_CFG_ID_OBJECT = 0,
+    TASK_CFG_ID_CONDITION,
+    TASK_CFG_ID_BEHAVIOR,
+    TASK_CFG_ID_FEATURE,
+    TASK_CFG_ID_NOTIFICATION,
+    TASK_CFG_ID_TIME,
+    TASK_CFG_ID_FREQUENCY, 
+    TASK_CFG_ID_MAX,
+};
+
+struct view_data_vi_result
+{
+    int mode; // 0:chat; 1:task; 2:auto execute task
+    int audio_tm_s;
+    char *p_audio_text; // need free after use
+    char *items[TASK_CFG_ID_MAX]; // need free after use, if empty, means no need to display
+};
+
 /**
  * To better understand the event name, every event name need a suffix "_CHANGED".
  * Mostly, when a data struct changes, there will be an event indicating that some data CHANGED,
@@ -237,10 +237,6 @@ enum {
     VIEW_EVENT_FACTORY_RESET, //NULL
     VIEW_EVENT_SCREEN_CTRL,   // bool  0:disable , 1:enable
 
-    VIEW_EVENT_AUDIO_WAKE, //NULL
-    VIEW_EVENT_AUDIO_VAD_TIMEOUT,   //struct view_data_record
-    VIEW_EVENT_AUDIO_PALY, //struct view_data_audio_play_data
-
     VIEW_EVENT_ALARM_ON,  // struct tf_module_local_alarm_info
     VIEW_EVENT_ALARM_OFF, //NULL
 
@@ -255,6 +251,16 @@ enum {
     VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, //uint32_t, 0: GESTURE, 1: PET, 2: HUMAN
     VIEW_EVENT_TASK_FLOW_STATUS,  // struct view_data_taskflow_status
     VIEW_EVENT_TASK_FLOW_ERROR, // char msg[64]
+
+    // voice interaction
+    VIEW_EVENT_VI_TASKFLOW_PAUSE, //NULL
+    VIEW_EVENT_VI_RECORDING, //NULL
+    VIEW_EVENT_VI_ANALYZING, //NULL
+    VIEW_EVENT_VI_PLAYING, // struct view_data_vi_result
+    VIEW_EVENT_VI_PLAY_FINISH, // NULL
+    VIEW_EVENT_VI_ERROR, // int ,voice interaction run error code.
+    VIEW_EVENT_VI_STOP,  // NULL,  UI post the event. stop the voice interaction when analyzing or palying 
+    VIEW_EVENT_VI_EXIT,  // int, 0: Direct exit, 1: Run new taskflow after exit.  UI post the event. Exit the current session
 
     VIEW_EVENT_ALL,
 };
@@ -312,6 +318,9 @@ enum {
 
     CTRL_EVENT_LOCAL_SVC_CFG_PUSH2TALK,
     CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW,
+
+    CTRL_EVENT_VI_RECORD_WAKEUP, //NULL
+    CTRL_EVENT_VI_RECORD_STOP, //NULL
 
     CTRL_EVENT_ALL,
 };

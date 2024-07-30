@@ -108,13 +108,13 @@ void __select_service_set_rgb(int caller, int service)
         switch (service)
         {
             case RGB_BREATH_RED:
-                set_rgb_status(255, 0, 0, 1, 1, 5);
+                set_rgb_status(255, 0, 0, 1, 3, 5);
                 break;
             case RGB_BREATH_GREEN:
-                set_rgb_status(0, 255, 0, 1, 1, 5);
+                set_rgb_status(0, 255, 0, 1, 3, 5);
                 break;
             case RGB_BREATH_BLUE:
-                set_rgb_status(0, 0, 255, 1, 1, 5);
+                set_rgb_status(0, 0, 255, 1, 3, 5);
                 break;
             case RGB_BREATH_WHITE:
                 set_rgb_status(255, 255, 255, 1, 1, 5);
@@ -280,13 +280,19 @@ void breath_effect_task(void *arg)
         switch (rgb_status_temp.type)
         {
             case 1:
+                __blink(1, false);
                 __set_breath_color(&rgb_status_temp);
                 break;
             case 2:
                 __blink(1, true);
                 break;
             case 3:
-                // __flare(); //TODO
+                __blink(1, false);
+                __rgb_set(rgb_status_temp.r, rgb_status_temp.g, rgb_status_temp.b);
+                
+                __data_lock();
+                set_rgb_status(0, 0, 0, 5, 0, 0);
+                __data_unlock();
                 break;
             case 4:
                 __blink(1, false);

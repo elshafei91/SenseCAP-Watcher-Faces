@@ -1,11 +1,3 @@
-/*
- * @Author: QingWind6 993628705@qq.com
- * @Date: 2024-07-11 15:00:47
- * @LastEditors: QingWind6 993628705@qq.com
- * @LastEditTime: 2024-07-12 18:11:44
- * @FilePath: \SenseCAP-Watcher\examples\factory_firmware\main\view\ui_manager\event.h
- * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
- */
 #ifndef EVENT_H
 #define EVENT_H
 
@@ -85,12 +77,41 @@ void view_info_obtain();
  */
 void emoji_timer(uint8_t emoji_type);
 
+/**
+ * @brief Initialize the Push-to-Talk interface.
+ *
+ * This function sets up the user interface for the Push-to-Talk feature, including the textarea
+ * for displaying text and a button to start the animation.
+ *
+ * @return void
+ */
+void push2talk_init(void);
+
+/**
+ * @brief Start the character-by-character text animation.
+ *
+ * This function displays the given text character by character over the specified duration.
+ * It checks the parameters for validity before starting the animation.
+ *
+ * @param text The text to display. Must be a null-terminated string.
+ * @param duration_s The total duration for the animation in seconds. Must be greater than 0.
+ */
+void push2talk_start_animation(const char *text, uint32_t duration_s);
+
+void view_timer_create();
+void view_ble_switch_timer_start();
+void view_sleep_timer_start();
+void view_push2talk_timer_start();
+void view_push2talk_timer_stop();
+void view_push2talk_msg_timer_start();
+
 enum
 {
     SCREEN_VIRTUAL, // display emoticon on virtual page
     SCREEN_AVATAR,  // display emoticon on avatar page
     SCREEN_GUIDE,    // display emoticon on guide page
-    SCREEN_STANDBY  // display emoticon on standby page
+    SCREEN_STANDBY,  // display emoticon on standby page
+    SCREEN_PUSH2TALK // display emoticon on push2talk page
 };
 
 enum
