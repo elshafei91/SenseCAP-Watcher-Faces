@@ -1288,6 +1288,7 @@ void p2tclick_cb(lv_event_t * e)
 
 void push2talkcancel_cb(lv_event_t * e)
 {
+    static int push2talk_direct_exit = 0;
     if(g_taskflow_pause == 1)
     {
         lv_label_set_text(ui_revtext, "Resuming \nTask...");
@@ -1297,14 +1298,15 @@ void push2talkcancel_cb(lv_event_t * e)
         lv_label_set_text(ui_revtext, "Receiving \nTask...");
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
     }
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
 
     g_taskflow_pause = 0;
 }
 
 void push2talkcheck_cb(lv_event_t * e)
 {
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
+    static int push2talk_newtask_exit = 1;
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_newtask_exit, sizeof(push2talk_newtask_exit), pdMS_TO_TICKS(10000));
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                             VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
 
@@ -1313,7 +1315,7 @@ void push2talkcheck_cb(lv_event_t * e)
 
 void p2tvaluechange_cb(lv_event_t * e)
 {
-    // ESP_LOGI(TAG, "p2tvaluechange_cb");
+    static int push2talk_direct_exit = 0;
     static int16_t push2talk_arc;
     push2talk_arc = lv_arc_get_value(ui_push2talkarc);
     if(push2talk_arc == 9)
@@ -1323,7 +1325,7 @@ void p2tvaluechange_cb(lv_event_t * e)
         lv_group_set_editing(g_main, false);
 
         // TODO
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, NULL, NULL, pdMS_TO_TICKS(10000));
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
 
         if(g_taskflow_pause == 1)
         {
