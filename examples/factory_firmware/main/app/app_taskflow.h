@@ -21,6 +21,7 @@ struct app_taskflow_info {
 struct app_taskflow
 {
     SemaphoreHandle_t sem_handle;
+    SemaphoreHandle_t report_sem_handle;
     StaticTask_t *p_task_buf;
     StackType_t *p_task_stack_buf;
     TaskHandle_t task_handle;

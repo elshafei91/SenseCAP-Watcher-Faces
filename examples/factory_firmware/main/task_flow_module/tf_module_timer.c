@@ -13,29 +13,17 @@ static void __timer_callback(void* p_arg)
     esp_err_t ret = ESP_OK;
     tf_module_timer_t *p_module_ins = (tf_module_timer_t *)p_arg;
 
-    char buf[32];
-    uint32_t len = 0;
-
     time_t now = 0;
     time(&now);
     
-    memset(buf, 0, sizeof(buf));
-    len = snprintf(buf, sizeof(buf), "%d", now);
-    len+=1;
+    tf_data_time_t buf_data;
+    buf_data.type = TF_DATA_TYPE_TIME;
+    buf_data.time = now;
 
-    ESP_LOGI(TAG, "timer[%d]: %s", p_module_ins->id, buf);
-
-    tf_data_buffer_t buf_data;
-    struct tf_data_buf buf_temp;
-    buf_temp.p_buf = (uint8_t *)buf;
-    buf_temp.len = len;
-    buf_data.type = TF_DATA_TYPE_BUFFER;
     for(int i = 0; i < p_module_ins->output_evt_num; i++) {
-        tf_data_buf_copy(&buf_data.data, &buf_temp);  //next module use and then free
         ret = tf_event_post(p_module_ins->p_output_evt_id[i], &buf_data, sizeof(buf_data), pdMS_TO_TICKS(10000));
         if( ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to post event %d", p_module_ins->p_output_evt_id[i]);
-            tf_data_free(&buf_data);
         } else {
             ESP_LOGI(TAG, "Output --> %d", p_module_ins->p_output_evt_id[i]);
         }
@@ -156,10 +144,10 @@ tf_module_t * tf_module_timer_init(tf_module_timer_t *p_module_ins)
     {
         return NULL;
     }
-    p_module_ins->module_serv.p_module = p_module_ins;
-    p_module_ins->module_serv.ops = &__g_module_ops;
+    p_module_ins->module_base.p_module = p_module_ins;
+    p_module_ins->module_base.ops = &__g_module_ops;
 
-    return &p_module_ins->module_serv;
+    return &p_module_ins->module_base;
 }
 
 esp_err_t tf_module_timer_register(void)

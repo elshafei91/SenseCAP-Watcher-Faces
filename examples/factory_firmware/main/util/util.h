@@ -3,6 +3,7 @@
 #define _UTIL_H
 
 #include <time.h>
+#include "cJSON.h">
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,6 +19,16 @@ void string_to_byte_array(const char *str, uint8_t *byte_array, size_t length);
 void *psram_malloc(size_t sz);
 void *psram_calloc(size_t n, size_t sz);
 void *psram_realloc(void *ptr, size_t new_sz);
+
+/**
+ * util func that combines vTaskList and vTaskGetRunTimeStats
+*/
+void util_print_task_stats(char *dst_buffer);
+
+bool cJSON_IsGeneralBool(const cJSON * const item);
+bool cJSON_IsGeneralTrue(const cJSON * const item);
+
+char *strdup_psram(const char *s);
 
 #ifdef __cplusplus
 }

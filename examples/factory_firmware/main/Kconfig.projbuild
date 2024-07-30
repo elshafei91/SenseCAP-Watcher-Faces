@@ -33,4 +33,10 @@ menu "Factory Firmware Example Configuration"
         default n
         help
             In test env, connects to test servers, enable test code snippets.
+
+    config INTR_TRACKING
+        bool "intr tracking"
+        default n
+        help
+            Enable intr tarcking.
 endmenu

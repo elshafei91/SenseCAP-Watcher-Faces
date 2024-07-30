@@ -15,13 +15,6 @@ extern "C" {
 #define WIFI_SCAN_RESULT_CNT_MAX        8
 
 
-//wifi config_sys layer Data structure
-typedef struct {
-    char ssid[32];
-    char password[64];
-    char* security;
-    int caller;
-} wifi_config;
 typedef struct
 {
     char *ssid;
@@ -43,9 +36,10 @@ extern TaskHandle_t xTask_wifi_config_entry;
 
 
 int app_wifi_init(void);
-int set_wifi_config(wifi_config* config);
 void wifi_scan(void);
 void current_wifi_get(wifi_ap_record_t *p_st);
+
+const char *print_auth_mode(int authmode);
 
 #ifdef __cplusplus
 }

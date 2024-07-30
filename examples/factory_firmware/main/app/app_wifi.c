@@ -106,6 +106,7 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
             break;
         }
         case WIFI_EVENT_STA_CONNECTED: {
+            wifi_connect_failed_reason = 0;
             xSemaphoreGive(semaphorewificonnected);
             ESP_LOGI(TAG, "wifi event: WIFI_EVENT_STA_CONNECTED");
             wifi_event_sta_connected_t *event = (wifi_event_sta_connected_t *)event_data;
@@ -128,11 +129,9 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
 
             // Save the current WiFi config as the previous config
             esp_wifi_get_config(WIFI_IF_STA, &previous_wifi_config);
-            wifi_connect_failed_reason = 0;
             break;
         }
         case WIFI_EVENT_STA_DISCONNECTED: {
-            xSemaphoreGive(semaphorewificonnected);
             ESP_LOGI(TAG, "wifi event: WIFI_EVENT_STA_DISCONNECTED");
             wifi_event_sta_disconnected_t *disconnected_event = (wifi_event_sta_disconnected_t *)event_data;
 
@@ -152,6 +151,7 @@ static void __wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t
                     ESP_LOGI(TAG, "Other disconnection reason: %d", disconnected_event->reason);
                     break;
             }
+            xSemaphoreGive(semaphorewificonnected);
 
             if ((wifi_retry_max == -1) || s_retry_num < wifi_retry_max)
             {
@@ -241,7 +241,7 @@ static int __wifi_scan()
 
 /*----------------------------------------------------------------------------------------------------------*/
 /*add scanned wifi entry  into wifi stack*/
-static const char *print_auth_mode(int authmode)
+const char *print_auth_mode(int authmode)
 {
     switch (authmode)
     {
@@ -385,7 +385,7 @@ void addWiFiEntryToStack(WiFiStack *stack, uint8_t ssid[33], int8_t rssi, const 
     snprintf(rssi_str, sizeof(rssi_str), "%d", rssi);
 
     // Create a WiFiEntry
-    WiFiEntry entry = { .ssid = strdup(ssid_str), .rssi = strdup(rssi_str), .encryption = strdup(encryption) };
+    WiFiEntry entry = { .ssid = strdup_psram(ssid_str), .rssi = strdup_psram(rssi_str), .encryption = strdup_psram(encryption) };
 
     // Push the entry to the stack
     pushWiFiStack(stack, entry);
@@ -531,7 +531,15 @@ static void __ping_end(esp_ping_handle_t hdl, void *args)
     struct view_data_wifi_st st;
     if (received > 0)
     {
+        wifi_ap_record_t ap_st;
+        esp_err_t ret = esp_wifi_sta_get_ap_info(&ap_st);
+        
         __wifi_st_get(&st);
+        if( ret == ESP_OK ) {
+            st.rssi = ap_st.rssi;
+            memset(st.ssid, 0, sizeof(st.ssid));
+            strncpy(st.ssid, (char *)ap_st.ssid, sizeof(st.ssid));
+        }
         st.is_network = true;
         atomic_store(&__g_ping_period_cnt, 0);  //reset the counter if network is good
         __wifi_st_set(&st);
@@ -638,7 +646,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
             }
             else
             {
-                ESP_LOGE(TAG, "ssid: %s, password: %s", p_cfg->ssid, p_cfg->password);
                 __wifi_connect(p_cfg->ssid, NULL, 3);
             }
             break;
@@ -646,11 +653,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
         case VIEW_EVENT_WIFI_CFG_DELETE: {
             ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CFG_DELETE");
             __wifi_cfg_restore();
-            break;
-        }
-        case VIEW_EVENT_SHUTDOWN: {
-            ESP_LOGI(TAG, "event: VIEW_EVENT_SHUTDOWN");
-            __wifi_shutdown();
             break;
         }
         case CTRL_EVENT_MQTT_DISCONNECTED: {
@@ -668,49 +670,6 @@ static void __view_event_handler(void *handler_args, esp_event_base_t base, int3
 static void __wifi_cfg_init(void)
 {
     memset(&_g_wifi_cfg, 0, sizeof(_g_wifi_cfg));
-}
-
-int set_wifi_config(wifi_config *config)
-{
-    int result = 0;
-    switch (config->caller)
-    {
-        case UI_CALLER: {
-            break;
-        }
-        case AT_CMD_CALLER: {
-            struct view_data_wifi_config outer_config;
-
-            memset(outer_config.ssid, 0, sizeof(outer_config.ssid));
-            strncpy(outer_config.ssid, config->ssid, sizeof(outer_config.ssid) - 1);
-            outer_config.ssid[sizeof(outer_config.ssid) - 1] = '\0';
-
-            if (config->password[0] != '\0')
-            {
-                outer_config.have_password = 1;
-
-                memset(outer_config.password, 0, sizeof(outer_config.password));
-                strncpy(outer_config.password, config->password, sizeof(outer_config.password) - 1);
-                outer_config.password[sizeof(outer_config.password) - 1] = '\0';
-            }
-            else
-            {
-                outer_config.have_password = 0;
-
-                memset(outer_config.password, 0, sizeof(outer_config.password));
-            }
-
-            ESP_LOGI("AT_CMD_CALLER", "SSID: %s, Password: %s", outer_config.ssid, outer_config.have_password ? outer_config.password : "No Password");
-
-            result = esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CONNECT, &outer_config, sizeof(struct view_data_wifi_config), pdMS_TO_TICKS(10000));
-
-            break;
-        }
-        default: {
-            break;
-        }
-    }
-    return result;
 }
 
 extern SemaphoreHandle_t xBinarySemaphore_wifitable;
@@ -777,7 +736,6 @@ int app_wifi_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_WIFI_CFG_DELETE, __view_event_handler, NULL, NULL));
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_DISCONNECTED, __view_event_handler, NULL, NULL));
 

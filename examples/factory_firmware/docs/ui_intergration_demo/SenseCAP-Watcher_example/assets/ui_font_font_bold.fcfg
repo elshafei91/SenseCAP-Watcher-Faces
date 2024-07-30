@@ -1,0 +1,16 @@
+{
+  "codename": "font_bold",
+  "ttf_path": "\\assets\\Montserrat-SemiBold.ttf",
+  "bin_path": "\\assets\\ui_font_font_bold.bin",
+  "c_path": "\\assets\\ui_font_font_bold.c",
+  "cfg_path": "\\assets\\ui_font_font_bold.fcfg",
+  "size": 36,
+  "bpp": 8,
+  "letters": 0,
+  "ranges": [
+    "0x20-0x7f"
+  ],
+  "symbols": "",
+  "customparams": "--no-compress --no-prefilter",
+  "uploaded": false
+}

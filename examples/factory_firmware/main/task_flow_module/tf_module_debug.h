@@ -15,7 +15,7 @@ extern "C"
 
 typedef struct tf_module_debug
 {
-    tf_module_t module_serv;
+    tf_module_t module_base;
     int evt_id;
 } tf_module_debug_t;
 

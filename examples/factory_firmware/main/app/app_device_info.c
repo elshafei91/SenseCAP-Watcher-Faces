@@ -17,6 +17,7 @@
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
 #include "esp_timer.h"
+#include "cJSON.h"
 
 #include "sensecap-watcher.h"
 
@@ -33,15 +34,54 @@
 #include "tf_module_ai_camera.h"
 #include "util.h"
 
+
 #define APP_DEVICE_INFO_MAX_STACK 4096
 #define BRIGHTNESS_STORAGE_KEY    "brightness"
 #define SOUND_STORAGE_KEY         "sound"
 #define RGB_SWITCH_STORAGE_KEY    "rgbswitch"
 #define CLOUD_SERVICE_STORAGE_KEY "cssk"
-#define AI_SERVICE_STORAGE_KEY    "aiservice"
+#define LOCAL_SERVICE_STORAGE_KEY "localservice"
 #define USAGE_GUIDE_SK            "usage_guide"
-#define TIME_AUTOMATIC_SK         "time_auto"
 #define BLE_STORAGE_KEY           "ble_switch"
+
+#define EVENT_BIT(T)              (BIT0 << T)
+#define EVENT_DEVICECFG_CHANGE    BIT0
+#define EVENT_TIMER_500MS         BIT1
+#define EVENT_TIMER_1S            BIT2
+#define EVENT_TIMER_30S           BIT3
+
+#define GET_DEVCFG_PTR(T)               ((devicecfg_t *)&g_devicecfgs[T])
+#define DEVCFG_DEFAULT_BRIGHTNESS       100
+#define DEVCFG_DEFAULT_RGB_SWITCH       1
+#define DEVCFG_DEFAULT_SOUND            80
+#define DEVCFG_DEFAULT_BLE_SWITCH       1
+#define DEVCFG_DEFAULT_CLOUD_SVC_SWITCH 1
+#define DEVCFG_DEFAULT_LOCAL_SVC_SWITCH 0
+#define DEVCFG_DEFAULT_USAGE_GUIDE_FLAG 0
+
+typedef enum {
+    DEVCFG_TYPE_BRIGHTNESS = 0,
+    DEVCFG_TYPE_RGB_SWITCH,
+    DEVCFG_TYPE_SOUND,
+    DEVCFG_TYPE_BLE_SWITCH,
+    DEVCFG_TYPE_CLOUD_SVC_SWITCH,
+    DEVCFG_TYPE_LOCAL_SVC,
+    DEVCFG_TYPE_USAGE_GUIDE_FLAG,
+    DEVCFG_TYPE_FACTORY_RESET_FLAG,
+    DEVCFG_TYPE_MAX,
+} devicecfg_type_t;
+
+typedef struct {
+    devicecfg_type_t  type;
+    SemaphoreHandle_t mutex;
+    union {
+        int value;
+        uint32_t uint_value;
+        char *str_value;
+    } current, last;
+    esp_timer_handle_t timer_handle;
+} devicecfg_t;
+
 
 static const char *TAG = "deviceinfo";
 
@@ -50,42 +90,8 @@ static uint8_t EUI[8] = { 0 };
 static uint8_t DEVCODE[8] = { 0 };
 static uint8_t QRCODE[67] = { 0 };
 
-int server_code = 1;
-int create_batch = 1000205;
-
-int brightness = 100;
-int brightness_past = 100;
-
-int sound_value = 80;
-int sound_value_past = 80;
-
-int rgb_switch = 1;
-int rgb_switch_past = 1;
-
-int cloud_service_switch = 1;
-int cloud_service_switch_past = 1;
-
-int usage_guide_switch = 0;
-int usage_guide_switch_past = 0;
-
-int ble_switch = 1;
-int ble_switch_past = 1;
-
-
-static sscma_client_info_t *g_himax_info;
-
-// ai service ip for mqtt
-ai_service_pack ai_service;
-ai_service_pack ai_service_past;
-
-SemaphoreHandle_t MUTEX_brightness;
-SemaphoreHandle_t MUTEX_rgb_switch;
-SemaphoreHandle_t MUTEX_sound;
-SemaphoreHandle_t MUTEX_ai_service;
-SemaphoreHandle_t MUTEX_cloud_service_switch;
-SemaphoreHandle_t MUTEX_usage_guide;
-SemaphoreHandle_t MUTEX_sdcard_flash_status;
-SemaphoreHandle_t MUTEX_ble_switch;
+static int server_code = 1;
+static int create_batch = 1000205;
 
 static StackType_t *app_device_info_task_stack = NULL;
 static StaticTask_t app_device_info_task_buffer;
@@ -95,11 +101,130 @@ static struct view_data_sdcard_flash_status g_sdcard_flash_status;
 static volatile atomic_bool g_mqttconn = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_timeout_firstreport = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_will_reset_factory = ATOMIC_VAR_INIT(false);
+static SemaphoreHandle_t    g_mtx_sdcard_flash_status;
+static EventGroupHandle_t   g_eg_task_wakeup;
+static EventGroupHandle_t   g_eg_devicecfg_change;
 
 static esp_timer_handle_t g_timer_firstreport;
+static esp_timer_handle_t g_timer_every_500ms;
+static esp_timer_handle_t g_timer_every_1s;
+static esp_timer_handle_t g_timer_every_30s;
+
+static devicecfg_t *g_devicecfgs;
+static sscma_client_info_t *g_himax_info;
 
 
+static cJSON *__local_service_cfg_to_json(local_service_cfg_t *local_svc_cfg)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (!root) return NULL;
 
+    //type1
+    cJSON *type1 =  cJSON_AddObjectToObject(root, "type1");
+    if (!type1) goto to_json_err;
+    char key_name[32];
+    for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
+    {
+        memset(key_name, 0, 32);
+        snprintf(key_name, 32, "cfg_%d", i);
+        cJSON *item = cJSON_AddObjectToObject(type1, key_name);
+        if (!item) goto to_json_err;
+        local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
+        if (!cJSON_AddBoolToObject(item, "enable", (cJSON_bool)item_type1->enable)) goto to_json_err;
+        if (!cJSON_AddStringToObject(item, "url", item_type1->url)) goto to_json_err;
+        if (!cJSON_AddStringToObject(item, "token", item_type1->token)) goto to_json_err;
+    }
+
+    return root;
+    
+to_json_err:
+    ESP_LOGE(TAG, "%s: error happen when creating the json object", __func__);
+    if (root) cJSON_Delete(root);
+    return NULL;
+}
+
+static esp_err_t __local_service_cfg_from_json(local_service_cfg_t *local_svc_cfg, cJSON *json)
+{
+    esp_err_t ret = ESP_ERR_NOT_FOUND;
+
+    cJSON *type1 = cJSON_GetObjectItem(json, "type1");
+    if (!type1) goto from_json_err;
+    char key_name[32];
+    for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
+    {
+        memset(key_name, 0, 32);
+        snprintf(key_name, 32, "cfg_%d", i);
+        cJSON *item = cJSON_GetObjectItem(type1, key_name);
+        if (!item) goto from_json_err;
+        cJSON *item_enable = cJSON_GetObjectItem(item, "enable");
+        if (!item_enable) goto from_json_err;
+        cJSON *item_url = cJSON_GetObjectItem(item, "url");
+        if (!item_url) goto from_json_err;
+        cJSON *item_token = cJSON_GetObjectItem(item, "token");
+        if (!item_token) goto from_json_err;
+        local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
+        item_type1->enable = cJSON_IsTrue(item_enable);
+        if (item_type1->url != NULL) free(item_type1->url);
+        item_type1->url = strdup_psram(item_url->valuestring);
+        if (item_type1->token != NULL) free(item_type1->token);
+        item_type1->token = strdup_psram(item_token->valuestring);
+    }
+
+    return ESP_OK;
+
+from_json_err:
+    ESP_LOGE(TAG, "%s: error happen when parsing the json object", __func__);
+    return ret;
+}
+
+static void __deep_copy_local_service_cfg(local_service_cfg_t *dst, local_service_cfg_t *src)
+{
+    //type1
+    for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
+    {
+        if (dst->cfg_items_type1[i].url != NULL) free(dst->cfg_items_type1[i].url);
+        if (dst->cfg_items_type1[i].token != NULL) free(dst->cfg_items_type1[i].token);
+        dst->cfg_items_type1[i].enable = src->cfg_items_type1[i].enable;
+        dst->cfg_items_type1[i].url = strdup_psram(src->cfg_items_type1[i].url);
+        dst->cfg_items_type1[i].token = strdup_psram(src->cfg_items_type1[i].token);
+    }
+    
+}
+
+static esp_err_t __safely_set_devicecfg_value(devicecfg_t *cfg, int value)
+{
+    esp_err_t ret;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    cfg->current.value = value;
+    esp_timer_stop(cfg->timer_handle);
+    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
+    xSemaphoreGive(cfg->mutex);
+    return ret;
+}
+
+static esp_err_t __safely_set_devicecfg_uint_value(devicecfg_t *cfg, uint32_t value)
+{
+    esp_err_t ret;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    cfg->current.uint_value = value;
+    esp_timer_stop(cfg->timer_handle);
+    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
+    xSemaphoreGive(cfg->mutex);
+    return ret;
+}
+
+static esp_err_t __safely_set_devicecfg_str_value(devicecfg_t *cfg, char *value)
+{
+    esp_err_t ret;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    cfg->current.str_value = value;
+    esp_timer_stop(cfg->timer_handle);
+    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
+    xSemaphoreGive(cfg->mutex);
+    return ret;
+}
+
+/*----------------------------------------------initial load------------------------------------------------------*/
 void init_sn_from_nvs()
 {
     const char *sn_str = factory_info_sn_get();
@@ -144,134 +269,208 @@ void init_server_code_from_nvs()
     return;
 }
 
-void init_ai_service_param_from_nvs()
+void init_brightness_from_nvs()
 {
-    size_t size = sizeof(ai_service);
-    esp_err_t ret = storage_read(AI_SERVICE_STORAGE_KEY, &ai_service, &size);
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_BRIGHTNESS);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(BRIGHTNESS_STORAGE_KEY, &cfg->current.value, &size);
     if (ret == ESP_OK)
     {
-        ai_service_past = ai_service;
-        ESP_LOGI(TAG, "ai_service value loaded from NVS: %d", ai_service);
+        ESP_LOGI(TAG, "Brightness value loaded from NVS: %d", cfg->current.value);
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGW(TAG, "No ai_service value found in NVS. Using default: %d", ai_service);
+        cfg->current.value = DEVCFG_DEFAULT_BRIGHTNESS;
+        ESP_LOGI(TAG, "No brightness value found in NVS. Using default: %d", DEVCFG_DEFAULT_BRIGHTNESS);
     }
     else
     {
-        ESP_LOGE(TAG, "Error reading ai_service from NVS: %s", esp_err_to_name(ret));
+        cfg->current.value = DEVCFG_DEFAULT_BRIGHTNESS;
+        ESP_LOGE(TAG, "Error reading brightness from NVS: %s", esp_err_to_name(ret));
+    }
+
+    ret = bsp_lcd_brightness_set(cfg->current.value);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "LCD brightness set err:%d", ret);
+    }
+    else
+    {
+        cfg->last.value = cfg->current.value;  // no one shall be accessing this during init, need no lock
     }
 }
 
 void init_rgb_switch_from_nvs()
 {
-    size_t size = sizeof(rgb_switch);
-    esp_err_t ret = storage_read(RGB_SWITCH_STORAGE_KEY, &rgb_switch, &size);
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_RGB_SWITCH);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(RGB_SWITCH_STORAGE_KEY, &cfg->current.value, &size);
     if (ret == ESP_OK)
     {
-        ESP_LOGI(TAG, "rgb_switch value loaded from NVS: %d", rgb_switch);
+        ESP_LOGI(TAG, "rgb_switch value loaded from NVS: %d", cfg->current.value);
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGW(TAG, "No rgb_switch value found in NVS. Using default: %d", rgb_switch);
+        cfg->current.value = DEVCFG_DEFAULT_RGB_SWITCH;
+        ESP_LOGW(TAG, "No rgb_switch value found in NVS. Using default: %d", DEVCFG_DEFAULT_RGB_SWITCH);
     }
     else
     {
+        cfg->current.value = DEVCFG_DEFAULT_RGB_SWITCH;
         ESP_LOGE(TAG, "Error reading rgb_switch from NVS: %s", esp_err_to_name(ret));
     }
 
-    app_rgb_set(UI_CALLER, rgb_switch == 1 ? RGB_ON : RGB_OFF);
-    rgb_switch_past = rgb_switch;
-}
-
-void init_brightness_from_nvs()
-{
-    size_t size = sizeof(brightness);
-    esp_err_t ret = storage_read(BRIGHTNESS_STORAGE_KEY, &brightness, &size);
-    if (ret == ESP_OK)
-    {
-        ESP_LOGI(TAG, "Brightness value loaded from NVS: %d", brightness);
-    }
-    else if (ret == ESP_ERR_NVS_NOT_FOUND)
-    {
-        ESP_LOGI(TAG, "No brightness value found in NVS. Using default: %d", brightness);
-    }
-    else
-    {
-        ESP_LOGE(TAG, "Error reading brightness from NVS: %s", esp_err_to_name(ret));
-    }
-
-    ret = bsp_lcd_brightness_set(brightness);
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "LCD brightness set err:%d", ret);
-    } else 
-        brightness_past = brightness;
-
+    app_rgb_set(UI_CALLER, cfg->current.value == 1 ? RGB_ON : RGB_OFF);
+    cfg->last.value = cfg->current.value;
 }
 
 void init_sound_from_nvs()
 {
-    size_t size = sizeof(sound_value);
-    esp_err_t ret = storage_read(SOUND_STORAGE_KEY, &sound_value, &size);
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SOUND);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(SOUND_STORAGE_KEY, &cfg->current.value, &size);
     if (ret == ESP_OK)
     {
-        ESP_LOGI(TAG, "Sound value loaded from NVS: %d", sound_value);
+        ESP_LOGI(TAG, "Sound value loaded from NVS: %d", cfg->current.value);
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGW(TAG, "No sound value found in NVS. Using default: %d", sound_value);
+        cfg->current.value = DEVCFG_DEFAULT_SOUND;
+        ESP_LOGW(TAG, "No sound value found in NVS. Using default: %d", DEVCFG_DEFAULT_SOUND);
     }
     else
     {
+        cfg->current.value = DEVCFG_DEFAULT_SOUND;
         ESP_LOGE(TAG, "Error reading sound value from NVS: %s", esp_err_to_name(ret));
     }
 
-    ret = bsp_codec_volume_set(sound_value, NULL);
+    ret = bsp_codec_volume_set(cfg->current.value, NULL);
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "sound value set err:%d", ret);
-    } else 
-        sound_value_past = sound_value;
+    } else
+    {
+        cfg->last.value = cfg->current.value; // no one shall be accessing this during init, need no lock
+    }
+}
 
+void init_ble_switch_from_nvs()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_BLE_SWITCH);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(BLE_STORAGE_KEY, &cfg->current.value, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI(TAG, "BLE switch loaded from NVS: %d", cfg->current.value);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        cfg->current.value = DEVCFG_DEFAULT_BLE_SWITCH;
+        ESP_LOGW(TAG, "No ble switch found in NVS. Using default: %d", DEVCFG_DEFAULT_BLE_SWITCH);
+    }
+    else
+    {
+        cfg->current.value = DEVCFG_DEFAULT_BLE_SWITCH;
+        ESP_LOGE(TAG, "Error reading ble switch from NVS: %s", esp_err_to_name(ret));
+    }
+
+    ret = app_ble_adv_switch((cfg->current.value != 0));
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "BLE switch set err:%d", ret);
+    }
+    else
+    {
+        cfg->last.value = cfg->current.value; // no one shall be accessing this during init, need no lock
+    }
 }
 
 void init_cloud_service_switch_from_nvs()
 {
-    size_t size = sizeof(cloud_service_switch);
-    esp_err_t ret = storage_read(CLOUD_SERVICE_STORAGE_KEY, &cloud_service_switch, &size);
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_CLOUD_SVC_SWITCH);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(CLOUD_SERVICE_STORAGE_KEY, &cfg->current.value, &size);
     if (ret == ESP_OK)
     {
-        ESP_LOGI(TAG, "cloud_service_switch value loaded from NVS: %d", cloud_service_switch);
-        cloud_service_switch_past = cloud_service_switch;
+        ESP_LOGI(TAG, "cloud_service_switch value loaded from NVS: %d", cfg->current.value);
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGI(TAG, "No cloud_service_switch value found in NVS. Using default: %d", cloud_service_switch);
+        cfg->current.value = DEVCFG_DEFAULT_CLOUD_SVC_SWITCH;
+        ESP_LOGI(TAG, "No cloud_service_switch value found in NVS. Using default: %d", DEVCFG_DEFAULT_CLOUD_SVC_SWITCH);
     }
     else
     {
+        cfg->current.value = DEVCFG_DEFAULT_CLOUD_SVC_SWITCH;
         ESP_LOGE("NVS", "Error reading rgb_switch from NVS: %s", esp_err_to_name(ret));
     }
+    cfg->last.value = cfg->current.value;
+}
+
+void init_local_service_cfg_from_nvs()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_LOCAL_SVC);
+    if (cfg->current.uint_value) return;  //already initialized
+
+    local_service_cfg_t *local_svc_cfg = (local_service_cfg_t *)psram_calloc(1, sizeof(local_service_cfg_t));  //ensured init once, never released
+
+    size_t buffer_size = 4096;
+    char *buffer = psram_calloc(1, buffer_size);
+    esp_err_t ret = storage_read(LOCAL_SERVICE_STORAGE_KEY, buffer, &buffer_size);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "local_service_cfg loaded from NVS: %s\nstrlen=%d", buffer, buffer_size);
+        cJSON *json = cJSON_Parse(buffer);
+        if (json) {
+            if (__local_service_cfg_from_json(local_svc_cfg, json)) {
+                ESP_LOGI(TAG, "local_service_cfg all configurations are extracted.");
+            }
+            cJSON_Delete(json);
+        }
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI(TAG, "No local_service_cfg found in NVS. Using default, all disabled.");
+    }
+    else {
+        ESP_LOGE(TAG, "Error reading local_service_cfg from NVS: %s", esp_err_to_name(ret));
+    }
+    free(buffer);
+
+    for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
+    {
+        local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
+        if (item_type1->url == NULL) item_type1->url = strdup_psram("");
+        if (item_type1->token == NULL) item_type1->token = strdup_psram("");
+        ESP_LOGI(TAG, "type1/cfg_%d: enable=%d, url=%s, token=%s", i, item_type1->enable, item_type1->url, item_type1->token);
+    }
+
+    cfg->current.uint_value = (uint32_t)local_svc_cfg;
+
+    //copy to last
+    local_service_cfg_t *local_svc_cfg2 = (local_service_cfg_t *)psram_calloc(1, sizeof(local_service_cfg_t));  //ensured init once, never released
+    __deep_copy_local_service_cfg(local_svc_cfg2, local_svc_cfg);
+    cfg->last.uint_value = (uint32_t)local_svc_cfg2;
 }
 
 void init_usage_guide_switch_from_nvs()
 {
-    size_t size = sizeof(usage_guide_switch);
-    esp_err_t ret = storage_read(USAGE_GUIDE_SK, &usage_guide_switch, &size);
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_USAGE_GUIDE_FLAG);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(USAGE_GUIDE_SK, &cfg->current.value, &size);
     if (ret == ESP_OK)
     {
-        ESP_LOGI(TAG, "usage_guide_switch value loaded from NVS: %d", usage_guide_switch);
-        usage_guide_switch_past = usage_guide_switch;
+        ESP_LOGI(TAG, "usage_guide_switch value loaded from NVS: %d", cfg->current.value);
     }
     else if (ret == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGI(TAG, "No usage_guide_switch value found in NVS. Using default: %d", usage_guide_switch);
+        cfg->current.value = DEVCFG_DEFAULT_USAGE_GUIDE_FLAG;
+        ESP_LOGI(TAG, "No usage_guide_switch value found in NVS. Using default: %d", DEVCFG_DEFAULT_USAGE_GUIDE_FLAG);
     }
     else
     {
+        cfg->current.value = DEVCFG_DEFAULT_USAGE_GUIDE_FLAG;
         ESP_LOGE("NVS", "Error reading usage_guide_switch from NVS: %s", esp_err_to_name(ret));
     }
+    cfg->last.value = cfg->current.value;
 }
 
 void init_qrcode_content()
@@ -291,35 +490,7 @@ void init_qrcode_content()
     //esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SN_CODE, QRCODE, sizeof(QRCODE), pdMS_TO_TICKS(10000));
 }
 
-void init_ble_switch_from_nvs()
-{
-    size_t size = sizeof(ble_switch);
-    esp_err_t ret = storage_read(BLE_STORAGE_KEY, &ble_switch, &size);
-    if (ret == ESP_OK)
-    {
-        ESP_LOGI(TAG, "BLE switch loaded from NVS: %d", ble_switch);
-    }
-    else if (ret == ESP_ERR_NVS_NOT_FOUND)
-    {
-        ESP_LOGW(TAG, "No ble switch found in NVS. Using default: %d", ble_switch);
-    }
-    else
-    {
-        ESP_LOGE(TAG, "Error reading ble switch from NVS: %s", esp_err_to_name(ret));
-    }
-
-    ret = app_ble_adv_switch((ble_switch != 0));
-    if (ret != ESP_OK)
-    {
-        ESP_LOGE(TAG, "BLE switch set err:%d", ret);
-    } else {
-        ble_switch_past = ble_switch;
-    }
-}
-
-/*----------------------------------------------------------------------------------------------------------------------*/
-/*---------------------------------------------GET FACTORY cfg----------------------------------------------------------*/
-
+/*---------------------------------------------FACTORY info----------------------------------------------------------*/
 uint8_t *get_sn(int caller)
 {
     return SN;
@@ -360,7 +531,7 @@ uint8_t *get_wifi_mac()
     return wifi_mac;
 }
 
-/*---------------------------------------------version module--------------------------------------------------------------*/
+/*---------------------------------------------versions--------------------------------------------------------------*/
 
 char *get_software_version(int caller)
 {
@@ -404,10 +575,11 @@ char *get_himax_software_version(int caller)
     return g_device_status.himax_fw_version;
 }
 
-/*----------------------------------------------brightness module------------------------------------------------------*/
+/*----------------------------------------------brightness------------------------------------------------------*/
 int get_brightness(int caller)
 {
-    int brightness2 = brightness;  //copy here
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_BRIGHTNESS);
+    int brightness2 = cfg->current.value;  //copy here
 
     switch (caller)
     {
@@ -425,34 +597,36 @@ int get_brightness(int caller)
 
 esp_err_t set_brightness(int caller, int value)
 {
-    ESP_LOGI(TAG, "set_brightness: %d", value);
-    xSemaphoreTake(MUTEX_brightness, portMAX_DELAY);
-    brightness_past = brightness;
-    brightness = value;
-    xSemaphoreGive(MUTEX_brightness);
-    return ESP_OK;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_BRIGHTNESS);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
 }
 
 static esp_err_t __set_brightness()
 {
-    xSemaphoreTake(MUTEX_brightness, portMAX_DELAY);
-    if (brightness_past != brightness)
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_BRIGHTNESS);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
     {
-        ESP_RETURN_ON_ERROR(storage_write(BRIGHTNESS_STORAGE_KEY, &brightness, sizeof(brightness)), TAG, "set_brightness cfg write err");
-        ESP_RETURN_ON_ERROR(bsp_lcd_brightness_set(brightness), TAG, "bsp_lcd_brightness_set err");
-        brightness_past = brightness;
-        ESP_LOGD(TAG, "set_brightness done: %d", brightness);
+        ESP_GOTO_ON_ERROR(storage_write(BRIGHTNESS_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_brightness_err, TAG, "%s cfg write err", __func__);
+        ESP_GOTO_ON_ERROR(bsp_lcd_brightness_set(cfg->current.value), set_brightness_err, TAG, "bsp_lcd_brightness_set err");
+        cfg->last.value = cfg->current.value;
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
     }
-    xSemaphoreGive(MUTEX_brightness);
+set_brightness_err:
+    xSemaphoreGive(cfg->mutex);
 
-    return ESP_OK;
+    return ret;
 }
 
-/*--------------------------------------------rgb switch  module----------------------------------------------------------------*/
+/*--------------------------------------------rgb switch----------------------------------------------------------------*/
 
 int get_rgb_switch(int caller)
 {
-    int rgb_switch2 = rgb_switch;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_RGB_SWITCH);
+    int rgb_switch2 = cfg->current.value;
 
     switch (caller)
     {
@@ -470,34 +644,36 @@ int get_rgb_switch(int caller)
 
 esp_err_t set_rgb_switch(int caller, int value)
 {
-    ESP_LOGI(TAG, "set_rgb_switch: %d", value);
-    xSemaphoreTake(MUTEX_rgb_switch, portMAX_DELAY);
-    rgb_switch_past = rgb_switch;
-    rgb_switch = value;
-    xSemaphoreGive(MUTEX_rgb_switch);
-    return ESP_OK;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_RGB_SWITCH);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
 }
 
 static esp_err_t __set_rgb_switch()
 {
-    xSemaphoreTake(MUTEX_rgb_switch, portMAX_DELAY);
-    if (rgb_switch_past != rgb_switch)
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_RGB_SWITCH);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
     {
-        ESP_RETURN_ON_ERROR(storage_write(RGB_SWITCH_STORAGE_KEY, &rgb_switch, sizeof(rgb_switch)), TAG, "set_rgb_switch cfg write err");
-        app_rgb_set(UI_CALLER, rgb_switch == 1 ? RGB_ON : RGB_OFF);
-        rgb_switch_past = rgb_switch;
-        ESP_LOGD(TAG, "set_rgb_switch done: %d", rgb_switch);
+        ESP_GOTO_ON_ERROR(storage_write(RGB_SWITCH_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_rgbswitch_err, TAG, "%s cfg write err", __func__);
+        app_rgb_set(UI_CALLER, cfg->current.value == 1 ? RGB_ON : RGB_OFF);
+        cfg->last.value = cfg->current.value;
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
     }
-    xSemaphoreGive(MUTEX_rgb_switch);
+set_rgbswitch_err:
+    xSemaphoreGive(cfg->mutex);
 
-    return ESP_OK;
+    return ret;
 }
 
-/*-----------------------------------------------------sound_Volume---------------------------------------------------*/
+/*-----------------------------------------------------sound volume---------------------------------------------------*/
 
 int get_sound(int caller)
 {
-    int sound2 = sound_value;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SOUND);
+    int sound2 = cfg->current.value;
 
     switch (caller)
     {
@@ -515,33 +691,81 @@ int get_sound(int caller)
 
 esp_err_t set_sound(int caller, int value)
 {
-    ESP_LOGI(TAG, "set_sound: %d", value);
-    xSemaphoreTake(MUTEX_sound, portMAX_DELAY);
-    sound_value_past = sound_value;
-    sound_value = value;
-    xSemaphoreGive(MUTEX_sound);
-    return ESP_OK;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SOUND);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
 }
 
 static esp_err_t __set_sound()
 {
-    xSemaphoreTake(MUTEX_sound, portMAX_DELAY);
-    if (sound_value_past != sound_value)
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SOUND);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
     {
-        ESP_RETURN_ON_ERROR(storage_write(SOUND_STORAGE_KEY, &sound_value, sizeof(sound_value)), TAG, "set_sound cfg write err");
-        ESP_RETURN_ON_ERROR(bsp_codec_volume_set(sound_value, NULL), TAG, "bsp_codec_volume_set err");
-        sound_value_past = sound_value;
-        ESP_LOGD(TAG, "set_sound done: %d", sound_value);
+        ESP_GOTO_ON_ERROR(storage_write(SOUND_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_sound_err, TAG, "%s cfg write err", __func__);
+        ESP_GOTO_ON_ERROR(bsp_codec_volume_set(cfg->current.value, NULL), set_sound_err, TAG, "bsp_codec_volume_set err");
+        cfg->last.value = cfg->current.value;
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
     }
-    xSemaphoreGive(MUTEX_sound);
+set_sound_err:
+    xSemaphoreGive(cfg->mutex);
 
-    return ESP_OK;
+    return ret;
 }
 
-/*-----------------------------------------------------Cloud_service_switch------------------------------------------*/
+/*----------------------------------------------------ble switch--------------------------------------------------------*/
+int get_ble_switch(int caller)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_BLE_SWITCH);
+    int sw = cfg->current.value;
+
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI(TAG, "BLE get ble switch");
+            break;
+        case UI_CALLER:
+            ESP_LOGI(TAG, "UI get ble switch");
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_SWITCH, &sw, sizeof(int), pdMS_TO_TICKS(10000));
+            break;
+    }
+
+    return sw;
+}
+
+esp_err_t set_ble_switch(int caller, int value)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_BLE_SWITCH);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
+}
+
+static esp_err_t __set_ble_switch()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_BLE_SWITCH);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
+    {
+        ESP_GOTO_ON_ERROR(storage_write(BLE_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_ble_err, TAG, "%s cfg write err", __func__);
+        ESP_GOTO_ON_ERROR(app_ble_adv_switch((cfg->current.value != 0)), set_ble_err, TAG, "app_ble_adv_switch err");
+        cfg->last.value = cfg->current.value;
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
+    }
+set_ble_err:
+    xSemaphoreGive(cfg->mutex);
+
+    return ret;
+}
+
+/*-----------------------------------------------------cloud service switch------------------------------------------*/
 int get_cloud_service_switch(int caller)
 {
-    int cloud_service_switch2 = cloud_service_switch;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_CLOUD_SVC_SWITCH);
+    int cloud_service_switch2 = cfg->current.value;
 
     switch (caller)
     {
@@ -560,95 +784,145 @@ int get_cloud_service_switch(int caller)
 
 esp_err_t set_cloud_service_switch(int caller, int value)
 {
-    ESP_LOGI(TAG, "set_cloud_service_switch: %d", value);
-    xSemaphoreTake(MUTEX_cloud_service_switch, portMAX_DELAY);
-    cloud_service_switch_past = cloud_service_switch;
-    cloud_service_switch = value;
-    xSemaphoreGive(MUTEX_cloud_service_switch);
-    return ESP_OK;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_CLOUD_SVC_SWITCH);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
 }
 
 static esp_err_t __set_cloud_service_switch()
 {
-    xSemaphoreTake(MUTEX_cloud_service_switch, portMAX_DELAY);
-    if (cloud_service_switch_past != cloud_service_switch)
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_CLOUD_SVC_SWITCH);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
     {
-        ESP_RETURN_ON_ERROR(storage_write(CLOUD_SERVICE_STORAGE_KEY, &cloud_service_switch, sizeof(cloud_service_switch)), TAG, 
-                            "set_sound cfg write err");
-        cloud_service_switch_past = cloud_service_switch;
-        ESP_LOGD(TAG, "set_cloud_service_switch done: %d", cloud_service_switch);
+        ESP_GOTO_ON_ERROR(storage_write(CLOUD_SERVICE_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_cloud_svc_err, TAG, "%s cfg write err", __func__);
+        cfg->last.value = cfg->current.value;
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
     }
-    xSemaphoreGive(MUTEX_cloud_service_switch);
+set_cloud_svc_err:
+    xSemaphoreGive(cfg->mutex);
+
+    return ret;
+}
+
+/*-----------------------------------------------------local service cfg------------------------------------------*/
+esp_err_t get_local_service_cfg_type1(int caller, int cfg_index, local_service_cfg_type1_t *pcfg)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_LOCAL_SVC);
+    local_service_cfg_t *local_svc_cfg = (local_service_cfg_t *)cfg->current.uint_value;
+    if (cfg_index > CFG_ITEM_TYPE1_MAX) return ESP_ERR_NOT_FOUND;
+
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    pcfg->enable = local_svc_cfg->cfg_items_type1[cfg_index].enable;
+    pcfg->url = strdup_psram(local_svc_cfg->cfg_items_type1[cfg_index].url);
+    pcfg->token = strdup_psram(local_svc_cfg->cfg_items_type1[cfg_index].token);
+    xSemaphoreGive(cfg->mutex);
 
     return ESP_OK;
 }
-/*----------------------------------------------------AI_service_package----------------------------------------------*/
-#if 0
-// TODO: need rethink
 
-ai_service_pack *get_ai_service(int caller)
+esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, char *url, char *token)
 {
-    if (xSemaphoreTake(MUTEX_ai_service, portMAX_DELAY) != pdTRUE)
-    {
-        ESP_LOGE(TAG, "get_ai_service: MUTEX_ai_service take failed");
-        return NULL;
-    }
-    ai_service_pack *result = NULL;
-    switch (caller)
-    {
-        case AT_CMD_CALLER:
-            ESP_LOGI(TAG, "BLE get ai_service");
-            result = &ai_service;
-            break;
-        case UI_CALLER:
-            ESP_LOGI(TAG, "UI get ai_service");
-            result = &ai_service;
-            break;
-    }
-    xSemaphoreGive(MUTEX_ai_service);
-    return result;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_LOCAL_SVC);
+    esp_err_t ret;
+    ESP_LOGI(TAG, "%s: cfg_index=%d, enable=%d, url=%s, token=%s", __func__, cfg_index, enable, url, token);
+    local_service_cfg_t *local_svc_cfg = (local_service_cfg_t *)cfg->current.uint_value;
+    if (cfg_index > CFG_ITEM_TYPE1_MAX) return ESP_ERR_NOT_FOUND;
+
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    local_svc_cfg->cfg_items_type1[cfg_index].enable = enable;
+    if (local_svc_cfg->cfg_items_type1[cfg_index].url != NULL) free(local_svc_cfg->cfg_items_type1[cfg_index].url);
+    local_svc_cfg->cfg_items_type1[cfg_index].url = strdup_psram(url);
+    if (local_svc_cfg->cfg_items_type1[cfg_index].token != NULL) free(local_svc_cfg->cfg_items_type1[cfg_index].token);
+    local_svc_cfg->cfg_items_type1[cfg_index].token = strdup_psram(token);
+    esp_timer_stop(cfg->timer_handle);
+    ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
+    xSemaphoreGive(cfg->mutex);
+
+    return ret;
 }
 
-esp_err_t set_ai_service(int caller, ai_service_pack value)
+static bool __local_service_cfg_type1_equal(local_service_cfg_t *current, local_service_cfg_t *last, int index)
 {
-    if (xSemaphoreTake(MUTEX_ai_service, portMAX_DELAY) != pdTRUE)
-    {
-        ESP_LOGE(TAG, "set_ai_service: MUTEX_ai_service take failed");
-        return;
-    }
-    ai_service_past = ai_service;
-    ai_service = value;
-
-    xSemaphoreGive(MUTEX_ai_service);
+    return current->cfg_items_type1[index].enable == last->cfg_items_type1[index].enable && \
+            strcmp(current->cfg_items_type1[index].url, last->cfg_items_type1[index].url) == 0 && \
+            strcmp(current->cfg_items_type1[index].token, last->cfg_items_type1[index].token) == 0;
 }
 
-static int __set_ai_service()
+static esp_err_t __set_local_service_cfg()
 {
-    if (xSemaphoreTake(MUTEX_ai_service, portMAX_DELAY) != pdTRUE)
-    {
-        ESP_LOGE(TAG, "set_ai_service: MUTEX_ai_service take failed");
-        return -1;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_LOCAL_SVC);
+    esp_err_t ret = ESP_OK;
+    local_service_cfg_t *current_cfg = (local_service_cfg_t *)cfg->current.uint_value;
+    local_service_cfg_t *last_cfg = (local_service_cfg_t *)cfg->last.uint_value;
+    bool changed_push2talk = false, changed_task_flow = false;
+    char *json_str = NULL;
+
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER)) {
+        changed_push2talk = true;
+        ESP_LOGI(TAG, "%s: %s changed, cfg_index=%d", __func__, "CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER", CFG_ITEM_TYPE1_AUDIO_TASK_COMPOSER);
     }
-    if (memcmp(&ai_service_past, &ai_service, sizeof(ai_service_pack)) != 0)
-    {
-        esp_err_t ret = storage_write(AI_SERVICE_STORAGE_KEY, &ai_service, sizeof(ai_service));
-        if (ret != ESP_OK)
-        {
-            ESP_LOGE(TAG, "set_ai_service cfg write err:%d", ret);
-            xSemaphoreGive(MUTEX_ai_service);
-            return ret;
+    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_IMAGE_ANALYZER)) {
+        changed_task_flow = true;
+        ESP_LOGI(TAG, "%s: %s changed, cfg_index=%d", __func__, "CFG_ITEM_TYPE1_IMAGE_ANALYZER", CFG_ITEM_TYPE1_IMAGE_ANALYZER);
+    }
+    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_TRAINING)) {
+        changed_task_flow = true;
+        ESP_LOGI(TAG, "%s: %s changed, cfg_index=%d", __func__, "CFG_ITEM_TYPE1_TRAINING", CFG_ITEM_TYPE1_TRAINING);
+    }
+    if (!__local_service_cfg_type1_equal(current_cfg, last_cfg, CFG_ITEM_TYPE1_NOTIFICATION_PROXY)) {
+        changed_task_flow = true;
+        ESP_LOGI(TAG, "%s: %s changed, cfg_index=%d", __func__, "CFG_ITEM_TYPE1_NOTIFICATION_PROXY", CFG_ITEM_TYPE1_NOTIFICATION_PROXY);
+    }
+
+    if (changed_push2talk || changed_task_flow) {
+        cJSON *json = __local_service_cfg_to_json(current_cfg);
+        if (json) {
+            json_str = cJSON_PrintUnformatted(json);
+            cJSON_Delete(json);
         }
+    } else {
+        ESP_LOGI(TAG, "%s: no cfg changed, skip ...", __func__);
     }
-    xSemaphoreGive(MUTEX_ai_service);
-    return 0;
+    xSemaphoreGive(cfg->mutex);
+
+    if (json_str) {
+        ESP_GOTO_ON_ERROR(storage_write(LOCAL_SERVICE_STORAGE_KEY, json_str, strlen(json_str)),
+                            set_local_service_cfg_err, TAG, "%s cfg write err", __func__);
+        ESP_LOGD(TAG, "%s: save to NVS, done\n%s\nstrlen=%d", __func__, json_str, strlen(json_str));
+        free(json_str);
+    }
+
+    if (changed_push2talk) {
+       esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_LOCAL_SVC_CFG_PUSH2TALK, NULL, 0, pdMS_TO_TICKS(10000));
+    }
+    if (changed_task_flow) {
+        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_LOCAL_SVC_CFG_TASK_FLOW, NULL, 0, pdMS_TO_TICKS(10000));
+    }
+
+    if (changed_push2talk || changed_task_flow) {
+        xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+        __deep_copy_local_service_cfg(last_cfg, current_cfg);
+        xSemaphoreGive(cfg->mutex);
+    }
+
+    return ESP_OK;
+
+set_local_service_cfg_err:
+    if (json_str) free(json_str);
+    return ret;
+
 }
-#endif
 
 /*----------------------------------------------------usage guide switch--------------------------------------------------------*/
 
 int get_usage_guide(int caller)
 {
-    int usage_guide_switch2 = usage_guide_switch;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_USAGE_GUIDE_FLAG);
+    int usage_guide_switch2 = cfg->current.value;
 
     switch (caller)
     {
@@ -667,25 +941,27 @@ int get_usage_guide(int caller)
 
 esp_err_t set_usage_guide(int caller, int value)
 {
-    xSemaphoreTake(MUTEX_usage_guide, portMAX_DELAY);
-    usage_guide_switch_past = usage_guide_switch;
-    usage_guide_switch = value;
-    xSemaphoreGive(MUTEX_usage_guide);
-    return ESP_OK;
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_USAGE_GUIDE_FLAG);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
 }
 
 static esp_err_t __set_usage_guide()
 {
-    xSemaphoreTake(MUTEX_usage_guide, portMAX_DELAY);
-    if (usage_guide_switch_past != usage_guide_switch)
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_USAGE_GUIDE_FLAG);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
     {
-        ESP_RETURN_ON_ERROR(storage_write(USAGE_GUIDE_SK, &usage_guide_switch, sizeof(usage_guide_switch)), 
-                            TAG, "__set_usage_guide cfg write err");
-        usage_guide_switch_past = usage_guide_switch;
-        ESP_LOGD(TAG, "set_usage_guide done: %d", usage_guide_switch);
+        ESP_GOTO_ON_ERROR(storage_write(USAGE_GUIDE_SK, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_usage_guide_err, TAG, "%s cfg write err", __func__);
+        cfg->last.value = cfg->current.value;
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
     }
-    xSemaphoreGive(MUTEX_usage_guide);
-    return ESP_OK;
+set_usage_guide_err:
+    xSemaphoreGive(cfg->mutex);
+
+    return ret;
 }
 
 
@@ -693,6 +969,9 @@ static esp_err_t __set_usage_guide()
 
 esp_err_t set_reset_factory()
 {
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_FACTORY_RESET_FLAG);
+    esp_timer_stop(cfg->timer_handle);
+    esp_timer_start_once(cfg->timer_handle, 100*1000);
     atomic_store(&g_will_reset_factory, true);
     return ESP_OK;
 }
@@ -741,73 +1020,13 @@ static esp_err_t __check_reset_factory()
     return ESP_OK;
 }
 
-/*----------------------------------------------------ble switch--------------------------------------------------------*/
-
-int get_ble_switch(int caller)
-{
-    int sw = ble_switch;
-
-    switch (caller)
-    {
-        case AT_CMD_CALLER:
-            ESP_LOGI(TAG, "BLE get ble switch");
-            break;
-        case UI_CALLER:
-            ESP_LOGI(TAG, "UI get ble switch");
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BLE_SWITCH, &sw, sizeof(int), pdMS_TO_TICKS(10000));
-            break;
-    }
-
-    return sw;
-}
-
-esp_err_t set_ble_switch(int caller, int value)
-{
-    ESP_LOGI(TAG, "set_ble_switch: %d", value);
-    xSemaphoreTake(MUTEX_ble_switch, portMAX_DELAY);
-    ble_switch_past = ble_switch;
-    ble_switch = value;
-    xSemaphoreGive(MUTEX_ble_switch);
-    return ESP_OK;
-
-}
-
-static esp_err_t __set_ble_switch()
-{
-    xSemaphoreTake(MUTEX_ble_switch, portMAX_DELAY);
-    if (ble_switch_past != ble_switch)
-    {
-        ESP_RETURN_ON_ERROR(storage_write(BLE_STORAGE_KEY, &ble_switch, sizeof(ble_switch)), TAG, "set_ble_switch cfg write err");
-        app_ble_adv_switch((ble_switch != 0));
-        ble_switch_past = ble_switch;
-        ESP_LOGD(TAG, "set_ble_switch done: %d", ble_switch);
-    }
-    xSemaphoreGive(MUTEX_ble_switch);
-
-    return ESP_OK;
-}
-
-/*-----------------------------------------------------time_auto_update-----------------------------------------------*/
-/**
- * will be deprecated!
-*/
-int get_time_automatic(int caller)
-{
-    return 1;
-}
-
-esp_err_t set_time_automatic(int caller, int value)
-{
-    return ESP_OK;
-}
-
 /*------------------------------------------------------sdcard into------------------------------------------------------*/
 uint16_t get_spiffs_total_size(int caller)
 {
     uint16_t size = 0;
-    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    xSemaphoreTake(g_mtx_sdcard_flash_status, portMAX_DELAY);
     size = g_sdcard_flash_status.spiffs_total_KiB;
-    xSemaphoreGive(MUTEX_sdcard_flash_status);
+    xSemaphoreGive(g_mtx_sdcard_flash_status);
 
     return size;
 }
@@ -815,9 +1034,9 @@ uint16_t get_spiffs_total_size(int caller)
 uint16_t get_spiffs_free_size(int caller)
 {
     uint16_t size = 0;
-    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    xSemaphoreTake(g_mtx_sdcard_flash_status, portMAX_DELAY);
     size = g_sdcard_flash_status.spiffs_free_KiB;
-    xSemaphoreGive(MUTEX_sdcard_flash_status);
+    xSemaphoreGive(g_mtx_sdcard_flash_status);
 
     return size;
 }
@@ -825,9 +1044,9 @@ uint16_t get_spiffs_free_size(int caller)
 uint16_t get_sdcard_total_size(int caller)
 {
     uint16_t size = 0;
-    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    xSemaphoreTake(g_mtx_sdcard_flash_status, portMAX_DELAY);
     size = g_sdcard_flash_status.sdcard_total_MiB;
-    xSemaphoreGive(MUTEX_sdcard_flash_status);
+    xSemaphoreGive(g_mtx_sdcard_flash_status);
 
     return size;
 }
@@ -835,9 +1054,9 @@ uint16_t get_sdcard_total_size(int caller)
 uint16_t get_sdcard_free_size(int caller)
 {
     uint16_t size = 0;
-    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    xSemaphoreTake(g_mtx_sdcard_flash_status, portMAX_DELAY);
     size = g_sdcard_flash_status.sdcard_free_MiB;
-    xSemaphoreGive(MUTEX_sdcard_flash_status);
+    xSemaphoreGive(g_mtx_sdcard_flash_status);
 
     return size;
 }
@@ -858,7 +1077,7 @@ void __try_check_sdcard_flash()
         esp_vfs_fat_info(DRV_BASE_PATH_SD, &sdtotal, &sdfree);
     }
 
-    xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+    xSemaphoreTake(g_mtx_sdcard_flash_status, portMAX_DELAY);
     if (g_sdcard_flash_status.spiffs_total_KiB == 0 && total > 0)
     {
         g_sdcard_flash_status.spiffs_total_KiB = (uint16_t)(total / 1024);
@@ -871,7 +1090,7 @@ void __try_check_sdcard_flash()
         g_sdcard_flash_status.sdcard_free_MiB = (uint16_t)(sdfree / 1024 / 1024);
         ESP_LOGI(TAG, "sdcard total %d MiB, free %d MiB", (int)g_sdcard_flash_status.sdcard_total_MiB, (int)g_sdcard_flash_status.sdcard_free_MiB);
     }
-    xSemaphoreGive(MUTEX_sdcard_flash_status);
+    xSemaphoreGive(g_mtx_sdcard_flash_status);
 }
 
 static void __timer_cb_first_report(void *arg)
@@ -879,30 +1098,41 @@ static void __timer_cb_first_report(void *arg)
     atomic_store(&g_timeout_firstreport, true);
 }
 
+static void __timer_cb_devicecfg_change_debounce(void *arg)
+{
+    devicecfg_t *cfg = (devicecfg_t *)arg;
+    xEventGroupSetBits(g_eg_devicecfg_change, EVENT_BIT(cfg->type));
+    xEventGroupSetBits(g_eg_task_wakeup, EVENT_DEVICECFG_CHANGE);
+}
+
+static void __timer_cb_every_500ms(void *arg)
+{
+    xEventGroupSetBits(g_eg_task_wakeup, EVENT_TIMER_500MS);
+}
+
+static void __timer_cb_every_1s(void *arg)
+{
+    xEventGroupSetBits(g_eg_task_wakeup, EVENT_TIMER_1S);
+}
+
+static void __timer_cb_every_30s(void *arg)
+{
+    xEventGroupSetBits(g_eg_task_wakeup, EVENT_TIMER_30S);
+}
+
 void __app_device_info_task(void *pvParameter)
 {
-    uint8_t is_charging = false;
     uint8_t batnow = 0;
     uint32_t cnt = 0;
     bool firstboot_reported = false, himax_version_got = false;
     static uint8_t last_charge_st = 0x66, last_sdcard_inserted = 0x88, sdcard_debounce = 0x99;
     static uint8_t last_bat_level_report = 255;
-
-
-    MUTEX_brightness = xSemaphoreCreateMutex();
-    MUTEX_rgb_switch = xSemaphoreCreateMutex();
-    MUTEX_sound = xSemaphoreCreateMutex();
-    MUTEX_cloud_service_switch = xSemaphoreCreateMutex();
-    MUTEX_ai_service = xSemaphoreCreateMutex();
-    MUTEX_usage_guide = xSemaphoreCreateMutex();
-    MUTEX_sdcard_flash_status = xSemaphoreCreateMutex();
-    MUTEX_ble_switch = xSemaphoreCreateMutex();
+    EventBits_t bits, bits_devicecfg, bits_devicecfg_mask = 0;
 
     init_brightness_from_nvs();
     init_rgb_switch_from_nvs();
     init_sound_from_nvs();
     init_cloud_service_switch_from_nvs();
-    init_ai_service_param_from_nvs();
     init_ble_switch_from_nvs();
 
     // get spiffs and sdcard status
@@ -914,83 +1144,93 @@ void __app_device_info_task(void *pvParameter)
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
                         &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
 
+    for (int i = 0; i < DEVCFG_TYPE_MAX; i++) {
+        bits_devicecfg_mask |= EVENT_BIT(i);
+    }
+
+    esp_timer_start_periodic(g_timer_every_500ms, 500*1000);
+    esp_timer_start_periodic(g_timer_every_1s, 1000000);
+    esp_timer_start_periodic(g_timer_every_30s, 30*1000000);
+
     while (1)
     {
-        __set_cloud_service_switch();
-        __set_brightness();
-        __set_rgb_switch();
-        __set_sound();
-        __set_usage_guide();
-        __check_reset_factory();
-        //__set_ai_service();
-        __set_ble_switch();
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-        cnt++;
-
-        if (!himax_version_got && !atomic_load(&g_timeout_firstreport)) {
-            char *himax_version = tf_module_ai_camera_himax_version_get();
-
-            if (himax_version && strlen(himax_version) > 0) {
-                g_device_status.himax_fw_version = himax_version;
-                ESP_LOGI(TAG, "Got Himax fw version: %s", g_device_status.himax_fw_version);
-                himax_version_got = true;
-            } else {
-                ESP_LOGW(TAG, "Failed to get himax info [%d] ...", cnt);
+        bits = xEventGroupWaitBits(g_eg_task_wakeup,
+                                   EVENT_DEVICECFG_CHANGE | EVENT_TIMER_500MS | EVENT_TIMER_1S | EVENT_TIMER_30S,
+                                   pdTRUE, pdFALSE, portMAX_DELAY);
+        
+        if ((bits & EVENT_DEVICECFG_CHANGE) != 0)
+        {
+            bits_devicecfg = xEventGroupWaitBits(g_eg_devicecfg_change, bits_devicecfg_mask, pdTRUE, pdFALSE, 0);
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_BRIGHTNESS)) != 0) {
+                __set_brightness();
+            }
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_RGB_SWITCH)) != 0) {
+                __set_rgb_switch();
+            }
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SOUND)) != 0) {
+                __set_sound();
+            }
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_BLE_SWITCH)) != 0) {
+                __set_ble_switch();
+            }
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_CLOUD_SVC_SWITCH)) != 0) {
+                __set_cloud_service_switch();
+            }
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_LOCAL_SVC)) != 0) {
+                __set_local_service_cfg();
+            }
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_USAGE_GUIDE_FLAG)) != 0) {
+                __set_usage_guide();
+            }
+            if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_FACTORY_RESET_FLAG)) != 0) {
+                __check_reset_factory();
             }
         }
-
-        if (!firstboot_reported && atomic_load(&g_timeout_firstreport))
+        
+        if ((bits & EVENT_TIMER_500MS) != 0)
         {
-            last_bat_level_report = g_device_status.battery_per;
-            app_sensecraft_mqtt_report_device_status(&g_device_status);
-            firstboot_reported = true;
-        }
+            if (!himax_version_got && !atomic_load(&g_timeout_firstreport))
+            {
+                char *himax_version = tf_module_ai_camera_himax_version_get();
 
-        if ((cnt % 300) == 0)
-        {
-            batnow = bsp_battery_get_percent();
-            is_charging = (uint8_t)(bsp_exp_io_get_level(BSP_PWR_VBUS_IN_DET) == 0);
-            if (abs(g_device_status.battery_per - batnow) > 0 || batnow == 0) {
-                g_device_status.battery_per = batnow;
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
-                                    &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
+                if (himax_version && strlen(himax_version) > 0)
+                {
+                    g_device_status.himax_fw_version = himax_version;
+                    ESP_LOGI(TAG, "Got Himax fw version: %s", g_device_status.himax_fw_version);
+                    himax_version_got = true;
+                }
+                else
+                {
+                    ESP_LOGW(TAG, "Failed to get himax info, retrying ...");
+                }
             }
-            // mqtt pub
-            if (firstboot_reported && 
-                (abs(last_bat_level_report - batnow) > 10 || batnow == 0 || (batnow == 100 && abs(last_bat_level_report - batnow) > 0))) {
-                g_device_status.battery_per = batnow;
+
+            if (!firstboot_reported && atomic_load(&g_timeout_firstreport))
+            {
+                last_bat_level_report = g_device_status.battery_per;
                 app_sensecraft_mqtt_report_device_status(&g_device_status);
-                last_bat_level_report = batnow;
+                firstboot_reported = true;
             }
-            if (batnow == 0 && !is_charging) {
-                vTaskDelay(pdMS_TO_TICKS(2000)); //for mqtt pub
-                ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
-            }
-            //TODO: open this after problem fignured
-            //bsp_rtc_set_timer(62);  // feed the watchdog, leave 2sec overhead for iteration cost
-        }
 
-        if ((cnt % 5) == 0)
-        {
             uint8_t chg = (uint8_t)(bsp_exp_io_get_level(BSP_PWR_VBUS_IN_DET) == 0);
             // ESP_LOGD(TAG, "charging: %d", chg);
             if (chg != last_charge_st)
             {
                 last_charge_st = chg;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_CHARGE_ST, &last_charge_st, 1, pdMS_TO_TICKS(10000));
-                if (!chg) {  //measure the battery immediately when unplug the usb-c charger
+                if (!chg)
+                { // measure the battery immediately when unplug the usb-c charger
                     batnow = bsp_battery_get_percent();
-                    if (abs(g_device_status.battery_per - batnow) > 1 || batnow == 0) {
+                    if (abs(g_device_status.battery_per - batnow) > 1 || batnow == 0)
+                    {
                         g_device_status.battery_per = batnow;
-                        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, 
-                                            &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
+                        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
                     }
                 }
             }
         }
-
-        if ((cnt % 10) == 0)
+        
+        if ((bits & EVENT_TIMER_1S) != 0)
         {
             uint8_t sdcard_inserted = (uint8_t)bsp_sdcard_is_inserted();
             if (sdcard_inserted == sdcard_debounce)
@@ -1006,16 +1246,42 @@ void __app_device_info_task(void *pvParameter)
                     {
                         bsp_sdcard_deinit_default();
                         ESP_LOGW(TAG, "SD card is umounted.");
-                        xSemaphoreTake(MUTEX_sdcard_flash_status, portMAX_DELAY);
+                        xSemaphoreTake(g_mtx_sdcard_flash_status, portMAX_DELAY);
                         g_sdcard_flash_status.sdcard_total_MiB = g_sdcard_flash_status.sdcard_free_MiB = 0;
-                        xSemaphoreGive(MUTEX_sdcard_flash_status);
+                        xSemaphoreGive(g_mtx_sdcard_flash_status);
                     }
                     last_sdcard_inserted = sdcard_inserted;
                 }
             }
             sdcard_debounce = sdcard_inserted;
         }
-    }
+        
+        if ((bits & EVENT_TIMER_30S) != 0)
+        {
+            batnow = bsp_battery_get_percent();
+            bool is_charging = (bsp_exp_io_get_level(BSP_PWR_VBUS_IN_DET) == 0);
+            if (abs(g_device_status.battery_per - batnow) > 0 || batnow == 0)
+            {
+                g_device_status.battery_per = batnow;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BATTERY_ST, &g_device_status, sizeof(struct view_data_device_status), portMAX_DELAY);
+            }
+            // mqtt pub
+            if (firstboot_reported && (abs(last_bat_level_report - batnow) > 10 || batnow == 0 || (batnow == 100 && abs(last_bat_level_report - batnow) > 0)))
+            {
+                g_device_status.battery_per = batnow;
+                app_sensecraft_mqtt_report_device_status(&g_device_status);
+                last_bat_level_report = batnow;
+            }
+            if (batnow == 0 && !is_charging)
+            {
+                vTaskDelay(pdMS_TO_TICKS(2000)); // for mqtt pub
+                ESP_LOGW(TAG, "the battery drop to 0%%, will shutdown to protect the battery and data...");
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_BAT_DRAIN_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
+            }
+            // TODO: open this after problem fignured
+            // bsp_rtc_set_timer(62);  // feed the watchdog, leave 2sec overhead for iteration cost
+        }
+    } //while (1)
 }
 
 static void __event_loop_handler(void *handler_args, esp_event_base_t base, int32_t id, void *event_data)
@@ -1039,6 +1305,21 @@ void app_device_info_init_early()
 #if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
+    // init an array of devicecfg_t
+    g_devicecfgs = (devicecfg_t *)psram_calloc(DEVCFG_TYPE_MAX, sizeof(devicecfg_t));
+    esp_timer_create_args_t timerargs = {
+        .callback = __timer_cb_devicecfg_change_debounce
+    };
+    for (int i = 0; i < DEVCFG_TYPE_MAX; i++) {
+        devicecfg_t *cfg = &g_devicecfgs[i];
+        cfg->type = i;
+        cfg->mutex = xSemaphoreCreateMutex();
+        timerargs.arg = (void *)cfg;
+        if (esp_timer_create(&timerargs, &cfg->timer_handle) != ESP_OK) {
+            ESP_LOGE(TAG, "can not create debounce timer for devicecfg type %d", i);
+        }
+    }
+
     // init critical info
     init_sn_from_nvs();
     init_eui_from_nvs();
@@ -1046,6 +1327,7 @@ void app_device_info_init_early()
     init_server_code_from_nvs();
     init_qrcode_content();
     init_usage_guide_switch_from_nvs();
+    init_local_service_cfg_from_nvs();
 
     ESP_LOGI(TAG, "device info init early done, qrcode content: %s", (char *)get_qrcode_content());
 }
@@ -1063,6 +1345,12 @@ void app_device_info_init()
 
     memset(&g_sdcard_flash_status, 0, sizeof(struct view_data_sdcard_flash_status));
 
+    // init semaphores and event groups
+    g_mtx_sdcard_flash_status = xSemaphoreCreateMutex();
+    g_eg_task_wakeup = xEventGroupCreate();
+    g_eg_devicecfg_change = xEventGroupCreate();
+
+    // init task
     const int stack_size = 10 * 1024;
     StackType_t *task_stack = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
     StaticTask_t *task_tcb = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
@@ -1071,6 +1359,13 @@ void app_device_info_init()
     esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, __event_loop_handler, NULL);
 
     // init a timer for sending deviceinfo finally, even if fail to get himax info
-    esp_timer_create_args_t timer0args = {.callback = __timer_cb_first_report};
-    esp_timer_create(&timer0args, &g_timer_firstreport);
+    esp_timer_create_args_t timerargs = {.callback = __timer_cb_first_report};
+    esp_timer_create(&timerargs, &g_timer_firstreport);
+    // init periodic timers
+    timerargs.callback = __timer_cb_every_500ms;
+    esp_timer_create(&timerargs, &g_timer_every_500ms);
+    timerargs.callback = __timer_cb_every_1s;
+    esp_timer_create(&timerargs, &g_timer_every_1s);
+    timerargs.callback = __timer_cb_every_30s;
+    esp_timer_create(&timerargs, &g_timer_every_30s);
 }

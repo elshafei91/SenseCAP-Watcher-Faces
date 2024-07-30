@@ -24,7 +24,7 @@ struct tf_module_alarm_trigger_params
 
 typedef struct tf_module_alarm_trigger
 {
-    tf_module_t module_serv;
+    tf_module_t module_base;
     int input_evt_id;
     int *p_output_evt_id;
     int output_evt_num;

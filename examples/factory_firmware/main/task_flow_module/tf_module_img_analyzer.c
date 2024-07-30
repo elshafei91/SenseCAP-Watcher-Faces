@@ -12,6 +12,7 @@
 #include "event_loops.h"
 #include "esp_event_base.h"
 #include "factory_info.h"
+#include "app_device_info.h"
 
 static const char *TAG = "tfm.img_analyzer";
 
@@ -109,7 +110,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     
     ESP_LOGI(TAG, "Input trigger");
 
-    uint8_t type = ((uint8_t *)p_event_data)[0];
+    uint32_t type = ((uint32_t *)p_event_data)[0];
     if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE ) {
         ESP_LOGW(TAG, "Unsupport type %d", type);
         tf_data_free(p_event_data);
@@ -481,19 +482,45 @@ static void img_analyzer_task_destroy( tf_module_img_analyzer_t *p_module_ins)
  ************************************************************************/
 static int __start(void *p_module)
 {
-    char *p_token =NULL;
+    char *p_token = NULL, *p_host = NULL;
 
     tf_module_img_analyzer_t *p_module_ins = (tf_module_img_analyzer_t *)p_module;
     struct tf_module_img_analyzer_params *p_params = &p_module_ins->params;
 
-    // TODO set url、token、head
-    snprintf(p_module_ins->url,sizeof(p_module_ins->url),"%s%s",CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST,CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
+    // test local service cfg
+    local_service_cfg_type1_t local_svc_cfg = { .enable = false, .url = NULL };
+    esp_err_t ret = get_local_service_cfg_type1(MAX_CALLER, CFG_ITEM_TYPE1_IMAGE_ANALYZER, &local_svc_cfg);
+    if (ret == ESP_OK && local_svc_cfg.enable) {
+        if (local_svc_cfg.url != NULL && strlen(local_svc_cfg.url) > 7) {
+            ESP_LOGI(TAG, "got local service cfg, url=%s", local_svc_cfg.url);
+            int len = strlen(local_svc_cfg.url);
+            if (local_svc_cfg.url[len - 1] == '/') local_svc_cfg.url[len - 1] = '\0';  //remove trail '/'
+            p_host = local_svc_cfg.url;
+        }
+        // token
+        if (local_svc_cfg.token != NULL && strlen(local_svc_cfg.token) > 0) {
+            ESP_LOGI(TAG, "got local service cfg, token=%s", local_svc_cfg.token);
+            p_token = local_svc_cfg.token;
+        }
+    }
+
+    // host
+    if (p_host == NULL) p_host = CONFIG_TF_MODULE_IMG_ANALYZER_SERV_HOST;
+    snprintf(p_module_ins->url, sizeof(p_module_ins->url), "%s%s", p_host, CONFIG_TF_MODULE_IMG_ANALYZER_SERV_REQ_PATH);
     
-    p_token =  __token_gen();
-    if( p_token ) {
+    // token
+    if (p_token == NULL) p_token = __token_gen();
+    if (p_token) {
         snprintf(p_module_ins->token, sizeof(p_module_ins->token), "Device %s", p_token);
     } else {
         p_module_ins->token[0] = '\0';
+    }
+    
+    if (local_svc_cfg.url != NULL) {
+        free(local_svc_cfg.url);
+    }
+    if (local_svc_cfg.token != NULL) {
+        free(local_svc_cfg.token);
     }
 
     p_module_ins->head[0] = '\0';
@@ -613,8 +640,8 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 #endif
 
-    p_module_ins->module_serv.p_module = p_module_ins;
-    p_module_ins->module_serv.ops = &__g_module_ops;
+    p_module_ins->module_base.p_module = p_module_ins;
+    p_module_ins->module_base.ops = &__g_module_ops;
     
     __parmas_default(&p_module_ins->params);
 
@@ -647,7 +674,7 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
                                                 p_module_ins->p_task_buf);
     ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
     
-    return &p_module_ins->module_serv;
+    return &p_module_ins->module_base;
 
 err:
     if(p_module_ins->task_handle ) {
