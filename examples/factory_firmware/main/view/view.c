@@ -536,21 +536,21 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
                 struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
                 if (sensor_data->temperature_valid && sensor_data->temperature) {
-                    ESP_LOGI(TAG, "Temperature: %d\n", sensor_data->temperature);
+                    ESP_LOGI(TAG, "Temperature: %0.1f", sensor_data->temperature);
                 } else {
-                    ESP_LOGI(TAG, "Temperature: None\n");
+                    ESP_LOGI(TAG, "Temperature: None");
                 }
 
-                if (sensor_data->humidity_valid &&sensor_data->humidity) {
-                    ESP_LOGI(TAG, "Humidity: %d\n", sensor_data->humidity);
+                if (sensor_data->humidity_valid && sensor_data->humidity) {
+                    ESP_LOGI(TAG, "Humidity: %0.1f", sensor_data->humidity);
                 } else {
-                    ESP_LOGI(TAG, "Humidity: None\n");
+                    ESP_LOGI(TAG, "Humidity: None");
                 }
 
-                if (sensor_data->co2_valid &&sensor_data->co2) {
-                    ESP_LOGI(TAG, "CO2: %u\n", sensor_data->co2);
+                if (sensor_data->co2_valid && sensor_data->co2) {
+                    ESP_LOGI(TAG, "CO2: %u", sensor_data->co2);
                 } else {
-                    ESP_LOGI(TAG, "CO2: None\n");
+                    ESP_LOGI(TAG, "CO2: None");
                 }
 
                 break;

@@ -5,6 +5,8 @@
 #include "sensor_sht4x.h"
 #include "sensor_scd4x.h"
 #include "app_sensor.h"
+#include "event_loops.h"
+#include "data_defs.h"
 
 static const char *TAG = "app_sensor";
 
@@ -79,6 +81,16 @@ static int16_t app_sensor_detect(void)
 static int16_t app_sensor_uptate(void)
 {
     esp_err_t ret = ESP_OK;
+    
+    bool view_update = false;
+    struct view_data_sensor view_data;
+    view_data.temperature_valid = false;
+    view_data.humidity_valid = false;
+    view_data.co2_valid = false;
+    view_data.temperature = 255;
+    view_data.humidity = 255;
+    view_data.co2 = 65535;
+
     app_sensor_update_data = true;
 
     for (uint8_t i = 0; i < APP_SENSOR_SUPPORT_MAX; i ++) {
@@ -90,6 +102,12 @@ static int16_t app_sensor_uptate(void)
                     app_sensor_data[i].context.sht4x.temperature = temperature;
                     app_sensor_data[i].context.sht4x.humidity = humidity;
                     ESP_LOGI(TAG, "T: %d, H: %d", temperature, humidity);
+
+                    view_update = true;
+                    view_data.temperature_valid = true;
+                    view_data.humidity_valid = true;
+                    view_data.temperature = (float)temperature / 1000;
+                    view_data.humidity = (float)humidity / 1000;
                 }
             } else if (app_sensor_data[i].type == SENSOR_SCD4x) {
                 bool ready_flag = 0;
@@ -100,6 +118,10 @@ static int16_t app_sensor_uptate(void)
                     if (ret == 0) {
                         app_sensor_data[i].context.scd4x.co2 = co2;
                         ESP_LOGI(TAG, "CO2: %d", co2);
+
+                        view_update = true;
+                        view_data.co2_valid = true;
+                        view_data.co2 = co2 / 1000;
                     }
                 }
             }
@@ -107,6 +129,12 @@ static int16_t app_sensor_uptate(void)
     }
 
     app_sensor_update_data = false;
+
+    if (view_update) {
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SENSOR, 
+                        &view_data, sizeof(struct view_data_sensor), pdMS_TO_TICKS(10000));
+    }
+
     return ret;
 }
 
