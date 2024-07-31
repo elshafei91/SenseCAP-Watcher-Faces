@@ -410,6 +410,7 @@ void init_sleep_time_from_nvs()
         cfg->current.value = DEVCFG_DEFAULT_SLEEP_TIME;
         ESP_LOGE(TAG, "Error reading sleep time from NVS: %s", esp_err_to_name(ret));
     }
+    cfg->last.value = cfg->current.value;
 }
 
 void init_sleep_switch_from_nvs()
@@ -431,7 +432,7 @@ void init_sleep_switch_from_nvs()
         cfg->current.value = DEVCFG_DEFAULT_SLEEP_SWITCH;
         ESP_LOGE(TAG, "Error reading sleep switch from NVS: %s", esp_err_to_name(ret));
     }
-
+    cfg->last.value = cfg->current.value;
 }
 
 void init_cloud_service_switch_from_nvs()
@@ -800,6 +801,7 @@ static esp_err_t __set_sleep_time()
     {
         ESP_GOTO_ON_ERROR(storage_write(SLEEP_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
                             set_sleeptime_err, TAG, "%s cfg write err", __func__);
+        cfg->last.value = cfg->current.value;
         ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
     }
 set_sleeptime_err:
@@ -1323,11 +1325,11 @@ void __app_device_info_task(void *pvParameter)
             if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_FACTORY_RESET_FLAG)) != 0) {
                 __check_reset_factory();
             }
-            else if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SLEEP_SWITCH)) != 0){
-                __set_sleep_switch();
-            }
             else if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SLEEP_TIME)) != 0){
                 __set_sleep_time();
+            }
+            else if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SLEEP_SWITCH)) != 0){
+                __set_sleep_switch();
             }
         }
         

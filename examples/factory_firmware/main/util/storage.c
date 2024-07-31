@@ -23,6 +23,7 @@ enum {
     EVENT_STG_FILE_READ,
     EVENT_STG_FILE_SIZE_GET,
     EVENT_STG_FILE_REMOVE,
+    EVENT_STG_FILE_OPEN,
 };
 
 typedef struct
@@ -74,6 +75,12 @@ static esp_err_t __storage_read(char *p_key, void *p_data, size_t *p_len)
         return err;
     }
     nvs_close(my_handle);
+    return ESP_OK;
+}
+
+static esp_err_t __storage_file_open(char *file, FILE **pp_fp)
+{
+    *pp_fp = fopen(file, "r");
     return ESP_OK;
 }
 
@@ -165,6 +172,12 @@ static void __storage_event_handler(void *handler_args, esp_event_base_t base, i
             break;
         case EVENT_STG_FILE_REMOVE:
             evtdata->err = __storage_file_remove(evtdata->key);
+            xSemaphoreGive(evtdata->sem);
+            break;
+        case EVENT_STG_FILE_OPEN:
+            FILE *fp = NULL;
+            evtdata->err = __storage_file_open(evtdata->key, &fp);
+            evtdata->data = (void *)fp;
             xSemaphoreGive(evtdata->sem);
             break;
         default:
@@ -318,6 +331,26 @@ esp_err_t storage_file_remove(char *file)
     esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_REMOVE, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
     xSemaphoreTake(evtdata.sem, portMAX_DELAY);
     vSemaphoreDelete(evtdata.sem);
+
+    return evtdata.err;
+}
+
+esp_err_t storage_file_open(char *file, FILE **pp_fp)
+{
+    TaskHandle_t h = xTaskGetCurrentTaskHandle();
+    if (strcmp(pcTaskGetName(h), "app_eventloop") == 0)
+    {
+        return __storage_file_open(file, pp_fp);
+    }
+
+    storage_event_data_t evtdata = { .sem = xSemaphoreCreateBinary(), .key = file, .err = ESP_OK };
+    storage_event_data_t *pevtdata = &evtdata;
+
+    esp_event_post_to(app_event_loop_handle, STORAGE_EVENT_BASE, EVENT_STG_FILE_OPEN, &pevtdata, sizeof(storage_event_data_t *), pdMS_TO_TICKS(10000));
+    xSemaphoreTake(evtdata.sem, portMAX_DELAY);
+    vSemaphoreDelete(evtdata.sem);
+
+    *pp_fp = (FILE *)evtdata.data;
 
     return evtdata.err;
 }

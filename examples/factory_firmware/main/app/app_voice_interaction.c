@@ -19,6 +19,7 @@
 #include "app_rgb.h"
 #include "factory_info.h"
 #include "app_device_info.h"
+#include "tf.h"
 
 static const char *TAG = "vi";
 
@@ -167,6 +168,150 @@ static void __url_token_set(struct app_voice_interaction *p_vi)
     }
 }
 
+static char *__request( const char *url,
+                        esp_http_client_method_t method, 
+                        const char *token, 
+                        const char *session_id,
+                        uint8_t *data, size_t len)
+{
+    esp_err_t  ret = ESP_OK;
+    char *result = NULL;
+
+    esp_http_client_config_t config = {
+        .url = url,
+        .method = method,
+        .timeout_ms = 30000,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    // set header
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_http_client_set_header(client, "session_id", session_id);
+    if( token !=NULL && strlen(token) > 0 ) {
+        ESP_LOGI(TAG, "token: %s", token);
+        esp_http_client_set_header(client, "Authorization", token);
+    }
+
+    ret = esp_http_client_open(client, len);
+    ESP_GOTO_ON_ERROR(ret, err, TAG, "Failed to open client!");
+    if (len > 0)
+    {
+        int wlen = esp_http_client_write(client, (const char *)data, len);
+        ESP_GOTO_ON_FALSE(wlen >= 0, ESP_FAIL, err, TAG, "Failed to write client!");
+    }
+
+    int content_length = esp_http_client_fetch_headers(client);
+    if (esp_http_client_is_chunked_response(client))
+    {
+        ESP_LOGI(TAG, "chunked response");
+        esp_http_client_get_chunk_length(client, &content_length);
+    }
+    ESP_LOGI(TAG, "content_length=%d", content_length);
+    ESP_GOTO_ON_FALSE(content_length >= 0, ESP_FAIL, err, TAG, "HTTP client fetch headers failed!");
+
+    result = (char *)psram_malloc(content_length + 1);
+    ESP_GOTO_ON_FALSE(NULL != result, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc:%d", content_length+1);
+
+    int read = esp_http_client_read_response(client, result, content_length);
+    if (read != content_length)
+    {
+        ESP_LOGE(TAG, "HTTP_ERROR: read=%d, length=%d", read, content_length);
+        free(result);
+        result = NULL;
+    }
+    else
+    {
+        result[content_length] = 0;
+    }
+err:
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+    return result != NULL ? result : NULL;
+}
+
+static int __taskflow_http_get(struct app_voice_interaction *p_vi)
+{
+    esp_err_t ret = ESP_FAIL;
+
+    char *p_resp = __request(p_vi->taskflow_url, HTTP_METHOD_GET, p_vi->token, p_vi->session_id, NULL, 0);
+    if (p_resp == NULL) {
+        ESP_LOGE(TAG, "Failed to get taskflow");
+        return ESP_FAIL;
+    }
+    cJSON *json = NULL;
+    json = cJSON_Parse(p_resp);
+    if (json == NULL) {
+        ESP_LOGE(TAG, "Json parse failed");
+        free(p_resp);
+        return ESP_FAIL;
+    }
+
+    cJSON *code = cJSON_GetObjectItem(json, "code");
+    if ( code != NULL && cJSON_IsNumber(code) && code->valueint == 0 ) {
+
+        cJSON *json_data = cJSON_GetObjectItem(json, "data");
+        if (json_data != NULL && cJSON_IsObject(json_data)) {
+
+            cJSON *json_tl = cJSON_GetObjectItem(json_data, "tl");
+            if (json_tl != NULL && cJSON_IsObject(json_tl)) {
+                char *tl_str = cJSON_PrintUnformatted(json_tl); // don't free
+                if (tl_str != NULL) {
+                    esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_SR, 
+                                                &tl_str,
+                                                sizeof(void *), /* ptr size */
+                                                pdMS_TO_TICKS(10000));   
+                    ret = ESP_OK; //success
+                }
+            }
+        }
+    } else {
+        if( code != NULL ) {
+            ESP_LOGE(TAG, "code: %d", code->valueint);
+        }
+    }
+    free(p_resp);
+    cJSON_Delete(json);
+    return ret;
+}
+
+static int  __stream_data_parse(uint8_t *p_buf, size_t len, const char **json_str, size_t *json_len, uint8_t **bin_data, size_t *bin_len) 
+{
+    
+    static const char *boundary = "---sensecraftboundary---";
+    if (p_buf == NULL || len < sizeof(boundary) || json_str == NULL || json_len == NULL || bin_data == NULL || bin_len == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    size_t boundary_len = strlen(boundary);
+
+    uint8_t *first_boundary = (uint8_t *)memmem(p_buf, len, boundary, boundary_len);
+    if (first_boundary == NULL) {
+        return ESP_FAIL;
+    }
+
+    *json_str = (const char *)p_buf;
+    *json_len = first_boundary - p_buf;
+
+    *bin_data = first_boundary + boundary_len + 1; // skip \n
+    *bin_len = len - ( *bin_data - p_buf );
+
+    return ESP_OK;
+}
+
+static int __audio_stream_result_get(uint8_t *p_buf, size_t len,  struct view_data_vi_result  *p_result, uint8_t **pp_bin_data, size_t *p_bin_len)
+{
+    esp_err_t ret = ESP_OK;
+    const char *json_str = NULL;
+    size_t json_len = 0;
+    ret = __stream_data_parse(p_buf, len, &json_str, &json_len, pp_bin_data, p_bin_len);
+    if (ret != ESP_OK) {
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "audio stream result(%d):\r\n%.*s\r\n", json_len, json_len, json_str);
+    ret = app_vi_result_parse(json_str, json_len, p_result);
+    return ret;
+}
+
 static int __audio_stream_http_connect(struct app_voice_interaction *p_vi)
 {
     esp_err_t  ret = ESP_OK;
@@ -236,10 +381,14 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             
             if( p_vi->new_session ) {
                 p_vi->new_session = false;
-                //TODO pause taskflow 
-                if( p_vi->taskflow_pause) {
+        
+                int engine_status = 0;
+                tf_engine_status_get( &engine_status);
+                if( engine_status == TF_STATUS_RUNNING ) { //maybe will set running TODO
+                    p_vi->taskflow_pause =  true;
+                    tf_engine_pause();
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
-                                            VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+                        VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
                 }
             }
             p_vi->next_status = VI_STATUS_RECORDING;
@@ -259,8 +408,8 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             int64_t net_send_tm_us = 0;
             esp_http_client_handle_t client;
 
-            // TODO play wake sound
             app_rgb_set(SR, RGB_BREATH_BLUE); //set RGB
+            app_audio_player_file_block(VI_WAKE_FILE_PATH, pdMS_TO_TICKS(2000));
 
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                                     VIEW_EVENT_VI_RECORDING, NULL, NULL, pdMS_TO_TICKS(10000));
@@ -347,7 +496,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
 
             p_vi->is_wait_resp = true;
             start = esp_timer_get_time();
-            int content_length = esp_http_client_fetch_headers(client); //TODO how to stop?
+            int content_length = esp_http_client_fetch_headers(client);
             if (esp_http_client_is_chunked_response(client))
             {
                 ESP_LOGI(TAG, "chunk data");
@@ -383,12 +532,16 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             int read_len = 0;
             size_t read_total_len = 0;
             int64_t net_read_tm_us = 0;
-            size_t chunk_len = AUDIO_PLAYER_RINGBUF_CHUNK_SIZE * 2;
+            size_t chunk_len = AUDIO_PLAYER_RINGBUF_CHUNK_SIZE * 2; // TODO
             int content_length = p_vi->content_length;
             bool  first_start = true;
             int   cache_len =  MIN( content_length/2, AUDIO_PLAYER_RINGBUF_CACHE_SIZE);
-            struct view_data_vi_result  result; //TODO
+            struct view_data_vi_result  result;
             int player_status = 0;
+            size_t bin_offset  = 0;
+            bool first_chunk = true;
+            uint8_t *p_bin_data = NULL;
+            size_t bin_len = 0;
 
             memset(&result, 0, sizeof(result));
 
@@ -416,7 +569,19 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 } else {
                     ESP_LOGI(TAG, "recv:%d", read_len);
                     read_total_len += read_len;
-                    app_audio_player_stream_send((uint8_t *)recv_buf, read_len, pdMS_TO_TICKS(500));
+
+                    if(first_chunk) {
+                        first_chunk = false; //TODO  maybe  first_chunk can't find result.
+                        ret = __audio_stream_result_get((uint8_t *)recv_buf, read_len, &result, &p_bin_data, &bin_len);
+                        if(  ret == ESP_OK  && bin_len != 0) {
+                            ESP_LOGI(TAG, "audio len:%d", bin_len);
+                            app_audio_player_stream_send((uint8_t *)p_bin_data, bin_len, pdMS_TO_TICKS(500));
+                        } else {
+                            app_audio_player_stream_send((uint8_t *)recv_buf, read_len, pdMS_TO_TICKS(500));
+                        }
+                    } else {        
+                       app_audio_player_stream_send((uint8_t *)recv_buf, read_len, pdMS_TO_TICKS(500)); 
+                    }
                 }
                 if(__is_need_stop(p_vi)) {
                     ESP_LOGI(TAG, "stop play");
@@ -426,9 +591,18 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 }
                 if( read_total_len >= cache_len  && first_start) {
                     first_start = false;
+                    ESP_LOGI(TAG, "start play");
+                    ESP_LOGI(TAG, "mode:%d", result.mode);
+                    ESP_LOGI(TAG, "sst_text:%s", result.p_sst_text ? result.p_sst_text : "UNKNOWN");
+                    ESP_LOGI(TAG, "audio_text:%s", result.p_audio_text ? result.p_audio_text : "UNKNOWN");
+                    ESP_LOGI(TAG, "audio_tm_ms:%d", result.audio_tm_ms);
+                    for (size_t i = 0; i < TASK_CFG_ID_MAX; i++)
+                    {
+                        ESP_LOGI(TAG, "items:%d: %s", i, result.items[i] ? result.items[i] : "UNKNOWN");
+                    }   
                     app_audio_player_stream_start();
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
-                            VIEW_EVENT_VI_PLAYING, &result,  sizeof(result), pdMS_TO_TICKS(10000));
+                            VIEW_EVENT_VI_PLAYING, &result,  sizeof(result), pdMS_TO_TICKS(10000)); //listener  need free
                 }
             }
             free(recv_buf);
@@ -483,19 +657,20 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
         }
         case VI_STATUS_EXIT: {
             ESP_LOGI(TAG, "VI_STATUS_EXIT");
-            memset(p_vi->session_id, 0, sizeof(p_vi->session_id));
 
+            p_vi->new_session = true;
             if( p_vi->need_get_taskflow ) {
                 //Do not resume the last task, and run the new task directly
                 p_vi->need_get_taskflow = false;
                 p_vi->next_status = VI_STATUS_TASKFLOW_GET;
             } else {
                 if( p_vi->taskflow_pause) {
-                    ESP_LOGI(TAG, "resume taskflow");    
-                    //TODO: resume taskflow
+                    ESP_LOGI(TAG, "resume taskflow");
+                    tf_engine_resume();
                 }
                 p_vi->next_status = VI_STATUS_IDLE;
             }
+            p_vi->taskflow_pause = false;
             break;
         }
         case VI_STATUS_ERROR: {
@@ -515,7 +690,15 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
         }
         case VI_STATUS_TASKFLOW_GET:{
             ESP_LOGI(TAG, "VI_STATUS_TASKFLOW_GET");
-            //TODO download taskflow
+            ret = __taskflow_http_get(p_vi);
+            if( ret != ESP_OK ) {
+                ESP_LOGE(TAG, "taskflow get failed");
+                char err_msg[64];
+                snprintf(err_msg, sizeof(err_msg) - 1, "Failed to download");
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                                VIEW_EVENT_TASK_FLOW_ERROR, err_msg, sizeof(err_msg), portMAX_DELAY);
+                //Don't resume the last task
+            }
             p_vi->next_status = VI_STATUS_IDLE;
             break;
         }
@@ -766,9 +949,9 @@ int app_vi_result_parse(const char *p_str, size_t len,
     p_json_root = cJSON_ParseWithLength(p_str, len);
     ESP_GOTO_ON_FALSE(p_json_root, ESP_ERR_INVALID_ARG, err, TAG, "json parse failed");
 
-    p_code = cJSON_GetObjectItem(p_json_root, "type");
-    if( p_code == NULL || cJSON_IsNumber(p_code)) {
-        ESP_LOGE(TAG, "type is not number");
+    p_code = cJSON_GetObjectItem(p_json_root, "code");
+    if( p_code == NULL || !cJSON_IsNumber(p_code)) {
+        ESP_LOGE(TAG, "code is not number or not find");
         goto err;
     } else {
         ESP_LOGI(TAG, "code:%d", p_code->valueint);
@@ -785,6 +968,18 @@ int app_vi_result_parse(const char *p_str, size_t len,
         p_ret->mode = p_mode->valueint;
     } else {
         p_ret->mode = VI_MODE_CHAT;
+    }
+
+    cJSON *p_durtaion = cJSON_GetObjectItem(p_data, "durtaion");
+    if ( p_durtaion && cJSON_IsNumber(p_durtaion)) {
+        p_ret->audio_tm_ms = p_durtaion->valueint;
+    } else {
+        p_ret->audio_tm_ms = 0;
+    }
+
+    cJSON *p_stt_result= cJSON_GetObjectItem(p_data, "stt_result");
+    if ( p_stt_result && cJSON_IsString(p_stt_result)) {
+        p_ret->p_sst_text = strdup(p_stt_result->valuestring);
     }
 
     cJSON *p_screen_text = cJSON_GetObjectItem(p_data, "screen_text");
@@ -814,32 +1009,7 @@ int app_vi_result_parse(const char *p_str, size_t len,
         if ( p_feature && cJSON_IsString(p_feature)) {
             p_ret->items[TASK_CFG_ID_FEATURE] = strdup(p_feature->valuestring);
         }
-
-        //"notification": ["app push message","rgb"]
-        cJSON *p_notification = cJSON_GetObjectItem(p_task_summary, "notification");
-        if ( p_notification && cJSON_IsArray(p_notification)) {
-
-            char *result = NULL;
-            size_t length = cJSON_GetArraySize(p_notification);
-            for (size_t i = 0; i < length; i++) {
-                cJSON *item = cJSON_GetArrayItem(p_notification, i);
-                size_t item_len = strlen(item->valuestring);
-                size_t new_size = (result!=NULL) ? strlen(result): 0 + item_len + 2; 
-
-                result = (char *)psram_realloc(result, new_size);
-                if (result == NULL) {
-                    ESP_LOGE(TAG, "realloc failed");
-                    break;
-                }
-
-                strcat(result, item->valuestring);
-                if (i < length - 1) {
-                    strcat(result, "\n");
-                }
-            }
-            p_ret->items[TASK_CFG_ID_NOTIFICATION] = result;
-        }
-
+        
         cJSON *p_time = cJSON_GetObjectItem(p_task_summary, "time");
         if ( p_time && cJSON_IsString(p_time)) {
             p_ret->items[TASK_CFG_ID_TIME] = strdup(p_time->valuestring);
@@ -849,13 +1019,44 @@ int app_vi_result_parse(const char *p_str, size_t len,
         if ( p_frequency && cJSON_IsString(p_frequency)) {
             p_ret->items[TASK_CFG_ID_FREQUENCY] = strdup(p_frequency->valuestring);
         }
+
+        // "notification": ["app push message","rgb"]
+        cJSON *p_notification = cJSON_GetObjectItem(p_task_summary, "notification");
+        if ( p_notification && cJSON_IsArray(p_notification)) {
+            
+            size_t notification_msg_len = 1024 * 2;
+            char *result = psram_malloc(notification_msg_len);
+            if (result == NULL) {
+                ESP_LOGE(TAG, "malloc failed");
+                goto err;
+            }
+            memset(result, 0, notification_msg_len);
+
+            size_t length = cJSON_GetArraySize(p_notification);
+            for (size_t i = 0; i < length; i++) {
+                cJSON *item = cJSON_GetArrayItem(p_notification, i);
+                size_t item_len = strlen(item->valuestring);
+
+                if(result[0] != 0 && ((strlen(result) + item_len) + 2 > notification_msg_len)) {
+                    ESP_LOGE(TAG, "notification msg too long");
+                    break;
+                }
+                strcat(result, item->valuestring);
+                if (i < length - 1) {
+                    strcat(result, "\n");
+                }
+            }
+            p_ret->items[TASK_CFG_ID_NOTIFICATION] = result;
+        }
+
+
     }
 
 err:
     if (p_json_root != NULL) {
         cJSON_Delete(p_json_root);
     }
-    return 0;
+    return ESP_OK;
 }
 
 int app_vi_result_free(struct view_data_vi_result *p_ret)

@@ -69,6 +69,8 @@ struct app_audio_player {
     size_t stream_play_len;
     bool stream_finished;
     bool stream_need_cache;
+    bool mem_need_free;
+    void *p_mem_buf;
 };
 
 esp_err_t app_audio_player_init(void);
@@ -93,6 +95,7 @@ esp_err_t app_audio_player_stream_stop(void);
 
 
 esp_err_t app_audio_player_file(void *p_filepath);
+esp_err_t app_audio_player_file_block(void *p_filepath, TickType_t xTicksToWait);
 
-esp_err_t app_audio_player_mem(uint8_t *p_buf, size_t len);
+esp_err_t app_audio_player_mem(uint8_t *p_buf, size_t len, bool is_need_free);
 
