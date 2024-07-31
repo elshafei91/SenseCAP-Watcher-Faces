@@ -52,6 +52,7 @@ extern int g_sleep_time;
 extern int g_sleep_switch;
 extern uint8_t g_push2talk_status;
 extern uint8_t g_taskflow_pause;
+extern uint8_t g_push2talk_mode;
 
 static lv_obj_t *qr;
 static uint8_t loading_flag = 0;
@@ -1293,7 +1294,7 @@ void push2talkcancel_cb(lv_event_t * e)
     {
         lv_label_set_text(ui_revtext, "Resuming \nTask...");
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
-                            VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
+                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
     }else{
         lv_label_set_text(ui_revtext, "Receiving \nTask...");
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
@@ -1308,7 +1309,7 @@ void push2talkcheck_cb(lv_event_t * e)
     static int push2talk_newtask_exit = 1;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_newtask_exit, sizeof(push2talk_newtask_exit), pdMS_TO_TICKS(10000));
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
-                            VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
+                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
 
     g_taskflow_pause = 0;
 }
@@ -1348,7 +1349,7 @@ void p2tfocus_cb(lv_event_t * e)
 
 void volvc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "volvc_cb");
+    // ESP_LOGI(CLICK_TAG, "volvc_cb");
     volbri.vs_value = lv_slider_get_value(ui_vslider);
 
     static char vs_buffer[10];
@@ -1375,7 +1376,7 @@ void voldf_cb(lv_event_t * e)
 
 void brivc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "brivc_cb");
+    // ESP_LOGI(CLICK_TAG, "brivc_cb");
     volbri.bs_value = lv_slider_get_value(ui_bslider);
 
     static char bs_buffer[10];
@@ -2050,12 +2051,25 @@ static void view_push2talk_timer_callback(void *arg)
     lvgl_port_lock(0);
 
     static int16_t push2talk_arc;
+    static int push2talk_direct_exit = 0;
+
     if(g_push2talk_timer == 0)
     {
         push2talk_timer_counter++;
         if(push2talk_timer_counter==10){
-            lv_event_send(ui_Page_Push2talk, LV_EVENT_SHORT_CLICKED, NULL);
-            push2talk_timer_counter = 0;
+            if(g_push2talk_mode == 2)
+            {
+                view_push2talk_timer_stop();
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
+                push2talk_timer_counter = 0;
+            }
+            if(g_push2talk_mode == 0)
+            {
+                lv_event_send(ui_Page_Push2talk, LV_EVENT_SHORT_CLICKED, NULL);
+                push2talk_timer_counter = 0;
+            }
         }
     }else{
         push2talk_arc = lv_arc_get_value(ui_push2talkarc);
