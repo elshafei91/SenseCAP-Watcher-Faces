@@ -26,6 +26,7 @@ void view_pages_init()
     view_task_error_init();
     view_emoji_ota_init();
     view_standby_mode_init();
+    push2talk_init();
 }
 
 
