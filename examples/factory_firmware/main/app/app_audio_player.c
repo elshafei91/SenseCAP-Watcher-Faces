@@ -480,8 +480,12 @@ esp_err_t app_audio_player_file_block(void *p_filepath, TickType_t xTicksToWait)
     xEventGroupClearBits(p_audio_player->event_group, EVENT_FILE_MEM_DONE);
     esp_err_t ret = app_audio_player_file(p_filepath);
     if( ret == ESP_OK ) {
-        xEventGroupWaitBits(p_audio_player->event_group, 
+        EventBits_t bits = xEventGroupWaitBits(p_audio_player->event_group, 
                             EVENT_FILE_MEM_DONE, pdTRUE, pdTRUE, xTicksToWait);
+        if( !(bits & EVENT_FILE_MEM_DONE)) {
+            ESP_LOGW(TAG, "play timeout");
+            audio_player_stop();
+        }
     }
     return ret;
 }
