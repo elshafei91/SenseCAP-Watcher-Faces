@@ -253,7 +253,7 @@ esp_err_t app_audio_player_init(void)
     audio_player_config_t config = { .mute_fn = __audio_player_mute_set,
                                     .write_fn = bsp_i2s_write,
                                     .clk_set_fn = __audio_player_set_fs,
-                                    .priority = 5
+                                    .priority = 16
                                 };
     ret = audio_player_new(config);
     ESP_GOTO_ON_FALSE(ret==ESP_OK, ESP_FAIL, err, TAG, "Failed to create audio player");

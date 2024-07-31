@@ -12,14 +12,22 @@
 #define VOICE_INTERACTION_TASK_PRIO        17
 #define VOICE_INTERACTION_TASK_CORE        1  //must be 1
 
+
 #if CONFIG_ENABLE_TEST_ENV
+#define CONFIG_TALK_SERV_HOST           "https://sensecraft-aiservice-test-api.seeed.cc" 
+#define CONFIG_TALK_AUDIO_STREAM_PATH   "/v2/watcher/talk/audio_stream"
+#define CONFIG_TASKFLOW_DETAIL_PATH     "/v2/watcher/talk/view_task_detail" 
+
+//TODO debug
 #define CONFIG_TALK_SERV_HOST           "https://sensecap-watcher-demo.seeed.cc"
 #define CONFIG_TALK_AUDIO_STREAM_PATH   "/api/v2/watcher/talk/audio_stream"
-#define CONFIG_TASKFLOW_DETAIL_PATH     "/v2/watcher/talk/view_task_detail" 
+// #define CONFIG_TALK_AUDIO_STREAM_PATH   "/tools/v2/watcher/audio_stream_test"
+#define CONFIG_TASKFLOW_DETAIL_PATH     "/tools/v2/watcher/talk/view_task_detail"
+
 #else
-#define CONFIG_TALK_SERV_HOST           "https://sensecap-watcher-demo.seeed.cc" 
-#define CONFIG_TALK_AUDIO_STREAM_PATH   "/api/v2/watcher/talk/audio_stream" 
-#define CONFIG_TASKFLOW_DETAIL_PATH     "/v2/watcher/talk/view_task_detail"  
+#define CONFIG_TALK_SERV_HOST           "https://sensecraft-aiservice-api.seeed.cc" 
+#define CONFIG_TALK_AUDIO_STREAM_PATH   "/v2/watcher/talk/audio_stream"
+#define CONFIG_TASKFLOW_DETAIL_PATH     "/v2/watcher/talk/view_task_detail"
 #endif
 
 #define ESP_ERR_VI_NO_MEM          (ESP_ERR_NO_MEM)
@@ -28,8 +36,9 @@
 #define ESP_ERR_VI_NET_CONNECT     (ESP_ERR_WIFI_NOT_CONNECT)
 
 
-#define VI_MODE_CHAT     0 
-#define VI_MODE_TASK     1
+#define VI_MODE_CHAT      0 
+#define VI_MODE_TASK      1
+#define VI_MODE_TASK_AUTO 2
 
 
 #define VI_WAKE_FILE_PATH      "/spiffs/pushToTalk.mp3"
@@ -69,6 +78,8 @@ struct app_voice_interaction {
     bool need_get_taskflow;
     bool taskflow_pause;
     bool new_session;
+    bool is_ota;
+    bool ble_pause;
 };
 
 esp_err_t app_voice_interaction_init(void);
