@@ -38,20 +38,35 @@ uint8_t g_avarlive = 0;     // 0: current page is avatar,       1: current page 
 uint8_t g_tasktype = 0;     // 0: local task,                   1: remote task
 uint8_t g_backpage = 0;
 uint8_t g_avalivjump = 0;
+uint8_t g_push2talk_timer = 1;// 0: Speaking countdown,         1: Scrolling countdown
+
+uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
+uint8_t standby_mode = 0;    // 0: on;     1: off
+int g_sleep_time = 0;
+int g_sleep_switch = 1;
+extern char *push2talk_item[TASK_CFG_ID_MAX];
+
+uint8_t emoji_switch_scr = NULL;
 extern uint8_t g_dev_binded;
 extern uint8_t g_shutdown;
+extern int g_sleep_time;
+extern int g_sleep_switch;
+extern uint8_t g_push2talk_status;
+extern uint8_t g_taskflow_pause;
+extern uint8_t g_push2talk_mode;
 
 static lv_obj_t *qr;
 static uint8_t loading_flag = 0;
-static uint8_t emoji_switch_scr = NULL;
 static uint32_t emoji_user_data = NULL;
 static struct view_data_setting_volbri volbri;
 static struct view_data_setting_switch set_sw;
 static struct view_data_emoticon_display emo_disp;
 
-static lv_obj_t *avatar_image = NULL;
-static lv_obj_t *virtual_image = NULL;
-static lv_obj_t *flag_image = NULL;
+static lv_obj_t *avatar_image   = NULL;
+static lv_obj_t *virtual_image  = NULL;
+static lv_obj_t *flag_image     = NULL;
+static lv_obj_t *standby_image  = NULL;
+static lv_obj_t *push2talk_image = NULL;
 
 static int current_img_index = 0;
 static uint8_t vir_load_count = 0;
@@ -94,6 +109,8 @@ extern GroupInfo group_page_volume;
 extern GroupInfo group_page_connectapp;
 extern GroupInfo group_page_about;
 extern GroupInfo group_page_guide;
+extern GroupInfo group_page_sleep;
+extern GroupInfo group_page_push2talk;
 
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
@@ -103,8 +120,16 @@ extern lv_obj_t * ui_viewpbtn2;
 extern lv_obj_t * ui_viewpt2;
 extern lv_obj_t * ui_viewpbtn3;
 
+// view sleep
+extern lv_obj_t * ui_Page_Standby;
 // view emoji ota extern
 extern lv_obj_t * ui_Page_Emoji;
+
+// push2talk
+lv_obj_t *push2talk_textarea;
+static char *push2talk_text = NULL;
+static uint32_t push2talk_text_index = 0;
+static bool push2talk_timer_active = false;
 
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
@@ -113,24 +138,34 @@ static void Page_shutdown();
 static void Page_facreset();
 static void view_info_obtain_early();
 
-enum
-{
-    SCREEN_VIRTUAL, // display emoticon on virtual page
-    SCREEN_AVATAR,  // display emoticon on avatar page
-    SCREEN_GUIDE    // display emoticon on guide page
-};
+// Bluetooth switch frequency filter
+static void view_ble_switch_timer_callback(void *arg);
+static const esp_timer_create_args_t view_ble_switch_timer_args = { .callback = &view_ble_switch_timer_callback, .name = "view ble switch" };
+static esp_timer_handle_t view_ble_switch_timer;
 
-enum
-{
-    EMOJI_GREETING,
-    EMOJI_DETECTING,
-    EMOJI_DETECTED,
-    EMOJI_SPEAKING,
-    EMOJI_LISTENING,
-    EMOJI_ANALYZING,
-    EMOJI_STANDBY,
-    EMOJI_STOP
-};
+// Sleep mode scanner
+#define ACTIVE_THRESHOLD (1500)
+static void view_sleep_timer_callback(void *arg);
+static const esp_timer_create_args_t view_sleep_timer_args = { .callback = &view_sleep_timer_callback, .name = "view sleep" };
+static esp_timer_handle_t view_sleep_timer;
+static uint32_t inactive_time = 0;
+static int get_inactive_time;
+static int inactive_threshold;
+
+// Push2talk timer
+static void view_push2talk_timer_callback(void *arg);
+static const esp_timer_create_args_t view_push2talk_timer_args = { .callback = &view_push2talk_timer_callback, .name = "view push2talk" };
+static esp_timer_handle_t view_push2talk_timer;
+static uint8_t push2talk_timer_counter = 0;
+
+static void view_push2talk_msg_timer_callback(void *arg);
+static const esp_timer_create_args_t view_push2talk_msg_timer_args = { .callback = &view_push2talk_msg_timer_callback, .name = "view push2talk msg" };
+static esp_timer_handle_t view_push2talk_msg_timer;
+static uint8_t push2talk_panel_idx = 0;
+
+static void view_push2talk_animation_timer_callback(void *arg);
+static const esp_timer_create_args_t view_push2talk_animation_timer_args = { .callback = &view_push2talk_animation_timer_callback, .name = "view push2talk animation" };
+static esp_timer_handle_t view_push2talk_animation_timer;
 
 static void async_emoji_switch_scr(void *arg)
 {
@@ -147,10 +182,27 @@ static void async_emoji_switch_scr(void *arg)
     {
         lv_img_set_src(flag_image, current_img);
     }
+    if(emoji_switch_scr == SCREEN_STANDBY)
+    {
+        lv_img_set_src(standby_image, current_img);
+    }
+    if(emoji_switch_scr == SCREEN_PUSH2TALK)
+    {
+        lv_img_set_src(push2talk_image, current_img);
+    }
 }
+
+static uint32_t emoji_period[] = {200, 1000, 2000, 500};
+static uint8_t  emoji_count = 0;
+static uint32_t eomji_interval = 500;
 
 static void emoji_timer_callback(lv_timer_t *timer)
 {
+    if(emoji_count == 4)
+    {
+        emoji_count = 0;
+    }
+    eomji_interval = emoji_period[emoji_count];
     uint32_t * user_data = (uint32_t *)timer->user_data;
     const lv_img_dsc_t *current_img = NULL;
     // ESP_LOGI(TAG, "user_data is %d", *user_data);
@@ -196,19 +248,29 @@ static void emoji_timer_callback(lv_timer_t *timer)
         lv_async_call(async_emoji_switch_scr, (void *)current_img);
     }
 
+    // lv_timer_set_period(g_timer, eomji_interval);
+
     if(*user_data == EMOJI_GREETING)
     {
         vir_load_count ++;
         // if delay 2s and the device is not wifi-configed
         if(vir_load_count > 8)
         {
-            lv_event_send(ui_Page_Avatar, LV_EVENT_CLICKED, NULL);
+            lv_event_send(ui_Page_Avatar, LV_EVENT_SHORT_CLICKED, NULL);
+            view_sleep_timer_start();
         }
     }
+    emoji_count ++;
 }
 
-static void emoji_timer(uint8_t emoji_type)
+void emoji_timer(uint8_t emoji_type)
 {
+    // if (avatar_image) lv_img_set_src(avatar_image, NULL);
+    // if (virtual_image) lv_img_set_src(virtual_image, NULL);
+    // if (flag_image) lv_img_set_src(flag_image, NULL);
+    // if (standby_image) lv_img_set_src(standby_image, NULL);
+    // if (push2talk_image) lv_img_set_src(push2talk_image, NULL);
+    
     if (g_timer != NULL)
     {
         lv_timer_del(g_timer);
@@ -327,6 +389,9 @@ void virclick_cb(lv_event_t *e)
     if(!g_dev_binded)   // if the device is not wifi-configed, then appear panel
     {
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_virbtn1);
+        lv_group_add_obj(g_main, ui_virbtn2);
         emoji_timer(EMOJI_STOP);    // stop timer
         vir_load_count = 0;
     }else{              // else the device is wifi-configed, jump to Home page
@@ -348,11 +413,17 @@ void virscrload_cb(lv_event_t *e)
     if(avatar_image == NULL)avatar_image = lv_img_create(ui_Page_ViewAva);
     if(virtual_image == NULL)virtual_image = lv_img_create(ui_Page_Avatar);
     if(flag_image == NULL)flag_image = lv_img_create(ui_Page_Flag);
+    if(standby_image == NULL)standby_image = lv_img_create(ui_Page_Standby);
+    if(push2talk_image == NULL)push2talk_image = lv_img_create(ui_Page_Push2talk);
     lv_obj_set_align(avatar_image, LV_ALIGN_CENTER);
     lv_obj_set_align(virtual_image, LV_ALIGN_CENTER);
     lv_obj_set_align(flag_image, LV_ALIGN_CENTER);
+    lv_obj_set_align(standby_image, LV_ALIGN_CENTER);
+    lv_obj_set_align(push2talk_image, LV_ALIGN_CENTER);
     lv_obj_move_background(flag_image);
     lv_obj_move_background(virtual_image);
+    lv_obj_move_background(standby_image);
+    lv_obj_move_background(push2talk_image);
 }
 
 void virscrunload_cb(lv_event_t * e)
@@ -622,6 +693,9 @@ void loctask2c_cb(lv_event_t *e)
     if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guidebtn1);
+        lv_group_add_obj(g_main, ui_guidebtn2);
         emoji_switch_scr = SCREEN_GUIDE;
         emoji_timer(EMOJI_DETECTING);
     }
@@ -648,6 +722,11 @@ void loctask3c_cb(lv_event_t *e)
     if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guidebtn1);
+        lv_group_add_obj(g_main, ui_guidebtn2);
+        emoji_switch_scr = SCREEN_GUIDE;
+        emoji_timer(EMOJI_DETECTING);
         return;
     }
 
@@ -673,6 +752,11 @@ void loctask4c_cb(lv_event_t *e)
     if(!g_guide_disable)
     {
         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guidebtn1);
+        lv_group_add_obj(g_main, ui_guidebtn2);
+        emoji_switch_scr = SCREEN_GUIDE;
+        emoji_timer(EMOJI_DETECTING);
         return;
     }
 
@@ -701,14 +785,13 @@ void sgesdown_cb(lv_event_t *e)
 
 void sclick_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "sclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
-    lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
+    lv_event_send(focused_obj, LV_EVENT_SHORT_CLICKED, NULL);
 }
 
 void setsl_cb(lv_event_t * e)
 {
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
+    // esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
 }
 
 void maingestureup_cb(lv_event_t *e)
@@ -750,14 +833,14 @@ void mainclick_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "mainclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
-    lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
+    lv_event_send(focused_obj, LV_EVENT_SHORT_CLICKED, NULL);
 }
 
 void lclick_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "lclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
-    lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
+    lv_event_send(focused_obj, LV_EVENT_SHORT_CLICKED, NULL);
 }
 
 void lunlds_cb(lv_event_t *e) { }
@@ -911,7 +994,8 @@ void setwwdf_cb(lv_event_t *e)
 void settimec_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "settimec_cb");
-    lv_pm_open_page(g_main, NULL, PM_ADD_OBJS_TO_GROUP, &ui_Page_Sleep, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Sleep_screen_init);
+    lv_pm_open_page(g_main, &group_page_sleep, PM_ADD_OBJS_TO_GROUP, &ui_Page_Sleep, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Sleep_screen_init);
+    lv_roller_set_selected(ui_sleeptimeroller, g_sleep_time, LV_ANIM_OFF);
 }
 
 void settimef_cb(lv_event_t *e)
@@ -1004,14 +1088,14 @@ void setblec_cb(lv_event_t *e)
             set_ble_switch(UI_CALLER, 1);
             lv_obj_add_state(ui_setblesw, LV_STATE_CHECKED);
             lv_obj_add_state(ui_setblesw, LV_STATE_DISABLED);
-            wait_timer_start();
+            view_ble_switch_timer_start();
             break;
         case 1:
             ESP_LOGI(TAG, "ble_btn_status: off");
             set_ble_switch(UI_CALLER, 0);
             lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
             lv_obj_add_state(ui_setblesw, LV_STATE_DISABLED);
-            wait_timer_start();
+            view_ble_switch_timer_start();
             break;
 
         default:
@@ -1070,6 +1154,7 @@ void setdownc_cb(lv_event_t *e)
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Swipe_screen_init);
     lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_shutdown();
+    lv_group_add_obj(g_main, ui_spback);
 }
 
 void setfac_cb(lv_event_t *e)
@@ -1079,6 +1164,7 @@ void setfac_cb(lv_event_t *e)
     lv_pm_open_page(g_main, NULL, PM_CLEAR_GROUP, &ui_Page_Swipe, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Swipe_screen_init);
     lv_slider_set_value(ui_spsilder, 0, LV_ANIM_ON);
     Page_facreset();
+    lv_group_add_obj(g_main, ui_spback);
 }
 
 void setappf_cb(lv_event_t *e)
@@ -1156,9 +1242,123 @@ void otaback_cb(lv_event_t * e)
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
+void sleeptimeset_cb(lv_event_t * e)
+{
+    static uint16_t sleep_time_roller_id;
+    lv_obj_t * obj = lv_event_get_target(e);
+    sleep_time_roller_id = lv_roller_get_selected(obj);
+    set_sleep_time(UI_CALLER, sleep_time_roller_id);
+    g_sleep_time = get_sleep_time(UI_CALLER);
+    // ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
+}
+
+void sleepswitch_cb(lv_event_t * e)
+{
+    ESP_LOGI(CLICK_TAG, "sleepswitch_cb");
+    static int btn_state;
+    btn_state = (get_sleep_switch(UI_CALLER));
+    switch (btn_state)
+    {
+        case 0:
+            ESP_LOGI(TAG, "sleep_switch: on");
+            set_sleep_switch(UI_CALLER, 1);
+            lv_obj_add_state(ui_sleepswitch, LV_STATE_CHECKED);
+            g_sleep_switch = get_sleep_switch(UI_CALLER);
+            break;
+        case 1:
+            ESP_LOGI(TAG, "sleep_switch: off");
+            set_sleep_switch(UI_CALLER, 0);
+            lv_obj_clear_state(ui_sleepswitch, LV_STATE_CHECKED);
+            g_sleep_switch = get_sleep_switch(UI_CALLER);
+            break;
+
+        default:
+            break;
+    }
+}
+
+void p2tclick_cb(lv_event_t * e)
+{
+    if(g_push2talk_status == EMOJI_SPEAKING || g_push2talk_status == EMOJI_ANALYZING){
+        lv_arc_set_value(ui_push2talkarc, 0);
+
+        g_push2talk_timer = 1;
+        view_push2talk_timer_start();
+
+        lv_obj_clear_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
+
+        lv_group_add_obj(g_main, ui_push2talkarc);
+
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
+    }
+}
+
+void push2talkcancel_cb(lv_event_t * e)
+{
+    static int push2talk_direct_exit = 0;
+    if(g_taskflow_pause == 1)
+    {
+        lv_label_set_text(ui_revtext, "Resuming \nTask...");
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
+    }else{
+        lv_label_set_text(ui_revtext, "Receiving \nTask...");
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
+
+    g_taskflow_pause = 0;
+}
+
+void push2talkcheck_cb(lv_event_t * e)
+{
+    static int push2talk_newtask_exit = 1;
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_newtask_exit, sizeof(push2talk_newtask_exit), pdMS_TO_TICKS(10000));
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
+
+    g_taskflow_pause = 0;
+}
+
+void p2tvaluechange_cb(lv_event_t * e)
+{
+    static int push2talk_direct_exit = 0;
+    static int16_t push2talk_arc;
+    push2talk_arc = lv_arc_get_value(ui_push2talkarc);
+    if(push2talk_arc == 9)
+    {
+        view_push2talk_timer_stop();
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+        lv_group_set_editing(g_main, false);
+
+        // TODO
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
+
+        if(g_taskflow_pause == 1)
+        {
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                            VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
+            lv_label_set_text(ui_revtext, "Resuming \nTask...");
+        }
+        else{
+            lv_label_set_text(ui_revtext, "Receiving \nTask...");
+        }
+
+        g_taskflow_pause = 0;
+    }
+}
+
+void p2tfocus_cb(lv_event_t * e)
+{
+    lv_group_set_editing(g_main, true);
+}
+
 void volvc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "volvc_cb");
+    // ESP_LOGI(CLICK_TAG, "volvc_cb");
     volbri.vs_value = lv_slider_get_value(ui_vslider);
 
     static char vs_buffer[10];
@@ -1185,7 +1385,7 @@ void voldf_cb(lv_event_t * e)
 
 void brivc_cb(lv_event_t *e)
 {
-    ESP_LOGI(CLICK_TAG, "brivc_cb");
+    // ESP_LOGI(CLICK_TAG, "brivc_cb");
     volbri.bs_value = lv_slider_get_value(ui_bslider);
 
     static char bs_buffer[10];
@@ -1212,41 +1412,6 @@ void bridf_cb(lv_event_t * e)
 void hap_cb(lv_event_t *e)
 {
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-}
-
-void slpt1c_cb(lv_event_t *e) 
-{
-
-}
-
-void slpt2c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt3c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt4c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt5c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt6c_cb(lv_event_t *e) 
-{ 
-
-}
-
-void slpt7c_cb(lv_event_t *e) 
-{ 
-
 }
 
 void pageguideavaf_cb(lv_event_t * e)
@@ -1537,17 +1702,6 @@ uint8_t* retry_get_data(uint8_t* (*func)(int), int caller, int retries) {
     return data;
 }
 
-char* retry_get_char_data(char* (*func)(int), int caller, int retries) {
-    char *data = NULL;
-    for (int i = 0; i < retries; ++i) {
-        data = func(caller);
-        if (data != NULL) {
-            break;
-        }
-    }
-    return data;
-}
-
 void viewInfoInit()
 {
     lv_slider_set_range(ui_bslider, 1, 100);
@@ -1568,6 +1722,8 @@ void view_info_obtain()
     retry_get_data((uint8_t* (*)(int))get_sound, UI_CALLER, MAX_RETRIES);
     const uint8_t *rgb_switch = retry_get_data((uint8_t* (*)(int))get_rgb_switch, UI_CALLER, MAX_RETRIES);
     const uint8_t *ble_switch = retry_get_data((uint8_t* (*)(int))get_ble_switch, UI_CALLER, MAX_RETRIES);
+    g_sleep_time = (int *)retry_get_data(get_sleep_time, UI_CALLER, MAX_RETRIES);
+    g_sleep_switch = (int *)retry_get_data(get_sleep_switch, UI_CALLER, MAX_RETRIES);
 
     if(rgb_switch)
     {
@@ -1583,6 +1739,13 @@ void view_info_obtain()
         lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
     }
 
+    if(g_sleep_switch)
+    {
+        lv_obj_add_state(ui_sleepswitch, LV_STATE_CHECKED);
+    }else{
+        lv_obj_clear_state(ui_sleepswitch, LV_STATE_CHECKED);
+    }
+
     // Update SN、EUI、BTMAC、WIFIMAC、ESP_VERSION、AI_VERSION  to about device page
     static char about_sn[20];
     static char about_eui[40];
@@ -1595,8 +1758,8 @@ void view_info_obtain()
     const uint8_t *eui_code = retry_get_data(get_eui, 0, MAX_RETRIES);
     const uint8_t *bt_mac = retry_get_data(get_bt_mac, 0, MAX_RETRIES);
     const uint8_t *wifi_mac = retry_get_data(get_wifi_mac, 0, MAX_RETRIES);
-    const char *sw_version = retry_get_char_data(get_software_version, UI_CALLER, MAX_RETRIES);
-    const char *himax_version = retry_get_char_data(get_himax_software_version, UI_CALLER, MAX_RETRIES);
+    const char *sw_version = (char *)retry_get_data((uint8_t* (*)(int))get_software_version, UI_CALLER, MAX_RETRIES);
+    const char *himax_version = (char *)retry_get_data((uint8_t* (*)(int))get_himax_software_version, UI_CALLER, MAX_RETRIES);
 
     if (sn_code != NULL) {
         snprintf(about_sn, sizeof(about_sn), "%02X%02X%02X%02X%02X%02X%02X%02X%02X", sn_code[0], sn_code[1], sn_code[2], sn_code[3], sn_code[4], sn_code[5], sn_code[6], sn_code[7], sn_code[8]);
@@ -1671,7 +1834,7 @@ void ui_event_alarm_panel(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
         if(target == ui_viewpbtn1)
         {
             viewp1c_cb(e);
@@ -1719,7 +1882,361 @@ void ui_event_emoticonok(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
         emoticonback_cb(e);
     }
+}
+
+
+/*----------------------------------------------push 2 talk------------------------------------------------------*/
+// TODO
+void push2talk_init(void)
+{
+    push2talk_textarea = lv_textarea_create(ui_Page_Push2talk);
+    lv_obj_set_width(push2talk_textarea, 320);
+    lv_obj_set_height(push2talk_textarea, LV_SIZE_CONTENT);
+    lv_obj_set_x(push2talk_textarea, 0);
+    lv_obj_set_y(push2talk_textarea, 120);
+    lv_obj_set_align(push2talk_textarea, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(push2talk_textarea, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_text_color(push2talk_textarea, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(push2talk_textarea, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(push2talk_textarea, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(push2talk_textarea, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(push2talk_textarea, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(push2talk_textarea, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(push2talk_textarea, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(push2talk_textarea, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(push2talk_textarea, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_textarea_set_placeholder_text(push2talk_textarea, "");
+    lv_textarea_set_one_line(push2talk_textarea, true);
+    lv_textarea_set_cursor_pos(push2talk_textarea, LV_TEXTAREA_CURSOR_LAST);
+    lv_obj_set_scrollbar_mode(push2talk_textarea, LV_SCROLLBAR_MODE_OFF);
+}
+
+static void view_push2talk_animation_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+
+    if (push2talk_text && push2talk_text[push2talk_text_index] != '\0' && push2talk_timer_active) {
+        char temp[2];
+        temp[0] = push2talk_text[push2talk_text_index];
+        temp[1] = '\0';
+        lv_textarea_add_text(push2talk_textarea, temp);
+
+        push2talk_text_index++;
+    } else {
+        esp_timer_stop(view_push2talk_animation_timer);
+        push2talk_timer_active = false;
+
+        if (push2talk_text) {
+            free(push2talk_text);
+            push2talk_text = NULL;
+        }
+    }
+
+    lvgl_port_unlock();
+}
+
+void view_push2talk_animation_timer_start(int duaration_ms)
+{
+    if (esp_timer_is_active(view_push2talk_animation_timer))
+    {
+        esp_timer_stop(view_push2talk_animation_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_periodic(view_push2talk_animation_timer, 1000 * duaration_ms));
+}
+
+void push2talk_start_animation(const char *text, uint32_t duration_s)
+{
+    ESP_LOGI(TAG, "Starting animation with text: %s, duration: %d", text, duration_s);
+
+    if (text == NULL || text[0] == '\0' || duration_s == 0) {
+        ESP_LOGE(TAG, "Invalid parameters for start animation");
+        return;
+    }
+
+    if (push2talk_timer_active) {
+        esp_timer_stop(view_push2talk_animation_timer);
+        push2talk_timer_active = false;
+
+        if (push2talk_text) {
+            free(push2talk_text);
+            push2talk_text = NULL;
+        }
+    }
+
+    push2talk_text = strdup(text);
+    if (push2talk_text == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate memory for push2talk_text");
+        return;
+    }
+
+    push2talk_timer_active = true;
+    push2talk_text_index = 0;
+    lv_textarea_set_text(push2talk_textarea, "");
+
+    uint32_t text_length = strlen(text);
+    uint32_t push2talk_anim_interval = (duration_s * 1000) / text_length;
+
+    view_push2talk_animation_timer_start(push2talk_anim_interval);
+}
+/*--------------------------------------------view timer----------------------------------------------------------------*/
+static void view_ble_switch_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+    lv_obj_clear_state(ui_setblesw, LV_STATE_DISABLED);
+    lvgl_port_unlock();
+}
+
+void view_ble_switch_timer_start()
+{
+    if (esp_timer_is_active(view_ble_switch_timer))
+    {
+        esp_timer_stop(view_ble_switch_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_once(view_ble_switch_timer, (uint64_t)1000000));
+}
+
+static void view_sleep_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+    
+    inactive_time = lv_disp_get_inactive_time(NULL);
+    get_inactive_time = g_sleep_time;
+    // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
+    // ESP_LOGD("view_sleep", "sleep switch is : %d, and sleep time is %d", g_sleep_switch, g_sleep_time);
+
+    switch (get_inactive_time) {
+        case 0:
+            inactive_threshold = 0;
+            break;
+        case 1:
+            inactive_threshold = (1 * 60 * 1000);
+            break;
+        case 2:
+            inactive_threshold = (5 * 60 * 1000);
+            break;
+        case 3:
+            inactive_threshold = (10 * 60 * 1000);
+            break;
+        case 4:
+            inactive_threshold = (15 * 60 * 1000);
+            break;
+        case 5:
+            inactive_threshold = (30 * 60 * 1000);
+            break;
+        case 6:
+            inactive_threshold = (24 * 60 * 60 * 1000);
+            break;
+        default:
+            lvgl_port_unlock();
+            return;
+    }
+
+    // standby mode
+    if(inactive_time > (5 * 60 * 1000) && standby_mode == 0 && g_taskdown)
+    {
+        ESP_LOGI(TAG, "Standby mode active");
+
+        emoji_switch_scr = SCREEN_STANDBY;
+        emoji_timer(EMOJI_STANDBY);
+        lv_obj_clear_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+
+        standby_mode = 1;
+    }else if(standby_mode == 1 && !g_taskdown)
+    {
+        ESP_LOGI(TAG, "Standby mode deactive");
+
+        emoji_switch_scr = SCREEN_AVATAR;
+        lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+        emoji_timer(EMOJI_STOP);
+
+        standby_mode = 0;
+    }
+
+    // sleep mode
+    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar)
+    {
+        ESP_LOGI(TAG, "Sleep mode active");
+        bsp_lcd_brightness_set(0);
+        sleep_mode = 1;
+    }
+
+
+    // deactivate sleep mode and stanby mode
+    if(inactive_time < ACTIVE_THRESHOLD)
+    {
+        if(sleep_mode != 0)
+        {
+            ESP_LOGI(TAG, "Sleep mode deactive");
+            int brightness = get_brightness(UI_CALLER);
+            bsp_lcd_brightness_set(brightness);
+            sleep_mode = 0;
+        }
+
+        if(standby_mode != 0)
+        {
+            ESP_LOGI(TAG, "Standby mode deactive");
+
+            lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+            emoji_timer(EMOJI_STOP);
+
+            standby_mode = 0;
+        }
+    }
+
+    lvgl_port_unlock();
+}
+
+void view_sleep_timer_start()
+{
+    if (esp_timer_is_active(view_sleep_timer))
+    {
+        esp_timer_stop(view_sleep_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_periodic(view_sleep_timer, 1000000));
+}
+
+static void view_push2talk_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+
+    static int16_t push2talk_arc;
+    static int push2talk_direct_exit = 0;
+
+    if(g_push2talk_timer == 0)
+    {
+        push2talk_timer_counter++;
+        if(push2talk_timer_counter==10){
+            if(g_push2talk_mode == 2)
+            {
+                view_push2talk_timer_stop();
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
+                                    VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
+                push2talk_timer_counter = 0;
+            }
+            if(g_push2talk_mode == 0)
+            {
+                lv_event_send(ui_Page_Push2talk, LV_EVENT_SHORT_CLICKED, NULL);
+                push2talk_timer_counter = 0;
+            }
+        }
+    }else{
+        push2talk_arc = lv_arc_get_value(ui_push2talkarc);
+        lv_arc_set_value(ui_push2talkarc, push2talk_arc+1);
+        lv_event_send(ui_push2talkarc, LV_EVENT_VALUE_CHANGED, NULL);
+    }
+
+    lvgl_port_unlock();
+}
+
+void view_push2talk_timer_start()
+{
+    if (esp_timer_is_active(view_push2talk_timer))
+    {
+        esp_timer_stop(view_push2talk_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_periodic(view_push2talk_timer, 1000000));
+}
+
+void view_push2talk_timer_stop()
+{
+    if (esp_timer_is_active(view_push2talk_timer))
+    {
+        esp_timer_stop(view_push2talk_timer);
+    }
+}
+
+static void view_push2talk_msg_timer_callback(void *arg)
+{
+    lvgl_port_lock(0);
+
+    lv_obj_t *push2talk_panel_child;
+    ESP_LOGI(TAG, "push2talk_panel_idx is %d ", push2talk_panel_idx);
+
+    if(push2talk_item[push2talk_panel_idx]){
+        switch (push2talk_panel_idx)
+        {
+        case 0:
+            lv_label_set_text(ui_p2tobj2, push2talk_item[push2talk_panel_idx]);
+            lv_obj_clear_flag(ui_p2tobj, LV_OBJ_FLAG_HIDDEN);
+            lv_group_add_obj(g_main, ui_p2tobj);
+            lv_group_focus_obj(ui_p2tobj);
+            break;
+        case 1:
+            lv_label_set_text(ui_p2tbehavior2, push2talk_item[push2talk_panel_idx]);
+            lv_obj_clear_flag(ui_p2tbehavior, LV_OBJ_FLAG_HIDDEN);
+            lv_group_add_obj(g_main, ui_p2tbehavior);
+            lv_group_focus_obj(ui_p2tbehavior);
+            break;
+        case 2:
+            lv_label_set_text(ui_p2tfeat2, push2talk_item[push2talk_panel_idx]);
+            lv_obj_clear_flag(ui_p2tfeat, LV_OBJ_FLAG_HIDDEN);
+            lv_group_add_obj(g_main, ui_p2tfeat);
+            lv_group_focus_obj(ui_p2tfeat);
+            break;
+        case 3:
+            lv_label_set_text(ui_p2tcomparison2, push2talk_item[push2talk_panel_idx]);
+            lv_obj_clear_flag(ui_p2tcomparison, LV_OBJ_FLAG_HIDDEN);
+            lv_group_add_obj(g_main, ui_p2tcomparison);
+            lv_group_focus_obj(ui_p2tcomparison);
+            break;
+        case 4:
+            lv_label_set_text(ui_p2tnotify2, push2talk_item[push2talk_panel_idx]);
+            lv_obj_clear_flag(ui_p2tnotify, LV_OBJ_FLAG_HIDDEN);
+            lv_group_add_obj(g_main, ui_p2tnotify);
+            lv_group_focus_obj(ui_p2tnotify);
+            break;
+        case 5:
+            lv_label_set_text(ui_p2ttime2, push2talk_item[push2talk_panel_idx]);
+            lv_obj_clear_flag(ui_p2ttime, LV_OBJ_FLAG_HIDDEN);
+            lv_group_add_obj(g_main, ui_p2ttime);
+            lv_group_focus_obj(ui_p2ttime);
+            break;
+        case 6:
+            lv_label_set_text(ui_p2tfreq2, push2talk_item[push2talk_panel_idx]);
+            lv_obj_clear_flag(ui_p2tfreq, LV_OBJ_FLAG_HIDDEN);
+            lv_group_add_obj(g_main, ui_p2tfreq);
+            lv_group_focus_obj(ui_p2tfreq);
+            break;
+        case 7:
+            lv_obj_clear_flag(ui_p2tsw, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_scroll_to_view(ui_p2tsw, LV_ANIM_OFF);
+            lv_group_add_obj(g_main, ui_p2tcancel);
+            lv_group_add_obj(g_main, ui_p2tcheck);
+            lv_group_focus_obj(ui_p2tcheck);
+            break;
+        
+        default:
+            break;
+        }
+    }
+
+    push2talk_panel_idx++;
+    if (push2talk_panel_idx >= 8)
+    {
+        esp_timer_stop(view_push2talk_msg_timer);
+        push2talk_panel_idx = 0;
+    }
+    lvgl_port_unlock();
+}
+
+void view_push2talk_msg_timer_start()
+{
+    if (esp_timer_is_active(view_push2talk_msg_timer))
+    {
+        esp_timer_stop(view_push2talk_msg_timer);
+    }
+    ESP_ERROR_CHECK(esp_timer_start_periodic(view_push2talk_msg_timer, 500000));
+}
+
+void view_timer_create()
+{
+    ESP_ERROR_CHECK(esp_timer_create(&view_ble_switch_timer_args, &view_ble_switch_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&view_sleep_timer_args, &view_sleep_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&view_push2talk_timer_args, &view_push2talk_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&view_push2talk_msg_timer_args, &view_push2talk_msg_timer));
+    ESP_ERROR_CHECK(esp_timer_create(&view_push2talk_animation_timer_args, &view_push2talk_animation_timer));
 }

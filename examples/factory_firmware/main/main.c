@@ -193,6 +193,7 @@ void task_app_init(void *p_arg)
     view_init();
 
     app_init();
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
 
     esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, __app_event_loop_handler, NULL);
     esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, __app_event_loop_handler, NULL);
