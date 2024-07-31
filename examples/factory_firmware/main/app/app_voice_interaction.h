@@ -6,6 +6,7 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "esp_http_client.h"
+#include "esp_timer.h"
 #include "data_defs.h"
 
 #define VOICE_INTERACTION_TASK_STACK_SIZE  10*1024
@@ -32,9 +33,9 @@
 
 #define ESP_ERR_VI_NO_MEM          (ESP_ERR_NO_MEM)
 #define ESP_ERR_VI_HTTP_CONNECT    (ESP_ERR_HTTP_CONNECT)
+#define ESP_ERR_VI_HTTP_WRITE      (ESP_ERR_HTTP_WRITE_DATA)
 #define ESP_ERR_VI_HTTP_RESP       (ESP_ERR_HTTP_FETCH_HEADER)
 #define ESP_ERR_VI_NET_CONNECT     (ESP_ERR_WIFI_NOT_CONNECT)
-
 
 #define VI_MODE_CHAT      0 
 #define VI_MODE_TASK      1
@@ -64,6 +65,7 @@ struct app_voice_interaction {
     StaticTask_t *p_task_buf;
     StackType_t *p_task_stack_buf;
     esp_http_client_handle_t client;
+    esp_timer_handle_t timer_handle;
     enum app_voice_interaction_status cur_status;
     enum app_voice_interaction_status next_status;
     bool net_flag;
@@ -75,6 +77,9 @@ struct app_voice_interaction {
     int  content_length;
     int  err_code;
     bool is_wait_resp;
+    bool is_http_write;
+    bool is_recording;
+    bool is_connecting;
     bool need_get_taskflow;
     bool taskflow_pause;
     bool new_session;

@@ -190,6 +190,7 @@ esp_err_t app_audio_recorder_stream_start(void)
     p_audio_recorder->status = AUDIO_RECORDER_STATUS_STREAM;
     __data_unlock(p_audio_recorder);
 
+    xEventGroupClearBits(p_audio_recorder->event_group, EVENT_RECORD_STREAM_STOP | EVENT_RECORD_STREAM_STOP_DONE);
     xEventGroupSetBits(p_audio_recorder->event_group, EVENT_RECORD_STREAM_START);
     return ret;
 }

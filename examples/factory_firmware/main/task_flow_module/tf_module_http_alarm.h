@@ -22,10 +22,10 @@ extern "C"
 
 #if CONFIG_ENABLE_TEST_ENV
 #define CONFIG_TF_MODULE_HTTP_ALARM_SERV_HOST       "https://sensecraft-aiservice-test-api.seeed.cc"
-#define CONFIG_TF_MODULE_HTTP_ALARM_SERV_REQ_PATH   "/v1/api/notification"
+#define CONFIG_TF_MODULE_HTTP_ALARM_SERV_REQ_PATH   "/v1/notification/event"
 #else
 #define CONFIG_TF_MODULE_HTTP_ALARM_SERV_HOST       "https://sensecraft-aiservice-api.seeed.cc"
-#define CONFIG_TF_MODULE_HTTP_ALARM_SERV_REQ_PATH   "/v1/api/notification"
+#define CONFIG_TF_MODULE_HTTP_ALARM_SERV_REQ_PATH   "/v1/notification/event"
 #endif
 
 #define TF_MODULE_HTTP_ALARM_DEFAULT_SILENCE_DURATION  30

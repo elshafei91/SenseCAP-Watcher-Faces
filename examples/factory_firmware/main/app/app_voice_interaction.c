@@ -45,8 +45,8 @@ static void __data_unlock(struct app_voice_interaction *p_vi)
 static void __vi_stop( struct app_voice_interaction *p_vi)
 {
     xEventGroupSetBits(p_vi->event_group, EVENT_VI_STOP);
-    if( p_vi->is_wait_resp  &&  p_vi->client != NULL ){
-        ESP_LOGI(TAG, " stop wait resp");
+    if( (p_vi->is_wait_resp || p_vi->is_connecting || p_vi->is_http_write) &&  p_vi->client != NULL ){
+        ESP_LOGI(TAG, " stop, resp:%d, connecting:%d, write:%d", p_vi->is_wait_resp, p_vi->is_connecting, p_vi->is_http_write);
         esp_http_client_cancel_request(p_vi->client);
     }
 }
@@ -76,8 +76,19 @@ static void __record_start( struct app_voice_interaction *p_vi)
 
 static void __record_stop( struct app_voice_interaction *p_vi)
 {
+    if( p_vi->is_connecting &&  p_vi->client != NULL ){
+        ESP_LOGI(TAG, " stop connecting"); 
+        esp_http_client_cancel_request(p_vi->client);
+    }
+    if (esp_timer_is_active( p_vi->timer_handle ) == true){
+        esp_timer_stop(p_vi->timer_handle);
+        ESP_LOGI(TAG, "stop timer");
+    }
+    ESP_LOGI(TAG, "start timer 5s");
+    esp_timer_start_once(p_vi->timer_handle, 5 * 1000000); //5s must  exit record
+    
     xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_STOP);
-}   
+}
 
 static bool __is_need_start_record(struct app_voice_interaction *p_vi, int ms)
 {
@@ -424,18 +435,23 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             bool first = true;
             char chunk_size_str[32+3];
             size_t chunk_size_str_len = 0;
+            int  write_len = 0;
             size_t send_len = 0;
             int64_t net_send_tm_us = 0;
             esp_http_client_handle_t client;
+            bool stop_send = false;
+            
 
             app_rgb_set(SR, RGB_BREATH_BLUE); //set RGB
-            app_audio_player_file_block(VI_WAKE_FILE_PATH, pdMS_TO_TICKS(2000));
+            app_audio_player_file_block(VI_WAKE_FILE_PATH, pdMS_TO_TICKS(600));
 
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                                     VIEW_EVENT_VI_RECORDING, NULL, NULL, pdMS_TO_TICKS(10000));
 
             app_audio_recorder_stream_start();
+            p_vi->is_connecting = true;
             ret = __audio_stream_http_connect(p_vi);
+            p_vi->is_connecting = false;
             if (ret != ESP_OK) {
                 app_audio_recorder_stream_stop();
                 ESP_LOGE(TAG, "esp_http_client_open failed: %s", esp_err_to_name(ret));
@@ -443,10 +459,13 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 p_vi->err_code = ESP_ERR_VI_HTTP_CONNECT;
                 break;
             } else {
+                ESP_LOGI(TAG, "http connect success");
                 client = p_vi->client;
             }
 
+            
             start = esp_timer_get_time();
+            p_vi->is_recording = true;
             while(1) {
                 p_data = app_audio_recorder_stream_recv(&data_len, pdMS_TO_TICKS(500));
                 if( p_data != NULL ) {
@@ -457,8 +476,22 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                         chunk_size_str_len = snprintf(chunk_size_str,sizeof(chunk_size_str), "\r\n%X\r\n", data_len);
                     }
                     int64_t chunk_send_start= esp_timer_get_time();
-                    send_len += esp_http_client_write(client, (const char *)chunk_size_str, chunk_size_str_len);
-                    send_len += esp_http_client_write(client, (const char *)p_data, data_len);
+                    
+                    write_len = esp_http_client_write(client, (const char *)chunk_size_str, chunk_size_str_len);
+                    if( write_len <= 0) {
+                        ESP_LOGE(TAG, "esp_http_client_write failed");
+                        app_audio_recorder_stream_free((uint8_t *)p_data);
+                        break;
+                    }
+                    send_len += write_len;
+                    write_len = esp_http_client_write(client, (const char *)p_data, data_len);
+                    if( write_len <= 0) {
+                        ESP_LOGE(TAG, "esp_http_client_write failed");
+                        app_audio_recorder_stream_free((uint8_t *)p_data);
+                        break;
+                    }
+                    send_len += write_len;
+
                     int64_t chunk_send_end= esp_timer_get_time();
                     app_audio_recorder_stream_free((uint8_t *)p_data);
                     net_send_tm_us += (chunk_send_end - chunk_send_start);
@@ -473,6 +506,19 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                     break;
                 }
             }
+            p_vi->is_recording = false;
+            if (esp_timer_is_active( p_vi->timer_handle ) == true){
+                ESP_LOGI(TAG, "stop timer");
+                esp_timer_stop(p_vi->timer_handle);
+            }
+
+            if( write_len <= 0) {
+                p_vi->next_status = VI_STATUS_ERROR;
+                p_vi->err_code = ESP_ERR_VI_HTTP_WRITE;
+                app_audio_recorder_stream_stop();
+                ESP_LOGI(TAG, "EVENT_RECORD_STOP");
+                break;
+            }
 
             app_rgb_set(SR, RGB_OFF);
 
@@ -481,13 +527,28 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                         VIEW_EVENT_VI_ANALYZING, NULL, NULL, pdMS_TO_TICKS(10000));
 
             // continue to send data from ringbuffer
+            p_vi->is_http_write = true;
             while(1) {
                 p_data = app_audio_recorder_stream_recv(&data_len, pdMS_TO_TICKS(500));
                 if( p_data != NULL ) {
                     chunk_size_str_len = snprintf(chunk_size_str,sizeof(chunk_size_str), "\r\n%X\r\n", data_len);
                     int64_t chunk_send_start= esp_timer_get_time();
-                    send_len += esp_http_client_write(client, (const char *)chunk_size_str, chunk_size_str_len);
-                    send_len += esp_http_client_write(client, (const char *)p_data, data_len);
+
+                    write_len = esp_http_client_write(client, (const char *)chunk_size_str, chunk_size_str_len);
+                    if( write_len <= 0) {
+                        ESP_LOGE(TAG, "esp_http_client_write failed");
+                        app_audio_recorder_stream_free((uint8_t *)p_data);
+                        break;
+                    }
+                    send_len += write_len;
+                    write_len = esp_http_client_write(client, (const char *)p_data, data_len);
+                    if( write_len <= 0) {
+                        ESP_LOGE(TAG, "esp_http_client_write failed");
+                        app_audio_recorder_stream_free((uint8_t *)p_data);
+                        break;
+                    }
+                    send_len += write_len;
+
                     int64_t chunk_send_end= esp_timer_get_time();
                     app_audio_recorder_stream_free((uint8_t *)p_data);
                     net_send_tm_us += (chunk_send_end - chunk_send_start);
@@ -496,8 +557,33 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                     ESP_LOGI(TAG, "send finish");
                     break;
                 }
+                if(__is_need_stop(p_vi)) {
+                    ESP_LOGI(TAG, "stop send");
+                    next_status = VI_STATUS_STOP;
+                    stop_send = true;
+                    break;
+                }
             }
-            send_len += esp_http_client_write(client, "\r\n0\r\n\r\n", strlen("\r\n0\r\n\r\n"));
+            p_vi->is_http_write = false;
+
+            if( write_len <= 0) {
+                p_vi->next_status = VI_STATUS_ERROR;
+                p_vi->err_code = ESP_ERR_VI_HTTP_WRITE;
+                break;
+            }
+
+            if( stop_send ) {
+                break;
+            }
+
+            write_len = esp_http_client_write(client, "\r\n0\r\n\r\n", strlen("\r\n0\r\n\r\n"));
+            if( write_len <= 0) {
+                ESP_LOGE(TAG, "esp_http_client_write failed");
+                p_vi->next_status = VI_STATUS_ERROR;
+                p_vi->err_code = ESP_ERR_VI_HTTP_WRITE;
+                break;
+            }
+            send_len += write_len;
             end = esp_timer_get_time();
             ESP_LOGI(TAG, " === Record stop === ");
             ESP_LOGI(TAG, "send:%d, time:%lld ms, Net rate:%.1fKB/s, average rate=%.1fKB/s, ", send_len,  (end - start) / 1000, \
@@ -710,6 +796,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
         }
         case VI_STATUS_ERROR: {
             ESP_LOGI(TAG, "VI_STATUS_ERROR");
+            app_rgb_set(SR, RGB_OFF);
             esp_http_client_handle_t client = p_vi->client;
             if( p_vi->need_delete_client && client != NULL) {
                 p_vi->need_delete_client = false;
@@ -717,6 +804,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 esp_http_client_cleanup(client);
                 p_vi->client = NULL;
             }
+            ESP_LOGE(TAG, "err_code:0x%X", p_vi->err_code);
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                         VIEW_EVENT_VI_ERROR, &p_vi->err_code, sizeof(p_vi->err_code), pdMS_TO_TICKS(10000));
 
@@ -868,6 +956,16 @@ static void __event_handler(void* handler_args,
     }
 }
 
+static void __timer_callback(void* p_arg)
+{
+    struct app_voice_interaction *p_vi = (struct app_voice_interaction *)p_arg;
+    ESP_LOGI(TAG, "record end timeout");
+    if( p_vi->is_recording  && p_vi->client ) {
+        ESP_LOGI(TAG, "timer cancel request");
+        esp_http_client_cancel_request(p_vi->client);
+    }
+}
+
 /*************************************************************************
  * API
  ************************************************************************/
@@ -896,6 +994,8 @@ esp_err_t app_voice_interaction_init(void)
     p_vi->content_length = 0;
     p_vi->err_code = 0;
     p_vi->is_wait_resp = false;
+    p_vi->is_connecting = false;
+    p_vi->is_recording = false;
     p_vi->need_get_taskflow = false;
     p_vi->taskflow_pause = false;
     p_vi->new_session = true;
@@ -922,6 +1022,14 @@ esp_err_t app_voice_interaction_init(void)
                                                                 p_vi->p_task_buf,
                                                                 VOICE_INTERACTION_TASK_CORE);
     ESP_GOTO_ON_FALSE(p_vi->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
+
+    const esp_timer_create_args_t timer_args = {
+            .callback = &__timer_callback,
+            .arg = (void*) p_vi,
+            .name = "sensecraft_timer"
+    };
+    ret = esp_timer_create(&timer_args, &p_vi->timer_handle);
+    ESP_GOTO_ON_ERROR(ret, err, TAG, "esp_timer_create failed");
 
     // view event
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
@@ -1040,9 +1148,9 @@ int app_vi_result_parse(const char *p_str, size_t len,
         p_ret->mode = VI_MODE_CHAT;
     }
 
-    cJSON *p_durtaion = cJSON_GetObjectItem(p_data, "durtaion");
-    if ( p_durtaion && cJSON_IsNumber(p_durtaion)) {
-        p_ret->audio_tm_ms = p_durtaion->valueint;
+    cJSON *p_duration = cJSON_GetObjectItem(p_data, "duration");
+    if ( p_duration && cJSON_IsNumber(p_duration)) {
+        p_ret->audio_tm_ms = p_duration->valueint;
     } else {
         p_ret->audio_tm_ms = 0;
     }
