@@ -32,6 +32,7 @@
 #include "app_ota.h"
 #include "app_taskflow.h"
 #include "view.h"
+#include "app_sensor.h"
 
 #include "app_audio_player.h"
 #include "app_audio_recorder.h"
@@ -182,6 +183,7 @@ void app_init(void)
     app_at_cmd_init();
     app_ble_init();
     app_cmd_init();
+    app_sensor_init();
     // app_sr_start(false);
 }
 
