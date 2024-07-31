@@ -277,7 +277,10 @@ void emoji_timer(uint8_t emoji_type)
         g_timer = NULL;
     }
     emoji_user_data = emoji_type;
-    if(emoji_user_data != EMOJI_STOP)g_timer = lv_timer_create(emoji_timer_callback, 500, &emoji_user_data);
+    if(emoji_user_data != EMOJI_STOP){
+        g_timer = lv_timer_create(emoji_timer_callback, 500, &emoji_user_data);
+        emoji_timer_callback(g_timer);
+    }
 }
 
 void slbattery_cb(lv_event_t *e) { }
@@ -1298,6 +1301,7 @@ void p2tclick_cb(lv_event_t * e)
 
 void push2talkcancel_cb(lv_event_t * e)
 {
+    ESP_LOGI(CLICK_TAG, "push2talkcancel_cb");
     static int push2talk_direct_exit = 0;
     if(g_taskflow_pause == 1)
     {
@@ -1315,6 +1319,7 @@ void push2talkcancel_cb(lv_event_t * e)
 
 void push2talkcheck_cb(lv_event_t * e)
 {
+    ESP_LOGI(CLICK_TAG, "push2talkcheck_cb");
     static int push2talk_newtask_exit = 1;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_newtask_exit, sizeof(push2talk_newtask_exit), pdMS_TO_TICKS(10000));
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
@@ -2166,22 +2171,22 @@ static void view_push2talk_msg_timer_callback(void *arg)
             lv_group_focus_obj(ui_p2tobj);
             break;
         case 1:
+            lv_label_set_text(ui_p2tcomparison2, push2talk_item[push2talk_panel_idx]);
+            lv_obj_clear_flag(ui_p2tcomparison, LV_OBJ_FLAG_HIDDEN);
+            lv_group_add_obj(g_main, ui_p2tcomparison);
+            lv_group_focus_obj(ui_p2tcomparison);
+            break;
+        case 2:
             lv_label_set_text(ui_p2tbehavior2, push2talk_item[push2talk_panel_idx]);
             lv_obj_clear_flag(ui_p2tbehavior, LV_OBJ_FLAG_HIDDEN);
             lv_group_add_obj(g_main, ui_p2tbehavior);
             lv_group_focus_obj(ui_p2tbehavior);
             break;
-        case 2:
+        case 3:
             lv_label_set_text(ui_p2tfeat2, push2talk_item[push2talk_panel_idx]);
             lv_obj_clear_flag(ui_p2tfeat, LV_OBJ_FLAG_HIDDEN);
             lv_group_add_obj(g_main, ui_p2tfeat);
             lv_group_focus_obj(ui_p2tfeat);
-            break;
-        case 3:
-            lv_label_set_text(ui_p2tcomparison2, push2talk_item[push2talk_panel_idx]);
-            lv_obj_clear_flag(ui_p2tcomparison, LV_OBJ_FLAG_HIDDEN);
-            lv_group_add_obj(g_main, ui_p2tcomparison);
-            lv_group_focus_obj(ui_p2tcomparison);
             break;
         case 4:
             lv_label_set_text(ui_p2tnotify2, push2talk_item[push2talk_panel_idx]);
@@ -2203,7 +2208,6 @@ static void view_push2talk_msg_timer_callback(void *arg)
             break;
         case 7:
             lv_obj_clear_flag(ui_p2tsw, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_scroll_to_view(ui_p2tsw, LV_ANIM_OFF);
             lv_group_add_obj(g_main, ui_p2tcancel);
             lv_group_add_obj(g_main, ui_p2tcheck);
             lv_group_focus_obj(ui_p2tcheck);
