@@ -265,11 +265,11 @@ static void emoji_timer_callback(lv_timer_t *timer)
 
 void emoji_timer(uint8_t emoji_type)
 {
-    if (avatar_image) lv_img_set_src(avatar_image, NULL);
-    if (virtual_image) lv_img_set_src(virtual_image, NULL);
-    if (flag_image) lv_img_set_src(flag_image, NULL);
-    if (standby_image) lv_img_set_src(standby_image, NULL);
-    if (push2talk_image) lv_img_set_src(push2talk_image, NULL);
+    // if (avatar_image) lv_img_set_src(avatar_image, NULL);
+    // if (virtual_image) lv_img_set_src(virtual_image, NULL);
+    // if (flag_image) lv_img_set_src(flag_image, NULL);
+    // if (standby_image) lv_img_set_src(standby_image, NULL);
+    // if (push2talk_image) lv_img_set_src(push2talk_image, NULL);
     
     if (g_timer != NULL)
     {
