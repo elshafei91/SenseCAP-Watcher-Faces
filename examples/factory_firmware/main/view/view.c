@@ -9,6 +9,8 @@
 #include <time.h>
 #include "app_device_info.h"
 #include "app_png.h"
+#include "app_voice_interaction.h"
+
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
 #include "ui_manager/event.h"
@@ -37,6 +39,8 @@ extern uint8_t g_tasktype;
 extern uint8_t g_backpage;
 extern uint8_t g_push2talk_timer;
 uint8_t g_push2talk_mode = 0;
+char *push2talk_item[TASK_CFG_ID_MAX];
+extern lv_obj_t *push2talk_textarea;
 
 // sleep mode
 extern int g_sleep_switch;
@@ -557,6 +561,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_TASKFLOW_PAUSE");
 
                 g_taskflow_pause = 1;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 
                 break;
             }
@@ -570,11 +575,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_add_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
                 
-                _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
                 emoji_switch_scr = SCREEN_PUSH2TALK;
                 emoji_timer(EMOJI_LISTENING);
+                _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
                 g_push2talk_status = EMOJI_LISTENING;
 
                 break;
@@ -584,7 +589,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ANALYZING");
 
                 lv_obj_clear_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
                 
                 emoji_switch_scr = SCREEN_PUSH2TALK;
                 emoji_timer(EMOJI_ANALYZING);
@@ -610,16 +615,16 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
                     if (push2talk_result->p_audio_text != NULL) {
                         ESP_LOGI("push2talk", "audio text : %s", push2talk_result->p_audio_text);
+                        int push2talk_audio_time = push2talk_result->audio_tm_ms;
+                        ESP_LOGI("push2talk", "audio time : %d", push2talk_audio_time);
 
-                        const char *push2talk_msg = push2talk_result->p_audio_text;
-                        ESP_LOGI("push2talk", "audio text : %s", push2talk_msg);
-                        lv_label_set_text(ui_p2tspeak, push2talk_msg);
+                        push2talk_start_animation(push2talk_result->p_audio_text, 10);
                     } else {
                         ESP_LOGI("push2talk", "audio text is NULL");
                     }
 
                     lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_clear_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_clear_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
 
                     emoji_switch_scr = SCREEN_PUSH2TALK;
                     emoji_timer(EMOJI_SPEAKING);
@@ -628,9 +633,18 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
                 // mode 1
                 else if (push2talk_result->mode == 1){
+                    g_push2talk_timer = 1;
+                    memset(push2talk_item, 0, sizeof(push2talk_item));
+                    for (int i = 0; i < TASK_CFG_ID_MAX; i++) {
+                        if (push2talk_result->items[i]) {
+                            ESP_LOGI("push2talk", "item %d is : %s", i, push2talk_result->items[i]);
+                            push2talk_item[i] = strdup(push2talk_result->items[i]);
+                        }
+                    }
+
                     emoji_timer(EMOJI_STOP);
                     lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_add_flag(ui_p2tspeak, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
                     lv_group_remove_all_objs(g_main);
 
                     uint32_t child_cnt = lv_obj_get_child_cnt(ui_push2talkpanel3);
@@ -647,7 +661,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     view_push2talk_msg_timer_start();
                 }
 
-                free(push2talk_result->p_audio_text);
+                app_vi_result_free(push2talk_result);
                 break;
             }
 
@@ -661,6 +675,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_VI_ERROR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ERROR");
+
+                int push2talk_error_code = *(int *)event_data;
+
+
+                break;
 
             }
 
