@@ -20,6 +20,8 @@
 #include "factory_info.h"
 #include "app_device_info.h"
 #include "tf.h"
+#include "app_ota.h"
+#include "app_ble.h"
 
 static const char *TAG = "vi";
 
@@ -60,6 +62,10 @@ static void __vi_exit( struct app_voice_interaction *p_vi)
 
 static void __record_start( struct app_voice_interaction *p_vi)
 {
+    if(p_vi->is_ota) {
+        ESP_LOGW(TAG, "not support vi on ota mode");
+        return;
+    }
     xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_START);
     //Maybe it has already started
     if( p_vi->cur_status !=  VI_STATUS_IDLE ){
@@ -187,7 +193,7 @@ static char *__request( const char *url,
 
     // set header
     esp_http_client_set_header(client, "Content-Type", "application/json");
-    esp_http_client_set_header(client, "session_id", session_id);
+    esp_http_client_set_header(client, "session-id", session_id);
     if( token !=NULL && strlen(token) > 0 ) {
         ESP_LOGI(TAG, "token: %s", token);
         esp_http_client_set_header(client, "Authorization", token);
@@ -223,6 +229,7 @@ static char *__request( const char *url,
     else
     {
         result[content_length] = 0;
+        ESP_LOGI(TAG, "taskflow: %s", result);
     }
 err:
     esp_http_client_close(client);
@@ -248,7 +255,7 @@ static int __taskflow_http_get(struct app_voice_interaction *p_vi)
     }
 
     cJSON *code = cJSON_GetObjectItem(json, "code");
-    if ( code != NULL && cJSON_IsNumber(code) && code->valueint == 0 ) {
+    if ( code != NULL && cJSON_IsNumber(code) && code->valueint == 200 ) {
 
         cJSON *json_data = cJSON_GetObjectItem(json, "data");
         if (json_data != NULL && cJSON_IsObject(json_data)) {
@@ -327,7 +334,7 @@ static int __audio_stream_http_connect(struct app_voice_interaction *p_vi)
 
     esp_http_client_set_header(p_vi->client, "Transfer-Encoding", "chunked");
     esp_http_client_set_header(p_vi->client, "Content-Type", "application/octet-stream");
-    esp_http_client_set_header(p_vi->client, "session_id", p_vi->session_id);
+    esp_http_client_set_header(p_vi->client, "session-id", p_vi->session_id);
     
     char *token =  p_vi->token;
     if( token !=NULL && strlen(token) > 0 ) {
@@ -376,12 +383,22 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
 
             if( p_vi->new_session || p_vi->session_id[0] == 0 ) {
                 UUIDGen( p_vi->session_id );
-                ESP_LOGI(TAG, "session_id:%s", p_vi->session_id);
+                ESP_LOGI(TAG, "session-id:%s", p_vi->session_id);
             }
             
             if( p_vi->new_session ) {
                 p_vi->new_session = false;
-        
+                
+                //check ble
+                if( get_ble_switch(MAX_CALLER) ) {
+                    p_vi->ble_pause =  true;
+                    app_ble_adv_switch(0);
+                    ESP_LOGI(TAG, "ble pause");
+                } else {
+                    p_vi->ble_pause =  false;
+                }
+
+                // check taskflow
                 int engine_status = 0;
                 tf_engine_status_get( &engine_status);
                 if( engine_status == TF_STATUS_RUNNING ) { //maybe will set running TODO
@@ -389,6 +406,9 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                     tf_engine_pause();
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                         VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+                    ESP_LOGI(TAG, "taskflow pause");
+                } else {
+                    p_vi->taskflow_pause =  false;
                 }
             }
             p_vi->next_status = VI_STATUS_RECORDING;
@@ -571,6 +591,10 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                     read_total_len += read_len;
 
                     if(first_chunk) {
+                        
+                        if( read_len < 1024 ) {
+                            ESP_LOGI(TAG, "%s", recv_buf); // debug
+                        }
                         first_chunk = false; //TODO  maybe  first_chunk can't find result.
                         ret = __audio_stream_result_get((uint8_t *)recv_buf, read_len, &result, &p_bin_data, &bin_len);
                         if(  ret == ESP_OK  && bin_len != 0) {
@@ -595,6 +619,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                     ESP_LOGI(TAG, "mode:%d", result.mode);
                     ESP_LOGI(TAG, "sst_text:%s", result.p_sst_text ? result.p_sst_text : "UNKNOWN");
                     ESP_LOGI(TAG, "audio_text:%s", result.p_audio_text ? result.p_audio_text : "UNKNOWN");
+                    // printf("audio_text:%s\r\n", result.p_audio_text ? result.p_audio_text : "UNKNOWN"); // for test
                     ESP_LOGI(TAG, "audio_tm_ms:%d", result.audio_tm_ms);
                     for (size_t i = 0; i < TASK_CFG_ID_MAX; i++)
                     {
@@ -659,6 +684,15 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             ESP_LOGI(TAG, "VI_STATUS_EXIT");
 
             p_vi->new_session = true;
+            
+            //resume ble
+            if( p_vi->ble_pause ) {
+                ESP_LOGI(TAG, "resume ble");
+                app_ble_adv_switch(1);
+                p_vi->ble_pause = false;
+            }
+
+            // resume taskflow
             if( p_vi->need_get_taskflow ) {
                 //Do not resume the last task, and run the new task directly
                 p_vi->need_get_taskflow = false;
@@ -668,9 +702,10 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                     ESP_LOGI(TAG, "resume taskflow");
                     tf_engine_resume();
                 }
+                p_vi->taskflow_pause = false;
                 p_vi->next_status = VI_STATUS_IDLE;
             }
-            p_vi->taskflow_pause = false;
+            
             break;
         }
         case VI_STATUS_ERROR: {
@@ -780,6 +815,17 @@ static void __event_handler(void* handler_args,
                 __vi_exit(p_vi);
                 break;
             }
+            case VIEW_EVENT_OTA_STATUS:
+            {
+                ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
+                struct view_data_ota_status * p_ota_st = (struct view_data_ota_status *)event_data;
+                if( SENSECRAFT_OTA_STATUS_UPGRADING  == p_ota_st->status) {
+                    p_vi->is_ota = true;
+                } else {
+                    p_vi->is_ota = false;
+                }
+                break;
+            }
         default:
             break;
         }
@@ -803,6 +849,17 @@ static void __event_handler(void* handler_args,
             {
                 ESP_LOGI(TAG, "event: CTRL_EVENT_VI_RECORD_STOP");
                 __record_stop(p_vi);
+                break;
+            }
+            case CTRL_EVENT_OTA_AI_MODEL:
+            {
+                ESP_LOGI(TAG, "event: CTRL_EVENT_OTA_AI_MODEL");
+                struct view_data_ota_status * p_ota_st = (struct view_data_ota_status *)event_data;
+                if( OTA_STATUS_DOWNLOADING  == p_ota_st->status) {
+                    p_vi->is_ota = true;
+                } else {
+                    p_vi->is_ota = false;
+                }
                 break;
             }
             default:
@@ -842,6 +899,7 @@ esp_err_t app_voice_interaction_init(void)
     p_vi->need_get_taskflow = false;
     p_vi->taskflow_pause = false;
     p_vi->new_session = true;
+    p_vi->is_ota = false;
 
     p_vi->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_vi->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
@@ -884,6 +942,11 @@ esp_err_t app_voice_interaction_init(void)
                                                     __event_handler, 
                                                     p_vi));
 
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    VIEW_EVENT_BASE, 
+                                                    VIEW_EVENT_OTA_STATUS, 
+                                                    __event_handler, 
+                                                    p_vi));
     // ctrl event
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                     CTRL_EVENT_BASE, 
@@ -900,6 +963,13 @@ esp_err_t app_voice_interaction_init(void)
                                                     CTRL_EVENT_VI_RECORD_STOP, 
                                                     __event_handler,
                                                     p_vi));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    CTRL_EVENT_BASE, 
+                                                    CTRL_EVENT_OTA_AI_MODEL, 
+                                                    __event_handler, 
+                                                    p_vi));
+
 
     bsp_set_btn_long_press_cb(__long_press_event_cb);
     bsp_set_btn_long_release_cb(__long_release_event_cb);
