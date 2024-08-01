@@ -426,7 +426,7 @@ static int __cfg(void *p_module, cJSON *p_json)
         }
     } else {
         ESP_LOGI(TAG, "local service disable");
-        return -1;
+        // return -1;
     }
 
     // host
