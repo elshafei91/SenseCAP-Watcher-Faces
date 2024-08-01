@@ -560,6 +560,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_TASKFLOW_PAUSE:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_TASKFLOW_PAUSE");
 
+                lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
+                
                 g_taskflow_pause = 1;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 
