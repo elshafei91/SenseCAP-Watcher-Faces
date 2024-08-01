@@ -71,6 +71,7 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_align(ui_push2talkpanel3, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_push2talkpanel3, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(ui_push2talkpanel3, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_set_scrollbar_mode(ui_push2talkpanel3, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_bg_color(ui_push2talkpanel3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_push2talkpanel3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
