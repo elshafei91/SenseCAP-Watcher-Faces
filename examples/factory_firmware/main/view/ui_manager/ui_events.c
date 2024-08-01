@@ -1311,6 +1311,7 @@ void push2talkcheck_cb(lv_event_t * e)
 {
     ESP_LOGI(CLICK_TAG, "push2talkcheck_cb");
     static int push2talk_newtask_exit = 1;
+    lv_label_set_text(ui_revtext, "Receiving \nTask...");
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_newtask_exit, sizeof(push2talk_newtask_exit), pdMS_TO_TICKS(10000));
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
