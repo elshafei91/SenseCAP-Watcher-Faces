@@ -2,7 +2,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <string.h>
 #include "cJSON.h"
+#include "cJSON_Utils.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -30,11 +32,12 @@ extern "C"
     ((type *)((char *)(ptr)-offsetof(type, member)))
 
 void *tf_malloc(size_t sz);
-
 void tf_free(void *ptr);
 
 bool tf_cJSON_IsGeneralBool(const cJSON * const item);
 bool tf_cJSON_IsGeneralTrue(const cJSON * const item);
+
+char *tf_strdup(const char *s);
 
 #ifdef __cplusplus
 }

@@ -1,12 +1,12 @@
-# Function Module Development Tutorial
+# Function Module Development Guide
 
-It's recommended that you firstly read the [architecture.md](architecture.md) to have an understanding about how the function module works.
+It's recommended that you firstly read the [software architecture](architecture.md) to have an understanding about how the function module works.
 
 In this documentation we're gonna show a step-by-step guide on how to develop a new function module. We're gonna take the `UART Alarm` module as an example.
 
 ## 1. Installation and first build
 
-Please pass through the steps in  [Installation and First Build](docs/installation.md) if you've skipped it.
+Please pass through the steps in  [Installation and First Build](installation.md) if you've skipped it.
 
 ```shell
 # you're in PROJ_ROOT_DIR/examples/factory_firmware/
@@ -15,7 +15,7 @@ cd main/task_flow_module
 
 ## 2. Choose a proper template
 
-In the section of [Architecture](docs/architecture.md) we introduced the existing function module (short as **FM** in the following of the documentation) and what they're used for. When we're developing a new FM, we'd better start from a closest FM existing as a reference. In this tutorial we're going to develop an alarmer FM, so we choose one of the alarmer FMs, `local alarmer` is the simplest one, we'll take it.
+In the [software architecture](architecture.md) we introduced the existing function module (short as **FM** in the following of the documentation) and what they're used for. When we're developing a new FM, we'd better start from a closest FM existing as a reference. In this tutorial we're going to develop an alarmer FM, so we choose one of the alarmer FMs, `local alarmer` is the simplest one, we'll take it.
 
 ```shell
 cp tf_module_local_alarm.h tf_module_uart_alarm.h
@@ -354,7 +354,7 @@ Mark down the event id of the up-stream FM for future use, and register an event
 
 ### 4.3 event handler
 
-In the [Architecture](docs/architecture.md) we learned that the data flow is driven by an event loop. Basically a FM will receive data from its event handler, then it consumes the data, does calculations, gets some result. It needs to post the result into the event loop in the end - the target is the down-stream FMs who's interested in the data of this FM.
+In the [software architecture](architecture.md) we learned that the data flow is driven by an event loop. Basically a FM will receive data from its event handler, then it consumes the data, does calculations, gets some result. It needs to post the result into the event loop in the end - the target is the down-stream FMs who's interested in the data of this FM.
 
 In this `uart alarmer` example, we consume data from an alarm trigger FM which has the output data type `TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT`.  Since the uart data preparation is simple, we do all the data generation in the event loop handler. This is not recommended though, if your data processing is time consuming or IO eager. In that case, you need to create a worker task (thread) to do the background processing.
 
@@ -442,7 +442,7 @@ export taskflow to stdout or SD file, eg: taskflow -e -f "test.json"
     -j, --json  import taskflow json string by stdin
 ```
 
-Please refer to  [Installation and First Build](docs/installation.md) - `5. Monitor the log output` to get the console. Prepare a task flow with space and white characters removed, and issue the task flow with,
+Please refer to  [Installation and First Build](installation.md) - `5. Monitor the log output` to get the console. Prepare a task flow with space and white characters removed, and issue the task flow with,
 
 ```shell
 taskflow -i -j<enter>
@@ -451,7 +451,7 @@ Please input taskflow json:
 {"tlid":3,"ctd":3,"tn":"Local Human Detection","type":0,"task_flow":[{"id":1,"type":"ai camera","index":0,"version":"1.0.0","params":{"model_type":1,"modes":0,"model":{"arguments":{"iou":45,"conf":50}},"conditions":[{"class":"person","mode":1,"type":2,"num":0}],"conditions_combo":0,"silent_period":{"silence_duration":5},"output_type":0,"shutter":0},"wires":[[2]]},{"id":2,"type":"alarm trigger","index":1,"version":"1.0.0","params":{"text":"human detected","audio":""},"wires":[[3]]},{"id":3,"type":"uart alarm","index":2,"version":"1.0.0","params":{"output_format":1},"wires":[]}]}
 ```
 
-How to compose a task flow? In the [Architecture](docs/architecture.md) we introduced every FM and their parameters. Composing a task flow is pretty much drawing wires between FM blocks, like the Node-RED.
+How to compose a task flow? In the [software architecture](architecture.md) we introduced every FM and their parameters. Composing a task flow is pretty much drawing wires between FM blocks, like the Node-RED.
 
 Before we have a GUI for composing the task flow, we can use the export command to collect examples. Just use the Mobile App to issue a flow with a local alarm function enabled (RGB light), when the flow is running, export the task flow with,
 

@@ -54,7 +54,7 @@ uint16_t sensirion_i2c_add_command_to_buffer(uint8_t* buffer, uint16_t offset, u
 int16_t sensirion_i2c_write_data(uint8_t address, uint8_t *data, uint16_t length);
 
 /**
- * @brief Reads data from the Sensor, use for SCD40 and SHT41.
+ * @brief Reads data from the Sensor, use for SHT4x.
  *
  * @param address Sensor I2C address
  * @param data    Allocated buffer to store data as bytes. Needs

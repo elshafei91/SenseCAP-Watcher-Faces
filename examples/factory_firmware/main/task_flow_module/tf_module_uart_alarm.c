@@ -175,7 +175,7 @@ static int __cfg(void *p_module, cJSON *p_json)
         p_module_ins->text = NULL;
     } else {
         ESP_LOGI(TAG, "params text=%s", text->valuestring);
-        p_module_ins->text = strdup(text->valuestring);
+        p_module_ins->text = strdup_psram(text->valuestring);
     }
 
     cJSON *include_big_image = cJSON_GetObjectItem(p_json, "include_big_image");

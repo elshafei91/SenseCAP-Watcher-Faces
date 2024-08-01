@@ -15,7 +15,7 @@ We strongly recommend you make the alias `get_idf` for the IDF environment initi
 
 ## First Build
 
-#### 1. Clone the repository.
+#### 1. Clone the repository
 
 ```
 git clone https://github.com/Seeed-Studio/SenseCAP-Watcher

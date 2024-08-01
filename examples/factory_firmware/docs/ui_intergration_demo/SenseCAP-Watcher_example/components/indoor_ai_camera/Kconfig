@@ -1,0 +1,35 @@
+menu "Indoor AI Camera BSP"
+
+    config BSP_ERROR_CHECK
+    bool "Enable error check in BSP"
+    default y
+    help
+        Error check assert the application before returning the error code.
+
+    config BSP_AUDIO_MIC_VALUE_GAIN
+    int "Audio mic value gain"
+    range 0 3
+    default 0
+    help
+        "Audio mic value gain"
+
+    config LVGL_DRAW_BUFF_HEIGHT
+        int "LVGL DRAW BUFF HEIGHT(ROWS)"
+        range 10 240
+        default 50
+        help
+            "LVGL draw buffer height(rows)"
+
+    config LVGL_INPUT_DEVICE_USE_KNOB
+        bool "LVGL INPUT DEVICE USE KNOB"
+        default y
+        help
+            "Enable to use knob as LVGL input device"
+
+    config LVGL_INPUT_DEVICE_USE_TP
+        bool "LVGL INPUT DEVICE USE TP"
+        default y
+        help
+            "Enable to use touchpad as LVGL input device"
+
+endmenu

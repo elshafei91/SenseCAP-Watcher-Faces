@@ -46,7 +46,12 @@ uint16_t sensirion_i2c_add_command_to_buffer(uint8_t* buffer, uint16_t offset, u
 int16_t sensirion_i2c_write_data(uint8_t address, uint8_t *data, uint16_t length)
 {
     esp_err_t ret = ESP_OK;
-    ret = i2c_master_write_to_device(BSP_GENERAL_I2C_NUM, address, data, length, SENSIRION_TIMEOUT_MS / portTICK_PERIOD_MS);
+    int8_t cnt = 3;
+    while (cnt --) {
+        ret = i2c_master_write_to_device(BSP_GENERAL_I2C_NUM, address, data, length, SENSIRION_TIMEOUT_MS / portTICK_PERIOD_MS);
+        if (ret == ESP_OK) break;
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
     return ret;
 }
 
@@ -60,7 +65,12 @@ int16_t sensirion_i2c_read_data_inplace(uint8_t address, uint8_t *data, uint16_t
         return -1;
     }
 
-    ret = i2c_master_read_from_device(BSP_GENERAL_I2C_NUM, address, data, size, SENSIRION_TIMEOUT_MS / portTICK_PERIOD_MS);
+    int8_t cnt = 3;
+    while (cnt --) {
+        ret = i2c_master_read_from_device(BSP_GENERAL_I2C_NUM, address, data, size, SENSIRION_TIMEOUT_MS / portTICK_PERIOD_MS);
+        if (ret == ESP_OK) break;
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
     ESP_RETURN_ON_ERROR(ret, TAG, "I2C read error %d!", ret);
 
     for (i = 0, j = 0; i < size; i += SENSIRION_WORD_SIZE + SENSIRION_CRC8_LEN) {
@@ -76,5 +86,5 @@ int16_t sensirion_i2c_read_data_inplace(uint8_t address, uint8_t *data, uint16_t
 
 void sensirion_i2c_hal_sleep_usec(uint32_t useconds)
 {
-    vTaskDelay(((useconds / 1000) + portTICK_PERIOD_MS - 1) / portTICK_PERIOD_MS);
+    vTaskDelay(((useconds / 1000) + portTICK_PERIOD_MS) / portTICK_PERIOD_MS);
 }

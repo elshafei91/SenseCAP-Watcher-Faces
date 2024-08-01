@@ -9,10 +9,13 @@
 extern "C" {
 #endif
 
-void wait_timer_start();
-
 int view_init(void);
 
+/**
+ * @brief Render the screen in black.
+ * 
+ * Lock the LVGL port, perform the operation to render the screen in black, and then unlock the LVGL port.
+ */
 void view_render_black(void);
 
 #ifdef __cplusplus

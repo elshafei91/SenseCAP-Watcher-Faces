@@ -2,9 +2,11 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "sensecap-watcher.h"
-#include "sensor_sht41.h"
-#include "sensor_scd40.h"
+#include "sensor_sht4x.h"
+#include "sensor_scd4x.h"
 #include "app_sensor.h"
+#include "event_loops.h"
+#include "data_defs.h"
 
 static const char *TAG = "app_sensor";
 
@@ -14,8 +16,8 @@ static StackType_t *app_sensor_stack = NULL;
 static StaticTask_t app_sensor_stack_buffer;
 
 static uint8_t app_sensor_def[APP_SENSOR_SUPPORT_MAX] = {
-    SENSOR_SHT41_I2C_ADDR,
-    SENSOR_SCD40_I2C_ADDR
+    SENSOR_SHT4x_I2C_ADDR,
+    SENSOR_SCD4x_I2C_ADDR
 };
 
 static uint8_t app_sensor_det[APP_SENSOR_SUPPORT_MAX] = {0};
@@ -55,18 +57,18 @@ static int16_t app_sensor_detect(void)
         }
 
         for (uint8_t i = 0; i < APP_SENSOR_SUPPORT_MAX; i ++) {
-            if (app_sensor_det[i] == SENSOR_SHT41_I2C_ADDR) {
-                sensor_sht41_init();
+            if (app_sensor_det[i] == SENSOR_SHT4x_I2C_ADDR) {
+                sensor_sht4x_init();
                 app_sensor_data[app_sensor_det_num].state = true;
-                app_sensor_data[app_sensor_det_num].type = SENSOR_SHT41;
-                app_sensor_data[app_sensor_det_num].context.sht41.temperature = 0;
-                app_sensor_data[app_sensor_det_num].context.sht41.humidity = 0;
+                app_sensor_data[app_sensor_det_num].type = SENSOR_SHT4x;
+                app_sensor_data[app_sensor_det_num].context.sht4x.temperature = 0;
+                app_sensor_data[app_sensor_det_num].context.sht4x.humidity = 0;
                 app_sensor_det_num ++;
-            } else if (app_sensor_det[i] == SENSOR_SCD40_I2C_ADDR) {
-                sensor_scd40_init();
+            } else if (app_sensor_det[i] == SENSOR_SCD4x_I2C_ADDR) {
+                sensor_scd4x_init();
                 app_sensor_data[app_sensor_det_num].state = true;
-                app_sensor_data[app_sensor_det_num].type = SENSOR_SCD40;
-                app_sensor_data[app_sensor_det_num].context.scd40.co2 = 0;
+                app_sensor_data[app_sensor_det_num].type = SENSOR_SCD4x;
+                app_sensor_data[app_sensor_det_num].context.scd4x.co2 = 0;
                 app_sensor_det_num ++;
             }
         }
@@ -79,27 +81,47 @@ static int16_t app_sensor_detect(void)
 static int16_t app_sensor_uptate(void)
 {
     esp_err_t ret = ESP_OK;
+    
+    bool view_update = false;
+    struct view_data_sensor view_data;
+    view_data.temperature_valid = false;
+    view_data.humidity_valid = false;
+    view_data.co2_valid = false;
+    view_data.temperature = 255;
+    view_data.humidity = 255;
+    view_data.co2 = 65535;
+
     app_sensor_update_data = true;
 
     for (uint8_t i = 0; i < APP_SENSOR_SUPPORT_MAX; i ++) {
         if (app_sensor_data[i].state) {
-            if (app_sensor_data[i].type == SENSOR_SHT41) {
+            if (app_sensor_data[i].type == SENSOR_SHT4x) {
                 int32_t temperature = 0, humidity = 0;
-                ret = sensor_sht41_read_measurement(&temperature, &humidity);
+                ret = sensor_sht4x_read_measurement(&temperature, &humidity);
                 if (ret == 0) {
-                    app_sensor_data[i].context.sht41.temperature = temperature;
-                    app_sensor_data[i].context.sht41.humidity = humidity;
+                    app_sensor_data[i].context.sht4x.temperature = temperature;
+                    app_sensor_data[i].context.sht4x.humidity = humidity;
                     ESP_LOGI(TAG, "T: %d, H: %d", temperature, humidity);
+
+                    view_update = true;
+                    view_data.temperature_valid = true;
+                    view_data.humidity_valid = true;
+                    view_data.temperature = (float)temperature / 1000;
+                    view_data.humidity = (float)humidity / 1000;
                 }
-            } else if (app_sensor_data[i].type == SENSOR_SCD40) {
+            } else if (app_sensor_data[i].type == SENSOR_SCD4x) {
                 bool ready_flag = 0;
                 uint32_t co2 = 0;
-                ret = sensor_scd40_get_data_ready_flag(&ready_flag);
+                ret = sensor_scd4x_get_data_ready_flag(&ready_flag);
                 if ( ready_flag ) {
-                    ret = sensor_scd40_read_measurement(&co2);
+                    ret = sensor_scd4x_read_measurement(&co2);
                     if (ret == 0) {
-                        app_sensor_data[i].context.scd40.co2 = co2;
+                        app_sensor_data[i].context.scd4x.co2 = co2;
                         ESP_LOGI(TAG, "CO2: %d", co2);
+
+                        view_update = true;
+                        view_data.co2_valid = true;
+                        view_data.co2 = co2 / 1000;
                     }
                 }
             }
@@ -107,6 +129,12 @@ static int16_t app_sensor_uptate(void)
     }
 
     app_sensor_update_data = false;
+
+    if (view_update) {
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SENSOR, 
+                        &view_data, sizeof(struct view_data_sensor), pdMS_TO_TICKS(10000));
+    }
+
     return ret;
 }
 

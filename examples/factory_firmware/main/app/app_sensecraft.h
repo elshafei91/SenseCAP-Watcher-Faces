@@ -5,6 +5,7 @@
 #include "cJSON.h"
 #include "data_defs.h"
 #include "mqtt_client.h"
+#include "esp_timer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,18 +54,22 @@ struct app_sensecraft
     TaskHandle_t task_handle;
     esp_mqtt_client_handle_t mqtt_handle;
     esp_mqtt_client_config_t mqtt_cfg;
+    esp_timer_handle_t timer_handle;
     char mqtt_broker_uri[256];
     char mqtt_client_id[256];
     char mqtt_password[MQTT_TOKEN_LEN];
     char topic_down_task_publish[MQTT_TOPIC_STR_LEN];
     char topic_down_version_notify[MQTT_TOPIC_STR_LEN];
     char topic_down_task_report[MQTT_TOPIC_STR_LEN];
+    char topic_down_preview_start[MQTT_TOPIC_STR_LEN];
+    char topic_down_preview_exit[MQTT_TOPIC_STR_LEN];
     char topic_up_change_device_status[MQTT_TOPIC_STR_LEN];
     char topic_up_task_publish_ack[MQTT_TOPIC_STR_LEN];
     char topic_up_taskflow_report[MQTT_TOPIC_STR_LEN];
     char topic_up_warn_event_report[MQTT_TOPIC_STR_LEN];
     char topic_up_model_ota_status[MQTT_TOPIC_STR_LEN];
     char topic_up_firmware_ota_status[MQTT_TOPIC_STR_LEN];
+    char topic_up_preview_upload[MQTT_TOPIC_STR_LEN];
     char topic_cache[MQTT_TOPIC_STR_LEN];
     char *p_mqtt_recv_buf;
     bool net_flag;
@@ -72,6 +77,11 @@ struct app_sensecraft
     bool token_flag;
     bool mqtt_connected_flag;
     time_t last_http_time;
+    bool preview_flag;
+    uint32_t preview_continuous; //0: Single image, 1: continue
+    uint32_t preview_interval;
+    uint32_t preview_timeout_s;
+    uint32_t preview_last_send_time;
 };
 
 esp_err_t app_sensecraft_init(void);
@@ -118,6 +128,8 @@ esp_err_t app_sensecraft_mqtt_report_device_status_generic(char *event_value_fie
 esp_err_t app_sensecraft_mqtt_report_device_status(struct view_data_device_status *dev_status);
 
 esp_err_t app_sensecraft_mqtt_report_firmware_ota_status_generic(char *ota_status_fields_str);
+
+esp_err_t app_sensecraft_mqtt_preview_upload_with_reduce_freq(char *p_img, size_t img_len);
 
 #ifdef __cplusplus
 }
