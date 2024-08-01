@@ -1919,7 +1919,7 @@ static void view_push2talk_animation_timer_callback(lv_timer_t *timer)
 
         push2talk_text_index++;
     } else {
-        esp_timer_stop(view_push2talk_animation_timer);
+        view_push2talk_animation_timer_stop();
         push2talk_timer_active = false;
 
         if (push2talk_text) {
@@ -1945,15 +1945,18 @@ void view_push2talk_animation_timer_stop()
     }
 }
 
-void push2talk_start_animation(const char *text, uint32_t duration_s)
+void push2talk_start_animation(const char *text, uint32_t duration_ms)
 {
-    ESP_LOGI(TAG, "Starting animation with text: %s, duration: %d", text, duration_s);
+    ESP_LOGI(TAG, "Starting animation with text: %s, duration: %d", text, duration_ms);
 
-    if (text == NULL || text[0] == '\0' || duration_s == 0) {
+    if (text == NULL || text[0] == '\0') {
         ESP_LOGE(TAG, "Invalid parameters for start animation");
         return;
     }
-
+    if(duration_ms == 0) {
+        ESP_LOGW(TAG, "Duration is 0, setting to default value");
+        duration_ms = 10000;
+    }
     if (push2talk_timer_active) {
         view_push2talk_animation_timer_stop();
         push2talk_timer_active = false;
@@ -1975,8 +1978,9 @@ void push2talk_start_animation(const char *text, uint32_t duration_s)
     lv_textarea_set_text(push2talk_textarea, "");
 
     uint32_t text_length = strlen(text);
-    uint32_t push2talk_anim_interval = (duration_s * 1000) / text_length;
+    uint32_t push2talk_anim_interval = (duration_ms) / text_length;
 
+    ESP_LOGI(TAG, "interval: %d, text_length: %d, duration: %dms ", push2talk_anim_interval, text_length, duration_ms);
     view_push2talk_animation_timer_start(push2talk_anim_interval);
 }
 /*--------------------------------------------view timer----------------------------------------------------------------*/
@@ -2200,7 +2204,7 @@ static void view_push2talk_msg_timer_callback(lv_timer_t *timer)
     push2talk_panel_idx++;
     if (push2talk_panel_idx >= 8)
     {
-        esp_timer_stop(view_push2talk_msg_timer);
+        view_push2talk_msg_timer_stop();
         push2talk_panel_idx = 0;
     }
 }

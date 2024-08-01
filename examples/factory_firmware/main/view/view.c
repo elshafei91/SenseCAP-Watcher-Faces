@@ -618,7 +618,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         int push2talk_audio_time = push2talk_result->audio_tm_ms;
                         ESP_LOGI("push2talk", "audio time : %d", push2talk_audio_time);
 
-                        push2talk_start_animation(push2talk_result->p_audio_text, 10);
+                        push2talk_start_animation(push2talk_result->p_audio_text, push2talk_audio_time);
                     } else {
                         ESP_LOGI("push2talk", "audio text is NULL");
                     }

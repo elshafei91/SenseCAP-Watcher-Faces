@@ -94,9 +94,9 @@ void push2talk_init(void);
  * It checks the parameters for validity before starting the animation.
  *
  * @param text The text to display. Must be a null-terminated string.
- * @param duration_s The total duration for the animation in seconds. Must be greater than 0.
+ * @param duration_ms The total duration for the animation in milliseconds. Must be greater than 0.
  */
-void push2talk_start_animation(const char *text, uint32_t duration_s);
+void push2talk_start_animation(const char *text, uint32_t duration_ms);
 
 void view_timer_create();
 void view_ble_switch_timer_start();
@@ -104,6 +104,8 @@ void view_sleep_timer_start();
 void view_push2talk_timer_start();
 void view_push2talk_timer_stop();
 void view_push2talk_msg_timer_start();
+void view_push2talk_msg_timer_stop();
+void view_push2talk_animation_timer_stop();
 
 enum
 {
