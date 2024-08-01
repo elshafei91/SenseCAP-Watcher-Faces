@@ -330,18 +330,21 @@ lv_obj_t * ui_Page_Extension;
 lv_obj_t * ui_extensionbubble;
 lv_obj_t * ui_extensionbubbleValue;
 lv_obj_t * ui_extensionbubbleUnit;
-lv_obj_t * ui_extensionlist;
-lv_obj_t * ui_extensiontemp;
-lv_obj_t * ui_extensiontempValue;
-lv_obj_t * ui_extensiontempUnit;
-lv_obj_t * ui_extensionhumi;
-lv_obj_t * ui_extensionhumiValue;
-lv_obj_t * ui_extensionhumiUnit;
-lv_obj_t * ui_extensionco2;
-lv_obj_t * ui_extensionco2Value;
-lv_obj_t * ui_extensionco2Unit;
-void ui_event_extensionback(lv_event_t * e);
-lv_obj_t * ui_extensionback;
+lv_obj_t * ui_extensionbubbleIcon;
+lv_obj_t * ui_extensionbubble2;
+lv_obj_t * ui_extensionbubble2Value;
+lv_obj_t * ui_extensionbubble2Unit;
+lv_obj_t * ui_extensionbubble2Icon;
+lv_obj_t * ui_extensionbubble3;
+lv_obj_t * ui_extensionbubble3Value;
+lv_obj_t * ui_extensionbubble3Unit;
+lv_obj_t * ui_extensionbubble3Icon;
+void ui_event_extensionbubble4(lv_event_t * e);
+lv_obj_t * ui_extensionbubble4;
+lv_obj_t * ui_extensionbubble5;
+lv_obj_t * ui_extensionbubble5Value;
+lv_obj_t * ui_extensionbubble5Unit;
+lv_obj_t * ui_extensionbubble5Icon;
 
 
 // SCREEN: ui_Page_OTA
@@ -1440,7 +1443,7 @@ void ui_event_Page_Extension(lv_event_t * e)
         hap_cb(e);
     }
 }
-void ui_event_extensionback(lv_event_t * e)
+void ui_event_extensionbubble4(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);

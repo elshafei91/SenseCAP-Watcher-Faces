@@ -126,7 +126,7 @@ void initGroup()
     lv_obj_t * main_objects[]           = {ui_mainbtn1, ui_mainbtn2, ui_mainbtn3, ui_mainbtn4};
     lv_obj_t * template_objects[]       = {ui_menubtn1, ui_menubtn2, ui_menubtn3, ui_menubtn4};
     lv_obj_t * notask_objects[]         = {ui_curtask1b};
-    lv_obj_t * extension_objects[]      = {ui_extensionback};
+    lv_obj_t * extension_objects[]      = {ui_extensionbubble2, ui_extensionbubble3, ui_extensionbubble4, ui_extensionbubble5};
     lv_obj_t * set_objects[]            = {ui_setback, ui_setdown, ui_setapp, ui_setwifi, ui_setble, ui_setvol, ui_setbri,ui_settime,
                                         ui_setrgb, ui_setww,ui_setdev, ui_setfac};
     lv_obj_t * view_objects[]           = {ui_Page_ViewAva, ui_Page_ViewLive};
