@@ -108,6 +108,13 @@ esp_err_t tf_engine_run(void);
 esp_err_t tf_engine_stop(void);
 
 /**
+ *  Restarts the engine.
+ *  
+ * @comment Restart only when you need to run taskflow.
+ */
+esp_err_t tf_engine_restart(void);
+
+/**
  * Pauses the engine.
  *
  * @return The result of pausing the engine. Possible return values are:
