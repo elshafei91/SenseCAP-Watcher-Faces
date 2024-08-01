@@ -82,7 +82,6 @@ static int16_t app_sensor_uptate(void)
 {
     esp_err_t ret = ESP_OK;
     
-    bool view_update = false;
     struct view_data_sensor view_data;
     view_data.temperature_valid = false;
     view_data.humidity_valid = false;
@@ -103,7 +102,6 @@ static int16_t app_sensor_uptate(void)
                     app_sensor_data[i].context.sht4x.humidity = humidity;
                     ESP_LOGI(TAG, "T: %d, H: %d", temperature, humidity);
 
-                    view_update = true;
                     view_data.temperature_valid = true;
                     view_data.humidity_valid = true;
                     view_data.temperature = (float)temperature / 1000;
@@ -119,7 +117,6 @@ static int16_t app_sensor_uptate(void)
                         app_sensor_data[i].context.scd4x.co2 = co2;
                         ESP_LOGI(TAG, "CO2: %d", co2);
 
-                        view_update = true;
                         view_data.co2_valid = true;
                         view_data.co2 = co2 / 1000;
                     }
@@ -130,10 +127,8 @@ static int16_t app_sensor_uptate(void)
 
     app_sensor_update_data = false;
 
-    if (view_update) {
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SENSOR, 
-                        &view_data, sizeof(struct view_data_sensor), pdMS_TO_TICKS(10000));
-    }
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SENSOR, 
+                    &view_data, sizeof(struct view_data_sensor), pdMS_TO_TICKS(10000));
 
     return ret;
 }
