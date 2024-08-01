@@ -1245,6 +1245,12 @@ void sleeptimeset_cb(lv_event_t * e)
     // ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
 }
 
+void setsleepsw_cb(lv_event_t * e)
+{
+    // ESP_LOGI(CLICK_TAG, "setsleepsw_cb");
+    lv_event_send(ui_sleepswitch, LV_EVENT_SHORT_CLICKED, NULL);
+}
+
 void sleepswitch_cb(lv_event_t * e)
 {
     ESP_LOGI(CLICK_TAG, "sleepswitch_cb");

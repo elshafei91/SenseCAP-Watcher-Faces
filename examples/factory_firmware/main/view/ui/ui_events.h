@@ -128,6 +128,7 @@ void sliderr_cb(lv_event_t * e);
 void hap_cb(lv_event_t * e);
 void otaback_cb(lv_event_t * e);
 void sleeptimeset_cb(lv_event_t * e);
+void setsleepsw_cb(lv_event_t * e);
 void sleepswitch_cb(lv_event_t * e);
 void p2tclick_cb(lv_event_t * e);
 void p2tvaluechange_cb(lv_event_t * e);

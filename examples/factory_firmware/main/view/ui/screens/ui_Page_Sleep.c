@@ -18,9 +18,8 @@ void ui_Page_Sleep_screen_init(void)
     lv_obj_set_width(ui_sleeptimeroller, 250);
     lv_obj_set_height(ui_sleeptimeroller, 153);
     lv_obj_set_x(ui_sleeptimeroller, 0);
-    lv_obj_set_y(ui_sleeptimeroller, 9);
+    lv_obj_set_y(ui_sleeptimeroller, -55);
     lv_obj_set_align(ui_sleeptimeroller, LV_ALIGN_CENTER);
-    lv_obj_add_state(ui_sleeptimeroller, LV_STATE_FOCUSED);       /// States
     lv_obj_set_style_text_align(ui_sleeptimeroller, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_sleeptimeroller, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_sleeptimeroller, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -30,7 +29,7 @@ void ui_Page_Sleep_screen_init(void)
     lv_obj_set_style_outline_color(ui_sleeptimeroller, lv_color_hex(0x2D89EF), LV_PART_MAIN | LV_STATE_FOCUS_KEY);
     lv_obj_set_style_outline_opa(ui_sleeptimeroller, 255, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
     lv_obj_set_style_outline_width(ui_sleeptimeroller, 4, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
-    lv_obj_set_style_outline_pad(ui_sleeptimeroller, 15, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
+    lv_obj_set_style_outline_pad(ui_sleeptimeroller, 10, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
 
     lv_obj_set_style_bg_color(ui_sleeptimeroller, lv_color_hex(0x8FC31F), LV_PART_SELECTED | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_sleeptimeroller, 0, LV_PART_SELECTED | LV_STATE_DEFAULT);
@@ -43,7 +42,7 @@ void ui_Page_Sleep_screen_init(void)
     lv_obj_set_width(ui_slpback, 60);
     lv_obj_set_height(ui_slpback, 60);
     lv_obj_set_x(ui_slpback, 0);
-    lv_obj_set_y(ui_slpback, 140);
+    lv_obj_set_y(ui_slpback, 142);
     lv_obj_set_align(ui_slpback, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_slpback, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_slpback, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
@@ -57,10 +56,10 @@ void ui_Page_Sleep_screen_init(void)
     lv_obj_set_style_outline_pad(ui_slpback, 1, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
 
     ui_sleepswitchp = lv_obj_create(ui_Page_Sleep);
-    lv_obj_set_width(ui_sleepswitchp, 283);
+    lv_obj_set_width(ui_sleepswitchp, 291);
     lv_obj_set_height(ui_sleepswitchp, 50);
     lv_obj_set_x(ui_sleepswitchp, 0);
-    lv_obj_set_y(ui_sleepswitchp, -105);
+    lv_obj_set_y(ui_sleepswitchp, 66);
     lv_obj_set_align(ui_sleepswitchp, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_sleepswitchp, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_sleepswitchp, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
@@ -73,6 +72,10 @@ void ui_Page_Sleep_screen_init(void)
     lv_obj_set_style_bg_grad_dir(ui_sleepswitchp, LV_GRAD_DIR_HOR, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_sleepswitchp, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_sleepswitchp, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_outline_color(ui_sleepswitchp, lv_color_hex(0x2D89EF), LV_PART_MAIN | LV_STATE_FOCUS_KEY);
+    lv_obj_set_style_outline_opa(ui_sleepswitchp, 255, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
+    lv_obj_set_style_outline_width(ui_sleepswitchp, 4, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
+    lv_obj_set_style_outline_pad(ui_sleepswitchp, 6, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
 
     ui_sleepswitcht = lv_label_create(ui_sleepswitchp);
     lv_obj_set_width(ui_sleepswitcht, LV_SIZE_CONTENT);   /// 1

@@ -136,7 +136,7 @@ void initGroup()
     lv_obj_t * about_objects[]          = {ui_aboutdevname, ui_aboutespversion, ui_aboutaiversion, ui_aboutsn, ui_abouteui, ui_aboutblemac,
                                         ui_aboutwifimac, ui_Paboutb};
     lv_obj_t * guide_objects[]          = {ui_Page_Guideavatar, ui_Page_Guidelive};
-    lv_obj_t * sleep_objects[]          = {ui_sleepswitch, ui_sleeptimeroller, ui_slpback};
+    lv_obj_t * sleep_objects[]          = {ui_sleeptimeroller, ui_sleepswitchp, ui_slpback};
     lv_obj_t * push2talk_objects[]      = {ui_p2tobj, ui_p2tbehavior, ui_p2tfeat, ui_p2tcomparison, ui_p2tnotify, ui_p2ttime, ui_p2tfreq, ui_p2tcancel, ui_p2tcheck};
 
     addObjToGroup(&group_page_main, main_objects, sizeof(main_objects) / sizeof(main_objects[0]));
