@@ -31,7 +31,7 @@ void ui_Page_Extension_screen_init(void)
     lv_obj_set_width(ui_extensionbubbleValue, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_extensionbubbleValue, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_extensionbubbleValue, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_extensionbubbleValue, "19.9");
+    lv_label_set_text(ui_extensionbubbleValue, "--");
     lv_obj_set_style_text_color(ui_extensionbubbleValue, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_extensionbubbleValue, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_extensionbubbleValue, &ui_font_semibold64, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -75,7 +75,7 @@ void ui_Page_Extension_screen_init(void)
     lv_obj_set_width(ui_extensionbubble2Value, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_extensionbubble2Value, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_extensionbubble2Value, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_extensionbubble2Value, "59.9");
+    lv_label_set_text(ui_extensionbubble2Value, "--");
     lv_obj_set_style_text_color(ui_extensionbubble2Value, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_extensionbubble2Value, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_extensionbubble2Value, &ui_font_semibold28, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -119,7 +119,7 @@ void ui_Page_Extension_screen_init(void)
     lv_obj_set_width(ui_extensionbubble3Value, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_extensionbubble3Value, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_extensionbubble3Value, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_extensionbubble3Value, "500");
+    lv_label_set_text(ui_extensionbubble3Value, "--");
     lv_obj_set_style_text_color(ui_extensionbubble3Value, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_extensionbubble3Value, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_extensionbubble3Value, &ui_font_semibold28, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -178,7 +178,7 @@ void ui_Page_Extension_screen_init(void)
     lv_obj_set_width(ui_extensionbubble5Value, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_extensionbubble5Value, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_extensionbubble5Value, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_extensionbubble5Value, "19.9");
+    lv_label_set_text(ui_extensionbubble5Value, "--");
     lv_obj_set_style_text_color(ui_extensionbubble5Value, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_extensionbubble5Value, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_extensionbubble5Value, &ui_font_semibold28, LV_PART_MAIN | LV_STATE_DEFAULT);
