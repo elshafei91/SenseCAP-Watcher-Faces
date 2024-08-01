@@ -107,6 +107,7 @@ static struct view_data_sdcard_flash_status g_sdcard_flash_status;
 static volatile atomic_bool g_mqttconn = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_timeout_firstreport = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_will_reset_factory = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool g_is_need_shutdown = ATOMIC_VAR_INIT(false);
 static SemaphoreHandle_t    g_mtx_sdcard_flash_status;
 static EventGroupHandle_t   g_eg_task_wakeup;
 static EventGroupHandle_t   g_eg_devicecfg_change;
@@ -1105,12 +1106,13 @@ set_usage_guide_err:
 
 /*----------------------------------------------------reset-factory--------------------------------------------------------*/
 
-esp_err_t set_reset_factory()
+esp_err_t set_reset_factory(bool is_need_shutdown)
 {
     devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_FACTORY_RESET_FLAG);
     esp_timer_stop(cfg->timer_handle);
     esp_timer_start_once(cfg->timer_handle, 100*1000);
     atomic_store(&g_will_reset_factory, true);
+    atomic_store(&g_is_need_shutdown, is_need_shutdown);
     return ESP_OK;
 }
 
@@ -1151,9 +1153,16 @@ static esp_err_t __check_reset_factory()
         storage_file_remove("/spiffs/Custom_standby3.png");
         storage_file_remove("/spiffs/Custom_standby4.png");
 
-
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
+        if( atomic_load(&g_is_need_shutdown) ) {
+            ESP_LOGI(TAG, "shutdown...");
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
+        } else {
+            ESP_LOGI(TAG, "reboot...");
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
+        }
+        
         atomic_store(&g_will_reset_factory, false);
+        atomic_store(&g_is_need_shutdown, false);
     }
     return ESP_OK;
 }

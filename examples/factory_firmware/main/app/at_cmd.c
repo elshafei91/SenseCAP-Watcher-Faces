@@ -707,6 +707,11 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
 {
     ESP_LOGI(TAG, "handle_deviceinfo_cfg_command\n");
     int time_flag = 0;
+    bool is_need_reset_shutdown = false;
+    bool is_need_reset_reboot = false;
+    bool is_need_shutdown = false;
+    bool is_need_reboot = false;
+
     cJSON *json = cJSON_Parse(params);
     if (json == NULL)
     {
@@ -822,10 +827,7 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
                 return ERROR_DATA_WRITE_FAIL;
             }
         }
-        else
-        {
-            ESP_LOGE(TAG, "Brightness not found or not a valid number in JSON\n");
-        }
+
         // get rgb_switch item
         cJSON *rgbswitch = cJSON_GetObjectItemCaseSensitive(data, "rgbswitch");
         if (cJSON_IsNumber(rgbswitch))
@@ -923,24 +925,21 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
         cJSON *reset_flag = cJSON_GetObjectItemCaseSensitive(data, "reset");
         if (cJSON_IsNumber(reset_flag))
         {
-            int reset_factory_flag = reset_flag->valueint;
-            if (reset_factory_flag < 0 || reset_factory_flag > 1)
+            if ( reset_flag->valueint )
             {
-                ESP_LOGE(TAG, "Reset factory flag value out of range\n");
-                cJSON_Delete(json);
-                return ERROR_CMD_PARAM_RANGE;
-            }
-            esp_err_t set_reset_factory_err = set_reset_factory(AT_CMD_CALLER, reset_factory_flag);
-            if (set_reset_factory_err != ESP_OK)
-            {
-                ESP_LOGE(TAG, "Failed to set reset factory flag\n");
-                cJSON_Delete(json);
-                return ERROR_DATA_WRITE_FAIL;
+                is_need_reset_reboot = true;
+                ESP_LOGI(TAG, "Reset factory and reboot\n");
             }
         }
-        else
+
+        cJSON *resetshutdown_flag = cJSON_GetObjectItemCaseSensitive(data, "resetshutdown");
+        if (cJSON_IsNumber(resetshutdown_flag))
         {
-            ESP_LOGI(TAG, "Reset factory flag not found or not a valid number in JSON\n");
+            if (resetshutdown_flag->valueint)
+            {
+                is_need_reset_shutdown = true;
+                ESP_LOGI(TAG, "Reset factory and shutdown\n");
+            }
         }
 
         cJSON *json_reboot = cJSON_GetObjectItemCaseSensitive(data, "reboot");
@@ -949,8 +948,7 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
             if ( json_reboot->valueint )
             {
                 ESP_LOGI(TAG, "Reboot device\n");
-                //Allow No Response
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
+                is_need_reboot = true;
             }
         }
 
@@ -960,8 +958,7 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
             if ( json_shutdown->valueint )
             {
                 ESP_LOGI(TAG, "Shutdown device\n");
-                //Allow No Response
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
+                is_need_shutdown = true;
             }
         }
     }
@@ -1003,6 +1000,30 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
     cJSON_Delete(root);
     free(json_string);
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
+    
+    if(  is_need_reset_reboot
+        || is_need_reset_shutdown
+        || is_need_reboot
+        || is_need_shutdown)
+    {
+        //Respond first, then execute
+        vTaskDelay(200 / portTICK_PERIOD_MS);
+
+        if( is_need_reset_reboot ) {
+            set_reset_factory(false);
+        } else if( is_need_reset_shutdown ){
+            set_reset_factory(true);
+        }
+
+        if( is_need_reboot ) {
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
+        }
+
+        if ( is_need_shutdown ) {
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
+        }
+        
+    }
     return AT_CMD_SUCCESS;
 }
 

@@ -1216,7 +1216,7 @@ void sliderr_cb(lv_event_t *e)
 
             case 1:
                 lv_obj_clear_flag(ui_swipep2, LV_OBJ_FLAG_HIDDEN);
-                set_reset_factory();
+                set_reset_factory(false);
                 break;
 
             default:
