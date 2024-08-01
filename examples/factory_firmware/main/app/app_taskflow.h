@@ -31,7 +31,6 @@ struct app_taskflow
     bool mqtt_connect_flag;
     int report_cnt;
     bool need_pause_taskflow;
-    char *p_taskflow_json_backup;
 };
 
 
