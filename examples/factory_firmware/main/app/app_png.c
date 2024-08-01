@@ -17,6 +17,7 @@
 #include "app_png.h"
 #include "util/util.h"
 #include "cJSON.h"
+#include "mbedtls/md5.h"
 
 #define TAG              "HTTP_EMOJI"
 
@@ -30,6 +31,130 @@
 #define STORAGE_MOUNT_POINT             "/spiffs"
 
 #define ERR_EMOJI_DL_BAD_HTTP_LEN       0x200
+
+const char manifest_json[] = \
+"{  \
+    \"greeting1.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"27f6dcf567c8998d7613e92de956632e\",  \
+        \"size\": 25299  \
+    }],  \
+    \"greeting2.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"8129b5d053cccd27a06b1c8ff505f24f\",  \
+        \"size\": 26126  \
+    }],  \
+    \"greeting3.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"27f6dcf567c8998d7613e92de956632e\",  \
+        \"size\": 25299  \
+    }],  \
+    \"detecting1.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"5d85490ea8b96804257df3ec733a59b9\",  \
+        \"size\": 24828  \
+    }],  \
+    \"detecting2.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"a61f45078cbfbfcb4975b86761ae3072\",  \
+        \"size\": 30668  \
+    }],  \
+    \"detecting3.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"415a1b2e409805c20cfe496580c5989f\",  \
+        \"size\": 41195  \
+    }],  \
+    \"detecting4.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"240a57c329f601debccd54bf77789df9\",  \
+        \"size\": 30320  \
+    }],  \
+    \"detecting5.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"2fbb2d77a8cff9cf597f9ea5e4bf6f50\",  \
+        \"size\": 26572  \
+    }],  \
+    \"detected1.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"86985b7726fee05dd1e0fb09ce8fe1eb\",  \
+        \"size\": 41702  \
+    }],  \
+    \"detected2.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"46af667ccd7cc77aec7e10571bd48329\",  \
+        \"size\": 40278  \
+    }],  \
+    \"speaking1.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"e6aabf2716848775de7e242587c52ea3\",  \
+        \"size\": 36941  \
+    }],  \
+    \"speaking2.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"f86a568403f8ea7d343148817a05dec4\",  \
+        \"size\": 8164  \
+    }],  \
+    \"speaking3.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"e6aabf2716848775de7e242587c52ea3\",  \
+        \"size\": 36941  \
+    }],  \
+    \"listening1.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"6d1b1d8c0538801d0ab269a149755447\",  \
+        \"size\": 22670  \
+    }],  \
+    \"listening2.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"28563ffb3e2f52e6966c3eb0c195424f\",  \
+        \"size\": 21698  \
+    }],  \
+    \"standby1.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"40206d053f88b522ecd81fbaadafd2ab\",  \
+        \"size\": 25354  \
+    }],  \
+    \"standby2.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"b1455405767e00d15b61e22c62adafd9\",  \
+        \"size\": 29218  \
+    }],  \
+    \"standby3.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"94820b70ac5c8bb82776cee7cbce82e8\",  \
+        \"size\": 34889  \
+    }],  \
+    \"standby4.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"41e72f42890310eb4e8597d683f63f02\",  \
+        \"size\": 40102  \
+    }],  \
+    \"analyzing1.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"1ad6b8540f5237e2a2d65883c0900c5c\",  \
+        \"size\": 31945  \
+    }],  \
+    \"analyzing2.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"11a0c481b4fbf481efac4500fb80b825\",  \
+        \"size\": 32828  \
+    }],  \
+    \"analyzing3.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"6f84161057effdf479feca369c85b42f\",  \
+        \"size\": 31808  \
+    }],  \
+    \"analyzing4.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"8a79555539d0965f40edcf5a693b67bb\",  \
+        \"size\": 32057  \
+    }],  \
+    \"analyzing5.png\": [{  \
+        \"url\": \"www.baidu.com\",  \
+        \"checksum\": \"56a438f2aa1c4c53f13d3ad7eca2ba45\",  \
+        \"size\": 32889  \
+    }]  \
+}";
 
 
 typedef struct {
@@ -56,7 +181,7 @@ static int64_t total_data_size = 0;
 
 // Function declarations
 void create_black_image_and_store(lv_img_dsc_t **img_dsc_array, int *image_count, size_t size);
-bool validate_image(const char *name, size_t size, cJSON *expressions);
+bool validate_image(const char *name, size_t size, const char *checksum, cJSON *manifest);
 
 lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -115,19 +240,152 @@ char* read_json_file(const char *path) {
     return content;
 }
 
-bool validate_image(const char *name, size_t size, cJSON *expression) {
-    cJSON *image;
-    cJSON_ArrayForEach(image, expression) {
-        cJSON *img_name = cJSON_GetObjectItemCaseSensitive(image, "name");
-        cJSON *img_size = cJSON_GetObjectItemCaseSensitive(image, "size");
+bool validate_image(const char *name, size_t size, const char *checksum, cJSON *manifest) {
+    cJSON *file_array = cJSON_GetObjectItemCaseSensitive(manifest, name);
+    if (!file_array || !cJSON_IsArray(file_array)) return false;
 
-        if (cJSON_IsString(img_name) && (strcmp(img_name->valuestring, name) == 0) &&
-            cJSON_IsNumber(img_size) && (img_size->valueint == size)) {
-            return true;
-        }
+    cJSON *file = cJSON_GetArrayItem(file_array, 0);
+    if (!file) return false;
+
+    cJSON *file_size = cJSON_GetObjectItemCaseSensitive(file, "size");
+    cJSON *file_checksum = cJSON_GetObjectItemCaseSensitive(file, "checksum");
+
+    if (cJSON_IsNumber(file_size) && file_size->valueint == size &&
+        cJSON_IsString(file_checksum) && strcmp(file_checksum->valuestring, checksum) == 0) {
+        return true;
     }
 
     return false;
+}
+
+char* calculate_file_md5(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        ESP_LOGE(TAG, "Failed to open file: %s", path);
+        return NULL;
+    }
+
+    fseek(f, 0, SEEK_END);
+    size_t file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    unsigned char *file_buffer = psram_malloc(file_size);
+    if (!file_buffer) {
+        ESP_LOGE(TAG, "Failed to allocate memory for file buffer");
+        fclose(f);
+        return NULL;
+    }
+
+    fread(file_buffer, 1, file_size, f);
+    fclose(f);
+
+    unsigned char md5_checksum[16];
+    mbedtls_md5(file_buffer, file_size, md5_checksum);
+
+    char *checksum_hex = psram_malloc(33);
+    if (!checksum_hex) {
+        ESP_LOGE(TAG, "Failed to allocate memory for checksum_hex");
+        free(file_buffer);
+        return NULL;
+    }
+
+    for (int i = 0; i < 16; i++) {
+        sprintf(checksum_hex + (i * 2), "%02x", md5_checksum[i]);
+    }
+    checksum_hex[32] = '\0';
+
+    free(file_buffer);
+    return checksum_hex;
+}
+
+void check_and_download_files() {
+    cJSON *manifest = cJSON_Parse(manifest_json);
+    if (!manifest) {
+        ESP_LOGE(TAG, "Failed to parse manifest.json");
+        return;
+    }
+
+    cJSON * download_list = cJSON_CreateArray();
+    if(!download_list)
+    {
+        ESP_LOGE(TAG, "Failed to create download list");
+        cJSON_Delete(manifest);
+        return;
+    }
+
+    cJSON *file;
+    cJSON_ArrayForEach(file, manifest) {
+        const char *file_name = file->string;
+        cJSON *file_array = cJSON_GetObjectItem(manifest, file_name);
+        cJSON *file_obj = cJSON_GetArrayItem(file_array, 0);
+        cJSON *url_item = cJSON_GetObjectItem(file_obj, "url");
+        cJSON *size_item = cJSON_GetObjectItem(file_obj, "size");
+        cJSON *checksum_item = cJSON_GetObjectItem(file_obj, "checksum");
+
+        if (!url_item || !size_item || !checksum_item) {
+            ESP_LOGE(TAG, "Invalid manifest entry for %s", file_name);
+            continue;
+        }
+
+        const char *url = url_item->valuestring;
+        size_t size = size_item->valueint;
+        const char *checksum = checksum_item->valuestring;
+
+        // ESP_LOGI(TAG, "File: %s, URL: %s, Size: %zu", file_name, url, size);
+
+        char file_path[256];
+        sprintf(file_path, "/spiffs/%s", file_name);
+
+        FILE *f = fopen(file_path, "rb");
+        if (!f) {
+            ESP_LOGI(TAG, "File %s not found, requesting download", file_name);
+            cJSON *download_item = cJSON_CreateObject();
+            cJSON_AddStringToObject(download_item, "name", file_name);
+            cJSON_AddStringToObject(download_item, "url", url);
+            cJSON_AddStringToObject(download_item, "checksum", checksum);
+            cJSON_AddStringToObject(download_item, "size", size);
+            cJSON_AddItemToArray(download_list, download_item);
+            continue;
+        }
+
+        fseek(f, 0, SEEK_END);
+        size_t file_size = ftell(f);
+        fseek(f, 0, SEEK_SET);
+
+        char *file_checksum = calculate_file_md5(file_path);
+        fclose(f);
+
+        if (!validate_image(file_name, file_size, file_checksum, manifest)) {
+            ESP_LOGW(TAG, "File %s validation failed, checksum is %s, requesting download", file_name, file_checksum);
+            cJSON *download_item = cJSON_CreateObject();
+            cJSON_AddStringToObject(download_item, "name", file_name);
+            cJSON_AddStringToObject(download_item, "url", url);
+            cJSON_AddStringToObject(download_item, "checksum", checksum);
+            cJSON_AddStringToObject(download_item, "size", size);
+            cJSON_AddItemToArray(download_list, download_item);
+        } else {
+            ESP_LOGI(TAG, "File %s validated successfully, checksum is %s", file_name, file_checksum);
+        }
+
+        free(file_checksum);
+    }
+
+    if(cJSON_GetArraySize(download_list) > 0)
+    {
+        char * download_list_string = cJSON_Print(download_list);
+        if(download_list_string)
+        {
+            ESP_LOGI(TAG, "Download list: %s", download_list_string);
+            // TODO: Send the download list to the download request function
+            // send_download_request("download_list", download_list_string);
+            free(download_list_string);
+        }
+    }else{
+        ESP_LOGI(TAG, "All files validated successfully, no downloads needed");
+    }
+
+    cJSON_Delete(download_list);
+    cJSON_Delete(manifest);
 }
 
 // Function to read and store PNG files into PSRAM

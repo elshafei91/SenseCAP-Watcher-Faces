@@ -23,6 +23,8 @@ GroupInfo group_page_volume;
 GroupInfo group_page_connectapp;
 GroupInfo group_page_about;
 GroupInfo group_page_guide;
+GroupInfo group_page_sleep;
+GroupInfo group_page_push2talk;
 
 static void lv_pm_obj_group(lv_group_t * group, GroupInfo *groupInfo);
 
@@ -134,7 +136,8 @@ void initGroup()
     lv_obj_t * about_objects[]          = {ui_aboutdevname, ui_aboutespversion, ui_aboutaiversion, ui_aboutsn, ui_abouteui, ui_aboutblemac,
                                         ui_aboutwifimac, ui_Paboutb};
     lv_obj_t * guide_objects[]          = {ui_Page_Guideavatar, ui_Page_Guidelive};
-
+    lv_obj_t * sleep_objects[]          = {ui_sleepswitch, ui_sleeptimeroller, ui_slpback};
+    lv_obj_t * push2talk_objects[]      = {ui_p2tobj, ui_p2tbehavior, ui_p2tfeat, ui_p2tcomparison, ui_p2tnotify, ui_p2ttime, ui_p2tfreq, ui_p2tcancel, ui_p2tcheck};
 
     addObjToGroup(&group_page_main, main_objects, sizeof(main_objects) / sizeof(main_objects[0]));
     addObjToGroup(&group_page_template, template_objects, sizeof(template_objects) / sizeof(template_objects[0]));
@@ -147,6 +150,8 @@ void initGroup()
     addObjToGroup(&group_page_connectapp, connectapp_objects, sizeof(connectapp_objects) / sizeof(connectapp_objects[0]));
     addObjToGroup(&group_page_about, about_objects, sizeof(about_objects) / sizeof(about_objects[0]));
     addObjToGroup(&group_page_guide, guide_objects, sizeof(guide_objects) / sizeof(guide_objects[0]));
+    addObjToGroup(&group_page_sleep, sleep_objects, sizeof(sleep_objects) / sizeof(sleep_objects[0]));
+    addObjToGroup(&group_page_push2talk, push2talk_objects, sizeof(push2talk_objects) / sizeof(push2talk_objects[0]));
 }
 
 

@@ -385,7 +385,7 @@ void addWiFiEntryToStack(WiFiStack *stack, uint8_t ssid[33], int8_t rssi, const 
     snprintf(rssi_str, sizeof(rssi_str), "%d", rssi);
 
     // Create a WiFiEntry
-    WiFiEntry entry = { .ssid = strdup(ssid_str), .rssi = strdup(rssi_str), .encryption = strdup(encryption) };
+    WiFiEntry entry = { .ssid = strdup_psram(ssid_str), .rssi = strdup_psram(rssi_str), .encryption = strdup_psram(encryption) };
 
     // Push the entry to the stack
     pushWiFiStack(stack, entry);

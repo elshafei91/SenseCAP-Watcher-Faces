@@ -9,7 +9,7 @@
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 #include "audio_player.h"
-#include "app_audio.h"
+#include "app_audio_player.h"
 #include "data_defs.h"
 #include "event_loops.h"
 #include "app_rgb.h"
@@ -85,15 +85,15 @@ static void __timer_callback(void* p_arg)
 }
 #endif
 
- static void __audio_play_finish_cb(void)
- {  
-    ESP_LOGI(TAG, "audio play finish");
-    if( g_handle != NULL) {
-        tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)g_handle->p_module;
-        tf_data_buf_free(&p_module_ins->audio);
-        p_module_ins->is_audio_playing = false;
-    }
- }
+//  static void __audio_play_finish_cb(void)
+//  {  
+//     ESP_LOGI(TAG, "audio play finish");
+//     if( g_handle != NULL) {
+//         tf_module_local_alarm_t *p_module_ins = (tf_module_local_alarm_t *)g_handle->p_module;
+//         tf_data_buf_free(&p_module_ins->audio);
+//         p_module_ins->is_audio_playing = false;
+//     }
+//  }
 
 static void __alarm_off_event_handler(void *handler_args, esp_event_base_t base, int32_t id, void *p_event_data)
 {
@@ -159,27 +159,19 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
         FILE *fp = NULL;
         esp_err_t status = ESP_FAIL;
 
-        if( p_data->audio.p_buf != NULL && p_data->audio.len > 0 ) {
-            ESP_LOGI(TAG,"play audio buf");
-
-            if( !p_module_ins->is_audio_playing ) {
-                p_module_ins->is_audio_playing = true;
-                fp = fmemopen((void *)p_data->audio.p_buf, p_data->audio.len, "rb");
-                if (fp) {
-                    status = audio_player_play(fp);
-                }
-                if (status == ESP_OK) {
-                    p_module_ins->audio.p_buf = p_data->audio.p_buf;
-                    p_module_ins->audio.len = p_data->audio.len;
+        if( app_audio_player_status_get() == AUDIO_PLAYER_STATUS_IDLE ) {
+            if( p_data->audio.p_buf != NULL && p_data->audio.len > 0 ) {
+                ESP_LOGI(TAG,"play audio buf");
+                ret = app_audio_player_mem(p_data->audio.p_buf, p_data->audio.len, true);
+                if( ret == ESP_OK) {
                     audio_used = true;
                 }
             } else {
-                ESP_LOGE(TAG, "audio is playing");
+                ESP_LOGI(TAG,"play audio file:%s" ,TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE);
+                app_audio_player_file(TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE);
             }
-                        
         } else {
-            ESP_LOGI(TAG,"play audio file:%s" ,TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE);
-            audio_play_task(TF_MODULE_LOCAL_ALARM_DEFAULT_AUDIO_FILE); //TODO , block??
+            ESP_LOGW(TAG, "audio is playing");
         }
     }
     
@@ -323,7 +315,7 @@ tf_module_t * tf_module_local_alarm_init(tf_module_local_alarm_t *p_module_ins)
         return NULL;
     }
 
-    audio_register_play_finish_cb(__audio_play_finish_cb);
+    // audio_register_play_finish_cb(__audio_play_finish_cb);
 
     return &p_module_ins->module_base;
 }

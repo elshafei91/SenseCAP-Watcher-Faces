@@ -32,6 +32,11 @@
 #include "app_ota.h"
 #include "app_taskflow.h"
 #include "view.h"
+#include "app_sensor.h"
+
+#include "app_audio_player.h"
+#include "app_audio_recorder.h"
+#include "app_voice_interaction.h"
 
 
 #ifdef CONFIG_INTR_TRACKING
@@ -164,17 +169,21 @@ void app_init(void)
 {
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    audio_player_init();
+    app_audio_player_init();
+    app_audio_recorder_init();
+
     app_rgb_init();
     app_device_info_init();
     app_sensecraft_init();
     app_ota_init();
     app_taskflow_init();
+    app_voice_interaction_init();
     app_wifi_init();
     app_time_init();
     app_at_cmd_init();
     app_ble_init();
     app_cmd_init();
+    app_sensor_init();
     // app_sr_start(false);
 }
 
@@ -184,6 +193,7 @@ void task_app_init(void *p_arg)
     view_init();
 
     app_init();
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
 
     esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, __app_event_loop_handler, NULL);
     esp_event_handler_register_with(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, __app_event_loop_handler, NULL);

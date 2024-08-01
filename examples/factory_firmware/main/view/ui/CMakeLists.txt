@@ -1,6 +1,4 @@
-SET(SOURCES components/ui_comp_menucomponent.c
-    components/ui_comp.c
-    screens/ui_Page_Battery.c
+SET(SOURCES screens/ui_Page_Battery.c
     screens/ui_Page_Startup.c
     screens/ui_Page_Loading.c
     screens/ui_Page_Avatar.c
@@ -20,7 +18,7 @@ SET(SOURCES components/ui_comp_menucomponent.c
     screens/ui_Page_Extension.c
     screens/ui_Page_OTA.c
     screens/ui_Page_Sleep.c
-    screens/ui_Page_Wakup.c
+    screens/ui_Page_Push2talk.c
     screens/ui_Page_Guideavatar.c
     screens/ui_Page_Guidelive.c
     screens/ui_Page_Flag.c

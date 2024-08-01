@@ -43,6 +43,8 @@
 #define LOCAL_SERVICE_STORAGE_KEY "localservice"
 #define USAGE_GUIDE_SK            "usage_guide"
 #define BLE_STORAGE_KEY           "ble_switch"
+#define SLEEP_STORAGE_KEY         "sleep_time"
+#define SLEEP_SWITCH_STORAGE_KEY  "sleep_switch"
 
 #define EVENT_BIT(T)              (BIT0 << T)
 #define EVENT_DEVICECFG_CHANGE    BIT0
@@ -58,6 +60,8 @@
 #define DEVCFG_DEFAULT_CLOUD_SVC_SWITCH 1
 #define DEVCFG_DEFAULT_LOCAL_SVC_SWITCH 0
 #define DEVCFG_DEFAULT_USAGE_GUIDE_FLAG 0
+#define DEVCFG_DEFAULT_SLEEP_TIME       0
+#define DEVCFG_DEFAULT_SLEEP_SWITCH     1
 
 typedef enum {
     DEVCFG_TYPE_BRIGHTNESS = 0,
@@ -68,6 +72,8 @@ typedef enum {
     DEVCFG_TYPE_LOCAL_SVC,
     DEVCFG_TYPE_USAGE_GUIDE_FLAG,
     DEVCFG_TYPE_FACTORY_RESET_FLAG,
+    DEVCFG_TYPE_SLEEP_TIME,
+    DEVCFG_TYPE_SLEEP_SWITCH,
     DEVCFG_TYPE_MAX,
 } devicecfg_type_t;
 
@@ -165,9 +171,9 @@ static esp_err_t __local_service_cfg_from_json(local_service_cfg_t *local_svc_cf
         local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
         item_type1->enable = cJSON_IsTrue(item_enable);
         if (item_type1->url != NULL) free(item_type1->url);
-        item_type1->url = strdup(item_url->valuestring);
+        item_type1->url = strdup_psram(item_url->valuestring);
         if (item_type1->token != NULL) free(item_type1->token);
-        item_type1->token = strdup(item_token->valuestring);
+        item_type1->token = strdup_psram(item_token->valuestring);
     }
 
     return ESP_OK;
@@ -185,8 +191,8 @@ static void __deep_copy_local_service_cfg(local_service_cfg_t *dst, local_servic
         if (dst->cfg_items_type1[i].url != NULL) free(dst->cfg_items_type1[i].url);
         if (dst->cfg_items_type1[i].token != NULL) free(dst->cfg_items_type1[i].token);
         dst->cfg_items_type1[i].enable = src->cfg_items_type1[i].enable;
-        dst->cfg_items_type1[i].url = strdup(src->cfg_items_type1[i].url);
-        dst->cfg_items_type1[i].token = strdup(src->cfg_items_type1[i].token);
+        dst->cfg_items_type1[i].url = strdup_psram(src->cfg_items_type1[i].url);
+        dst->cfg_items_type1[i].token = strdup_psram(src->cfg_items_type1[i].token);
     }
     
 }
@@ -385,6 +391,50 @@ void init_ble_switch_from_nvs()
     }
 }
 
+void init_sleep_time_from_nvs()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_TIME);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(SLEEP_STORAGE_KEY, &cfg->current.value, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI(TAG, "Sleep time loaded from NVS: %d", cfg->current.value);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        cfg->current.value = DEVCFG_DEFAULT_SLEEP_TIME;
+        ESP_LOGW(TAG, "No sleep time found in NVS. Using default: %d", DEVCFG_DEFAULT_SLEEP_TIME);
+    }
+    else
+    {
+        cfg->current.value = DEVCFG_DEFAULT_SLEEP_TIME;
+        ESP_LOGE(TAG, "Error reading sleep time from NVS: %s", esp_err_to_name(ret));
+    }
+    cfg->last.value = cfg->current.value;
+}
+
+void init_sleep_switch_from_nvs()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_SWITCH);
+    size_t size = sizeof(cfg->current.value);
+    esp_err_t ret = storage_read(SLEEP_SWITCH_STORAGE_KEY, &cfg->current.value, &size);
+    if (ret == ESP_OK)
+    {
+        ESP_LOGI(TAG, "Sleep switch loaded from NVS: %d", cfg->current.value);
+    }
+    else if (ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        cfg->current.value = DEVCFG_DEFAULT_SLEEP_SWITCH;
+        ESP_LOGW(TAG, "No sleep switch found in NVS. Using default: %d", DEVCFG_DEFAULT_SLEEP_SWITCH);
+    }
+    else
+    {
+        cfg->current.value = DEVCFG_DEFAULT_SLEEP_SWITCH;
+        ESP_LOGE(TAG, "Error reading sleep switch from NVS: %s", esp_err_to_name(ret));
+    }
+    cfg->last.value = cfg->current.value;
+}
+
 void init_cloud_service_switch_from_nvs()
 {
     devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_CLOUD_SVC_SWITCH);
@@ -438,8 +488,8 @@ void init_local_service_cfg_from_nvs()
     for (int i = 0; i < CFG_ITEM_TYPE1_MAX; i++)
     {
         local_service_cfg_type1_t *item_type1 = &local_svc_cfg->cfg_items_type1[i];
-        if (item_type1->url == NULL) item_type1->url = strdup("");
-        if (item_type1->token == NULL) item_type1->token = strdup("");
+        if (item_type1->url == NULL) item_type1->url = strdup_psram("");
+        if (item_type1->token == NULL) item_type1->token = strdup_psram("");
         ESP_LOGI(TAG, "type1/cfg_%d: enable=%d, url=%s, token=%s", i, item_type1->enable, item_type1->url, item_type1->token);
     }
 
@@ -715,6 +765,94 @@ set_sound_err:
     return ret;
 }
 
+/*-----------------------------------------------------sleep---------------------------------------------------*/
+
+int get_sleep_time(int caller)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_TIME);
+    int sleep_time = cfg->current.value;
+
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI(TAG, "AT_CMD_CALLER get sleep time");
+            break;
+        case UI_CALLER:
+            ESP_LOGI(TAG, "UI get sleep time");
+            break;
+    }
+
+    return sleep_time;
+}
+
+esp_err_t set_sleep_time(int caller, int value)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_TIME);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
+}
+
+static esp_err_t __set_sleep_time()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_TIME);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
+    {
+        ESP_GOTO_ON_ERROR(storage_write(SLEEP_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_sleeptime_err, TAG, "%s cfg write err", __func__);
+        cfg->last.value = cfg->current.value;
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
+    }
+set_sleeptime_err:
+    xSemaphoreGive(cfg->mutex);
+
+    return ret;
+}
+
+int get_sleep_switch(int caller)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_SWITCH);
+    int sleep_switch = cfg->current.value;
+
+    switch (caller)
+    {
+        case AT_CMD_CALLER:
+            ESP_LOGI(TAG, "AT_CMD_CALLER get sleep switch");
+            break;
+        case UI_CALLER:
+            ESP_LOGI(TAG, "UI get sleep switch");
+            break;
+    }
+
+    return sleep_switch;
+}
+
+esp_err_t set_sleep_switch(int caller, int value)
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_SWITCH);
+    ESP_LOGI(TAG, "%s: %d", __func__, value);
+    return __safely_set_devicecfg_value(cfg, value);
+}
+
+static esp_err_t __set_sleep_switch()
+{
+    devicecfg_t *cfg = GET_DEVCFG_PTR(DEVCFG_TYPE_SLEEP_SWITCH);
+    esp_err_t ret = ESP_OK;
+    xSemaphoreTake(cfg->mutex, portMAX_DELAY);
+    if (cfg->last.value != cfg->current.value)
+    {
+        ESP_GOTO_ON_ERROR(storage_write(SLEEP_SWITCH_STORAGE_KEY, &cfg->current.value, sizeof(cfg->current.value)),
+                            set_sleepswitch_err, TAG, "%s cfg write err", __func__);
+        cfg->last.value = cfg->current.value;
+        ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
+    }
+set_sleepswitch_err:
+    xSemaphoreGive(cfg->mutex);
+
+    return ret;
+}
+
 /*----------------------------------------------------ble switch--------------------------------------------------------*/
 int get_ble_switch(int caller)
 {
@@ -816,8 +954,8 @@ esp_err_t get_local_service_cfg_type1(int caller, int cfg_index, local_service_c
 
     xSemaphoreTake(cfg->mutex, portMAX_DELAY);
     pcfg->enable = local_svc_cfg->cfg_items_type1[cfg_index].enable;
-    pcfg->url = strdup(local_svc_cfg->cfg_items_type1[cfg_index].url);
-    pcfg->token = strdup(local_svc_cfg->cfg_items_type1[cfg_index].token);
+    pcfg->url = strdup_psram(local_svc_cfg->cfg_items_type1[cfg_index].url);
+    pcfg->token = strdup_psram(local_svc_cfg->cfg_items_type1[cfg_index].token);
     xSemaphoreGive(cfg->mutex);
 
     return ESP_OK;
@@ -834,9 +972,9 @@ esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, ch
     xSemaphoreTake(cfg->mutex, portMAX_DELAY);
     local_svc_cfg->cfg_items_type1[cfg_index].enable = enable;
     if (local_svc_cfg->cfg_items_type1[cfg_index].url != NULL) free(local_svc_cfg->cfg_items_type1[cfg_index].url);
-    local_svc_cfg->cfg_items_type1[cfg_index].url = strdup(url);
+    local_svc_cfg->cfg_items_type1[cfg_index].url = strdup_psram(url);
     if (local_svc_cfg->cfg_items_type1[cfg_index].token != NULL) free(local_svc_cfg->cfg_items_type1[cfg_index].token);
-    local_svc_cfg->cfg_items_type1[cfg_index].token = strdup(token);
+    local_svc_cfg->cfg_items_type1[cfg_index].token = strdup_psram(token);
     esp_timer_stop(cfg->timer_handle);
     ret = esp_timer_start_once(cfg->timer_handle, 100*1000);
     xSemaphoreGive(cfg->mutex);
@@ -1134,6 +1272,8 @@ void __app_device_info_task(void *pvParameter)
     init_sound_from_nvs();
     init_cloud_service_switch_from_nvs();
     init_ble_switch_from_nvs();
+    init_sleep_time_from_nvs();
+    init_sleep_switch_from_nvs();
 
     // get spiffs and sdcard status
     __try_check_sdcard_flash();
@@ -1184,6 +1324,12 @@ void __app_device_info_task(void *pvParameter)
             }
             if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_FACTORY_RESET_FLAG)) != 0) {
                 __check_reset_factory();
+            }
+            else if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SLEEP_TIME)) != 0){
+                __set_sleep_time();
+            }
+            else if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SLEEP_SWITCH)) != 0){
+                __set_sleep_switch();
             }
         }
         
