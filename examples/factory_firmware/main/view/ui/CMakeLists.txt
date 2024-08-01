@@ -55,6 +55,11 @@ SET(SOURCES screens/ui_Page_Battery.c
     images/ui_img_human_d_png.c
     images/ui_img_volicon_png.c
     images/ui_img_swipe_png.c
+    images/ui_img_1222852621.c
+    images/ui_img_2057255035.c
+    images/ui_img_1955521171.c
+    images/ui_img_529164268.c
+    images/ui_img_1761657674.c
     images/ui_img_wifiok_png.c
     images/ui_img_guideimg_png.c
     images/ui_img_scroll_down_png.c
@@ -63,10 +68,12 @@ SET(SOURCES screens/ui_Page_Battery.c
     images/ui_img_backtomenu_png.c
     images/ui_img_battery_charging_png.c
     images/ui_img_brighticon_png.c
+    images/ui_img_226867343.c
     images/ui_img_dog_d_png.c
     images/ui_img_error_png.c
     images/ui_img_gesture_d_png.c
     images/ui_img_gradient_png.c
+    images/ui_img_1336611536.c
     images/ui_img_left_png.c
     images/ui_img_onboardclick_png.c
     images/ui_img_wifi_0_png.c
@@ -78,7 +85,10 @@ SET(SOURCES screens/ui_Page_Battery.c
     fonts/ui_font_Font12.c
     fonts/ui_font_fontbold26.c
     fonts/ui_font_font_bold.c
+    fonts/ui_font_semibold16.c
     fonts/ui_font_semibold28.c
-    fonts/ui_font_semibold42.c)
+    fonts/ui_font_semibold34extend.c
+    fonts/ui_font_semibold42.c
+    fonts/ui_font_semibold64.c)
 
 add_library(ui ${SOURCES})
