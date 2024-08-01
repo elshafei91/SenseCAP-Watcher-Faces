@@ -8,7 +8,7 @@
 #include "freertos/ringbuf.h"
 
 #define AUDIO_RECORDER_TASK_STACK_SIZE  5*1024
-#define AUDIO_RECORDER_TASK_PRIO        16
+#define AUDIO_RECORDER_TASK_PRIO        13
 #define AUDIO_RECORDER_TASK_CORE        1
 
 // sample rate: 16000, bit depth: 16, channels: 1; 32000 size per second;
