@@ -131,41 +131,31 @@ static char *push2talk_text = NULL;
 static uint32_t push2talk_text_index = 0;
 static bool push2talk_timer_active = false;
 
+// Bluetooth switch frequency filter
+static lv_timer_t * view_ble_switch_timer;
+
+// Sleep mode scanner
+#define ACTIVE_THRESHOLD (1500)
+static lv_timer_t * view_sleep_timer;
+static uint32_t inactive_time = 0;
+static int get_inactive_time;
+static int inactive_threshold;
+
+// Push2talk timer
+static lv_timer_t * view_push2talk_timer;
+static uint8_t push2talk_timer_counter = 0;
+
+static lv_timer_t * view_push2talk_msg_timer;
+static uint8_t push2talk_panel_idx = 0;
+
+static lv_timer_t * view_push2talk_animation_timer;
+
 static void Page_ConnAPP_BLE();
 static void Page_ConnAPP_Mate();
 static void Task_end();
 static void Page_shutdown();
 static void Page_facreset();
 static void view_info_obtain_early();
-
-// Bluetooth switch frequency filter
-static void view_ble_switch_timer_callback(void *arg);
-static const esp_timer_create_args_t view_ble_switch_timer_args = { .callback = &view_ble_switch_timer_callback, .name = "view ble switch" };
-static esp_timer_handle_t view_ble_switch_timer;
-
-// Sleep mode scanner
-#define ACTIVE_THRESHOLD (1500)
-static void view_sleep_timer_callback(void *arg);
-static const esp_timer_create_args_t view_sleep_timer_args = { .callback = &view_sleep_timer_callback, .name = "view sleep" };
-static esp_timer_handle_t view_sleep_timer;
-static uint32_t inactive_time = 0;
-static int get_inactive_time;
-static int inactive_threshold;
-
-// Push2talk timer
-static void view_push2talk_timer_callback(void *arg);
-static const esp_timer_create_args_t view_push2talk_timer_args = { .callback = &view_push2talk_timer_callback, .name = "view push2talk" };
-static esp_timer_handle_t view_push2talk_timer;
-static uint8_t push2talk_timer_counter = 0;
-
-static void view_push2talk_msg_timer_callback(void *arg);
-static const esp_timer_create_args_t view_push2talk_msg_timer_args = { .callback = &view_push2talk_msg_timer_callback, .name = "view push2talk msg" };
-static esp_timer_handle_t view_push2talk_msg_timer;
-static uint8_t push2talk_panel_idx = 0;
-
-static void view_push2talk_animation_timer_callback(void *arg);
-static const esp_timer_create_args_t view_push2talk_animation_timer_args = { .callback = &view_push2talk_animation_timer_callback, .name = "view push2talk animation" };
-static esp_timer_handle_t view_push2talk_animation_timer;
 
 static void async_emoji_switch_scr(void *arg)
 {
@@ -277,7 +267,10 @@ void emoji_timer(uint8_t emoji_type)
         g_timer = NULL;
     }
     emoji_user_data = emoji_type;
-    if(emoji_user_data != EMOJI_STOP)g_timer = lv_timer_create(emoji_timer_callback, 500, &emoji_user_data);
+    if(emoji_user_data != EMOJI_STOP){
+        g_timer = lv_timer_create(emoji_timer_callback, 500, &emoji_user_data);
+        emoji_timer_callback(g_timer);
+    }
 }
 
 void slbattery_cb(lv_event_t *e) { }
@@ -1298,6 +1291,7 @@ void p2tclick_cb(lv_event_t * e)
 
 void push2talkcancel_cb(lv_event_t * e)
 {
+    ESP_LOGI(CLICK_TAG, "push2talkcancel_cb");
     static int push2talk_direct_exit = 0;
     if(g_taskflow_pause == 1)
     {
@@ -1315,6 +1309,7 @@ void push2talkcancel_cb(lv_event_t * e)
 
 void push2talkcheck_cb(lv_event_t * e)
 {
+    ESP_LOGI(CLICK_TAG, "push2talkcheck_cb");
     static int push2talk_newtask_exit = 1;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_newtask_exit, sizeof(push2talk_newtask_exit), pdMS_TO_TICKS(10000));
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
@@ -1914,10 +1909,8 @@ void push2talk_init(void)
     lv_obj_set_scrollbar_mode(push2talk_textarea, LV_SCROLLBAR_MODE_OFF);
 }
 
-static void view_push2talk_animation_timer_callback(void *arg)
+static void view_push2talk_animation_timer_callback(lv_timer_t *timer)
 {
-    lvgl_port_lock(0);
-
     if (push2talk_text && push2talk_text[push2talk_text_index] != '\0' && push2talk_timer_active) {
         char temp[2];
         temp[0] = push2talk_text[push2talk_text_index];
@@ -1934,17 +1927,22 @@ static void view_push2talk_animation_timer_callback(void *arg)
             push2talk_text = NULL;
         }
     }
-
-    lvgl_port_unlock();
 }
 
 void view_push2talk_animation_timer_start(int duaration_ms)
 {
-    if (esp_timer_is_active(view_push2talk_animation_timer))
-    {
-        esp_timer_stop(view_push2talk_animation_timer);
+    if (view_push2talk_animation_timer != NULL) {
+        lv_timer_del(view_push2talk_animation_timer);
     }
-    ESP_ERROR_CHECK(esp_timer_start_periodic(view_push2talk_animation_timer, 1000 * duaration_ms));
+    view_push2talk_animation_timer = lv_timer_create(view_push2talk_animation_timer_callback, duaration_ms, NULL);
+}
+
+void view_push2talk_animation_timer_stop()
+{
+    if (view_push2talk_animation_timer != NULL) {
+        lv_timer_del(view_push2talk_animation_timer);
+        view_push2talk_animation_timer = NULL;
+    }
 }
 
 void push2talk_start_animation(const char *text, uint32_t duration_s)
@@ -1957,7 +1955,7 @@ void push2talk_start_animation(const char *text, uint32_t duration_s)
     }
 
     if (push2talk_timer_active) {
-        esp_timer_stop(view_push2talk_animation_timer);
+        view_push2talk_animation_timer_stop();
         push2talk_timer_active = false;
 
         if (push2talk_text) {
@@ -1982,26 +1980,22 @@ void push2talk_start_animation(const char *text, uint32_t duration_s)
     view_push2talk_animation_timer_start(push2talk_anim_interval);
 }
 /*--------------------------------------------view timer----------------------------------------------------------------*/
-static void view_ble_switch_timer_callback(void *arg)
+static void view_ble_switch_timer_callback(lv_timer_t *timer)
 {
-    lvgl_port_lock(0);
     lv_obj_clear_state(ui_setblesw, LV_STATE_DISABLED);
-    lvgl_port_unlock();
 }
 
 void view_ble_switch_timer_start()
 {
-    if (esp_timer_is_active(view_ble_switch_timer))
-    {
-        esp_timer_stop(view_ble_switch_timer);
+    if (view_ble_switch_timer != NULL) {
+        lv_timer_del(view_ble_switch_timer);
+        view_ble_switch_timer = NULL;
     }
-    ESP_ERROR_CHECK(esp_timer_start_once(view_ble_switch_timer, (uint64_t)1000000));
+    view_ble_switch_timer = lv_timer_create(view_ble_switch_timer_callback, 1000, NULL); // 1000 ms = 1 second
 }
 
-static void view_sleep_timer_callback(void *arg)
+static void view_sleep_timer_callback(lv_timer_t *timer)
 {
-    lvgl_port_lock(0);
-    
     inactive_time = lv_disp_get_inactive_time(NULL);
     get_inactive_time = g_sleep_time;
     // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
@@ -2085,23 +2079,18 @@ static void view_sleep_timer_callback(void *arg)
             standby_mode = 0;
         }
     }
-
-    lvgl_port_unlock();
 }
 
 void view_sleep_timer_start()
 {
-    if (esp_timer_is_active(view_sleep_timer))
-    {
-        esp_timer_stop(view_sleep_timer);
+    if (view_sleep_timer != NULL) {
+        lv_timer_del(view_sleep_timer);
     }
-    ESP_ERROR_CHECK(esp_timer_start_periodic(view_sleep_timer, 1000000));
+    view_sleep_timer = lv_timer_create(view_sleep_timer_callback, 1000, NULL); // 1000 ms = 1 second
 }
 
-static void view_push2talk_timer_callback(void *arg)
+static void view_push2talk_timer_callback(lv_timer_t *timer)
 {
-    lvgl_port_lock(0);
-
     static int16_t push2talk_arc;
     static int push2talk_direct_exit = 0;
 
@@ -2128,31 +2117,26 @@ static void view_push2talk_timer_callback(void *arg)
         lv_arc_set_value(ui_push2talkarc, push2talk_arc+1);
         lv_event_send(ui_push2talkarc, LV_EVENT_VALUE_CHANGED, NULL);
     }
-
-    lvgl_port_unlock();
 }
 
 void view_push2talk_timer_start()
 {
-    if (esp_timer_is_active(view_push2talk_timer))
-    {
-        esp_timer_stop(view_push2talk_timer);
+    if (view_push2talk_timer != NULL) {
+        lv_timer_del(view_push2talk_timer);
     }
-    ESP_ERROR_CHECK(esp_timer_start_periodic(view_push2talk_timer, 1000000));
+    view_push2talk_timer = lv_timer_create(view_push2talk_timer_callback, 1000, NULL); // 1000 ms = 1 second
 }
 
 void view_push2talk_timer_stop()
 {
-    if (esp_timer_is_active(view_push2talk_timer))
-    {
-        esp_timer_stop(view_push2talk_timer);
+    if (view_push2talk_timer != NULL) {
+        lv_timer_del(view_push2talk_timer);
+        view_push2talk_timer = NULL;
     }
 }
 
-static void view_push2talk_msg_timer_callback(void *arg)
+static void view_push2talk_msg_timer_callback(lv_timer_t *timer)
 {
-    lvgl_port_lock(0);
-
     lv_obj_t *push2talk_panel_child;
     ESP_LOGI(TAG, "push2talk_panel_idx is %d ", push2talk_panel_idx);
 
@@ -2166,22 +2150,22 @@ static void view_push2talk_msg_timer_callback(void *arg)
             lv_group_focus_obj(ui_p2tobj);
             break;
         case 1:
+            lv_label_set_text(ui_p2tcomparison2, push2talk_item[push2talk_panel_idx]);
+            lv_obj_clear_flag(ui_p2tcomparison, LV_OBJ_FLAG_HIDDEN);
+            lv_group_add_obj(g_main, ui_p2tcomparison);
+            lv_group_focus_obj(ui_p2tcomparison);
+            break;
+        case 2:
             lv_label_set_text(ui_p2tbehavior2, push2talk_item[push2talk_panel_idx]);
             lv_obj_clear_flag(ui_p2tbehavior, LV_OBJ_FLAG_HIDDEN);
             lv_group_add_obj(g_main, ui_p2tbehavior);
             lv_group_focus_obj(ui_p2tbehavior);
             break;
-        case 2:
+        case 3:
             lv_label_set_text(ui_p2tfeat2, push2talk_item[push2talk_panel_idx]);
             lv_obj_clear_flag(ui_p2tfeat, LV_OBJ_FLAG_HIDDEN);
             lv_group_add_obj(g_main, ui_p2tfeat);
             lv_group_focus_obj(ui_p2tfeat);
-            break;
-        case 3:
-            lv_label_set_text(ui_p2tcomparison2, push2talk_item[push2talk_panel_idx]);
-            lv_obj_clear_flag(ui_p2tcomparison, LV_OBJ_FLAG_HIDDEN);
-            lv_group_add_obj(g_main, ui_p2tcomparison);
-            lv_group_focus_obj(ui_p2tcomparison);
             break;
         case 4:
             lv_label_set_text(ui_p2tnotify2, push2talk_item[push2talk_panel_idx]);
@@ -2203,7 +2187,6 @@ static void view_push2talk_msg_timer_callback(void *arg)
             break;
         case 7:
             lv_obj_clear_flag(ui_p2tsw, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_scroll_to_view(ui_p2tsw, LV_ANIM_OFF);
             lv_group_add_obj(g_main, ui_p2tcancel);
             lv_group_add_obj(g_main, ui_p2tcheck);
             lv_group_focus_obj(ui_p2tcheck);
@@ -2220,23 +2203,29 @@ static void view_push2talk_msg_timer_callback(void *arg)
         esp_timer_stop(view_push2talk_msg_timer);
         push2talk_panel_idx = 0;
     }
-    lvgl_port_unlock();
 }
 
 void view_push2talk_msg_timer_start()
 {
-    if (esp_timer_is_active(view_push2talk_msg_timer))
-    {
-        esp_timer_stop(view_push2talk_msg_timer);
+    if (view_push2talk_msg_timer != NULL) {
+        lv_timer_del(view_push2talk_msg_timer);
     }
-    ESP_ERROR_CHECK(esp_timer_start_periodic(view_push2talk_msg_timer, 500000));
+    view_push2talk_msg_timer = lv_timer_create(view_push2talk_msg_timer_callback, 500, NULL); // 500 ms
+}
+
+void view_push2talk_msg_timer_stop()
+{
+    if (view_push2talk_msg_timer != NULL) {
+        lv_timer_del(view_push2talk_msg_timer);
+        view_push2talk_msg_timer = NULL;
+    }
 }
 
 void view_timer_create()
 {
-    ESP_ERROR_CHECK(esp_timer_create(&view_ble_switch_timer_args, &view_ble_switch_timer));
-    ESP_ERROR_CHECK(esp_timer_create(&view_sleep_timer_args, &view_sleep_timer));
-    ESP_ERROR_CHECK(esp_timer_create(&view_push2talk_timer_args, &view_push2talk_timer));
-    ESP_ERROR_CHECK(esp_timer_create(&view_push2talk_msg_timer_args, &view_push2talk_msg_timer));
-    ESP_ERROR_CHECK(esp_timer_create(&view_push2talk_animation_timer_args, &view_push2talk_animation_timer));
+    // view_ble_switch_timer = lv_timer_create(view_ble_switch_timer_callback, 1000, NULL);
+    // view_sleep_timer = lv_timer_create(view_sleep_timer_callback, 1000, NULL);
+    // view_push2talk_timer = lv_timer_create(view_push2talk_timer_callback, 1000, NULL);
+    // view_push2talk_msg_timer = lv_timer_create(view_push2talk_msg_timer_callback, 500, NULL);
+    // view_push2talk_animation_timer = lv_timer_create(view_push2talk_animation_timer_callback, 0, NULL);
 }
