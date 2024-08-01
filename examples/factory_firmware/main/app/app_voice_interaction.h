@@ -10,9 +10,11 @@
 #include "data_defs.h"
 
 #define VOICE_INTERACTION_TASK_STACK_SIZE  10*1024
-#define VOICE_INTERACTION_TASK_PRIO        17
+#define VOICE_INTERACTION_TASK_PRIO        14
 #define VOICE_INTERACTION_TASK_CORE        1  //must be 1
 
+
+#define  CONFIG_ENABLE_TEST_ENV 1
 
 #if CONFIG_ENABLE_TEST_ENV
 #define CONFIG_TALK_SERV_HOST           "https://sensecraft-aiservice-test-api.seeed.cc" 

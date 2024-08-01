@@ -441,12 +441,11 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             esp_http_client_handle_t client;
             bool stop_send = false;
             
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
+                                    VIEW_EVENT_VI_RECORDING, NULL, NULL, pdMS_TO_TICKS(10000));
 
             app_rgb_set(SR, RGB_BREATH_BLUE); //set RGB
             app_audio_player_file_block(VI_WAKE_FILE_PATH, pdMS_TO_TICKS(600));
-
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
-                                    VIEW_EVENT_VI_RECORDING, NULL, NULL, pdMS_TO_TICKS(10000));
 
             app_audio_recorder_stream_start();
             p_vi->is_connecting = true;
