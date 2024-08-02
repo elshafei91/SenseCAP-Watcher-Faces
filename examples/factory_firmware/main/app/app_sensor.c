@@ -122,11 +122,15 @@ static int16_t app_sensor_uptate(void)
                         app_sensor_data[i].context.scd4x.co2 = co2;
                         ESP_LOGI(TAG, "T: %d, H: %d, CO2: %d", temperature, humidity, co2);
 
-                        view_data.temperature_valid = true;
-                        view_data.humidity_valid = true;
+                        if (view_data.temperature_valid == false) {
+                            view_data.temperature_valid = true;
+                            view_data.temperature = (float)temperature / 1000;
+                        }
+                        if (view_data.humidity_valid == false) {
+                            view_data.humidity_valid = true;
+                            view_data.humidity = (float)humidity / 1000;
+                        }
                         view_data.co2_valid = true;
-                        view_data.temperature = (float)temperature / 1000;
-                        view_data.humidity = (float)humidity / 1000;
                         view_data.co2 = co2 / 1000;
                     }
                 }
