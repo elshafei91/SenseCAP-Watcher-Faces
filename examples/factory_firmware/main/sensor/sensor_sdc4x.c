@@ -65,11 +65,14 @@ int16_t sensor_scd4x_get_data_ready_flag(bool* data_ready_flag)
     return ret;
 }
 
-int16_t sensor_scd4x_read_measurement(uint32_t *co2)
+int16_t sensor_scd4x_read_measurement(uint32_t *co2, int32_t* temperature_m_deg_c,
+                                        int32_t* humidity_m_percent_rh)
 {
     esp_err_t ret = ESP_OK;
     uint8_t buffer[12];
     uint16_t offset = 0;
+    uint16_t temperature;
+    uint16_t humidity;
 
     offset = sensirion_i2c_add_command_to_buffer(&buffer[0], 0, 0xEC05);
     ret = sensirion_i2c_write_data(SENSOR_SCD4x_I2C_ADDR, &buffer[0], offset);
@@ -78,7 +81,12 @@ int16_t sensor_scd4x_read_measurement(uint32_t *co2)
 
     ret = sensirion_i2c_read_data_inplace(SENSOR_SCD4x_I2C_ADDR, &buffer[0], 6);
     ESP_RETURN_ON_ERROR(ret, TAG, "read measurement data error %d!", ret);
+
     *co2 = (uint32_t)(sensirion_common_bytes_to_uint16_t(&buffer[0])) * 1000;
+    temperature = sensirion_common_bytes_to_uint16_t(&buffer[2]);
+    humidity = sensirion_common_bytes_to_uint16_t(&buffer[4]);
+    *temperature_m_deg_c = ((21875 * (int32_t)temperature) >> 13) - 45000;
+    *humidity_m_percent_rh = ((12500 * (int32_t)humidity) >> 13);
 
     return ret;
 }
