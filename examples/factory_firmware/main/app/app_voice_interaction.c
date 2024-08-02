@@ -1242,6 +1242,11 @@ int app_vi_result_free(struct view_data_vi_result *p_ret)
         free(p_ret->p_audio_text);
         p_ret->p_audio_text = NULL;
     }
+    
+    if (p_ret->p_sst_text) {
+        free(p_ret->p_sst_text);
+        p_ret->p_sst_text = NULL;
+    }
 
     for (int i = 0; i < TASK_CFG_ID_MAX; i++) {
         if (p_ret->items[i]) {

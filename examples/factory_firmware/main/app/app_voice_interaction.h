@@ -14,18 +14,10 @@
 #define VOICE_INTERACTION_TASK_CORE        1  //must be 1
 
 
-#define  CONFIG_ENABLE_TEST_ENV 1
-
 #if CONFIG_ENABLE_TEST_ENV
 #define CONFIG_TALK_SERV_HOST           "https://sensecraft-aiservice-test-api.seeed.cc" 
 #define CONFIG_TALK_AUDIO_STREAM_PATH   "/v2/watcher/talk/audio_stream"
 #define CONFIG_TASKFLOW_DETAIL_PATH     "/v2/watcher/talk/view_task_detail" 
-
-//TODO debug
-#define CONFIG_TALK_SERV_HOST           "https://sensecap-watcher-demo.seeed.cc"
-#define CONFIG_TALK_AUDIO_STREAM_PATH   "/api/v2/watcher/talk/audio_stream"
-// #define CONFIG_TALK_AUDIO_STREAM_PATH   "/tools/v2/watcher/audio_stream_test"
-#define CONFIG_TASKFLOW_DETAIL_PATH     "/tools/v2/watcher/talk/view_task_detail"
 
 #else
 #define CONFIG_TALK_SERV_HOST           "https://sensecraft-aiservice-api.seeed.cc" 
