@@ -32,6 +32,8 @@ typedef struct app_sensor_data
             uint32_t humidity;
         }sht4x;
         struct {
+            int32_t temperature;
+            uint32_t humidity;
             uint32_t co2;
         }scd4x;
     }context;
