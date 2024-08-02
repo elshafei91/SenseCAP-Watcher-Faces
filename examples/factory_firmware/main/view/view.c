@@ -578,7 +578,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
-                
+
+                lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0x91BF25), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
                 emoji_switch_scr = SCREEN_PUSH2TALK;
                 emoji_timer(EMOJI_LISTENING);
                 _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
@@ -678,8 +681,25 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_ERROR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ERROR");
 
-                int push2talk_error_code = *(int *)event_data;
+                view_push2talk_timer_stop();
+                lv_group_remove_all_objs(g_main);
 
+                lv_obj_clear_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
+
+                _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
+
+                int push2talk_error_code = *(int *)event_data;
+                static char error_code_str[25];
+                snprintf(error_code_str, sizeof(error_code_str), "[ %d ]\nfailed", push2talk_error_code);
+
+                lv_label_set_text(ui_push2talkp2t1, error_code_str);
+                lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0xD54941), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
+                view_push2talk_timer_start();
 
                 break;
 
