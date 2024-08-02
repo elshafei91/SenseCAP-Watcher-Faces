@@ -17,6 +17,7 @@ static tf_engine_t *gp_engine = NULL;
 #define EVENT_ERR_EXIT        BIT2
 #define EVENT_PAUSE           BIT3
 #define EVENT_RESUME          BIT4
+#define EVENT_RESTART         BIT5
 
 #define MODULE_FLAG_INIT_DONE      BIT0
 #define MODULE_FLAG_INSTANCE_DONE  BIT1
@@ -340,7 +341,7 @@ static void __tf_engine_task(void *p_arg)
     while (1)
     { 
         bits = xEventGroupWaitBits(p_engine->event_group, \
-                EVENT_START | EVENT_STOP | EVENT_PAUSE | EVENT_RESUME, pdTRUE, pdFALSE, ( TickType_t ) 10);
+                EVENT_START | EVENT_STOP | EVENT_PAUSE | EVENT_RESUME | EVENT_RESTART, pdTRUE, pdFALSE, ( TickType_t ) 10);
 
         if( ( bits & EVENT_START ) != 0  &&  run_flag) {
             ESP_LOGI(TAG, "EVENT_START");
@@ -371,6 +372,19 @@ static void __tf_engine_task(void *p_arg)
         if( (bits & EVENT_RESUME)  != 0 && pause_flag ) {
             ESP_LOGI(TAG, "EVENT_RESUME");
             pause_flag = false;
+            ret = __run(p_engine);
+            if(  ret == ESP_OK ) {
+                run_flag = true;
+            } else {
+                __stop(p_engine);
+                __clear(p_engine);
+                run_flag = false;
+            }
+        }
+        
+        if( ( bits & EVENT_RESTART ) != 0  &&  run_flag) {
+            ESP_LOGI(TAG, "EVENT_RESTART");
+            __stop(p_engine);
             ret = __run(p_engine);
             if(  ret == ESP_OK ) {
                 run_flag = true;
@@ -524,6 +538,13 @@ esp_err_t tf_engine_stop(void)
 {
     assert(gp_engine);
     xEventGroupSetBits(gp_engine->event_group, EVENT_STOP);
+    return ESP_OK;
+}
+
+esp_err_t tf_engine_restart(void)
+{
+    assert(gp_engine);
+    xEventGroupSetBits(gp_engine->event_group, EVENT_RESTART);
     return ESP_OK;
 }
 

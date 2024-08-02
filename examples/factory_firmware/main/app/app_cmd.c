@@ -260,7 +260,7 @@ static void register_cmd_reboot(void)
 /************* factory reset **************/
 static int do_factory_reset(int argc, char **argv)
 {
-    set_reset_factory();
+    set_reset_factory(false);
     return 0;
 }
 
