@@ -230,8 +230,16 @@ static int __http_report_warn_event(tf_module_http_alarm_t *p_module_ins,
                         temp /= 10;
                         humi = app_sensor_data[i].context.scd4x.humidity / 1000;
                         co2 = app_sensor_data[i].context.scd4x.co2 / 1000;
-                        cJSON_AddItemToObject(sensor, "temperature", cJSON_CreateNumber(temp));
-                        cJSON_AddItemToObject(sensor, "humidity", cJSON_CreateNumber(humi));
+
+                        cJSON *json_tmp = NULL;
+                        json_tmp = cJSON_GetObjectItem(sensor, "temperature");
+                        if (json_tmp == NULL || json_tmp->type == cJSON_NULL) {
+                            cJSON_AddItemToObject(sensor, "temperature", cJSON_CreateNumber(temp));
+                        }
+                        json_tmp = cJSON_GetObjectItem(sensor, "humidity");
+                        if (json_tmp == NULL || json_tmp->type == cJSON_NULL) {
+                            cJSON_AddItemToObject(sensor, "humidity", cJSON_CreateNumber(humi));
+                        }
                         cJSON_AddItemToObject(sensor, "CO2", cJSON_CreateNumber(co2));
                     }
                 }
