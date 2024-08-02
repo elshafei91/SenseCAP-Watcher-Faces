@@ -164,8 +164,8 @@ esp_io_expander_handle_t bsp_io_expander_init()
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
     esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
     esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
-    esp_io_expander_set_level(io_exp_handle, BSP_PWR_LCD | BSP_PWR_SYSTEM, 1); // OPTIMIZE: Implement Workaround for LCD Chip Lockup Due to Incomplete Power Down
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+    esp_io_expander_set_level(io_exp_handle, BSP_PWR_SYSTEM, 1);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
     esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
     vTaskDelay(50 / portTICK_PERIOD_MS);
 
@@ -240,6 +240,29 @@ esp_err_t bsp_i2c_bus_init(void)
     };
     BSP_ERROR_CHECK_RETURN_ERR(i2c_param_config(BSP_GENERAL_I2C_NUM, &i2c_conf));
     BSP_ERROR_CHECK_RETURN_ERR(i2c_driver_install(BSP_GENERAL_I2C_NUM, i2c_conf.mode, 0, 0, ESP_INTR_FLAG_SHARED));
+
+    // pulldown for lcd i2c
+    const gpio_config_t io_config = {
+        .pin_bit_mask = (1ULL << BSP_TOUCH_I2C_SDA) | (1ULL << BSP_TOUCH_I2C_SCL) | (1ULL << BSP_SPI3_HOST_PCLK) | (1ULL << BSP_SPI3_HOST_DATA0) | (1ULL << BSP_SPI3_HOST_DATA1)
+                        | (1ULL << BSP_SPI3_HOST_DATA2) | (1ULL << BSP_SPI3_HOST_DATA3) | (1ULL << BSP_LCD_SPI_CS) | (1UL << BSP_LCD_GPIO_BL),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLUP_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&io_config);
+
+    gpio_set_level(BSP_TOUCH_I2C_SDA, 0);
+    gpio_set_level(BSP_TOUCH_I2C_SCL, 0);
+
+    gpio_set_level(BSP_LCD_SPI_CS, 0);
+    gpio_set_level(BSP_LCD_GPIO_BL, 0);
+    gpio_set_level(BSP_SPI3_HOST_PCLK, 0);
+    gpio_set_level(BSP_SPI3_HOST_DATA0, 0);
+    gpio_set_level(BSP_SPI3_HOST_DATA1, 0);
+    gpio_set_level(BSP_SPI3_HOST_DATA2, 0);
+    gpio_set_level(BSP_SPI3_HOST_DATA3, 0);
+
     initialized = true;
     return ESP_OK;
 }
