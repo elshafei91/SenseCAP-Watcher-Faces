@@ -34,6 +34,9 @@ extern "C"
 #define TF_STATUS_ERR_MODULES_START     106
 #define TF_STATUS_ERR_MODULES_INTERNAL  107   // module runtime internal error
 
+#define TF_STATUS_ERR_DEVICE_OTA        200   // The device is in OTA mode and cannot run the taskflow
+#define TF_STATUS_ERR_DEVICE_VI         201   // The device is in voice interaction mode and cannot run taskflow
+
 
 typedef struct
 {

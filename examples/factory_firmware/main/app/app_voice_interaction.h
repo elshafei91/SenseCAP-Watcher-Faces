@@ -83,6 +83,8 @@ struct app_voice_interaction {
 
 esp_err_t app_voice_interaction_init(void);
 
+bool app_vi_session_is_running(void);
+
 int app_vi_result_parse(const char *p_str, size_t len,
                         struct view_data_vi_result *p_ret);
 

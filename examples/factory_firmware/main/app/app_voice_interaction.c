@@ -1112,6 +1112,14 @@ err:
     return ret;
 }
 
+bool app_vi_session_is_running(void)
+{
+    struct app_voice_interaction * p_vi = gp_voice_interaction;
+    if( p_vi == NULL) {
+        return false;
+    }
+    return !p_vi->new_session;
+}
 
 int app_vi_result_parse(const char *p_str, size_t len,
                         struct view_data_vi_result *p_ret)

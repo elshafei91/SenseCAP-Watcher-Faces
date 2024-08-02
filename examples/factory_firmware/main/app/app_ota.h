@@ -124,6 +124,10 @@ esp_err_t app_ota_himax_fw_download(char *url);
 */
 void  app_ota_any_ignore_version_check(bool ignore);
 
+/*
+ * check if ota esp32 fw or himax fw is running 
+*/
+bool app_ota_fw_is_running();
 
 #ifdef __cplusplus
 }
