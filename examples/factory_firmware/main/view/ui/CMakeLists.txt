@@ -86,6 +86,7 @@ SET(SOURCES screens/ui_Page_Battery.c
     fonts/ui_font_fontbold26.c
     fonts/ui_font_font_bold.c
     fonts/ui_font_semibold16.c
+    fonts/ui_font_semibold16extend.c
     fonts/ui_font_semibold28.c
     fonts/ui_font_semibold34extend.c
     fonts/ui_font_semibold42.c

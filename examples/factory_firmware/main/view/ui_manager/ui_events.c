@@ -131,6 +131,9 @@ static char *push2talk_text = NULL;
 static uint32_t push2talk_text_index = 0;
 static bool push2talk_timer_active = false;
 
+// extension
+uint8_t bubble_position[4] = {0, 1, 2, 3};
+
 // Bluetooth switch frequency filter
 static lv_timer_t * view_ble_switch_timer;
 
@@ -1889,9 +1892,285 @@ void ui_event_emoticonok(lv_event_t * e)
     }
 }
 
+/*----------------------------------------------extension sensor------------------------------------------------------*/
+static char sensor_data_1[6];
+static char sensor_data_2[6];
+static char sensor_data_3[6];
+static char sensor_data_4[6];
+typedef struct {
+    int cur_idx;
+    int pre_idx;
+} ExtensionScroll;
 
+ExtensionScroll extensionscroll;
+
+void sensor_date_update_cb();
+
+void sensor_data_update(const char *data1, const char *data2, const char *data3, const char *data4) 
+{
+    strncpy(sensor_data_1, data1, sizeof(sensor_data_1) - 1);
+    sensor_data_1[sizeof(sensor_data_1) - 1] = '\0';
+
+    strncpy(sensor_data_2, data2, sizeof(sensor_data_2) - 1);
+    sensor_data_2[sizeof(sensor_data_2) - 1] = '\0';
+
+    strncpy(sensor_data_3, data3, sizeof(sensor_data_3) - 1);
+    sensor_data_3[sizeof(sensor_data_3) - 1] = '\0';
+
+    strncpy(sensor_data_4, data4, sizeof(sensor_data_4) - 1);
+    sensor_data_4[sizeof(sensor_data_4) - 1] = '\0';
+
+    // ESP_LOGI(TAG, "text1: %s, text2: %s, text3: %s, text4: %s", sensor_data_1, sensor_data_2, sensor_data_3, sensor_data_4);
+    sensor_date_update_cb();
+}
+
+
+void sensor_date_update_cb()
+{
+    switch(bubble_position[EXTENSION_TEMP])
+    {
+        case 0:{
+            lv_label_set_text(ui_extensionbubble1Value, sensor_data_1);
+            lv_label_set_text(ui_extensionbubble2Unit, "°C");
+            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_2057255035);
+            lv_obj_add_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 1:{
+            lv_label_set_text(ui_extensionbubble2Value, sensor_data_1);
+            lv_label_set_text(ui_extensionbubble2Unit, "°C");
+            lv_img_set_src(ui_extensionbubble2Icon, &ui_img_2057255035);
+            lv_obj_add_flag(ui_extensionbubble2Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 2:{
+            lv_label_set_text(ui_extensionbubble3Value, sensor_data_1);
+            lv_label_set_text(ui_extensionbubble3Unit, "°C");
+            lv_img_set_src(ui_extensionbubble3Icon, &ui_img_2057255035);
+            lv_obj_add_flag(ui_extensionbubble3Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 3:{
+            lv_label_set_text(ui_extensionbubble4Value, sensor_data_1);
+            lv_label_set_text(ui_extensionbubble4Unit, "°C");
+            // lv_img_set_src(ui_extensionbubble4Icon, &ui_img_2057255035);
+            lv_obj_add_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Unit, LV_OBJ_FLAG_HIDDEN);
+
+            break;
+        }
+    }
+
+    switch(bubble_position[EXTENSION_HUMI])
+    {
+        case 0:{
+            lv_label_set_text(ui_extensionbubble1Value, sensor_data_2);
+            lv_label_set_text(ui_extensionbubble1Unit, "%");
+            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_1955521171);
+            lv_obj_add_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 1:{
+            lv_label_set_text(ui_extensionbubble2Value, sensor_data_2);
+            lv_label_set_text(ui_extensionbubble2Unit, "%");
+            lv_img_set_src(ui_extensionbubble2Icon, &ui_img_1955521171);
+            lv_obj_add_flag(ui_extensionbubble2Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 2:{
+            lv_label_set_text(ui_extensionbubble3Value, sensor_data_2);
+            lv_label_set_text(ui_extensionbubble3Unit, "%");
+            lv_img_set_src(ui_extensionbubble3Icon, &ui_img_1955521171);
+            lv_obj_add_flag(ui_extensionbubble3Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 3:{
+            lv_label_set_text(ui_extensionbubble4Value, sensor_data_2);
+            lv_label_set_text(ui_extensionbubble4Unit, "%");
+            // lv_img_set_src(ui_extensionbubble4Icon, &ui_img_1955521171);
+            lv_obj_add_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+    }
+
+    switch(bubble_position[EXTENSION_CO2])
+    {
+        case 0:{
+            lv_label_set_text(ui_extensionbubble1Value, sensor_data_3);
+            lv_label_set_text(ui_extensionbubble1Unit, "ppm");
+            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_529164268);
+            lv_obj_add_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 1:{
+            lv_label_set_text(ui_extensionbubble2Value, sensor_data_3);
+            lv_label_set_text(ui_extensionbubble2Unit, "ppm");
+            lv_img_set_src(ui_extensionbubble2Icon, &ui_img_529164268);
+            lv_obj_add_flag(ui_extensionbubble2Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 2:{
+            lv_label_set_text(ui_extensionbubble3Value, sensor_data_3);
+            lv_label_set_text(ui_extensionbubble3Unit, "ppm");
+            lv_img_set_src(ui_extensionbubble3Icon, &ui_img_529164268);
+            lv_obj_add_flag(ui_extensionbubble3Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 3:{
+            lv_label_set_text(ui_extensionbubble4Value, sensor_data_3);
+            lv_label_set_text(ui_extensionbubble4Unit, "ppm");
+            // lv_img_set_src(ui_extensionbubble4Icon, &ui_img_529164268);
+            lv_obj_add_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+    }
+
+    switch(bubble_position[EXTENSION_BACK])
+    {
+        case 0:{
+            lv_obj_add_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble1Unit, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 1:{
+            lv_obj_add_flag(ui_extensionbubble2Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble2Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble2Unit, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Icon2, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 2:{
+            lv_obj_add_flag(ui_extensionbubble3Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble3Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble3Unit, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Icon2, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 3:{
+            lv_obj_add_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble4Unit, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
+            
+            break;
+        }
+    }
+
+    // for (int i = 0; i < 4; i++)
+    // {
+    //     ESP_LOGI(TAG, "bubble%d_position: %d", i, bubble_position[i]);
+    // }
+}
+
+void rotate_positions(uint8_t positions[], int size, int direction)
+{
+    uint8_t temp[4];
+    for (int i = 0; i < size; i++) {
+        if (direction == 1) {
+            temp[(i + 1) % size] = positions[i];
+        } else {
+            temp[(i + size - 1) % size] = positions[i];
+        }
+    }
+    for (int i = 0; i < size; i++) {
+        positions[i] = temp[i];
+    }
+}
+
+void bubble2f_cb(lv_event_t * e)
+{
+    // ESP_LOGI(TAG, "bubble2f_cb");
+    extensionscroll.cur_idx = 1;
+    if(extensionscroll.cur_idx - extensionscroll.pre_idx == -2)
+    {
+        rotate_positions(bubble_position, 4, 1);
+    } else {
+        rotate_positions(bubble_position, 4, -1);
+    }
+    sensor_date_update_cb();
+    extensionscroll.pre_idx = extensionscroll.cur_idx;
+}
+
+void bubble2c_cb(lv_event_t * e)
+{
+
+}
+
+void bubble3f_cb(lv_event_t * e)
+{
+    // ESP_LOGI(TAG, "bubble3f_cb");
+    extensionscroll.cur_idx = 2;
+    if(extensionscroll.cur_idx - extensionscroll.pre_idx == 1)
+    {
+        rotate_positions(bubble_position, 4, 1);
+    } else {
+        rotate_positions(bubble_position, 4, -1);
+    }
+    sensor_date_update_cb();
+    extensionscroll.pre_idx = extensionscroll.cur_idx;
+}
+
+void bubble3c_cb(lv_event_t * e)
+{
+
+}
+
+void bubble4f_cb(lv_event_t * e)
+{
+    // ESP_LOGI(TAG, "bubble4f_cb");
+    extensionscroll.cur_idx = 3;
+    if(extensionscroll.cur_idx - extensionscroll.pre_idx == 1)
+    {
+        rotate_positions(bubble_position, 4, 1);
+    } else {
+        rotate_positions(bubble_position, 4, -1);
+    }
+    sensor_date_update_cb();
+    extensionscroll.pre_idx = extensionscroll.cur_idx;
+}
+
+void bubble4c_cb(lv_event_t * e)
+{
+
+}
 /*----------------------------------------------push 2 talk------------------------------------------------------*/
-// TODO
 void push2talk_init(void)
 {
     push2talk_textarea = lv_textarea_create(ui_Page_Push2talk);
