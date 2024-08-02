@@ -43,7 +43,8 @@ enum tf_data_inference_type {
     INFERENCE_TYPE_UNKNOWN = 0,
     INFERENCE_TYPE_BOX,    //sscma_client_box_t
     INFERENCE_TYPE_CLASS,  //sscma_client_class_t
-    INFERENCE_TYPE_POINT   //sscma_client_point_t
+    INFERENCE_TYPE_POINT,  //sscma_client_point_t
+    INFERENCE_TYPE_KEYPOINT     //sscma_client_keypoint_t
 };
 
 // classes max num

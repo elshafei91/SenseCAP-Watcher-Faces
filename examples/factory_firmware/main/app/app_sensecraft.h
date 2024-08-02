@@ -5,6 +5,7 @@
 #include "cJSON.h"
 #include "data_defs.h"
 #include "mqtt_client.h"
+#include "esp_timer.h"
 
 #ifdef __cplusplus
 extern "C" {

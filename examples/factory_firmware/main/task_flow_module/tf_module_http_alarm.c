@@ -9,12 +9,20 @@
 #include "app_device_info.h"
 #include "tf_module_http_alarm.h"
 #include "tf_module_util.h"
+#include "util.h"
 #include "uuid.h"
 #include "app_sensecraft.h"
+#include "app_sensor.h"
 
 static const char *TAG = "tfm.http_alarm";
 
+#define EVENT_STOP          BIT0
+#define EVENT_STOP_DONE     BIT1 
+#define EVENT_NEED_DELETE   BIT2
+#define EVENT_TASK_DELETED  BIT3 
+
 extern struct app_sensecraft *gp_sensecraft;
+extern char * __token_gen(void);
 
 static void __data_lock( tf_module_http_alarm_t *p_module)
 {
@@ -30,7 +38,7 @@ static void __parmas_default(struct tf_module_http_alarm_params *p_params)
     p_params->time_en = true;
     p_params->text_en = true;
     p_params->image_en = true;
-    p_params->sensor_en = false;
+    p_params->sensor_en = true;
     p_params->silence_duration = TF_MODULE_HTTP_ALARM_DEFAULT_SILENCE_DURATION;
     p_params->text.p_buf = NULL;
     p_params->text.len = 0;
@@ -175,9 +183,8 @@ static int __http_report_warn_event(tf_module_http_alarm_t *p_module_ins,
     cJSON_AddItemToObject(json, "events", events);
 
     if (p_params->time_en) {
-        time_t now = 0;
-        time(&now);
-        cJSON_AddItemToObject(events, "timestamp", cJSON_CreateNumber(now));
+        time_t timestamp_ms = util_get_timestamp_ms();
+        cJSON_AddItemToObject(events, "timestamp", cJSON_CreateNumber(timestamp_ms));
     }
 
     if (p_params->text_en) {
@@ -195,17 +202,49 @@ static int __http_report_warn_event(tf_module_http_alarm_t *p_module_ins,
         }
         cJSON_AddItemToObject(events, "img", cJSON_CreateString(p_str));
     }
+
+    cJSON *data = NULL;
+    data = cJSON_CreateObject();
+    cJSON_AddItemToObject(events, "data", data);
     
     if (p_params->sensor_en) {
-        // TODO get sensor data
-        double temp = 25.1;
-        uint32_t humi = 50, co2 = 800;
-        cJSON *sensor = NULL;
-        sensor = cJSON_CreateObject();
-        cJSON_AddItemToObject(events, "sensor", sensor);
-        cJSON_AddItemToObject(sensor, "temperature", cJSON_CreateNumber(temp));
-        cJSON_AddItemToObject(sensor, "humidity", cJSON_CreateNumber(humi));
-        cJSON_AddItemToObject(sensor, "CO2", cJSON_CreateNumber(co2));
+        double temp = 0;
+        uint32_t humi = 0, co2 = 0;
+        uint8_t sensor_num = 0;
+        app_sensor_data_t app_sensor_data[APP_SENSOR_SUPPORT_MAX] = {0};
+        sensor_num = app_sensor_read_measurement(app_sensor_data, sizeof(app_sensor_data_t) * APP_SENSOR_SUPPORT_MAX);
+        if( sensor_num ) {
+            cJSON *sensor = NULL;
+            sensor = cJSON_CreateObject();
+            cJSON_AddItemToObject(data, "sensor", sensor);
+            for (uint8_t i = 0; i < sensor_num; i ++) {
+                if (app_sensor_data[i].state) {
+                    if (app_sensor_data[i].type == SENSOR_SHT4x) {
+                        temp = (app_sensor_data[i].context.sht4x.temperature + 50) / 100;
+                        temp /= 10;
+                        humi = app_sensor_data[i].context.sht4x.humidity / 1000;
+                        cJSON_AddItemToObject(sensor, "temperature", cJSON_CreateNumber(temp));
+                        cJSON_AddItemToObject(sensor, "humidity", cJSON_CreateNumber(humi));
+                    } else if(app_sensor_data[i].type == SENSOR_SCD4x) {
+                        temp = (app_sensor_data[i].context.scd4x.temperature + 50) / 100;
+                        temp /= 10;
+                        humi = app_sensor_data[i].context.scd4x.humidity / 1000;
+                        co2 = app_sensor_data[i].context.scd4x.co2 / 1000;
+
+                        cJSON *json_tmp = NULL;
+                        json_tmp = cJSON_GetObjectItem(sensor, "temperature");
+                        if (json_tmp == NULL || json_tmp->type == cJSON_NULL) {
+                            cJSON_AddItemToObject(sensor, "temperature", cJSON_CreateNumber(temp));
+                        }
+                        json_tmp = cJSON_GetObjectItem(sensor, "humidity");
+                        if (json_tmp == NULL || json_tmp->type == cJSON_NULL) {
+                            cJSON_AddItemToObject(sensor, "humidity", cJSON_CreateNumber(humi));
+                        }
+                        cJSON_AddItemToObject(sensor, "CO2", cJSON_CreateNumber(co2));
+                    }
+                }
+            }
+        }
     }
 
     __data_unlock(p_module_ins);
@@ -241,7 +280,7 @@ static int __http_report_warn_event(tf_module_http_alarm_t *p_module_ins,
 
     ret = -1;
     cJSON *code = cJSON_GetObjectItem(json, "code");
-    if (code != NULL && cJSON_IsNumber(code) && code->valueint == 200) {
+    if (code != NULL && cJSON_IsNumber(code) && code->valueint == 0) {
         // TODO
         ret = 0; //success
     } else {
@@ -276,18 +315,89 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     diff = difftime(now, p_module_ins->last_alarm_time);
     if ( diff >= p_params->silence_duration  || (p_module_ins->last_alarm_time == 0) ) {
         ESP_LOGI(TAG, "Notify http alarm...");
-
+        
         p_module_ins->last_alarm_time = now;
-        tf_data_dualimage_with_audio_text_t *p_data = (tf_data_dualimage_with_audio_text_t*)p_event_data;
 
-        ret = __http_report_warn_event(p_module_ins, p_data);
-        if( ret != ESP_OK ) {
-            ESP_LOGE(TAG, "Faild to report http alarm");
+        if( xQueueSend(p_module_ins->queue_handle, p_event_data, ( TickType_t ) 0) != pdTRUE) {
+            ESP_LOGW(TAG, "xQueueSend failed");
+            tf_data_free(p_event_data);
         }
     } else {
         ESP_LOGI(TAG, "Silence: %d, diff: %f, Skip http alarm", p_params->silence_duration, diff);
+        tf_data_free(p_event_data);
     }
-    tf_data_free(p_event_data);
+}
+
+static void http_alarm_task(void *p_arg)
+{
+    int ret = 0;
+    tf_module_http_alarm_t *p_module_ins = (tf_module_http_alarm_t *)p_arg;
+    struct tf_module_http_alarm_params *p_params = &p_module_ins->params;
+    tf_data_dualimage_with_audio_text_t data;
+    EventBits_t bits;
+
+    while(1) {
+        bits = xEventGroupWaitBits(p_module_ins->event_group, \
+                EVENT_NEED_DELETE | EVENT_STOP , pdTRUE, pdFALSE, (TickType_t)10);
+
+        if (( bits & EVENT_NEED_DELETE ) != 0) {
+            ESP_LOGI(TAG, "EVENT_NEED_DELETE");
+            while (xQueueReceive(p_module_ins->queue_handle, &data,0) == pdPASS ) {
+                tf_data_free((void *)&data); //clear queue
+            }
+            xEventGroupSetBits(p_module_ins->event_group, EVENT_TASK_DELETED);
+            vTaskDelete(NULL);
+        }
+
+        if (( bits & EVENT_STOP ) != 0) {
+            ESP_LOGI(TAG, "EVENT_STOP");
+            while (xQueueReceive(p_module_ins->queue_handle, &data,0) == pdPASS ) {
+                tf_data_free((void *)&data); //clear queue
+            }
+            xEventGroupSetBits(p_module_ins->event_group, EVENT_STOP_DONE);
+        }
+
+        if (xQueueReceive(p_module_ins->queue_handle, &data, (TickType_t)10) == pdPASS) {
+            ESP_LOGI(TAG, "Start send http alarm");
+
+            ret = __http_report_warn_event(p_module_ins, &data);
+            if (ret == 0) {
+                ESP_LOGI(TAG, "Success to report http alarm");
+            }
+            else {
+                ESP_LOGE(TAG, "Faild to report http alarm");
+            }
+
+            tf_data_free((void *)&data);
+        }
+    }
+}
+
+static void http_alarm_task_destroy(tf_module_http_alarm_t *p_module_ins)
+{
+    xEventGroupSetBits(p_module_ins->event_group, EVENT_NEED_DELETE);
+    xEventGroupWaitBits(p_module_ins->event_group, EVENT_TASK_DELETED, 1, 1, portMAX_DELAY);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);  //wait task delete done
+    if( p_module_ins->p_task_stack_buf ) {
+        tf_free(p_module_ins->p_task_stack_buf);
+        p_module_ins->p_task_stack_buf = NULL;
+    }
+    if( p_module_ins->p_task_buf ) {
+        free(p_module_ins->p_task_buf);
+        p_module_ins->p_task_buf = NULL;
+    }
+    if (p_module_ins->sem_handle) {
+        vSemaphoreDelete(p_module_ins->sem_handle);
+        p_module_ins->sem_handle = NULL;
+    }
+    if (p_module_ins->event_group) {
+        vEventGroupDelete(p_module_ins->event_group);
+        p_module_ins->event_group = NULL;
+    }
+    if ( p_module_ins->queue_handle ) {
+        vQueueDelete(p_module_ins->queue_handle);
+        p_module_ins->queue_handle = NULL;
+    }
 }
 
 /*************************************************************************
@@ -329,17 +439,17 @@ static int __cfg(void *p_module, cJSON *p_json)
         }
     } else {
         ESP_LOGI(TAG, "local service disable");
-        return -1;
+        // return -1;
     }
 
-    if (p_host) {
-        snprintf(p_module_ins->url, sizeof(p_module_ins->url), "%s", p_host);
-    } else {
-        p_module_ins->url[0] = '\0';
-    }
+    // host
+    if (p_host == NULL) p_host = CONFIG_TF_MODULE_HTTP_ALARM_SERV_HOST;
+    snprintf(p_module_ins->url, sizeof(p_module_ins->url), "%s%s", p_host, CONFIG_TF_MODULE_HTTP_ALARM_SERV_REQ_PATH);
 
+    // token
+    if (p_token == NULL) p_token = __token_gen();
     if (p_token) {
-        snprintf(p_module_ins->token, sizeof(p_module_ins->token), "%s", p_token);
+        snprintf(p_module_ins->token, sizeof(p_module_ins->token), "Device %s", p_token);
     } else {
         p_module_ins->token[0] = '\0';
     }
@@ -352,11 +462,6 @@ static int __cfg(void *p_module, cJSON *p_json)
     }
 
     p_module_ins->head[0] = '\0';
-
-    if (p_module_ins->url[0] == '\0') {
-        ESP_LOGE(TAG, "url is not exist");
-        return -1;
-    }
     
     __data_lock(p_module_ins);
     __parmas_default(&p_module_ins->params);
@@ -398,11 +503,7 @@ static tf_module_t * __module_instance(void)
 static void __module_destroy(tf_module_t *handle)
 {
     if( handle ) {
-        tf_module_http_alarm_t *p_module_ins = (tf_module_http_alarm_t *)handle->p_module;
-        if (p_module_ins->sem_handle) {
-            vSemaphoreDelete(p_module_ins->sem_handle);
-            p_module_ins->sem_handle = NULL;
-        }
+        http_alarm_task_destroy((tf_module_http_alarm_t *)handle->p_module);
         free(handle->p_module);
     }
 }
@@ -441,14 +542,57 @@ tf_module_t * tf_module_http_alarm_init(tf_module_http_alarm_t *p_module_ins)
 
     p_module_ins->input_evt_id = 0;
     p_module_ins->last_alarm_time = 0;
+
     p_module_ins->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");
 
+    p_module_ins->event_group = xEventGroupCreate();
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->event_group, ESP_ERR_NO_MEM, err, TAG, "Failed to create event_group");
+
+    p_module_ins->queue_handle = xQueueCreate(TF_MODULE_HTTP_ALARM_QUEUE_SIZE, sizeof(tf_data_dualimage_with_audio_text_t));
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->queue_handle, ESP_FAIL, err, TAG, "Failed to create queue");
+
+    p_module_ins->p_task_stack_buf = (StackType_t *)tf_malloc(TF_MODULE_HTTP_ALARM_TASK_STACK_SIZE);
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->p_task_stack_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task stack");
+
+    // task TCB must be allocated from internal memory 
+    p_module_ins->p_task_buf = heap_caps_malloc(sizeof(StaticTask_t),  MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ESP_GOTO_ON_FALSE(NULL != p_module_ins->p_task_buf, ESP_ERR_NO_MEM, err, TAG, "Failed to malloc task TCB");
+
+    p_module_ins->task_handle = xTaskCreateStatic(http_alarm_task,
+                                                "http_alarm_task",
+                                                TF_MODULE_HTTP_ALARM_TASK_STACK_SIZE,
+                                                (void *)p_module_ins,
+                                                TF_MODULE_HTTP_ALARM_TASK_PRIO,
+                                                p_module_ins->p_task_stack_buf,
+                                                p_module_ins->p_task_buf);
+    ESP_GOTO_ON_FALSE(p_module_ins->task_handle, ESP_FAIL, err, TAG, "Failed to create task");
+
     return &p_module_ins->module_base;
 err:
+    if(p_module_ins->task_handle ) {
+        vTaskDelete(p_module_ins->task_handle);
+        p_module_ins->task_handle = NULL;
+    }
+    if( p_module_ins->p_task_stack_buf ) {
+        tf_free(p_module_ins->p_task_stack_buf);
+        p_module_ins->p_task_stack_buf = NULL;
+    }
+    if( p_module_ins->p_task_buf ) {
+        free(p_module_ins->p_task_buf);
+        p_module_ins->p_task_buf = NULL;
+    }
     if (p_module_ins->sem_handle) {
         vSemaphoreDelete(p_module_ins->sem_handle);
         p_module_ins->sem_handle = NULL;
+    }
+    if (p_module_ins->event_group) {
+        vEventGroupDelete(p_module_ins->event_group);
+        p_module_ins->event_group = NULL;
+    }
+    if( p_module_ins->queue_handle ) {
+        vQueueDelete(p_module_ins->queue_handle);
+        p_module_ins->queue_handle = NULL;
     }
     return NULL;
 }

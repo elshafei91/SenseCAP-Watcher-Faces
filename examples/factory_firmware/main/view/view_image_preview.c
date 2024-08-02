@@ -273,7 +273,7 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
                     lv_snprintf(buf1, sizeof(buf1), "%s:%d", p_class_name, p_class[i].score);
                     
                     
-                    lv_obj_set_pos(ui_class_name[i], 180, 60 + i*40);
+                    lv_obj_set_pos(ui_class_name[i], 60, 60 + i*40);
                     lv_label_set_text(ui_class_name[i], buf1);
                     lv_obj_set_style_bg_color(ui_class_name[i], color, LV_PART_MAIN | LV_STATE_DEFAULT);
                     lv_obj_set_style_bg_opa(ui_class_name[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);

@@ -1,6 +1,9 @@
 set(APP_DIR ./app)
 file(GLOB_RECURSE APP_SRCS ${APP_DIR}/*.c)
 
+set(SENSOR_DIR ./sensor)
+file(GLOB_RECURSE SENSOR_SRCS ${SENSOR_DIR}/*.c)
+
 set(VIEW_DIR ./view)
 file(GLOB_RECURSE VIEW_SRCS ${VIEW_DIR}/*.c)
 
@@ -19,6 +22,7 @@ idf_component_register(
     SRCS
         "main.c"
         ${APP_SRCS}
+        ${SENSOR_SRCS}
         ${VIEW_SRCS}
         ${UTIL_SRCS}
         ${TASK_FLOW_ENGINE_SRCS}
@@ -27,6 +31,7 @@ idf_component_register(
     INCLUDE_DIRS
         "."
         ${APP_DIR}
+        ${SENSOR_DIR}
         ${VIEW_DIR}
         ${UTIL_DIR}
         ${TASK_FLOW_ENGINE_DIR}/include

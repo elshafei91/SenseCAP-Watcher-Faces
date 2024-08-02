@@ -54,10 +54,15 @@ esp_err_t set_local_service_cfg_type1(int caller, int cfg_index, bool enable, ch
 int get_usage_guide(int caller);
 esp_err_t set_usage_guide(int caller, int value);
 
-esp_err_t set_reset_factory();
+esp_err_t set_reset_factory(bool is_need_shutdown);
 
 esp_err_t set_ble_switch(int caller, int status);
 int get_ble_switch(int caller);
+
+int get_sleep_time(int caller);
+int get_sleep_switch(int caller);
+esp_err_t set_sleep_time(int caller, int status);
+esp_err_t set_sleep_switch(int caller, int status);
 
 /**
  * all the following size unit is KiB.

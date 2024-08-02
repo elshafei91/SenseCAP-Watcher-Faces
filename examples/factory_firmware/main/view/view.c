@@ -1,6 +1,7 @@
 #include "view.h"
 #include "view_image_preview.h"
 #include "view_alarm.h"
+#include "view_pages.h"
 #include "sensecap-watcher.h"
 
 #include "util.h"
@@ -8,6 +9,8 @@
 #include <time.h>
 #include "app_device_info.h"
 #include "app_png.h"
+#include "app_voice_interaction.h"
+
 #include "ui_manager/pm.h"
 #include "ui_manager/animation.h"
 #include "ui_manager/event.h"
@@ -19,17 +22,31 @@ static const char *TAG = "view";
 static int png_loading_count = 0;
 static bool battery_flag_toggle = 0;
 static int battery_blink_count = 0;
+static uint8_t system_mode = 0;     // 0: normal; 1: sleep; 2: standby
+static uint32_t inactive_time = 0;
 
 lv_obj_t * pre_foucsed_obj = NULL;
 uint8_t g_group_layer_ = 0;
 uint8_t g_shutdown = 0;
 uint8_t g_dev_binded = 0;
+uint8_t g_push2talk_status = 0;
+uint8_t g_taskflow_pause = 0;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_guide_disable;
 extern uint8_t g_avarlive;
 extern uint8_t g_tasktype;
 extern uint8_t g_backpage;
+extern uint8_t g_push2talk_timer;
+uint8_t g_push2talk_mode = 0;
+char *push2talk_item[TASK_CFG_ID_MAX];
+extern lv_obj_t *push2talk_textarea;
+
+// sleep mode
+extern int g_sleep_switch;
+extern uint8_t sleep_mode;
+
+extern uint8_t emoji_switch_scr;
 
 extern lv_img_dsc_t *g_detect_img_dsc[MAX_IMAGES];
 extern lv_img_dsc_t *g_speak_img_dsc[MAX_IMAGES];
@@ -41,6 +58,10 @@ extern lv_img_dsc_t *g_detected_img_dsc[MAX_IMAGES];
 
 extern lv_obj_t * ui_taskerrt2;
 extern lv_obj_t * ui_task_error;
+
+// view standby 
+extern lv_obj_t * ui_Page_Standby;
+
 // view_alarm obj extern
 extern lv_obj_t * ui_viewavap;
 extern lv_obj_t * ui_viewpbtn1;
@@ -48,6 +69,9 @@ extern lv_obj_t * ui_viewpt1;
 extern lv_obj_t * ui_viewpbtn2;
 extern lv_obj_t * ui_viewpt2;
 extern lv_obj_t * ui_viewpbtn3;
+
+// view standby 
+extern lv_obj_t * ui_Page_Standby;
 
 extern lv_obj_t * ui_Page_Emoji;
 extern lv_obj_t * ui_failed;
@@ -77,25 +101,6 @@ extern int g_analyze_image_count;
 extern int g_standby_image_count;
 extern int g_greet_image_count;
 extern int g_detected_image_count;
-
-static void waiting_timer_callback(void *arg);
-static const esp_timer_create_args_t waiting_timer_args = { .callback = &waiting_timer_callback, .name = "waiting for ble" };
-static esp_timer_handle_t waiting_timer;
-
-static void waiting_timer_callback(void *arg)
-{
-    lv_obj_clear_state(ui_setblesw, LV_STATE_DISABLED);
-}
-
-
-void wait_timer_start()
-{
-    if (esp_timer_is_active(waiting_timer))
-    {
-        esp_timer_stop(waiting_timer);
-    }
-    ESP_ERROR_CHECK(esp_timer_start_once(waiting_timer, (uint64_t)1000000));
-}
 
 static void update_ai_ota_progress(int percentage)
 {
@@ -166,7 +171,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 if(g_group_layer_ == 0)
                 {
                     pre_foucsed_obj = lv_group_get_focused(g_main);
-                    ESP_LOGI(TAG, "pre_foucsed_obj : %d", pre_foucsed_obj);
                 }
                 lv_group_add_obj(g_main, ui_emoticonok);
                 lv_group_focus_obj(ui_emoticonok);
@@ -176,7 +180,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_move_foreground(ui_Page_Emoji);
                 lv_obj_set_style_bg_color(ui_emoticonok, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
 
-                // ESP_LOGI(TAG, "emoji_download_per : %d", *emoji_download_per);
                 if(*emoji_download_per < 100){
                     lv_obj_clear_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);
@@ -430,6 +433,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 view_alarm_on(alarm_st);
                 tf_data_buf_free(&(alarm_st->text));
                 tf_data_image_free(&(alarm_st->img));
+
+                if(g_sleep_switch == 1 && sleep_mode == 1)
+                {
+                    int brightness = get_brightness(UI_CALLER);
+                    bsp_lcd_brightness_set(brightness);
+                }
+
                 break;
             }
 
@@ -437,6 +447,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
                 uint8_t * task_st = (uint8_t *)event_data;
                 view_alarm_off(task_st);
+
+                if(g_sleep_switch == 1 && sleep_mode == 1)
+                {
+                    bsp_lcd_brightness_set(0);
+                }
+
                 break;
             }
 
@@ -505,20 +521,23 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 if(ota_st->status == 1)
                 {
                     update_ota_progress(ota_st->percentage);
-                    lv_label_set_text(ui_otatext, "Updating\nFirmware, this might take several minutes...");
+                    lv_label_set_text(ui_otastatus, "Updating\nFirmware");
+                    lv_obj_clear_flag(ui_otatext, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
                 }else if (ota_st->status == 2)
                 {
                     ESP_LOGI(TAG, "OTA download succeeded");
-                    lv_label_set_text(ui_otatext, "Update\nSuccessful");
+                    lv_label_set_text(ui_otastatus, "Update\nSuccessful");
+                    lv_obj_add_flag(ui_otatext, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_otaicon, &ui_img_wifiok_png);
                     lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
                 }else if (ota_st->status == 3){
                     ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
-                    lv_label_set_text(ui_otatext, "Update Failed");
+                    lv_label_set_text(ui_otastatus, "Update Failed");
+                    lv_obj_add_flag(ui_otatext, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_otaicon, &ui_img_error_png);
                     lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
@@ -537,6 +556,172 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_group_remove_all_objs(g_main);
                 break;
             }
+
+            case VIEW_EVENT_VI_TASKFLOW_PAUSE:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_TASKFLOW_PAUSE");
+
+                lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
+                
+                g_taskflow_pause = 1;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
+                
+                break;
+            }
+
+            case VIEW_EVENT_VI_RECORDING:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_RECORDING");
+
+                view_push2talk_timer_stop();
+                lv_group_remove_all_objs(g_main);
+
+                lv_obj_add_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
+                
+                emoji_switch_scr = SCREEN_PUSH2TALK;
+                emoji_timer(EMOJI_LISTENING);
+                _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
+                g_push2talk_status = EMOJI_LISTENING;
+
+                break;
+            }
+
+            case VIEW_EVENT_VI_ANALYZING:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ANALYZING");
+
+                lv_obj_clear_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
+                
+                emoji_switch_scr = SCREEN_PUSH2TALK;
+                emoji_timer(EMOJI_ANALYZING);
+                g_push2talk_status = EMOJI_ANALYZING;
+
+                break;
+            }
+
+            case VIEW_EVENT_VI_PLAYING:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAYING");
+                struct view_data_vi_result *push2talk_result = (struct view_data_vi_result *)event_data;
+                ESP_LOGI("push2talk", "result mode : %d", push2talk_result->mode);
+                // mode 0 and mode 2
+                if(push2talk_result->mode == 0 || push2talk_result->mode == 2){
+                    if(push2talk_result->mode == 2)
+                    {
+                        g_push2talk_mode = 2;
+                    }else{
+                        g_push2talk_mode = 0;
+                    }
+
+                    g_push2talk_timer = 0;
+
+                    if (push2talk_result->p_audio_text != NULL) {
+                        ESP_LOGI("push2talk", "audio text : %s", push2talk_result->p_audio_text);
+                        int push2talk_audio_time = push2talk_result->audio_tm_ms;
+                        ESP_LOGI("push2talk", "audio time : %d", push2talk_audio_time);
+
+                        push2talk_start_animation(push2talk_result->p_audio_text, push2talk_audio_time);
+                    } else {
+                        ESP_LOGI("push2talk", "audio text is NULL");
+                    }
+
+                    lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_clear_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
+
+                    emoji_switch_scr = SCREEN_PUSH2TALK;
+                    emoji_timer(EMOJI_SPEAKING);
+                    g_push2talk_status = EMOJI_SPEAKING;
+                }
+
+                // mode 1
+                else if (push2talk_result->mode == 1){
+                    g_push2talk_timer = 1;
+                    memset(push2talk_item, 0, sizeof(push2talk_item));
+                    for (int i = 0; i < TASK_CFG_ID_MAX; i++) {
+                        if (push2talk_result->items[i]) {
+                            ESP_LOGI("push2talk", "item %d is : %s", i, push2talk_result->items[i]);
+                            push2talk_item[i] = strdup(push2talk_result->items[i]);
+                        }
+                    }
+
+                    emoji_timer(EMOJI_STOP);
+                    lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
+                    lv_group_remove_all_objs(g_main);
+
+                    uint32_t child_cnt = lv_obj_get_child_cnt(ui_push2talkpanel3);
+                    lv_obj_t *push2talk_panel_child;
+
+                    for(uint8_t i =0; i< child_cnt; i++)
+                    {
+                        push2talk_panel_child = lv_obj_get_child(ui_push2talkpanel3, i);
+                        lv_obj_add_flag(push2talk_panel_child, LV_OBJ_FLAG_HIDDEN);
+                    }
+
+                    lv_obj_clear_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_set_scroll_snap_y(ui_push2talkpanel3, LV_SCROLL_SNAP_CENTER);
+                    view_push2talk_msg_timer_start();
+                }
+
+                app_vi_result_free(push2talk_result);
+                break;
+            }
+
+            case VIEW_EVENT_VI_PLAY_FINISH:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAY_FINISH");
+
+                if(g_push2talk_timer == 0 )view_push2talk_timer_start();
+
+                break;
+            }
+
+            case VIEW_EVENT_VI_ERROR:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ERROR");
+
+                int push2talk_error_code = *(int *)event_data;
+
+
+                break;
+
+            }
+
+            case VIEW_EVENT_SENSOR:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_SENSOR");
+
+                struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
+                if (sensor_data->temperature_valid && sensor_data->temperature) {
+                    ESP_LOGI(TAG, "Temperature: %0.1f", sensor_data->temperature);
+                    static char sensor_temp[6];
+                    snprintf(sensor_temp, sizeof(sensor_temp), "%.1f", sensor_data->temperature);
+                    lv_label_set_text(ui_extensionbubbleValue, sensor_temp);
+                } else {
+                    ESP_LOGI(TAG, "Temperature: None");
+                    lv_label_set_text(ui_extensionbubbleValue, "--");
+                }
+
+                if (sensor_data->humidity_valid && sensor_data->humidity) {
+                    ESP_LOGI(TAG, "Humidity: %0.1f", sensor_data->humidity);
+                    static char sensor_humi[6];
+                    snprintf(sensor_humi, sizeof(sensor_humi), "%.1f", sensor_data->humidity);
+                    lv_label_set_text(ui_extensionbubble2Value, sensor_humi);
+                } else {
+                    ESP_LOGI(TAG, "Humidity: None");
+                    lv_label_set_text(ui_extensionbubble2Value, "--");
+                }
+
+                if (sensor_data->co2_valid && sensor_data->co2) {
+                    ESP_LOGI(TAG, "CO2: %u", sensor_data->co2);
+                    static char sensor_co2[6];
+                    snprintf(sensor_co2, sizeof(sensor_co2), "%u", sensor_data->co2);
+                    lv_label_set_text(ui_extensionbubble3Value, sensor_co2);
+                } else {
+                    ESP_LOGI(TAG, "CO2: None");
+                    lv_label_set_text(ui_extensionbubble3Value, "--");
+                }
+
+                break;
+            }
+
             default:
                 break;
         }
@@ -561,13 +746,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         ESP_LOGI(TAG, "OTA download succeeded");
                     }else if (ota_st->status == 1)
                     {
-                        lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
                         update_ai_ota_progress(ota_st->percentage);
                     }else{
-                        lv_label_set_text(ui_otatext, "Update Failed");
-                        lv_img_set_src(ui_otaicon, &ui_img_error_png);
-                        lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                         ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st->err_code);
                     }
                 }
@@ -593,7 +773,8 @@ int view_init(void)
     lv_pm_init();
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
-    ESP_ERROR_CHECK(esp_timer_create(&waiting_timer_args, &waiting_timer));
+    view_pages_init();
+    view_timer_create();
     lvgl_port_unlock();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
@@ -706,6 +887,34 @@ int view_init(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_MODE_STANDBY, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_RECORDING, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_ANALYZING, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_PLAYING, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_ERROR, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_TASKFLOW_PAUSE, 
+                                                            __view_event_handler, NULL, NULL));
+                                                        
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_PLAY_FINISH, 
+                                                            __view_event_handler, NULL, NULL));
+    
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SENSOR, 
                                                             __view_event_handler, NULL, NULL));
 
     if((bat_per < 1) && (! is_charging))

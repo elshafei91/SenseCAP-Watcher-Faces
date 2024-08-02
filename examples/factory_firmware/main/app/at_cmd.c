@@ -707,6 +707,11 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
 {
     ESP_LOGI(TAG, "handle_deviceinfo_cfg_command\n");
     int time_flag = 0;
+    bool is_need_reset_shutdown = false;
+    bool is_need_reset_reboot = false;
+    bool is_need_shutdown = false;
+    bool is_need_reboot = false;
+
     cJSON *json = cJSON_Parse(params);
     if (json == NULL)
     {
@@ -822,10 +827,7 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
                 return ERROR_DATA_WRITE_FAIL;
             }
         }
-        else
-        {
-            ESP_LOGE(TAG, "Brightness not found or not a valid number in JSON\n");
-        }
+
         // get rgb_switch item
         cJSON *rgbswitch = cJSON_GetObjectItemCaseSensitive(data, "rgbswitch");
         if (cJSON_IsNumber(rgbswitch))
@@ -871,27 +873,73 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
         {
             ESP_LOGI(TAG, "Sound volume not found or not a valid number in JSON\n");
         }
-        cJSON *reset_flag = cJSON_GetObjectItemCaseSensitive(data, "reset");
-        if (cJSON_IsNumber(reset_flag))
+
+        // set sleep time
+        cJSON *sleeptime = cJSON_GetObjectItemCaseSensitive(data, "sleeptime");
+        if (cJSON_IsNumber(sleeptime))
         {
-            int reset_factory_flag = reset_flag->valueint;
-            if (reset_factory_flag < 0 || reset_factory_flag > 1)
+            int sleeptime_value = sleeptime->valueint;
+            if (sleeptime_value < 0 || sleeptime_value > 6)
             {
-                ESP_LOGE(TAG, "Reset factory flag value out of range\n");
+                ESP_LOGE(TAG, "Sleep time value out of range\n");
                 cJSON_Delete(json);
                 return ERROR_CMD_PARAM_RANGE;
             }
-            esp_err_t set_reset_factory_err = set_reset_factory(AT_CMD_CALLER, reset_factory_flag);
-            if (set_reset_factory_err != ESP_OK)
+            esp_err_t set_sleep_time_err = set_sleep_time(AT_CMD_CALLER, sleeptime_value);
+            if (set_sleep_time_err != ESP_OK)
             {
-                ESP_LOGE(TAG, "Failed to set reset factory flag\n");
+                ESP_LOGE(TAG, "Failed to set sleep time\n");
                 cJSON_Delete(json);
                 return ERROR_DATA_WRITE_FAIL;
             }
         }
         else
         {
-            ESP_LOGI(TAG, "Reset factory flag not found or not a valid number in JSON\n");
+            ESP_LOGI(TAG, "Sleeptime not found or not a valid number in JSON\n");
+        }
+
+        // set sleep switch
+        cJSON *sleepswitch = cJSON_GetObjectItemCaseSensitive(data, "sleepswitch");
+        if (cJSON_IsNumber(sleepswitch))
+        {
+            int sleepswitch_value = sleepswitch->valueint;
+            if (sleepswitch_value < 0 || sleepswitch_value > 1)
+            {
+                ESP_LOGE(TAG, "Sleep switch value out of range\n");
+                cJSON_Delete(json);
+                return ERROR_CMD_PARAM_RANGE;
+            }
+            esp_err_t set_sleep_switch_err = set_sleep_switch(AT_CMD_CALLER, sleepswitch_value);
+            if (set_sleep_switch_err != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to set Sleep switch\n");
+                cJSON_Delete(json);
+                return ERROR_DATA_WRITE_FAIL;
+            }
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Sleep switch not found or not a valid number in JSON\n");
+        }
+
+        cJSON *reset_flag = cJSON_GetObjectItemCaseSensitive(data, "reset");
+        if (cJSON_IsNumber(reset_flag))
+        {
+            if ( reset_flag->valueint )
+            {
+                is_need_reset_reboot = true;
+                ESP_LOGI(TAG, "Reset factory and reboot\n");
+            }
+        }
+
+        cJSON *resetshutdown_flag = cJSON_GetObjectItemCaseSensitive(data, "resetshutdown");
+        if (cJSON_IsNumber(resetshutdown_flag))
+        {
+            if (resetshutdown_flag->valueint)
+            {
+                is_need_reset_shutdown = true;
+                ESP_LOGI(TAG, "Reset factory and shutdown\n");
+            }
         }
 
         cJSON *json_reboot = cJSON_GetObjectItemCaseSensitive(data, "reboot");
@@ -900,8 +948,7 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
             if ( json_reboot->valueint )
             {
                 ESP_LOGI(TAG, "Reboot device\n");
-                //Allow No Response
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
+                is_need_reboot = true;
             }
         }
 
@@ -911,8 +958,7 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
             if ( json_shutdown->valueint )
             {
                 ESP_LOGI(TAG, "Shutdown device\n");
-                //Allow No Response
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
+                is_need_shutdown = true;
             }
         }
     }
@@ -953,6 +999,31 @@ at_cmd_error_code handle_deviceinfo_cfg_command(char *params)
     }
     cJSON_Delete(root);
     free(json_string);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_INFO_OBTAIN, NULL, 0, pdMS_TO_TICKS(10000));
+    
+    if(  is_need_reset_reboot
+        || is_need_reset_shutdown
+        || is_need_reboot
+        || is_need_shutdown)
+    {
+        //Respond first, then execute
+        vTaskDelay(200 / portTICK_PERIOD_MS);
+
+        if( is_need_reset_reboot ) {
+            set_reset_factory(false);
+        } else if( is_need_reset_shutdown ){
+            set_reset_factory(true);
+        }
+
+        if( is_need_reboot ) {
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
+        }
+
+        if ( is_need_shutdown ) {
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SHUTDOWN, NULL, 0, pdMS_TO_TICKS(10000));
+        }
+        
+    }
     return AT_CMD_SUCCESS;
 }
 
@@ -1021,6 +1092,19 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
         return ERROR_DATA_READ_FAIL;
     }
 
+    int sleep_time = get_sleep_time(AT_CMD_CALLER); 
+    if (sleep_time < 0 || sleep_time > 6)
+    {
+        ESP_LOGE(TAG, "Failed to get sleep time value\n");
+        return ERROR_DATA_READ_FAIL;
+    }
+    int sleep_switch = get_sleep_switch(AT_CMD_CALLER);
+    if (sleep_switch < 0)
+    {
+        ESP_LOGE(TAG, "Failed to get sleep switch value\n");
+        return ERROR_DATA_READ_FAIL;
+    }
+
     int32_t voltage = bsp_battery_get_voltage();
     int battery_percent = bsp_battery_get_percent();
 
@@ -1053,6 +1137,8 @@ at_cmd_error_code handle_deviceinfo_command(char *params)
     cJSON_AddNumberToObject(data, "rgbswitch", rgb_switch);
     cJSON_AddNumberToObject(data, "sound", sound_value_resp);
     cJSON_AddNumberToObject(data, "brightness", brightness_value_resp);
+    cJSON_AddNumberToObject(data, "sleeptime", sleep_time);
+    cJSON_AddNumberToObject(data, "sleepswitch", sleep_switch);
     cJSON_AddStringToObject(data, "timestamp", timestamp_str);
     cJSON_AddNumberToObject(data, "timezone", cfg.zone);
     

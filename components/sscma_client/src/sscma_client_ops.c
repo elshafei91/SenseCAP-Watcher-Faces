@@ -44,6 +44,28 @@ const int error_map[] = {
 
 #define SSCMA_CLIENT_CMD_ERROR_CODE(err) (error_map[(err & 0x0F) > (CMD_EUNKNOWN - 1) ? (CMD_EUNKNOWN - 1) : (err & 0x0F)])
 
+static inline void *__malloc(size_t sz)
+{
+#ifdef CONFIG_SSCMA_ALLOC_SMALL_SHORTTERM_MEM_EXTERNALLY
+    return heap_caps_calloc(1, sz, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#else
+    return malloc(sz);
+#endif
+}
+
+static char *__strdup(const char *s)
+{
+#ifdef CONFIG_SSCMA_ALLOC_SMALL_SHORTTERM_MEM_EXTERNALLY
+    size_t len = strlen(s) + 1;
+    void *new = heap_caps_calloc(1, len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (new == NULL)
+        return NULL;
+    return (char *)memcpy(new, s, len);
+#else
+    return strdup(s);
+#endif
+}
+
 static inline void fetch_string_common(cJSON *object, cJSON *field, char **target)
 {
     if (field == NULL || !cJSON_IsString(field))
@@ -58,7 +80,7 @@ static inline void fetch_string_common(cJSON *object, cJSON *field, char **targe
         *target = NULL;
     }
 
-    *target = strdup(field->valuestring);
+    *target = __strdup(field->valuestring);
 }
 
 static inline void fetch_string_from_object(cJSON *object, const char *field_name, char **target)
@@ -215,7 +237,7 @@ static void sscma_client_process(void *arg)
                 if ((prefix = strnstr(client->rx_buffer.data, RESPONSE_PREFIX, suffix - client->rx_buffer.data)) != NULL)
                 {
                     int len = suffix - prefix + RESPONSE_SUFFIX_LEN;
-                    reply.data = (char *)malloc(len + 1);
+                    reply.data = (char *)__malloc(len + 1);
                     if (reply.data != NULL)
                     {
                         reply.len = len;
@@ -789,7 +811,7 @@ esp_err_t sscma_client_request(sscma_client_handle_t client, const char *cmd, ss
 
     if (wait)
     {
-        request = (sscma_client_request_t *)malloc(sizeof(sscma_client_request_t));
+        request = (sscma_client_request_t *)__malloc(sizeof(sscma_client_request_t));
         ESP_GOTO_ON_FALSE(request, ESP_ERR_NO_MEM, err, TAG, "no mem for request");
         request->reply = xQueueCreate(1, sizeof(sscma_client_reply_t));
         strncpy(request->cmd, &cmd[CMD_PREFIX_LEN], sizeof(request->cmd) - 1);
@@ -925,7 +947,7 @@ esp_err_t sscma_client_get_model(sscma_client_handle_t client, sscma_client_mode
             cJSON *info = cJSON_GetObjectItem(data, "info");
             if (info != NULL && cJSON_IsString(info))
             {
-                model_data = malloc(strlen(info->valuestring));
+                model_data = __malloc(strlen(info->valuestring));
                 if (model_data != NULL)
                 {
                     if (mbedtls_base64_decode((unsigned char *)model_data, strlen(info->valuestring), &len, (unsigned char *)info->valuestring, strlen(info->valuestring)) == 0)
@@ -1276,7 +1298,7 @@ esp_err_t sscma_utils_fetch_boxes_from_reply(const sscma_client_reply_t *reply, 
         *num_boxes = cJSON_GetArraySize(boxes_data);
         if (*num_boxes == 0)
             return ESP_OK;
-        *boxes = malloc(sizeof(sscma_client_box_t) * (*num_boxes));
+        *boxes = __malloc(sizeof(sscma_client_box_t) * (*num_boxes));
         ESP_RETURN_ON_FALSE(*boxes != NULL, ESP_ERR_NO_MEM, TAG, "malloc boxes failed");
         for (int i = 0; i < *num_boxes; i++)
         {
@@ -1354,15 +1376,15 @@ esp_err_t sscma_utils_fetch_classes_from_reply(const sscma_client_reply_t *reply
         *num_classes = cJSON_GetArraySize(classes_data);
         if (*num_classes == 0)
             return ESP_OK;
-        *classes = malloc(sizeof(sscma_client_class_t) * (*num_classes));
+        *classes = __malloc(sizeof(sscma_client_class_t) * (*num_classes));
         ESP_RETURN_ON_FALSE(*classes != NULL, ESP_ERR_NO_MEM, TAG, "malloc classes failed");
         for (int i = 0; i < *num_classes; i++)
         {
             cJSON *item = cJSON_GetArrayItem(classes_data, i);
             if (item != NULL)
             {
-                (*classes)[i].target = get_int_from_array(item, 0);
-                (*classes)[i].score = get_int_from_array(item, 1);
+                (*classes)[i].score = get_int_from_array(item, 0);
+                (*classes)[i].target = get_int_from_array(item, 1);
             }
         }
     }
@@ -1395,8 +1417,8 @@ esp_err_t sscma_utils_copy_classes_from_reply(const sscma_client_reply_t *reply,
             cJSON *item = cJSON_GetArrayItem(classes_data, i);
             if (item != NULL)
             {
-                classes[i].target = get_int_from_array(item, 0);
-                classes[i].score = get_int_from_array(item, 1);
+                classes[i].score = get_int_from_array(item, 0);
+                classes[i].target = get_int_from_array(item, 1);
             }
         }
     }
@@ -1425,7 +1447,7 @@ esp_err_t sscma_utils_fetch_points_from_reply(const sscma_client_reply_t *reply,
         *num_points = cJSON_GetArraySize(ponits_data);
         if (*num_points == 0)
             return ESP_OK;
-        *points = malloc(sizeof(sscma_client_point_t) * (*num_points));
+        *points = __malloc(sizeof(sscma_client_point_t) * (*num_points));
         ESP_RETURN_ON_FALSE(*points != NULL, ESP_ERR_NO_MEM, TAG, "malloc points failed");
         for (int i = 0; i < *num_points; i++)
         {
@@ -1503,7 +1525,7 @@ esp_err_t sscma_utils_fetch_keypoints_from_reply(const sscma_client_reply_t *rep
         *num_keypoints = cJSON_GetArraySize(keypoints_data);
         if (*num_keypoints == 0)
             return ESP_OK;
-        *keypoints = malloc(sizeof(sscma_client_keypoint_t) * (*num_keypoints));
+        *keypoints = __malloc(sizeof(sscma_client_keypoint_t) * (*num_keypoints));
         ESP_RETURN_ON_FALSE(*keypoints != NULL, ESP_ERR_NO_MEM, TAG, "malloc keypoints failed");
         for (int i = 0; i < *num_keypoints; i++)
         {
@@ -1626,7 +1648,7 @@ esp_err_t sscma_utils_fetch_image_from_reply(const sscma_client_reply_t *reply, 
         return ESP_FAIL;
     }
 
-    *image = strdup(image_str);
+    *image = __strdup(image_str);
     if (!(*image))
     {
         return ESP_ERR_NO_MEM;

@@ -22,6 +22,7 @@ extern "C"
 #define TF_STATUS_STOP                  2
 #define TF_STATUS_STOPING               3
 #define TF_STATUS_IDLE                  4
+#define TF_STATUS_PAUSE                 5
 
 // Define error status codes (greater than or equal to 100 indicates an error)
 #define TF_STATUS_ERR_GENERAL           100
@@ -107,6 +108,40 @@ esp_err_t tf_engine_run(void);
 esp_err_t tf_engine_stop(void);
 
 /**
+ *  Restarts the engine.
+ *  
+ * @comment Restart only when you need to run taskflow.
+ */
+esp_err_t tf_engine_restart(void);
+
+/**
+ * Pauses the engine.
+ *
+ * @return The result of pausing the engine. Possible return values are:
+ *         - ESP_OK: The engine was successfully paused.
+ *         - ESP_FAIL: An unspecified error occurred during the pausing process.
+ *
+ * @throws None.
+ *
+ * @comment This function pauses the engine and temporarily stops its operation.
+ */
+esp_err_t tf_engine_pause(void);
+
+
+/*
+* Resumes the engine.
+*
+* @return The result of resuming the engine. Possible return values are:
+*         - ESP_OK: The engine was successfully resumed.
+*         - ESP_FAIL: An unspecified error occurred during the resuming process.
+*
+* @throws None.
+*
+* @comment This function resumes the engine after it has been paused.
+*/
+esp_err_t tf_engine_resume(void);
+
+/**
  * Sets the flow of the engine.
  *
  * @param p_str Pointer to the flow string.
@@ -120,6 +155,9 @@ esp_err_t tf_engine_stop(void);
  * @throws None.
  *
  * @comment This function sets the flow of the engine based on the provided flow string.
+ *         The flow string should be in JSON format.
+ *         The engine will start executing the flow.
+ *         The flow string can be retrieved using the `tf_engine_flow_get` function.
  */
 esp_err_t tf_engine_flow_set(const char *p_str, size_t len);
 
