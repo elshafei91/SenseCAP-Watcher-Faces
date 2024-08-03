@@ -709,36 +709,32 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_SENSOR");
 
                 struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
+                char sensor_temp[6] = "--";
+                char sensor_humi[6] = "--";
+                char sensor_co2[6] = "--";
+                char sensor_back[6] = "--";
                 if (sensor_data->temperature_valid && sensor_data->temperature) {
                     ESP_LOGI(TAG, "Temperature: %0.1f", sensor_data->temperature);
-                    static char sensor_temp[6];
                     snprintf(sensor_temp, sizeof(sensor_temp), "%.1f", sensor_data->temperature);
-                    lv_label_set_text(ui_extensionbubbleValue, sensor_temp);
                 } else {
                     ESP_LOGI(TAG, "Temperature: None");
-                    lv_label_set_text(ui_extensionbubbleValue, "--");
                 }
 
                 if (sensor_data->humidity_valid && sensor_data->humidity) {
                     ESP_LOGI(TAG, "Humidity: %0.1f", sensor_data->humidity);
-                    static char sensor_humi[6];
                     snprintf(sensor_humi, sizeof(sensor_humi), "%.1f", sensor_data->humidity);
-                    lv_label_set_text(ui_extensionbubble2Value, sensor_humi);
                 } else {
                     ESP_LOGI(TAG, "Humidity: None");
-                    lv_label_set_text(ui_extensionbubble2Value, "--");
                 }
 
                 if (sensor_data->co2_valid && sensor_data->co2) {
                     ESP_LOGI(TAG, "CO2: %u", sensor_data->co2);
-                    static char sensor_co2[6];
                     snprintf(sensor_co2, sizeof(sensor_co2), "%u", sensor_data->co2);
-                    lv_label_set_text(ui_extensionbubble3Value, sensor_co2);
                 } else {
                     ESP_LOGI(TAG, "CO2: None");
-                    lv_label_set_text(ui_extensionbubble3Value, "--");
                 }
 
+                view_sensor_data_update(sensor_temp, sensor_humi, sensor_co2, sensor_back);
                 break;
             }
 
@@ -794,7 +790,6 @@ int view_init(void)
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
     view_pages_init();
-    view_timer_create();
     lvgl_port_unlock();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
@@ -804,10 +799,6 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, 
                                                             __view_event_handler, NULL, NULL)); 
-
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_USAGE_GUIDE_SWITCH, 
-    //                                                         __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME, 
