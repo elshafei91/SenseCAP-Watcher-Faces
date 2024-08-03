@@ -4,6 +4,7 @@
 #include "esp_jpeg_dec.h"
 #include "ui/ui_helpers.h"
 #include "util.h"
+#include "esp_timer.h"
 
 #define IMAGE_INVOKED_BOXES 10
 
@@ -84,6 +85,7 @@ static int jpeg_decoder_init(void)
 
     return ret;
 }
+
 // call it to free jpeg decoder mem
 static void jpeg_decoder_deinit(void)
 {
@@ -102,6 +104,18 @@ static void jpeg_decoder_deinit(void)
         out_info = NULL;
     }
 }
+
+#ifdef CONFIG_CAMERA_DISPLAY_MIRROR_X
+static void swap16(unsigned char *a, unsigned char *b) {
+    unsigned char tmp[2];
+    tmp[0] = a[0];
+    tmp[1] = a[1];
+    a[0] = b[0];
+    a[1] = b[1];
+    b[0] = tmp[0];
+    b[1] = tmp[1];
+}
+#endif
 
 static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *output_buf)
 {
@@ -163,6 +177,7 @@ int view_image_preview_init(lv_obj_t *ui_screen)
 int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
 {
     int ret = 0;
+    int64_t start = 0, end = 0;
     size_t output_len = 0;
     if (ui_image == NULL)
     {
@@ -176,11 +191,27 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
         return ret;
     }
 
+    start = esp_timer_get_time();
     ret = esp_jpeg_decoder_one_picture(image_jpeg_buf, output_len, image_ram_buf);
     if (ret != ESP_OK) {
         ESP_LOGE("view", "Failed to decode jpeg: %d", ret);
         return ret;
     }
+    end = esp_timer_get_time();
+    // printf("decode time:%lld ms\r\n", (end - start) / 1000);
+
+#ifdef CONFIG_CAMERA_DISPLAY_MIRROR_X
+    start = esp_timer_get_time();
+    for (int y = 0; y < IMG_HEIGHT; y++) {
+        for (int x = 0; x < IMG_WIDTH / 2; x++) {
+            int index1 = (IMG_WIDTH * y + x) * 2;
+            int index2 = (IMG_WIDTH * y + (IMG_WIDTH - 1 - x)) * 2;
+            swap16(&image_ram_buf[index1], &image_ram_buf[index2]);
+        }
+    }
+    end = esp_timer_get_time();
+    // printf("mirror time:%lld ms\r\n", (end - start) / 1000);
+#endif
 
     img_dsc.data = image_ram_buf;
     lv_img_set_src(ui_image, &img_dsc);
