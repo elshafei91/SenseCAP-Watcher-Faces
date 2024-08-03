@@ -1312,6 +1312,7 @@ void p2tclick_cb(lv_event_t * e)
         lv_group_add_obj(g_main, ui_push2talkarc);
 
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
+        view_push2talk_animation_timer_stop();
     }
 }
 
@@ -2220,6 +2221,7 @@ void push2talk_init(void)
 
 static void view_push2talk_animation_timer_callback(lv_timer_t *timer)
 {
+    // ESP_LOGI(TAG, "push2talk animation callback");
     if (push2talk_text && push2talk_text[push2talk_text_index] != '\0' && push2talk_timer_active) {
         char temp[2];
         temp[0] = push2talk_text[push2talk_text_index];
@@ -2511,7 +2513,8 @@ static void view_push2talk_msg_timer_callback(lv_timer_t *timer)
             lv_group_focus_obj(ui_p2tfreq);
             break;
         case 7:
-            lv_obj_clear_flag(ui_p2tsw, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_p2tcancel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_p2tcheck, LV_OBJ_FLAG_HIDDEN);
             lv_group_add_obj(g_main, ui_p2tcancel);
             lv_group_add_obj(g_main, ui_p2tcheck);
             lv_group_focus_obj(ui_p2tcheck);
