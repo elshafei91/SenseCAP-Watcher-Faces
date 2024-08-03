@@ -18,6 +18,9 @@
 #include "util.h"
 #include "uuid.h"
 #include "tf.h"
+#include "app_ota.h"
+#include "app_voice_interaction.h"
+
 
 static const char *TAG = "sensecaft";
 
@@ -273,14 +276,42 @@ static void __parse_mqtt_tasklist(char *mqtt_msg_buff, int msg_buff_len)
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
         free(tl_str);
     } else {
-        ret = app_sensecraft_mqtt_taskflow_ack( requestid->valuestring, tid, ctd, TF_STATUS_STARTING);
+        int engine_status = 0;
+        bool is_need_run_taskflow = true;
+
+        if( app_ota_fw_is_running()){
+            is_need_run_taskflow = false;
+            engine_status = TF_STATUS_ERR_DEVICE_OTA;
+            ESP_LOGW(TAG, "Ota is running, can't start taskflow");
+        } else if(app_vi_session_is_running()) {
+            is_need_run_taskflow = false;
+            engine_status = TF_STATUS_ERR_DEVICE_VI;
+            ESP_LOGW(TAG, "VI is running, can't start taskflow");
+        } else {
+            tf_engine_status_get(&engine_status);
+            if(engine_status == TF_STATUS_STARTING ) {
+                engine_status = TF_STATUS_ERR_GENERAL;
+                is_need_run_taskflow = false;
+                ESP_LOGW(TAG, "Taskflow is starting, can't start taskflow");
+            } else {
+                ESP_LOGI(TAG, "start taskflow");
+                engine_status = TF_STATUS_STARTING;
+            }
+        }
+
+        ret = app_sensecraft_mqtt_taskflow_ack( requestid->valuestring, tid, ctd, engine_status);
         if( ret != ESP_OK ) {
             ESP_LOGW(TAG, "Failed to report taskflow ack to MQTT server");
         }
-        esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_MQTT, 
-                                    &tl_str,
-                                    sizeof(void *), /* ptr size */
-                                    pdMS_TO_TICKS(10000));   
+        
+        if( is_need_run_taskflow ) {
+            esp_event_post_to(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_TASK_FLOW_START_BY_MQTT, 
+                                        &tl_str,
+                                        sizeof(void *), /* ptr size */
+                                        pdMS_TO_TICKS(10000));  
+        } else {
+            free(tl_str);
+        }
     }
     cJSON_Delete(json_root);
 }
@@ -481,7 +512,10 @@ static void __mqtt_event_handler(void *handler_args, esp_event_base_t base, int3
             break;
         case MQTT_EVENT_DATA:
 
-            if (get_cloud_service_switch(MAX_CALLER) == 0) break;
+            if (get_cloud_service_switch(MAX_CALLER) == 0) {
+                ESP_LOGW(TAG, "cloud service is off, ignore data");
+                break;
+            }
 
             if( event->total_data_len !=  event->data_len ) {
                 if( event->current_data_offset == 0 ) {
