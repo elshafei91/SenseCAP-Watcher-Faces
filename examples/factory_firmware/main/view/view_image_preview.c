@@ -174,6 +174,7 @@ int view_image_preview_init(lv_obj_t *ui_screen)
     return 0;
 }
 
+
 int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
 {
     int ret = 0;
@@ -342,4 +343,58 @@ static void create_black_screen_obj()
 void view_image_black_flush()
 {
     _ui_screen_change(&black_screen, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &create_black_screen_obj);
+}
+
+
+// return 0 check success
+int view_image_check(uint8_t *p_buf, size_t len, size_t ram_buf_len)
+{
+    int ret = 0;
+    size_t output_len = 0;
+    int64_t start = 0, end = 0;
+    uint8_t* p_jpeg_buf = NULL;
+     uint8_t* p_ram_buf = NULL;  
+    if (p_buf == NULL || len == 0 || ram_buf_len == 0)
+    {
+        return -1;
+    }
+    start = esp_timer_get_time();
+
+    p_jpeg_buf = psram_malloc(len); //base64 decode buf,  len / (3 * 4)
+    if (p_jpeg_buf == NULL )
+    {
+        ESP_LOGW("view", "psram_malloc failed: %d", len);
+        goto err;
+    }
+    p_ram_buf = heap_caps_aligned_alloc(16, ram_buf_len, MALLOC_CAP_SPIRAM);
+    if ( p_ram_buf == NULL)
+    {
+        ESP_LOGW("view", "psram_malloc failed: %d", ram_buf_len);
+        goto err;
+    }
+    
+    ret = mbedtls_base64_decode(p_jpeg_buf, len, &output_len, p_buf, len);
+    if (ret != 0 || output_len == 0)
+    {
+        ESP_LOGE("view", "Failed to decode base64: %d", ret);
+        ret = -1;
+        goto err;
+    }
+    
+    ret = esp_jpeg_decoder_one_picture(p_jpeg_buf, output_len, p_ram_buf);
+    if (ret != ESP_OK) {
+        ESP_LOGE("view", "Failed to decode jpeg: %d", ret);
+        goto err;
+    }
+    end = esp_timer_get_time();
+    printf("decode time:%lld ms\r\n", (end - start) / 1000);
+
+err:
+    if (p_jpeg_buf) {
+        free(p_jpeg_buf);
+    }
+    if( p_ram_buf) {
+        free(p_ram_buf);
+    }
+    return ret;
 }

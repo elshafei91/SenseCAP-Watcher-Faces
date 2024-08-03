@@ -45,6 +45,9 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info);
  */
 void view_image_black_flush();
 
+// return 0 check success
+int view_image_check(uint8_t *p_buf, size_t len, size_t ram_buf_len);
+
 #ifdef __cplusplus
 }
 #endif
