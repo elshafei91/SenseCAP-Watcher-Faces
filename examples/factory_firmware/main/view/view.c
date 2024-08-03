@@ -496,6 +496,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
                     }else{
                         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+                        lv_group_remove_all_objs(g_main);
+                        lv_group_add_obj(g_main, ui_guidebtn1);
+                        lv_group_add_obj(g_main, ui_guidebtn2);
+                        emoji_switch_scr = SCREEN_GUIDE;
+                        emoji_timer(EMOJI_DETECTING);
                     }
                 }else if(g_avarlive == 1)
                 {
@@ -504,6 +509,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewLive_screen_init);
                     }else{
                         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+                        lv_group_remove_all_objs(g_main);
+                        lv_group_add_obj(g_main, ui_guidebtn1);
+                        lv_group_add_obj(g_main, ui_guidebtn2);
+                        emoji_switch_scr = SCREEN_GUIDE;
+                        emoji_timer(EMOJI_DETECTING);
                     }
                 }
                 break;
