@@ -13,7 +13,7 @@ extern "C"
 #endif
 
 #define TF_ENGINE_TASK_STACK_SIZE 1024 * 5
-#define TF_ENGINE_TASK_PRIO 5
+#define TF_ENGINE_TASK_PRIO 13
 #define TF_ENGINE_QUEUE_SIZE 3
 
 // Define status codes for engine state
