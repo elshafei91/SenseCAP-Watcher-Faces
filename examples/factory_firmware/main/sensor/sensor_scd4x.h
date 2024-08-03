@@ -42,10 +42,15 @@ int16_t sensor_scd4x_get_data_ready_flag(bool* data_ready_flag);
  * @brief Read sensor output and convert.
  *
  * @param co2 CO₂ concentration in milli ppm
+ * 
+ * @param temperature Convert value to °C by: -45 °C + 175 °C * value/2^16
+ *
+ * @param humidity Convert value to %RH by: 100%RH * value/2^16
  *
  * @return 0 on success, an error code otherwise
  */
-int16_t sensor_scd4x_read_measurement(uint32_t *co2);
+int16_t sensor_scd4x_read_measurement(uint32_t *co2, int32_t* temperature_m_deg_c,
+                                        int32_t* humidity_m_percent_rh);
 
 #ifdef __cplusplus
 }

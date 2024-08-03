@@ -68,6 +68,8 @@ static int16_t app_sensor_detect(void)
                 sensor_scd4x_init();
                 app_sensor_data[app_sensor_det_num].state = true;
                 app_sensor_data[app_sensor_det_num].type = SENSOR_SCD4x;
+                app_sensor_data[app_sensor_det_num].context.scd4x.temperature = 0;
+                app_sensor_data[app_sensor_det_num].context.scd4x.humidity = 0;
                 app_sensor_data[app_sensor_det_num].context.scd4x.co2 = 0;
                 app_sensor_det_num ++;
             }
@@ -110,13 +112,24 @@ static int16_t app_sensor_uptate(void)
             } else if (app_sensor_data[i].type == SENSOR_SCD4x) {
                 bool ready_flag = 0;
                 uint32_t co2 = 0;
+                int32_t temperature = 0, humidity = 0;
                 ret = sensor_scd4x_get_data_ready_flag(&ready_flag);
                 if ( ready_flag ) {
-                    ret = sensor_scd4x_read_measurement(&co2);
+                    ret = sensor_scd4x_read_measurement(&co2, &temperature, &humidity);
                     if (ret == 0) {
+                        app_sensor_data[i].context.scd4x.temperature = temperature;
+                        app_sensor_data[i].context.scd4x.humidity = humidity;
                         app_sensor_data[i].context.scd4x.co2 = co2;
-                        ESP_LOGI(TAG, "CO2: %d", co2);
+                        ESP_LOGI(TAG, "T: %d, H: %d, CO2: %d", temperature, humidity, co2);
 
+                        if (view_data.temperature_valid == false) {
+                            view_data.temperature_valid = true;
+                            view_data.temperature = (float)temperature / 1000;
+                        }
+                        if (view_data.humidity_valid == false) {
+                            view_data.humidity_valid = true;
+                            view_data.humidity = (float)humidity / 1000;
+                        }
                         view_data.co2_valid = true;
                         view_data.co2 = co2 / 1000;
                     }
