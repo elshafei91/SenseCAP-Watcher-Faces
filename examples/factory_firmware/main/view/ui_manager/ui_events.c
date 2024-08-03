@@ -132,7 +132,8 @@ static uint32_t push2talk_text_index = 0;
 static bool push2talk_timer_active = false;
 
 // extension sensor
-uint8_t bubble_position[4] = {0, 1, 2, 3};
+uint8_t bubble_position[4] = {3, 0, 1, 2};
+static uint8_t extension_scroll_mode = 0;
 static char sensor_data_1[6];
 static char sensor_data_2[6];
 static char sensor_data_3[6];
@@ -495,10 +496,6 @@ void main2f_cb(lv_event_t *e)
 void main3c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "main3c_cb");
-    bubble_position[0] = 0;
-    bubble_position[1] = 1;
-    bubble_position[2] = 2;
-    bubble_position[3] = 3;
     lv_pm_open_page(g_main, &group_page_extension, PM_ADD_OBJS_TO_GROUP, &ui_Page_Extension, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Extension_screen_init);
 }
 
@@ -537,6 +534,10 @@ void backmenu_cb(lv_event_t * e)
     {
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
         lv_group_set_wrap(g_main, true);
+        if(g_tasktype == 1)
+        {
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_RESUME, NULL, NULL, pdMS_TO_TICKS(10000));
+        }
     }
 }
 
@@ -1500,6 +1501,7 @@ void emoticonback_cb(lv_event_t * e)
 void guidebtn1click_cb(lv_event_t * e)
 {
     lv_pm_open_page(g_main, &group_page_guide, PM_ADD_OBJS_TO_GROUP, &ui_Page_Guideavatar, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Guideavatar_screen_init);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
 }
 
 void guidebtn2click_cb(lv_event_t * e)
@@ -1546,6 +1548,7 @@ void guide1btn3c_cb(lv_event_t * e)
     {
         g_taskdown = 0;
         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_RESUME, NULL, NULL, pdMS_TO_TICKS(10000));
     }
 }
 
@@ -2338,12 +2341,10 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
             return;
     }
     // extension scroll play
-    if(inactive_time > (60 * 1000) && lv_scr_act()== ui_Page_Extension)
+    if(inactive_time > (60 * 1000) && lv_scr_act()== ui_Page_Extension && (!extension_scroll_mode))
     {
         view_extension_timer_start();
-    }else
-    {
-        view_extension_timer_stop();
+        extension_scroll_mode = 1;
     }
 
     // standby mode
@@ -2395,6 +2396,12 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
             emoji_timer(EMOJI_STOP);
 
             standby_mode = 0;
+        }
+
+        if(extension_scroll_mode != 0)
+        {
+            view_extension_timer_stop();
+            extension_scroll_mode = 0;
         }
     }
 }
@@ -2550,10 +2557,12 @@ static void view_extension_timer_callback(lv_timer_t *timer)
 
 void view_extension_timer_start()
 {
+    // ESP_LOGI(TAG, "view_extension_timer_start");
     if (view_extension_timer != NULL) {
         lv_timer_del(view_extension_timer);
     }
-    view_extension_timer = lv_timer_create(view_extension_timer_callback, 2500, NULL);
+    view_extension_timer = lv_timer_create(view_extension_timer_callback, 3000, NULL);
+
 }
 
 void view_extension_timer_stop()
