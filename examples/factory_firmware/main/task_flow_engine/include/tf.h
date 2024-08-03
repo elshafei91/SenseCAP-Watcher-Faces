@@ -130,6 +130,18 @@ esp_err_t tf_engine_restart(void);
  */
 esp_err_t tf_engine_pause(void);
 
+/**
+ * Waiting for the pause engine to complete
+ *
+ * @return The result of pausing the engine. Possible return values are:
+ *         - ESP_OK: The engine was successfully paused.
+ *         - ESP_FAIL: An unspecified error occurred during the pausing process.
+ *
+ * @throws None.
+ *
+ * @comment This function pauses the engine and temporarily stops its operation.
+ */
+esp_err_t tf_engine_pause_block(TickType_t xTicksToWait);
 
 /*
 * Resumes the engine.

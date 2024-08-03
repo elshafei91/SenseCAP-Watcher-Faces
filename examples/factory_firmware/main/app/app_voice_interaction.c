@@ -66,12 +66,12 @@ static void __record_start( struct app_voice_interaction *p_vi)
         ESP_LOGW(TAG, "not support vi on ota mode");
         return;
     }
-    xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_START);
     //Maybe it has already started
     if( p_vi->cur_status !=  VI_STATUS_IDLE ){
         ESP_LOGI(TAG, "vi not idle, stop it first");
         __vi_stop(p_vi);
     }
+    xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_START);
 }
 
 static void __record_stop( struct app_voice_interaction *p_vi)
@@ -414,9 +414,11 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 tf_engine_status_get( &engine_status);
                 if( engine_status == TF_STATUS_RUNNING ) { //maybe will set running TODO
                     p_vi->taskflow_pause =  true;
-                    tf_engine_pause();
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                         VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+
+                    tf_engine_pause_block(pdMS_TO_TICKS(15000)); // maybe take 17s
+
                     ESP_LOGI(TAG, "taskflow pause");
                 } else {
                     p_vi->taskflow_pause =  false;
@@ -572,6 +574,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             }
 
             if( stop_send ) {
+                p_vi->next_status = VI_STATUS_STOP; 
                 break;
             }
 
