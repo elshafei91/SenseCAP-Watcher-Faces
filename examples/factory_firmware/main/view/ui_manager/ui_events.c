@@ -131,8 +131,19 @@ static char *push2talk_text = NULL;
 static uint32_t push2talk_text_index = 0;
 static bool push2talk_timer_active = false;
 
-// extension
+// extension sensor
 uint8_t bubble_position[4] = {0, 1, 2, 3};
+static char sensor_data_1[6];
+static char sensor_data_2[6];
+static char sensor_data_3[6];
+static char sensor_data_4[6];
+typedef struct {
+    int cur_idx;
+    int pre_idx;
+} ExtensionScroll;
+
+ExtensionScroll extensionscroll;
+static lv_timer_t * view_extension_timer;
 
 // Bluetooth switch frequency filter
 static lv_timer_t * view_ble_switch_timer;
@@ -159,6 +170,7 @@ static void Task_end();
 static void Page_shutdown();
 static void Page_facreset();
 static void view_info_obtain_early();
+void sensor_date_update();
 
 static void async_emoji_switch_scr(void *arg)
 {
@@ -483,6 +495,10 @@ void main2f_cb(lv_event_t *e)
 void main3c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "main3c_cb");
+    bubble_position[0] = 0;
+    bubble_position[1] = 1;
+    bubble_position[2] = 2;
+    bubble_position[3] = 3;
     lv_pm_open_page(g_main, &group_page_extension, PM_ADD_OBJS_TO_GROUP, &ui_Page_Extension, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Extension_screen_init);
 }
 
@@ -1893,20 +1909,7 @@ void ui_event_emoticonok(lv_event_t * e)
 }
 
 /*----------------------------------------------extension sensor------------------------------------------------------*/
-static char sensor_data_1[6];
-static char sensor_data_2[6];
-static char sensor_data_3[6];
-static char sensor_data_4[6];
-typedef struct {
-    int cur_idx;
-    int pre_idx;
-} ExtensionScroll;
-
-ExtensionScroll extensionscroll;
-
-void sensor_date_update_cb();
-
-void sensor_data_update(const char *data1, const char *data2, const char *data3, const char *data4) 
+void view_sensor_data_update(const char *data1, const char *data2, const char *data3, const char *data4) 
 {
     strncpy(sensor_data_1, data1, sizeof(sensor_data_1) - 1);
     sensor_data_1[sizeof(sensor_data_1) - 1] = '\0';
@@ -1921,17 +1924,17 @@ void sensor_data_update(const char *data1, const char *data2, const char *data3,
     sensor_data_4[sizeof(sensor_data_4) - 1] = '\0';
 
     // ESP_LOGI(TAG, "text1: %s, text2: %s, text3: %s, text4: %s", sensor_data_1, sensor_data_2, sensor_data_3, sensor_data_4);
-    sensor_date_update_cb();
+    sensor_date_update();
 }
 
 
-void sensor_date_update_cb()
+void sensor_date_update()
 {
     switch(bubble_position[EXTENSION_TEMP])
     {
         case 0:{
             lv_label_set_text(ui_extensionbubble1Value, sensor_data_1);
-            lv_label_set_text(ui_extensionbubble2Unit, "°C");
+            lv_label_set_text(ui_extensionbubble1Unit, "°C");
             lv_img_set_src(ui_extensionbubble1Icon, &ui_img_2057255035);
             lv_obj_add_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
@@ -1942,7 +1945,7 @@ void sensor_date_update_cb()
         case 1:{
             lv_label_set_text(ui_extensionbubble2Value, sensor_data_1);
             lv_label_set_text(ui_extensionbubble2Unit, "°C");
-            lv_img_set_src(ui_extensionbubble2Icon, &ui_img_2057255035);
+            lv_img_set_src(ui_extensionbubble2Icon, &ui_img_1761657674);
             lv_obj_add_flag(ui_extensionbubble2Icon2, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble2Value, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble2Icon, LV_OBJ_FLAG_HIDDEN);
@@ -1952,7 +1955,7 @@ void sensor_date_update_cb()
         case 2:{
             lv_label_set_text(ui_extensionbubble3Value, sensor_data_1);
             lv_label_set_text(ui_extensionbubble3Unit, "°C");
-            lv_img_set_src(ui_extensionbubble3Icon, &ui_img_2057255035);
+            lv_img_set_src(ui_extensionbubble3Icon, &ui_img_1761657674);
             lv_obj_add_flag(ui_extensionbubble3Icon2, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble3Value, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble3Icon, LV_OBJ_FLAG_HIDDEN);
@@ -1962,7 +1965,7 @@ void sensor_date_update_cb()
         case 3:{
             lv_label_set_text(ui_extensionbubble4Value, sensor_data_1);
             lv_label_set_text(ui_extensionbubble4Unit, "°C");
-            // lv_img_set_src(ui_extensionbubble4Icon, &ui_img_2057255035);
+            lv_img_set_src(ui_extensionbubble4Icon, &ui_img_1761657674);
             lv_obj_add_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
@@ -1977,7 +1980,7 @@ void sensor_date_update_cb()
         case 0:{
             lv_label_set_text(ui_extensionbubble1Value, sensor_data_2);
             lv_label_set_text(ui_extensionbubble1Unit, "%");
-            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_1955521171);
+            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_1336611536);
             lv_obj_add_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
@@ -2007,7 +2010,7 @@ void sensor_date_update_cb()
         case 3:{
             lv_label_set_text(ui_extensionbubble4Value, sensor_data_2);
             lv_label_set_text(ui_extensionbubble4Unit, "%");
-            // lv_img_set_src(ui_extensionbubble4Icon, &ui_img_1955521171);
+            lv_img_set_src(ui_extensionbubble4Icon, &ui_img_1955521171);
             lv_obj_add_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
@@ -2021,7 +2024,7 @@ void sensor_date_update_cb()
         case 0:{
             lv_label_set_text(ui_extensionbubble1Value, sensor_data_3);
             lv_label_set_text(ui_extensionbubble1Unit, "ppm");
-            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_529164268);
+            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_226867343);
             lv_obj_add_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
@@ -2051,7 +2054,7 @@ void sensor_date_update_cb()
         case 3:{
             lv_label_set_text(ui_extensionbubble4Value, sensor_data_3);
             lv_label_set_text(ui_extensionbubble4Unit, "ppm");
-            // lv_img_set_src(ui_extensionbubble4Icon, &ui_img_529164268);
+            lv_img_set_src(ui_extensionbubble4Icon, &ui_img_529164268);
             lv_obj_add_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
@@ -2124,13 +2127,16 @@ void bubble2f_cb(lv_event_t * e)
     } else {
         rotate_positions(bubble_position, 4, -1);
     }
-    sensor_date_update_cb();
+    sensor_date_update();
     extensionscroll.pre_idx = extensionscroll.cur_idx;
 }
 
 void bubble2c_cb(lv_event_t * e)
 {
-
+    if(bubble_position[3] == 0)
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
 }
 
 void bubble3f_cb(lv_event_t * e)
@@ -2143,13 +2149,16 @@ void bubble3f_cb(lv_event_t * e)
     } else {
         rotate_positions(bubble_position, 4, -1);
     }
-    sensor_date_update_cb();
+    sensor_date_update();
     extensionscroll.pre_idx = extensionscroll.cur_idx;
 }
 
 void bubble3c_cb(lv_event_t * e)
 {
-
+    if(bubble_position[3] == 0)
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
 }
 
 void bubble4f_cb(lv_event_t * e)
@@ -2162,13 +2171,24 @@ void bubble4f_cb(lv_event_t * e)
     } else {
         rotate_positions(bubble_position, 4, -1);
     }
-    sensor_date_update_cb();
+    sensor_date_update();
     extensionscroll.pre_idx = extensionscroll.cur_idx;
 }
 
 void bubble4c_cb(lv_event_t * e)
 {
+    if(bubble_position[3] == 0)
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
+}
 
+void extensionpanel_cb(lv_event_t * e)
+{
+    if(bubble_position[3] == 0)
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
 }
 /*----------------------------------------------push 2 talk------------------------------------------------------*/
 void push2talk_init(void)
@@ -2317,9 +2337,17 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
             lvgl_port_unlock();
             return;
     }
+    // extension scroll play
+    if(inactive_time > (60 * 1000) && lv_scr_act()== ui_Page_Extension)
+    {
+        view_extension_timer_start();
+    }else
+    {
+        view_extension_timer_stop();
+    }
 
     // standby mode
-    if(inactive_time > (5 * 60 * 1000) && standby_mode == 0 && g_taskdown)
+    if(inactive_time > (5 * 60 * 1000) && standby_mode == 0 && g_taskdown && lv_scr_act() != ui_Page_Extension)
     {
         ESP_LOGI(TAG, "Standby mode active");
 
@@ -2511,11 +2539,27 @@ void view_push2talk_msg_timer_stop()
     }
 }
 
-void view_timer_create()
+static void view_extension_timer_callback(lv_timer_t *timer)
 {
-    // view_ble_switch_timer = lv_timer_create(view_ble_switch_timer_callback, 1000, NULL);
-    // view_sleep_timer = lv_timer_create(view_sleep_timer_callback, 1000, NULL);
-    // view_push2talk_timer = lv_timer_create(view_push2talk_timer_callback, 1000, NULL);
-    // view_push2talk_msg_timer = lv_timer_create(view_push2talk_msg_timer_callback, 500, NULL);
-    // view_push2talk_animation_timer = lv_timer_create(view_push2talk_animation_timer_callback, 0, NULL);
+    // ESP_LOGI(TAG, "view_extension_timer_callback");
+    rotate_positions(bubble_position, 4, 1);
+    if(bubble_position[3]==0)rotate_positions(bubble_position, 4, 1);
+
+    sensor_date_update();
+}
+
+void view_extension_timer_start()
+{
+    if (view_extension_timer != NULL) {
+        lv_timer_del(view_extension_timer);
+    }
+    view_extension_timer = lv_timer_create(view_extension_timer_callback, 2500, NULL);
+}
+
+void view_extension_timer_stop()
+{
+    if (view_extension_timer != NULL) {
+        lv_timer_del(view_extension_timer);
+        view_extension_timer = NULL;
+    }
 }

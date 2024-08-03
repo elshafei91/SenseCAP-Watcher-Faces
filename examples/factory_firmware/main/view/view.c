@@ -734,7 +734,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     ESP_LOGI(TAG, "CO2: None");
                 }
 
-                sensor_data_update(sensor_temp, sensor_humi, sensor_co2, sensor_back);
+                view_sensor_data_update(sensor_temp, sensor_humi, sensor_co2, sensor_back);
                 break;
             }
 
@@ -790,7 +790,6 @@ int view_init(void)
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
     view_pages_init();
-    view_timer_create();
     lvgl_port_unlock();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
@@ -800,10 +799,6 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, 
                                                             __view_event_handler, NULL, NULL)); 
-
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_USAGE_GUIDE_SWITCH, 
-    //                                                         __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME, 

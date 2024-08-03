@@ -325,7 +325,6 @@ lv_obj_t * ui_Spinner4;
 
 // SCREEN: ui_Page_Extension
 void ui_Page_Extension_screen_init(void);
-void ui_event_Page_Extension(lv_event_t * e);
 lv_obj_t * ui_Page_Extension;
 lv_obj_t * ui_extensionbubble1;
 lv_obj_t * ui_extensionbubble1Value;
@@ -350,6 +349,8 @@ lv_obj_t * ui_extensionbubble4Value;
 lv_obj_t * ui_extensionbubble4Unit;
 lv_obj_t * ui_extensionbubble4Icon;
 lv_obj_t * ui_extensionbubble4Icon2;
+void ui_event_extensionpanel(lv_event_t * e);
+lv_obj_t * ui_extensionpanel;
 
 
 // SCREEN: ui_Page_OTA
@@ -1440,14 +1441,6 @@ void ui_event_spback(lv_event_t * e)
         backset_cb(e);
     }
 }
-void ui_event_Page_Extension(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
-        hap_cb(e);
-    }
-}
 void ui_event_extensionbubble2(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1479,6 +1472,14 @@ void ui_event_extensionbubble4(lv_event_t * e)
     }
     if(event_code == LV_EVENT_FOCUSED) {
         bubble4f_cb(e);
+    }
+}
+void ui_event_extensionpanel(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        extensionpanel_cb(e);
     }
 }
 void ui_event_otaback(lv_event_t * e)

@@ -56,7 +56,7 @@ SET(SOURCES screens/ui_Page_Battery.c
     images/ui_img_volicon_png.c
     images/ui_img_swipe_png.c
     images/ui_img_1222852621.c
-    images/ui_img_2057255035.c
+    images/ui_img_226867343.c
     images/ui_img_1955521171.c
     images/ui_img_529164268.c
     images/ui_img_1761657674.c
@@ -68,7 +68,6 @@ SET(SOURCES screens/ui_Page_Battery.c
     images/ui_img_backtomenu_png.c
     images/ui_img_battery_charging_png.c
     images/ui_img_brighticon_png.c
-    images/ui_img_226867343.c
     images/ui_img_dog_d_png.c
     images/ui_img_error_png.c
     images/ui_img_gesture_d_png.c
@@ -76,6 +75,7 @@ SET(SOURCES screens/ui_Page_Battery.c
     images/ui_img_1336611536.c
     images/ui_img_left_png.c
     images/ui_img_onboardclick_png.c
+    images/ui_img_2057255035.c
     images/ui_img_wifi_0_png.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c
