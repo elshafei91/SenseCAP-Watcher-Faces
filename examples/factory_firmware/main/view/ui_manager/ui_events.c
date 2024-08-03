@@ -2548,7 +2548,7 @@ void view_push2talk_msg_timer_stop()
 
 static void view_extension_timer_callback(lv_timer_t *timer)
 {
-    // ESP_LOGI(TAG, "view_extension_timer_callback");
+    ESP_LOGI(TAG, "view_extension_timer_callback");
     rotate_positions(bubble_position, 4, 1);
     if(bubble_position[3]==0)rotate_positions(bubble_position, 4, 1);
 
@@ -2557,7 +2557,6 @@ static void view_extension_timer_callback(lv_timer_t *timer)
 
 void view_extension_timer_start()
 {
-    // ESP_LOGI(TAG, "view_extension_timer_start");
     if (view_extension_timer != NULL) {
         lv_timer_del(view_extension_timer);
     }
