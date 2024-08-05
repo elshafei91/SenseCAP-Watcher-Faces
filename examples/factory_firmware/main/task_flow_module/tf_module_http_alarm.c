@@ -13,6 +13,8 @@
 #include "uuid.h"
 #include "app_sensecraft.h"
 #include "app_sensor.h"
+#include "factory_info.h"
+#include <mbedtls/base64.h>
 
 static const char *TAG = "tfm.http_alarm";
 
@@ -400,6 +402,40 @@ static void http_alarm_task_destroy(tf_module_http_alarm_t *p_module_ins)
     }
 }
 
+static char *__token_http_gen(char *key_in)
+{
+    static char token[41] = {0};
+    esp_err_t ret = ESP_OK;
+    const char *eui = NULL;
+    const char *key = key_in;
+    size_t str_len = 0;
+    size_t token_len = 0;
+    char deviceinfo_buf[40];
+
+    if( strlen(token) > 0 ) {
+        return token;
+    }
+
+    eui = factory_info_eui_get();
+    if( eui == NULL || key == NULL ) {
+        ESP_LOGE(TAG, "EUI or key not set");
+        return NULL;
+    }
+
+    memset(deviceinfo_buf, 0, sizeof(deviceinfo_buf));
+    str_len = snprintf(deviceinfo_buf, sizeof(deviceinfo_buf), "%s:%s", eui, key);
+    if( str_len >= 30 ) {
+        ESP_LOGE(TAG, "EUI or key too long");
+        return NULL;
+    }
+    ret = mbedtls_base64_encode(( uint8_t *)token, sizeof(token), &token_len, ( uint8_t *)deviceinfo_buf, str_len);
+    if( ret != 0  ||  token_len < 40 ) {
+        ESP_LOGE(TAG, "mbedtls_base64_encode failed:%d,", ret);
+        return NULL;
+    }
+    return token; 
+}
+
 /*************************************************************************
  * Interface implementation
  ************************************************************************/
@@ -435,7 +471,7 @@ static int __cfg(void *p_module, cJSON *p_json)
         }
         if (local_svc_cfg.token != NULL && strlen(local_svc_cfg.token) > 0) {
             ESP_LOGI(TAG, "got local service cfg, token=%s", local_svc_cfg.token);
-            p_token = local_svc_cfg.token;
+            p_token = __token_http_gen(local_svc_cfg.token);
         }
     } else {
         ESP_LOGI(TAG, "local service disable");

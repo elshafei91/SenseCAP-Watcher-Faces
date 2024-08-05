@@ -66,12 +66,12 @@ static void __record_start( struct app_voice_interaction *p_vi)
         ESP_LOGW(TAG, "not support vi on ota mode");
         return;
     }
-    xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_START);
     //Maybe it has already started
     if( p_vi->cur_status !=  VI_STATUS_IDLE ){
         ESP_LOGI(TAG, "vi not idle, stop it first");
         __vi_stop(p_vi);
     }
+    xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_START);
 }
 
 static void __record_stop( struct app_voice_interaction *p_vi)
@@ -414,9 +414,11 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 tf_engine_status_get( &engine_status);
                 if( engine_status == TF_STATUS_RUNNING ) { //maybe will set running TODO
                     p_vi->taskflow_pause =  true;
-                    tf_engine_pause();
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                         VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+
+                    tf_engine_pause_block(pdMS_TO_TICKS(15000)); // maybe take 17s
+
                     ESP_LOGI(TAG, "taskflow pause");
                 } else {
                     p_vi->taskflow_pause =  false;
@@ -572,6 +574,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             }
 
             if( stop_send ) {
+                p_vi->next_status = VI_STATUS_STOP; 
                 break;
             }
 
@@ -657,8 +660,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 p_vi->err_code = ESP_ERR_VI_NO_MEM;
                 p_vi->next_status = next_status;
                 break;
-            }
-            app_rgb_set(SR, RGB_FLARE_BLUE);    
+            }   
 
             start = esp_timer_get_time();
             app_audio_player_stream_init(content_length);
@@ -710,9 +712,11 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                     {
                         ESP_LOGI(TAG, "items:%d: %s", i, result.items[i] ? result.items[i] : "UNKNOWN");
                     }   
-                    app_audio_player_stream_start();
+                    
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                             VIEW_EVENT_VI_PLAYING, &result,  sizeof(result), pdMS_TO_TICKS(10000)); //listener  need free
+                    app_audio_player_stream_start();
+                    app_rgb_set(SR, RGB_FLARE_BLUE);
                 }
             }
             free(recv_buf);
@@ -1112,6 +1116,14 @@ err:
     return ret;
 }
 
+bool app_vi_session_is_running(void)
+{
+    struct app_voice_interaction * p_vi = gp_voice_interaction;
+    if( p_vi == NULL) {
+        return false;
+    }
+    return !p_vi->new_session;
+}
 
 int app_vi_result_parse(const char *p_str, size_t len,
                         struct view_data_vi_result *p_ret)

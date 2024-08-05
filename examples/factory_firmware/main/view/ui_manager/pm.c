@@ -126,7 +126,7 @@ void initGroup()
     lv_obj_t * main_objects[]           = {ui_mainbtn1, ui_mainbtn2, ui_mainbtn3, ui_mainbtn4};
     lv_obj_t * template_objects[]       = {ui_menubtn1, ui_menubtn2, ui_menubtn3, ui_menubtn4};
     lv_obj_t * notask_objects[]         = {ui_curtask1b};
-    lv_obj_t * extension_objects[]      = {ui_extensionbubble2, ui_extensionbubble3, ui_extensionbubble4, ui_extensionbubble5};
+    lv_obj_t * extension_objects[]      = {ui_extensionbubble2, ui_extensionbubble3, ui_extensionbubble4};
     lv_obj_t * set_objects[]            = {ui_setback, ui_setdown, ui_setapp, ui_setwifi, ui_setble, ui_setvol, ui_setbri,ui_settime,
                                         ui_setrgb, ui_setww,ui_setdev, ui_setfac};
     lv_obj_t * view_objects[]           = {ui_Page_ViewAva, ui_Page_ViewLive};
@@ -136,7 +136,7 @@ void initGroup()
     lv_obj_t * about_objects[]          = {ui_aboutdevname, ui_aboutespversion, ui_aboutaiversion, ui_aboutsn, ui_abouteui, ui_aboutblemac,
                                         ui_aboutwifimac, ui_Paboutb};
     lv_obj_t * guide_objects[]          = {ui_Page_Guideavatar, ui_Page_Guidelive};
-    lv_obj_t * sleep_objects[]          = {ui_sleepswitch, ui_sleeptimeroller, ui_slpback};
+    lv_obj_t * sleep_objects[]          = {ui_sleeptimeroller, ui_sleepswitchp, ui_slpback};
     lv_obj_t * push2talk_objects[]      = {ui_p2tobj, ui_p2tbehavior, ui_p2tfeat, ui_p2tcomparison, ui_p2tnotify, ui_p2ttime, ui_p2tfreq, ui_p2tcancel, ui_p2tcheck};
 
     addObjToGroup(&group_page_main, main_objects, sizeof(main_objects) / sizeof(main_objects[0]));

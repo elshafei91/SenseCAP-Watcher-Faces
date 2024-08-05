@@ -131,6 +131,21 @@ static char *push2talk_text = NULL;
 static uint32_t push2talk_text_index = 0;
 static bool push2talk_timer_active = false;
 
+// extension sensor
+uint8_t bubble_position[4] = {3, 0, 1, 2};
+static uint8_t extension_scroll_mode = 0;
+static char sensor_data_1[6];
+static char sensor_data_2[6];
+static char sensor_data_3[6];
+static char sensor_data_4[6];
+typedef struct {
+    int cur_idx;
+    int pre_idx;
+} ExtensionScroll;
+
+ExtensionScroll extensionscroll;
+static lv_timer_t * view_extension_timer;
+
 // Bluetooth switch frequency filter
 static lv_timer_t * view_ble_switch_timer;
 
@@ -156,6 +171,7 @@ static void Task_end();
 static void Page_shutdown();
 static void Page_facreset();
 static void view_info_obtain_early();
+void sensor_date_update();
 
 static void async_emoji_switch_scr(void *arg)
 {
@@ -518,6 +534,10 @@ void backmenu_cb(lv_event_t * e)
     {
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
         lv_group_set_wrap(g_main, true);
+        if(g_tasktype == 1)
+        {
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_RESUME, NULL, NULL, pdMS_TO_TICKS(10000));
+        }
     }
 }
 
@@ -1245,6 +1265,12 @@ void sleeptimeset_cb(lv_event_t * e)
     // ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
 }
 
+void setsleepsw_cb(lv_event_t * e)
+{
+    // ESP_LOGI(CLICK_TAG, "setsleepsw_cb");
+    lv_event_send(ui_sleepswitch, LV_EVENT_SHORT_CLICKED, NULL);
+}
+
 void sleepswitch_cb(lv_event_t * e)
 {
     ESP_LOGI(CLICK_TAG, "sleepswitch_cb");
@@ -1286,6 +1312,7 @@ void p2tclick_cb(lv_event_t * e)
         lv_group_add_obj(g_main, ui_push2talkarc);
 
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
+        view_push2talk_animation_timer_stop();
     }
 }
 
@@ -1475,6 +1502,7 @@ void emoticonback_cb(lv_event_t * e)
 void guidebtn1click_cb(lv_event_t * e)
 {
     lv_pm_open_page(g_main, &group_page_guide, PM_ADD_OBJS_TO_GROUP, &ui_Page_Guideavatar, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Guideavatar_screen_init);
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
 }
 
 void guidebtn2click_cb(lv_event_t * e)
@@ -1521,6 +1549,7 @@ void guide1btn3c_cb(lv_event_t * e)
     {
         g_taskdown = 0;
         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_RESUME, NULL, NULL, pdMS_TO_TICKS(10000));
     }
 }
 
@@ -1883,9 +1912,289 @@ void ui_event_emoticonok(lv_event_t * e)
     }
 }
 
+/*----------------------------------------------extension sensor------------------------------------------------------*/
+void view_sensor_data_update(const char *data1, const char *data2, const char *data3, const char *data4) 
+{
+    strncpy(sensor_data_1, data1, sizeof(sensor_data_1) - 1);
+    sensor_data_1[sizeof(sensor_data_1) - 1] = '\0';
 
+    strncpy(sensor_data_2, data2, sizeof(sensor_data_2) - 1);
+    sensor_data_2[sizeof(sensor_data_2) - 1] = '\0';
+
+    strncpy(sensor_data_3, data3, sizeof(sensor_data_3) - 1);
+    sensor_data_3[sizeof(sensor_data_3) - 1] = '\0';
+
+    strncpy(sensor_data_4, data4, sizeof(sensor_data_4) - 1);
+    sensor_data_4[sizeof(sensor_data_4) - 1] = '\0';
+
+    // ESP_LOGI(TAG, "text1: %s, text2: %s, text3: %s, text4: %s", sensor_data_1, sensor_data_2, sensor_data_3, sensor_data_4);
+    sensor_date_update();
+}
+
+
+void sensor_date_update()
+{
+    switch(bubble_position[EXTENSION_TEMP])
+    {
+        case 0:{
+            lv_label_set_text(ui_extensionbubble1Value, sensor_data_1);
+            lv_label_set_text(ui_extensionbubble1Unit, "°C");
+            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_2057255035);
+            lv_obj_add_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 1:{
+            lv_label_set_text(ui_extensionbubble2Value, sensor_data_1);
+            lv_label_set_text(ui_extensionbubble2Unit, "°C");
+            lv_img_set_src(ui_extensionbubble2Icon, &ui_img_1761657674);
+            lv_obj_add_flag(ui_extensionbubble2Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 2:{
+            lv_label_set_text(ui_extensionbubble3Value, sensor_data_1);
+            lv_label_set_text(ui_extensionbubble3Unit, "°C");
+            lv_img_set_src(ui_extensionbubble3Icon, &ui_img_1761657674);
+            lv_obj_add_flag(ui_extensionbubble3Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 3:{
+            lv_label_set_text(ui_extensionbubble4Value, sensor_data_1);
+            lv_label_set_text(ui_extensionbubble4Unit, "°C");
+            lv_img_set_src(ui_extensionbubble4Icon, &ui_img_1761657674);
+            lv_obj_add_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Unit, LV_OBJ_FLAG_HIDDEN);
+
+            break;
+        }
+    }
+
+    switch(bubble_position[EXTENSION_HUMI])
+    {
+        case 0:{
+            lv_label_set_text(ui_extensionbubble1Value, sensor_data_2);
+            lv_label_set_text(ui_extensionbubble1Unit, "%");
+            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_1336611536);
+            lv_obj_add_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 1:{
+            lv_label_set_text(ui_extensionbubble2Value, sensor_data_2);
+            lv_label_set_text(ui_extensionbubble2Unit, "%");
+            lv_img_set_src(ui_extensionbubble2Icon, &ui_img_1955521171);
+            lv_obj_add_flag(ui_extensionbubble2Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 2:{
+            lv_label_set_text(ui_extensionbubble3Value, sensor_data_2);
+            lv_label_set_text(ui_extensionbubble3Unit, "%");
+            lv_img_set_src(ui_extensionbubble3Icon, &ui_img_1955521171);
+            lv_obj_add_flag(ui_extensionbubble3Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 3:{
+            lv_label_set_text(ui_extensionbubble4Value, sensor_data_2);
+            lv_label_set_text(ui_extensionbubble4Unit, "%");
+            lv_img_set_src(ui_extensionbubble4Icon, &ui_img_1955521171);
+            lv_obj_add_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+    }
+
+    switch(bubble_position[EXTENSION_CO2])
+    {
+        case 0:{
+            lv_label_set_text(ui_extensionbubble1Value, sensor_data_3);
+            lv_label_set_text(ui_extensionbubble1Unit, "ppm");
+            lv_img_set_src(ui_extensionbubble1Icon, &ui_img_226867343);
+            lv_obj_add_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 1:{
+            lv_label_set_text(ui_extensionbubble2Value, sensor_data_3);
+            lv_label_set_text(ui_extensionbubble2Unit, "ppm");
+            lv_img_set_src(ui_extensionbubble2Icon, &ui_img_529164268);
+            lv_obj_add_flag(ui_extensionbubble2Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 2:{
+            lv_label_set_text(ui_extensionbubble3Value, sensor_data_3);
+            lv_label_set_text(ui_extensionbubble3Unit, "ppm");
+            lv_img_set_src(ui_extensionbubble3Icon, &ui_img_529164268);
+            lv_obj_add_flag(ui_extensionbubble3Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 3:{
+            lv_label_set_text(ui_extensionbubble4Value, sensor_data_3);
+            lv_label_set_text(ui_extensionbubble4Unit, "ppm");
+            lv_img_set_src(ui_extensionbubble4Icon, &ui_img_529164268);
+            lv_obj_add_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Unit, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+    }
+
+    switch(bubble_position[EXTENSION_BACK])
+    {
+        case 0:{
+            lv_obj_add_flag(ui_extensionbubble1Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble1Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble1Unit, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble1Icon2, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 1:{
+            lv_obj_add_flag(ui_extensionbubble2Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble2Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble2Unit, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble2Icon2, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 2:{
+            lv_obj_add_flag(ui_extensionbubble3Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble3Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble3Unit, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble3Icon2, LV_OBJ_FLAG_HIDDEN);
+            break;
+        }
+        case 3:{
+            lv_obj_add_flag(ui_extensionbubble4Value, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble4Icon, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_extensionbubble4Unit, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_extensionbubble4Icon2, LV_OBJ_FLAG_HIDDEN);
+            
+            break;
+        }
+    }
+
+    // for (int i = 0; i < 4; i++)
+    // {
+    //     ESP_LOGI(TAG, "bubble%d_position: %d", i, bubble_position[i]);
+    // }
+}
+
+void rotate_positions(uint8_t positions[], int size, int direction)
+{
+    uint8_t temp[4];
+    for (int i = 0; i < size; i++) {
+        if (direction == 1) {
+            temp[(i + 1) % size] = positions[i];
+        } else {
+            temp[(i + size - 1) % size] = positions[i];
+        }
+    }
+    for (int i = 0; i < size; i++) {
+        positions[i] = temp[i];
+    }
+}
+
+void bubble2f_cb(lv_event_t * e)
+{
+    // ESP_LOGI(TAG, "bubble2f_cb");
+    extensionscroll.cur_idx = 1;
+    if(extensionscroll.cur_idx - extensionscroll.pre_idx == -2)
+    {
+        rotate_positions(bubble_position, 4, 1);
+    } else {
+        rotate_positions(bubble_position, 4, -1);
+    }
+    sensor_date_update();
+    extensionscroll.pre_idx = extensionscroll.cur_idx;
+}
+
+void bubble2c_cb(lv_event_t * e)
+{
+    if(bubble_position[3] == 0)
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
+}
+
+void bubble3f_cb(lv_event_t * e)
+{
+    // ESP_LOGI(TAG, "bubble3f_cb");
+    extensionscroll.cur_idx = 2;
+    if(extensionscroll.cur_idx - extensionscroll.pre_idx == 1)
+    {
+        rotate_positions(bubble_position, 4, 1);
+    } else {
+        rotate_positions(bubble_position, 4, -1);
+    }
+    sensor_date_update();
+    extensionscroll.pre_idx = extensionscroll.cur_idx;
+}
+
+void bubble3c_cb(lv_event_t * e)
+{
+    if(bubble_position[3] == 0)
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
+}
+
+void bubble4f_cb(lv_event_t * e)
+{
+    // ESP_LOGI(TAG, "bubble4f_cb");
+    extensionscroll.cur_idx = 3;
+    if(extensionscroll.cur_idx - extensionscroll.pre_idx == 1)
+    {
+        rotate_positions(bubble_position, 4, 1);
+    } else {
+        rotate_positions(bubble_position, 4, -1);
+    }
+    sensor_date_update();
+    extensionscroll.pre_idx = extensionscroll.cur_idx;
+}
+
+void bubble4c_cb(lv_event_t * e)
+{
+    if(bubble_position[3] == 0)
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
+}
+
+void extensionpanel_cb(lv_event_t * e)
+{
+    if(bubble_position[3] == 0)
+    {
+        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+    }
+}
 /*----------------------------------------------push 2 talk------------------------------------------------------*/
-// TODO
 void push2talk_init(void)
 {
     push2talk_textarea = lv_textarea_create(ui_Page_Push2talk);
@@ -1912,6 +2221,7 @@ void push2talk_init(void)
 
 static void view_push2talk_animation_timer_callback(lv_timer_t *timer)
 {
+    // ESP_LOGI(TAG, "push2talk animation callback");
     if (push2talk_text && push2talk_text[push2talk_text_index] != '\0' && push2talk_timer_active) {
         char temp[2];
         temp[0] = push2talk_text[push2talk_text_index];
@@ -2032,9 +2342,15 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
             lvgl_port_unlock();
             return;
     }
+    // extension scroll play
+    if(inactive_time > (60 * 1000) && lv_scr_act()== ui_Page_Extension && (!extension_scroll_mode))
+    {
+        view_extension_timer_start();
+        extension_scroll_mode = 1;
+    }
 
     // standby mode
-    if(inactive_time > (5 * 60 * 1000) && standby_mode == 0 && g_taskdown)
+    if(inactive_time > (5 * 60 * 1000) && standby_mode == 0 && g_taskdown && lv_scr_act() != ui_Page_Extension)
     {
         ESP_LOGI(TAG, "Standby mode active");
 
@@ -2082,6 +2398,12 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
             emoji_timer(EMOJI_STOP);
 
             standby_mode = 0;
+        }
+
+        if(extension_scroll_mode != 0)
+        {
+            view_extension_timer_stop();
+            extension_scroll_mode = 0;
         }
     }
 }
@@ -2191,7 +2513,8 @@ static void view_push2talk_msg_timer_callback(lv_timer_t *timer)
             lv_group_focus_obj(ui_p2tfreq);
             break;
         case 7:
-            lv_obj_clear_flag(ui_p2tsw, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_p2tcancel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_p2tcheck, LV_OBJ_FLAG_HIDDEN);
             lv_group_add_obj(g_main, ui_p2tcancel);
             lv_group_add_obj(g_main, ui_p2tcheck);
             lv_group_focus_obj(ui_p2tcheck);
@@ -2226,11 +2549,28 @@ void view_push2talk_msg_timer_stop()
     }
 }
 
-void view_timer_create()
+static void view_extension_timer_callback(lv_timer_t *timer)
 {
-    // view_ble_switch_timer = lv_timer_create(view_ble_switch_timer_callback, 1000, NULL);
-    // view_sleep_timer = lv_timer_create(view_sleep_timer_callback, 1000, NULL);
-    // view_push2talk_timer = lv_timer_create(view_push2talk_timer_callback, 1000, NULL);
-    // view_push2talk_msg_timer = lv_timer_create(view_push2talk_msg_timer_callback, 500, NULL);
-    // view_push2talk_animation_timer = lv_timer_create(view_push2talk_animation_timer_callback, 0, NULL);
+    ESP_LOGI(TAG, "view_extension_timer_callback");
+    rotate_positions(bubble_position, 4, 1);
+    if(bubble_position[3]==0)rotate_positions(bubble_position, 4, 1);
+
+    sensor_date_update();
+}
+
+void view_extension_timer_start()
+{
+    if (view_extension_timer != NULL) {
+        lv_timer_del(view_extension_timer);
+    }
+    view_extension_timer = lv_timer_create(view_extension_timer_callback, 3000, NULL);
+
+}
+
+void view_extension_timer_stop()
+{
+    if (view_extension_timer != NULL) {
+        lv_timer_del(view_extension_timer);
+        view_extension_timer = NULL;
+    }
 }
