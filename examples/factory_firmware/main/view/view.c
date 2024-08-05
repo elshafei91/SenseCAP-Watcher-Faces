@@ -589,6 +589,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
 
+                lv_label_set_text(ui_push2talkp2t1, "Scroll to exit talking mode");
                 lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
                 lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0x91BF25), LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
@@ -657,7 +658,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         }
                     }
 
-                    emoji_timer(EMOJI_STOP);
                     lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
                     lv_group_remove_all_objs(g_main);
@@ -703,7 +703,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
                 int push2talk_error_code = *(int *)event_data;
                 static char error_code_str[25];
-                snprintf(error_code_str, sizeof(error_code_str), "[ %d ]\nfailed", push2talk_error_code);
+                snprintf(error_code_str, sizeof(error_code_str), "[ 0x%x ]\nfailed", push2talk_error_code);
 
                 lv_label_set_text(ui_push2talkp2t1, error_code_str);
                 lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);

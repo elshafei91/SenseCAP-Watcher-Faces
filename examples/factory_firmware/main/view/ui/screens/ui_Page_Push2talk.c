@@ -16,6 +16,7 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_width(ui_push2talkpanel2, 412);
     lv_obj_set_height(ui_push2talkpanel2, 412);
     lv_obj_set_align(ui_push2talkpanel2, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_push2talkpanel2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_push2talkpanel2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_push2talkpanel2, 200, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -69,16 +70,16 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_width(ui_push2talkpanel3, 412);
     lv_obj_set_height(ui_push2talkpanel3, 412);
     lv_obj_set_align(ui_push2talkpanel3, LV_ALIGN_CENTER);
-    lv_obj_set_flex_flow(ui_push2talkpanel3, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(ui_push2talkpanel3, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);     /// Flags
+    lv_obj_set_flex_flow(ui_push2talkpanel3, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_flex_align(ui_push2talkpanel3, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_SCROLL_ON_FOCUS | LV_OBJ_FLAG_SCROLL_ONE);     /// Flags
     lv_obj_set_scrollbar_mode(ui_push2talkpanel3, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_bg_color(ui_push2talkpanel3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_push2talkpanel3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_push2talkpanel3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_push2talkpanel3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_row(ui_push2talkpanel3, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_column(ui_push2talkpanel3, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_column(ui_push2talkpanel3, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_p2tobj = lv_obj_create(ui_push2talkpanel3);
     lv_obj_set_width(ui_p2tobj, 333);
@@ -353,27 +354,11 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_style_radius(ui_p2tfreq2, 20, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_p2tfreq2, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_p2tsw = lv_obj_create(ui_push2talkpanel3);
-    lv_obj_set_width(ui_p2tsw, 333);
-    lv_obj_set_height(ui_p2tsw, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_align(ui_p2tsw, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_p2tsw, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
-    lv_obj_clear_flag(ui_p2tsw, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_p2tsw, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_p2tsw, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_p2tsw, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_p2tsw, lv_color_hex(0x8FC31F), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_p2tsw, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_color(ui_p2tsw, lv_color_hex(0x8FC31F), LV_PART_MAIN | LV_STATE_FOCUSED);
-    lv_obj_set_style_outline_opa(ui_p2tsw, 255, LV_PART_MAIN | LV_STATE_FOCUSED);
-    lv_obj_set_style_outline_width(ui_p2tsw, 1, LV_PART_MAIN | LV_STATE_FOCUSED);
-    lv_obj_set_style_outline_pad(ui_p2tsw, 1, LV_PART_MAIN | LV_STATE_FOCUSED);
-
-    ui_p2tcancel = lv_btn_create(ui_p2tsw);
+    ui_p2tcancel = lv_btn_create(ui_push2talkpanel3);
     lv_obj_set_width(ui_p2tcancel, 60);
     lv_obj_set_height(ui_p2tcancel, 60);
-    lv_obj_set_x(ui_p2tcancel, -100);
-    lv_obj_set_y(ui_p2tcancel, 0);
+    lv_obj_set_x(ui_p2tcancel, -141);
+    lv_obj_set_y(ui_p2tcancel, -4);
     lv_obj_set_align(ui_p2tcancel, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_p2tcancel, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_p2tcancel, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
@@ -386,7 +371,7 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_style_outline_width(ui_p2tcancel, 4, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
     lv_obj_set_style_outline_pad(ui_p2tcancel, 1, LV_PART_MAIN | LV_STATE_FOCUS_KEY);
 
-    ui_p2tcheck = lv_btn_create(ui_p2tsw);
+    ui_p2tcheck = lv_btn_create(ui_push2talkpanel3);
     lv_obj_set_width(ui_p2tcheck, 60);
     lv_obj_set_height(ui_p2tcheck, 60);
     lv_obj_set_x(ui_p2tcheck, 100);
