@@ -448,7 +448,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 uint8_t * task_st = (uint8_t *)event_data;
                 view_alarm_off(task_st);
 
-                if(g_sleep_switch == 1 && sleep_mode == 1)
+                if(sleep_mode == 1)
                 {
                     bsp_lcd_brightness_set(0);
                 }
