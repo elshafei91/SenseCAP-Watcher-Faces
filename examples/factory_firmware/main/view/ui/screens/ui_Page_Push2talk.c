@@ -19,7 +19,7 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_add_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_push2talkpanel2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_push2talkpanel2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_push2talkpanel2, 200, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_push2talkpanel2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_push2talkpanel2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_push2talkpanel2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -72,7 +72,8 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_align(ui_push2talkpanel3, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_push2talkpanel3, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_flex_align(ui_push2talkpanel3, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_SCROLL_ON_FOCUS | LV_OBJ_FLAG_SCROLL_ONE);     /// Flags
+    lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_SCROLL_ON_FOCUS |
+                    LV_OBJ_FLAG_SCROLL_ONE);     /// Flags
     lv_obj_set_scrollbar_mode(ui_push2talkpanel3, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_bg_color(ui_push2talkpanel3, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_push2talkpanel3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
