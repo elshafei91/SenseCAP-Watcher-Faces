@@ -192,6 +192,10 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
         return -1;
     }
     
+    if( lv_scr_act() != ui_Page_ViewLive) {
+        return 0;
+    }
+
     ret = mbedtls_base64_decode(image_jpeg_buf, IMG_JPEG_BUF_SIZE, &output_len, p_info->img.p_buf, p_info->img.len);
     if (ret != 0 || output_len == 0)
     {
