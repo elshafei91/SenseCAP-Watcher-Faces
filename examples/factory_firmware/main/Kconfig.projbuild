@@ -42,7 +42,7 @@ menu "Factory Firmware Example Configuration"
 
     config CAMERA_DISPLAY_MIRROR_X
         bool "camera display mirror x"
-        default n
+        default y
         help
             Enable camera display mirror x.
 endmenu
