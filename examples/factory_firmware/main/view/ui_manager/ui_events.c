@@ -39,6 +39,7 @@ uint8_t g_tasktype = 0;     // 0: local task,                   1: remote task
 uint8_t g_backpage = 0;
 uint8_t g_avalivjump = 0;
 uint8_t g_push2talk_timer = 1;// 0: Speaking countdown,         1: Scrolling countdown
+extern uint8_t g_is_push2talk;
 
 uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
 uint8_t standby_mode = 0;    // 0: on;     1: off
@@ -1332,6 +1333,7 @@ void push2talkcancel_cb(lv_event_t * e)
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
 
     g_taskflow_pause = 0;
+    g_is_push2talk = 0;
 }
 
 void push2talkcheck_cb(lv_event_t * e)
@@ -1344,6 +1346,7 @@ void push2talkcheck_cb(lv_event_t * e)
                                     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
 
     g_taskflow_pause = 0;
+    g_is_push2talk = 0;
 }
 
 void p2tvaluechange_cb(lv_event_t * e)
@@ -1371,6 +1374,7 @@ void p2tvaluechange_cb(lv_event_t * e)
         }
 
         g_taskflow_pause = 0;
+        g_is_push2talk = 0;
     }
 }
 
@@ -2443,6 +2447,7 @@ static void view_push2talk_timer_callback(lv_timer_t *timer)
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
                 push2talk_timer_counter = 0;
+                g_is_push2talk = 0;
             }
             if(g_push2talk_mode == 0)
             {

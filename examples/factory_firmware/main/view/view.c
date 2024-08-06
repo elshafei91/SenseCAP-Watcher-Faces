@@ -31,6 +31,7 @@ uint8_t g_shutdown = 0;
 uint8_t g_dev_binded = 0;
 uint8_t g_push2talk_status = 0;
 uint8_t g_taskflow_pause = 0;
+uint8_t g_is_push2talk = 0;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_guide_disable;
@@ -254,6 +255,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_BAT_DRAIN_SHUTDOWN:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BAT_DRAIN_SHUTDOWN");
+                hide_all_overlays();
                 _ui_screen_change(&ui_Page_Battery, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Battery_screen_init);
                 lv_timer_t *timer = lv_timer_create(toggle_image_visibility, 500, NULL);
                 
@@ -474,10 +476,14 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 if(g_tasktype == 0)
                 {
-                    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_Example, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Example_screen_init);
+                    if(!g_is_push2talk){
+                        lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_Example, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Example_screen_init);
+                    }
                 }else{
-                    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-                    lv_group_focus_obj(ui_mainbtn2);
+                    if(!g_is_push2talk){
+                        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+                        lv_group_focus_obj(ui_mainbtn2);
+                    }
                 }
                 lv_group_set_wrap(g_main, true);
                 lv_disp_trig_activity(NULL);
@@ -581,6 +587,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_VI_RECORDING:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_RECORDING");
+
+                g_is_push2talk = 1;
 
                 view_push2talk_timer_stop();
                 lv_group_remove_all_objs(g_main);
