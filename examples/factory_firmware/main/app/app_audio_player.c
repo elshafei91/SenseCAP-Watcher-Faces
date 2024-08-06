@@ -364,7 +364,7 @@ esp_err_t app_audio_player_stream_start(void)
     if( p_audio_player == NULL) {
         return ESP_FAIL;
     }
-
+    xEventGroupClearBits(p_audio_player->event_group, EVENT_STREAM_STOP);
     xEventGroupSetBits(p_audio_player->event_group, EVENT_STREAM_START);
     return ESP_OK;
 }
@@ -435,7 +435,7 @@ esp_err_t app_audio_player_stream_stop(void)
     __data_unlock(p_audio_player);
 
     xEventGroupSetBits(p_audio_player->event_group, EVENT_STREAM_STOP);
-    xEventGroupWaitBits(p_audio_player->event_group, EVENT_STREAM_STOP_DONE, 1, 1, pdMS_TO_TICKS(1000));
+    // xEventGroupWaitBits(p_audio_player->event_group, EVENT_STREAM_STOP_DONE, 1, 1, pdMS_TO_TICKS(1000));
 
     //clear the ringbuffer
     void *tmp = NULL;

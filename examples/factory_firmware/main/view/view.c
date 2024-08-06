@@ -496,6 +496,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
                     }else{
                         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+                        lv_group_remove_all_objs(g_main);
+                        lv_group_add_obj(g_main, ui_guidebtn1);
+                        lv_group_add_obj(g_main, ui_guidebtn2);
+                        emoji_switch_scr = SCREEN_GUIDE;
+                        emoji_timer(EMOJI_DETECTING);
                     }
                 }else if(g_avarlive == 1)
                 {
@@ -504,6 +509,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewLive_screen_init);
                     }else{
                         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
+                        lv_group_remove_all_objs(g_main);
+                        lv_group_add_obj(g_main, ui_guidebtn1);
+                        lv_group_add_obj(g_main, ui_guidebtn2);
+                        emoji_switch_scr = SCREEN_GUIDE;
+                        emoji_timer(EMOJI_DETECTING);
                     }
                 }
                 break;
@@ -578,7 +588,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
-                
+
+                lv_label_set_text(ui_push2talkp2t1, "Scroll to exit talking mode");
+                lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0x91BF25), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
                 emoji_switch_scr = SCREEN_PUSH2TALK;
                 emoji_timer(EMOJI_LISTENING);
                 _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
@@ -644,7 +658,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         }
                     }
 
-                    emoji_timer(EMOJI_STOP);
                     lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
                     lv_group_remove_all_objs(g_main);
@@ -678,8 +691,26 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_ERROR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ERROR");
 
-                int push2talk_error_code = *(int *)event_data;
+                view_push2talk_timer_stop();
+                lv_group_remove_all_objs(g_main);
 
+                lv_obj_clear_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
+
+                _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
+
+                int push2talk_error_code = *(int *)event_data;
+                static char error_code_str[25];
+                snprintf(error_code_str, sizeof(error_code_str), "[ 0x%x ]\nfailed", push2talk_error_code);
+
+                lv_label_set_text(ui_push2talkp2t1, error_code_str);
+                lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0xD54941), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
+                lv_arc_set_value(ui_push2talkarc, 0);
+                view_push2talk_timer_start();
 
                 break;
 
@@ -689,36 +720,32 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_SENSOR");
 
                 struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
+                char sensor_temp[6] = "--";
+                char sensor_humi[6] = "--";
+                char sensor_co2[6] = "--";
+                char sensor_back[6] = "--";
                 if (sensor_data->temperature_valid && sensor_data->temperature) {
                     ESP_LOGI(TAG, "Temperature: %0.1f", sensor_data->temperature);
-                    static char sensor_temp[6];
                     snprintf(sensor_temp, sizeof(sensor_temp), "%.1f", sensor_data->temperature);
-                    lv_label_set_text(ui_extensionbubbleValue, sensor_temp);
                 } else {
                     ESP_LOGI(TAG, "Temperature: None");
-                    lv_label_set_text(ui_extensionbubbleValue, "--");
                 }
 
                 if (sensor_data->humidity_valid && sensor_data->humidity) {
                     ESP_LOGI(TAG, "Humidity: %0.1f", sensor_data->humidity);
-                    static char sensor_humi[6];
                     snprintf(sensor_humi, sizeof(sensor_humi), "%.1f", sensor_data->humidity);
-                    lv_label_set_text(ui_extensionbubble2Value, sensor_humi);
                 } else {
                     ESP_LOGI(TAG, "Humidity: None");
-                    lv_label_set_text(ui_extensionbubble2Value, "--");
                 }
 
                 if (sensor_data->co2_valid && sensor_data->co2) {
                     ESP_LOGI(TAG, "CO2: %u", sensor_data->co2);
-                    static char sensor_co2[6];
                     snprintf(sensor_co2, sizeof(sensor_co2), "%u", sensor_data->co2);
-                    lv_label_set_text(ui_extensionbubble3Value, sensor_co2);
                 } else {
                     ESP_LOGI(TAG, "CO2: None");
-                    lv_label_set_text(ui_extensionbubble3Value, "--");
                 }
 
+                view_sensor_data_update(sensor_temp, sensor_humi, sensor_co2, sensor_back);
                 break;
             }
 
@@ -774,7 +801,6 @@ int view_init(void)
     view_alarm_init(lv_layer_top());
     view_image_preview_init(ui_Page_ViewLive);
     view_pages_init();
-    view_timer_create();
     lvgl_port_unlock();
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
@@ -784,10 +810,6 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, 
                                                             __view_event_handler, NULL, NULL)); 
-
-    // ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
-    //                                                         VIEW_EVENT_BASE, VIEW_EVENT_USAGE_GUIDE_SWITCH, 
-    //                                                         __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TIME, 

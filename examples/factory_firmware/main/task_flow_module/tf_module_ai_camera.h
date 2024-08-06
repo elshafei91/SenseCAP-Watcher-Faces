@@ -147,7 +147,7 @@ struct tf_module_ai_camera_params
 
 
 #define TF_MODULE_AI_CAMERA_TASK_STACK_SIZE 1024 * 5
-#define TF_MODULE_AI_CAMERA_TASK_PRIO       3
+#define TF_MODULE_AI_CAMERA_TASK_PRIO       13
 
 #define TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_240_240    0
 #define TF_MODULE_AI_CAMERA_SENSOR_RESOLUTION_416_416    1
@@ -205,6 +205,7 @@ typedef struct tf_module_ai_camera
     bool ai_model_download_exit;
     bool need_abort_ai_model_download;
     bool sscma_starting_flag;
+    int large_image_check_fail_cnt;
 } tf_module_ai_camera_t;
 
 tf_module_t * tf_module_ai_camera_init(tf_module_ai_camera_t *p_module_ins);

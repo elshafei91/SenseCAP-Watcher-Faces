@@ -13,7 +13,7 @@ extern "C"
 #endif
 
 #define TF_ENGINE_TASK_STACK_SIZE 1024 * 5
-#define TF_ENGINE_TASK_PRIO 5
+#define TF_ENGINE_TASK_PRIO 13
 #define TF_ENGINE_QUEUE_SIZE 3
 
 // Define status codes for engine state
@@ -33,6 +33,9 @@ extern "C"
 #define TF_STATUS_ERR_MODULES_WIRES     105
 #define TF_STATUS_ERR_MODULES_START     106
 #define TF_STATUS_ERR_MODULES_INTERNAL  107   // module runtime internal error
+
+#define TF_STATUS_ERR_DEVICE_OTA        200   // The device is in OTA mode and cannot run the taskflow
+#define TF_STATUS_ERR_DEVICE_VI         201   // The device is in voice interaction mode and cannot run taskflow
 
 
 typedef struct
@@ -127,6 +130,18 @@ esp_err_t tf_engine_restart(void);
  */
 esp_err_t tf_engine_pause(void);
 
+/**
+ * Waiting for the pause engine to complete
+ *
+ * @return The result of pausing the engine. Possible return values are:
+ *         - ESP_OK: The engine was successfully paused.
+ *         - ESP_FAIL: An unspecified error occurred during the pausing process.
+ *
+ * @throws None.
+ *
+ * @comment This function pauses the engine and temporarily stops its operation.
+ */
+esp_err_t tf_engine_pause_block(TickType_t xTicksToWait);
 
 /*
 * Resumes the engine.

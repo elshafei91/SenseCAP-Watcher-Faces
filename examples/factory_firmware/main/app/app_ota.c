@@ -28,7 +28,8 @@
 #include "util.h"
 #include "tf_module_ai_camera.h"
 #include "app_sensecraft.h"
-
+#include "app_device_info.h"
+#include "app_ble.h"
 
 ESP_EVENT_DEFINE_BASE(OTA_EVENT_BASE);
 
@@ -61,6 +62,7 @@ static TaskHandle_t g_task;
 static TaskHandle_t g_task_sscma_writer;
 static StaticTask_t g_task_tcb;
 static volatile atomic_bool g_ota_running = ATOMIC_VAR_INIT(false);
+static volatile atomic_bool g_ota_fw_running = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_ignore_version_check = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_sscma_writer_abort = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_network_connected_flag = ATOMIC_VAR_INIT(false);
@@ -952,6 +954,7 @@ static void __mqtt_ota_executor_task(void *p_arg)
     //there might be queued ota requests in the `g_Q_ota_msg`, but no worry.
     vTaskDelay(pdMS_TO_TICKS(4000));
 
+    bool ble_pause = false;
     cJSON *ota_msg_cjson;
 
     while (1) {
@@ -1102,6 +1105,14 @@ static void __mqtt_ota_executor_task(void *p_arg)
             }
 
             bool need_reboot = false;
+            
+            if( get_ble_switch(MAX_CALLER) ) {
+                app_ble_adv_switch(0);
+                ble_pause = true;
+                ESP_LOGI(TAG, "ble pause");
+            }
+            atomic_store(&g_ota_fw_running, true);
+
             //upgrade himax
             if (order_value_himax && new_himax) {
                 cJSON *file_url = cJSON_GetObjectItem(order_value_himax, "file_url");
@@ -1168,6 +1179,12 @@ static void __mqtt_ota_executor_task(void *p_arg)
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_REBOOT, NULL, 0, pdMS_TO_TICKS(10000));
             }
 cleanup:
+            atomic_store(&g_ota_fw_running, false);
+            if( ble_pause ) {
+                ESP_LOGI(TAG, "ble resume");
+                app_ble_adv_switch(get_ble_switch(MAX_CALLER));
+            }
+
             //delete the item from Q
             xQueueReceive(g_Q_ota_msg, &ota_msg_cjson, portMAX_DELAY);
             //the json is used up
@@ -1487,4 +1504,9 @@ esp_err_t app_ota_himax_fw_download(char *url)
 void  app_ota_any_ignore_version_check(bool ignore)
 {
     atomic_store(&g_ignore_version_check, ignore);
+}
+
+bool app_ota_fw_is_running()
+{
+    return atomic_load(&g_ota_fw_running);
 }

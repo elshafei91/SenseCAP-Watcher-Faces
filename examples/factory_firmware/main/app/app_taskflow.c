@@ -689,13 +689,17 @@ static void __view_event_handler(void* handler_args,
             int status = 0;
             esp_err_t ret = ESP_OK;
             tf_engine_status_get(&status);
-            if( status == TF_STATUS_RUNNING  || status ==  TF_STATUS_STARTING) {
+            if( status == TF_STATUS_RUNNING  || status ==  TF_STATUS_STARTING || status ==  TF_STATUS_PAUSE) {
                 tf_engine_stop();
                 __task_flow_clean();
             } else {
                 ESP_LOGI(TAG, "task flow already stopped");
+                intmax_t tlid = 0;
+                intmax_t ctd = 0;
+                tf_engine_ctd_get( &ctd );
+                tf_engine_tid_get( &tlid );
                 __report_lock(p_taskflow);
-                ret = app_sensecraft_mqtt_report_taskflow_status( 0, 0, TF_STATUS_STOP, NULL, 0);
+                ret = app_sensecraft_mqtt_report_taskflow_status( tlid, ctd, status, NULL, 0);
                 __report_unlock(p_taskflow);
                 if( ret != ESP_OK ) {
                     ESP_LOGW(TAG, "Failed to report taskflow status to MQTT server");
