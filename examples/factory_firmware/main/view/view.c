@@ -31,6 +31,7 @@ uint8_t g_shutdown = 0;
 uint8_t g_dev_binded = 0;
 uint8_t g_push2talk_status = 0;
 uint8_t g_taskflow_pause = 0;
+uint8_t g_is_push2talk = 0;
 extern uint8_t g_taskdown;
 extern uint8_t g_swipeid; // 0 for shutdown, 1 for factoryreset
 extern int g_guide_disable;
@@ -254,6 +255,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_BAT_DRAIN_SHUTDOWN:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_BAT_DRAIN_SHUTDOWN");
+                hide_all_overlays();
                 _ui_screen_change(&ui_Page_Battery, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Battery_screen_init);
                 lv_timer_t *timer = lv_timer_create(toggle_image_visibility, 500, NULL);
                 
@@ -448,7 +450,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 uint8_t * task_st = (uint8_t *)event_data;
                 view_alarm_off(task_st);
 
-                if(g_sleep_switch == 1 && sleep_mode == 1)
+                if(sleep_mode == 1)
                 {
                     bsp_lcd_brightness_set(0);
                 }
@@ -474,12 +476,17 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 if(g_tasktype == 0)
                 {
-                    lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_Example, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Example_screen_init);
+                    if(!g_is_push2talk){
+                        lv_pm_open_page(g_main, &group_page_template, PM_ADD_OBJS_TO_GROUP, &ui_Page_Example, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Example_screen_init);
+                    }
                 }else{
-                    lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-                    lv_group_focus_obj(ui_mainbtn2);
+                    if(!g_is_push2talk){
+                        lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
+                        lv_group_focus_obj(ui_mainbtn2);
+                    }
                 }
                 lv_group_set_wrap(g_main, true);
+                lv_disp_trig_activity(NULL);
                 break;
             }
 
@@ -581,6 +588,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_RECORDING:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_RECORDING");
 
+                g_is_push2talk = 1;
+
                 view_push2talk_timer_stop();
                 lv_group_remove_all_objs(g_main);
 
@@ -589,6 +598,9 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
 
+                hide_all_overlays();
+
+                lv_label_set_text(ui_push2talkp2t1, "Scroll to exit talking mode");
                 lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
                 lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0x91BF25), LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
@@ -657,7 +669,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         }
                     }
 
-                    emoji_timer(EMOJI_STOP);
                     lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
                     lv_group_remove_all_objs(g_main);
@@ -703,12 +714,13 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
                 int push2talk_error_code = *(int *)event_data;
                 static char error_code_str[25];
-                snprintf(error_code_str, sizeof(error_code_str), "[ %d ]\nfailed", push2talk_error_code);
+                snprintf(error_code_str, sizeof(error_code_str), "[ 0x%x ]\nfailed", push2talk_error_code);
 
                 lv_label_set_text(ui_push2talkp2t1, error_code_str);
                 lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);
                 lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0xD54941), LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
+                lv_arc_set_value(ui_push2talkarc, 0);
                 view_push2talk_timer_start();
 
                 break;

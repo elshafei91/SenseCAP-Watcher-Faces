@@ -418,7 +418,6 @@ void ui_event_p2tfreq(lv_event_t * e);
 lv_obj_t * ui_p2tfreq;
 lv_obj_t * ui_p2tfreq1;
 lv_obj_t * ui_p2tfreq2;
-lv_obj_t * ui_p2tsw;
 void ui_event_p2tcancel(lv_event_t * e);
 lv_obj_t * ui_p2tcancel;
 void ui_event_p2tcheck(lv_event_t * e);

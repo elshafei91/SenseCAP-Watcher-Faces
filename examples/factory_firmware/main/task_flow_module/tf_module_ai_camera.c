@@ -622,6 +622,18 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                 }
             }
             
+            // Reduce event bus usage
+            lvgl_port_lock(0);
+            ret = view_image_preview_flush(&info);
+            lvgl_port_unlock();
+            
+            if( ret != 0 ) {
+                tf_data_image_free(&info.img);
+                tf_data_inference_free(&info.inference);
+                ESP_LOGE(TAG, "Failed to check image, ret = %d", ret);
+                break;
+            }
+
             __data_lock(p_module_ins);
             is_need_output = __output_check(p_module_ins, &info.inference);
             if( is_need_output) {
@@ -666,10 +678,6 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
             // Upload image
             app_sensecraft_mqtt_preview_upload_with_reduce_freq((char *)info.img.p_buf, info.img.len);
 
-            // Reduce event bus usage
-            lvgl_port_lock(0);
-            view_image_preview_flush(&info);
-            lvgl_port_unlock();
             tf_data_image_free(&info.img);
             tf_data_inference_free(&info.inference);
 
@@ -696,6 +704,28 @@ static void sscma_on_event(sscma_client_handle_t client, const sscma_client_repl
                 img_large.p_buf = NULL;
                 img_large.len = 0;
                 img_large.time = 0;
+            }
+
+            //check image
+            ret = view_image_check((uint8_t *)img, img_size, 640*480*2);
+            if( ret != 0) {
+                p_module_ins->large_image_check_fail_cnt++;
+                ESP_LOGE(TAG, "Failed to check large image, ret = %d", ret);
+                if( p_module_ins->large_image_check_fail_cnt > 3) {
+                    ESP_LOGI(TAG, "repreview");
+                    p_module_ins->large_image_check_fail_cnt = 0;
+                    tf_data_image_free(&img_large);
+                    tf_data_image_free(&p_module_ins->preview_info_cache.img);
+                    tf_data_inference_free(&p_module_ins->preview_info_cache.inference);
+                    xEventGroupSetBits(p_module_ins->event_group, EVENT_PRVIEW_416_416);
+                } else {
+                    ESP_LOGI(TAG, "retry: %d",  p_module_ins->large_image_check_fail_cnt);
+                    tf_data_image_free(&img_large);
+                    xEventGroupSetBits(p_module_ins->event_group, EVENT_SIMPLE_640_480);
+                }
+                break;
+            } else {
+                p_module_ins->large_image_check_fail_cnt = 0;
             }
 
             __data_lock(p_module_ins);

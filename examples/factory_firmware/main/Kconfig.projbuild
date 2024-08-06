@@ -39,4 +39,10 @@ menu "Factory Firmware Example Configuration"
         default n
         help
             Enable intr tarcking.
+
+    config CAMERA_DISPLAY_MIRROR_X
+        bool "camera display mirror x"
+        default n
+        help
+            Enable camera display mirror x.
 endmenu
