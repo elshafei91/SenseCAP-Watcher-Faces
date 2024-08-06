@@ -69,6 +69,7 @@ extern lv_obj_t * ui_viewpt1;
 extern lv_obj_t * ui_viewpbtn2;
 extern lv_obj_t * ui_viewpt2;
 extern lv_obj_t * ui_viewpbtn3;
+extern lv_obj_t *ui_alarm_indicator;
 
 // view standby 
 extern lv_obj_t * ui_Page_Standby;
@@ -588,6 +589,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
+
+                // set alarm objs hidden
+                lv_obj_add_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
 
                 lv_label_set_text(ui_push2talkp2t1, "Scroll to exit talking mode");
                 lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
