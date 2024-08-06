@@ -39,6 +39,8 @@ void view_emoji_ota_init();
  */
 void view_standby_mode_init();
 
+void hide_all_overlays(void);
+
 #ifdef __cplusplus
 }
 #endif
