@@ -2371,11 +2371,22 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
     }
 
     // sleep mode
-    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar)
+    if(inactive_time > inactive_threshold)
     {
-        ESP_LOGI(TAG, "Sleep mode active");
-        bsp_lcd_brightness_set(0);
-        sleep_mode = 1;
+        if(get_inactive_time > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar)
+        {
+            ESP_LOGI(TAG, "Sleep mode active");
+            bsp_lcd_brightness_set(0);
+            sleep_mode = 1;
+        }
+
+        if(get_inactive_time == 0 && sleep_mode == 1)
+        {
+            ESP_LOGI(TAG, "Sleep mode deactive");
+            int brightness = get_brightness(UI_CALLER);
+            bsp_lcd_brightness_set(brightness);
+            sleep_mode = 0;
+        }
     }
 
 

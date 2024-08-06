@@ -481,6 +481,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_group_focus_obj(ui_mainbtn2);
                 }
                 lv_group_set_wrap(g_main, true);
+                lv_disp_trig_activity(NULL);
                 break;
             }
 
