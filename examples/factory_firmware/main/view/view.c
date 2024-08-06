@@ -486,6 +486,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     }
                 }
                 lv_group_set_wrap(g_main, true);
+                // manually trigger an activity on a display
                 lv_disp_trig_activity(NULL);
                 break;
             }
@@ -582,6 +583,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 g_taskflow_pause = 1;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 
+                lv_label_set_text(ui_revtext, "Task pausing\nfor push to talk");
+                lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
+                _ui_screen_change(&ui_Page_Revtask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Revtask_screen_init);
+
                 break;
             }
 
@@ -709,6 +714,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
+
+                lv_group_add_obj(g_main, ui_push2talkarc);
 
                 _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
 
