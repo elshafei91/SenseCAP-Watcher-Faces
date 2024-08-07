@@ -1418,6 +1418,14 @@ esp_err_t app_sensecraft_mqtt_preview_upload_with_reduce_freq(char *p_img, size_
         return ESP_OK;
     }
 
+    if( esp_mqtt_client_get_outbox_size(p_sensecraft->mqtt_handle) > 10240) {
+        ESP_LOGW(TAG, "maybe have unsent image, skip.");
+        __data_lock(p_sensecraft);
+        p_sensecraft->preview_last_send_time = now;
+        __data_unlock(p_sensecraft);
+        return ESP_OK;
+    }
+
     const char *json_fmt =  \
     "{"
         "\"requestId\": \"%s\","
@@ -1451,10 +1459,10 @@ esp_err_t app_sensecraft_mqtt_preview_upload_with_reduce_freq(char *p_img, size_
 
     ESP_LOGV(TAG, "app_sensecraft_mqtt_preview_upload: \r\n%s\r\nstrlen=%d", json_buff, json_len);
 
-    ESP_LOGI(TAG, "upload preview image");
-    
+   
     int msg_id = esp_mqtt_client_enqueue(p_sensecraft->mqtt_handle, p_sensecraft->topic_up_preview_upload, json_buff, json_len,
                                         MQTT_PUB_QOS0, false/*retain*/, true/*store*/);
+    ESP_LOGI(TAG, "upload preview image:%d", json_len);
 
     free(json_buff);
 

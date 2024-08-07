@@ -187,6 +187,17 @@ esp_err_t tf_engine_flow_set(const char *p_str, size_t len);
  */
 char* tf_engine_flow_get(void);
 
+/*
+ * Retrieves the current flow of the engine with simplified format.
+ *
+ * @return Pointer to the current flow data. Memory needs to be freed after use.
+ *
+ * @throws None.
+ *
+ * @comment This function returns a pointer to the current flow data. The caller is responsible for freeing the memory after use.
+*/
+char* tf_engine_flow_get_with_simplify(void);
+
 /**
  * Retrieves the current thread ID (TID) of the engine.
  *

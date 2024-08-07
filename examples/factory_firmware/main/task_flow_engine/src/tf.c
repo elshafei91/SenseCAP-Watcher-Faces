@@ -618,6 +618,20 @@ char* tf_engine_flow_get(void)
     return p_json;
 }
 
+char* tf_engine_flow_get_with_simplify(void)
+{
+    assert(gp_engine);
+    char *p_json = NULL;
+    char *p_json_simplify = NULL;
+    p_json =  tf_engine_flow_get();
+    if( p_json == NULL ) {
+        return NULL;
+    }
+    p_json_simplify = tf_parse_util_simplify_json(p_json);
+    tf_free(p_json);
+    return p_json_simplify;
+}
+
 esp_err_t tf_engine_tid_get(intmax_t *p_tid)
 {
     assert(gp_engine);

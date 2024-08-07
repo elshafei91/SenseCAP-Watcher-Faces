@@ -192,10 +192,10 @@ static char *__request( const char *url,
         ESP_LOGI(TAG, "token: %s", token);
         esp_http_client_set_header(client, "Authorization", token);
     }
-
-    // TODO other headers set
-    // if( head != NULL && strlen(head) > 0 ) {   
-    // }
+    const char *eui = factory_info_eui_get();
+    if( eui ){
+        esp_http_client_set_header(client, "API-OBITER-DEVICE-EUI", eui);
+    }
 
     ret = esp_http_client_open(client, len);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "Failed to open client!");
@@ -511,7 +511,11 @@ static int __start(void *p_module)
     // token
     if (p_token == NULL) p_token = __token_gen();
     if (p_token) {
-        snprintf(p_module_ins->token, sizeof(p_module_ins->token), "Device %s", p_token);
+        if (local_svc_cfg.enable) {
+            snprintf(p_module_ins->token, sizeof(p_module_ins->token), "%s", p_token);
+        } else {
+            snprintf(p_module_ins->token, sizeof(p_module_ins->token), "Device %s", p_token);
+        }
     } else {
         p_module_ins->token[0] = '\0';
     }
