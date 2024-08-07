@@ -33,6 +33,8 @@ struct app_voice_interaction *gp_voice_interaction = NULL;
 #define EVENT_VI_EXIT             BIT3
 
 
+extern const uint8_t sound_push2talk_data[6370];
+
 static void __data_lock(struct app_voice_interaction  *p_vi)
 {
     xSemaphoreTake(p_vi->sem_handle, portMAX_DELAY);
@@ -346,7 +348,8 @@ static int __audio_stream_http_connect(struct app_voice_interaction *p_vi)
     esp_http_client_set_header(p_vi->client, "Transfer-Encoding", "chunked");
     esp_http_client_set_header(p_vi->client, "Content-Type", "application/octet-stream");
     esp_http_client_set_header(p_vi->client, "session-id", p_vi->session_id);
-    
+    ESP_LOGI(TAG, "session-id:%s", p_vi->session_id);
+
     char *token =  p_vi->token;
     if( token !=NULL && strlen(token) > 0 ) {
         ESP_LOGI(TAG, "token: %s", token);
@@ -447,7 +450,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                                     VIEW_EVENT_VI_RECORDING, NULL, NULL, pdMS_TO_TICKS(10000));
 
             app_rgb_set(SR, RGB_BREATH_BLUE); //set RGB
-            app_audio_player_file_block(VI_WAKE_FILE_PATH, pdMS_TO_TICKS(600));
+            app_audio_player_mem_block(sound_push2talk_data, sizeof(sound_push2talk_data), false, pdMS_TO_TICKS(390)); //file 370ms
 
             app_audio_recorder_stream_start();
             p_vi->is_connecting = true;
