@@ -823,10 +823,15 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 p_vi->client = NULL;
             }
             ESP_LOGE(TAG, "err_code:0x%X", p_vi->err_code);
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
-                        VIEW_EVENT_VI_ERROR, &p_vi->err_code, sizeof(p_vi->err_code), pdMS_TO_TICKS(10000));
 
-            p_vi->next_status = VI_STATUS_IDLE;
+            if(__is_need_exit(p_vi)) {
+                p_vi->next_status = VI_STATUS_EXIT;
+                break;
+            } else {
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
+                            VIEW_EVENT_VI_ERROR, &p_vi->err_code, sizeof(p_vi->err_code), pdMS_TO_TICKS(10000));
+                p_vi->next_status = VI_STATUS_IDLE;
+            }
             break;
         }
         case VI_STATUS_TASKFLOW_GET:{
