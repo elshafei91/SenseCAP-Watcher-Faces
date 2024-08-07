@@ -151,7 +151,7 @@ static lv_timer_t * view_extension_timer;
 static lv_timer_t * view_ble_switch_timer;
 
 // Sleep mode scanner
-#define ACTIVE_THRESHOLD (1500)
+#define ACTIVE_THRESHOLD (5000)
 static lv_timer_t * view_sleep_timer;
 static uint32_t inactive_time = 0;
 static int get_inactive_time;
