@@ -174,7 +174,11 @@ static void __url_token_set(struct app_voice_interaction *p_vi)
     // token
     if (p_token == NULL) p_token = __default_token_gen();
     if (p_token) {
-        snprintf(p_vi->token, sizeof(p_vi->token), "Device %s", p_token);
+        if (local_svc_cfg.enable) {
+            snprintf(p_vi->token, sizeof(p_vi->token), "%s", p_token);
+        } else {
+            snprintf(p_vi->token, sizeof(p_vi->token), "Device %s", p_token);
+        }
     } else {
         p_vi->token[0] = '\0';
     }
@@ -210,6 +214,10 @@ static char *__request( const char *url,
     if( token !=NULL && strlen(token) > 0 ) {
         ESP_LOGI(TAG, "token: %s", token);
         esp_http_client_set_header(client, "Authorization", token);
+    }
+    const char *eui = factory_info_eui_get();
+    if( eui ){
+        esp_http_client_set_header(client, "API-OBITER-DEVICE-EUI", eui);
     }
 
     ret = esp_http_client_open(client, len);
@@ -349,6 +357,10 @@ static int __audio_stream_http_connect(struct app_voice_interaction *p_vi)
     esp_http_client_set_header(p_vi->client, "Content-Type", "application/octet-stream");
     esp_http_client_set_header(p_vi->client, "session-id", p_vi->session_id);
     ESP_LOGI(TAG, "session-id:%s", p_vi->session_id);
+    const char *eui = factory_info_eui_get();
+    if( eui ){
+        esp_http_client_set_header(p_vi->client, "API-OBITER-DEVICE-EUI", eui);
+    }
 
     char *token =  p_vi->token;
     if( token !=NULL && strlen(token) > 0 ) {
