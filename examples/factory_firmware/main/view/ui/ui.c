@@ -1623,7 +1623,7 @@ void ui_event_p2tcancel(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
+    if(event_code == LV_EVENT_CLICKED) {
         push2talkcancel_cb(e);
     }
 }
@@ -1631,7 +1631,7 @@ void ui_event_p2tcheck(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
+    if(event_code == LV_EVENT_CLICKED) {
         push2talkcheck_cb(e);
     }
 }
