@@ -189,7 +189,7 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
     size_t output_len = 0;
     if (ui_image == NULL)
     {
-        return -1;
+        return 0;
     }
     
     if( lv_scr_act() != ui_Page_ViewLive) {

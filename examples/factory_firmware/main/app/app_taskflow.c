@@ -422,7 +422,7 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
     if( p_taskflow->mqtt_connect_flag ) {
         
         need_report = false;
-        p_json = tf_engine_flow_get();
+        p_json = tf_engine_flow_get_with_simplify();
         if(  status.engine_status !=  TF_STATUS_STARTING && p_json != NULL ) {
             size_t len = 0;
             len = strlen(p_json);
@@ -449,7 +449,7 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
     }
 
     if(  need_report ) {
-        p_json = tf_engine_flow_get();
+        p_json = tf_engine_flow_get_with_simplify();
         
         __data_lock(p_taskflow);
         if(p_taskflow->p_taskflow_json != NULL) {
@@ -906,7 +906,7 @@ static void __ctrl_event_handler(void* handler_args,
             status.module_status = 0; // don't care module status.
             strncpy(status.module_name, "unknown", sizeof(status.module_name) - 1); // don't care module name.
  
-            p_json = tf_engine_flow_get();
+            p_json = tf_engine_flow_get_with_simplify();
             
             __data_lock(p_taskflow);
             if(p_taskflow->p_taskflow_json != NULL) {
