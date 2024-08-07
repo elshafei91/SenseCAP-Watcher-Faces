@@ -427,18 +427,30 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 // check taskflow
                 int engine_status = 0;
                 tf_engine_status_get( &engine_status);
-                if( engine_status == TF_STATUS_RUNNING ) { //maybe will set running TODO
+                if( (engine_status == TF_STATUS_RUNNING) || (engine_status == TF_STATUS_STARTING) ) {
                     p_vi->taskflow_pause =  true;
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                         VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
 
                     tf_engine_pause_block(pdMS_TO_TICKS(15000)); // maybe take 17s
 
-                    ESP_LOGI(TAG, "taskflow pause");
+                    ESP_LOGI(TAG, "taskflow pause 1");
                 } else {
                     p_vi->taskflow_pause =  false;
                 }
+
+            } else {
+                int engine_status = 0;
+                tf_engine_status_get( &engine_status);
+                if( (engine_status == TF_STATUS_RUNNING) ) {
+                    p_vi->taskflow_pause =  true;
+                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
+                        VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+                    tf_engine_pause_block(pdMS_TO_TICKS(15000)); // maybe take 17s
+                    ESP_LOGI(TAG, "taskflow pause 2");
+                }
             }
+            
             p_vi->next_status = VI_STATUS_RECORDING;
 
             break;
