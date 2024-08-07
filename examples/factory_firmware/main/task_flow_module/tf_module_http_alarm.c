@@ -112,6 +112,10 @@ static char *__request( const char *url,
         esp_http_client_set_header(client, "Authorization", token);
     }
 
+    const char *eui = factory_info_eui_get();
+    ESP_LOGI(TAG, "eui: %s", eui);
+    esp_http_client_set_header(client, "API-OBITER-DEVICE-EUI", eui);
+
     // TODO other headers set
     // if( head != NULL && strlen(head) > 0 ) {   
     // }
@@ -402,40 +406,6 @@ static void http_alarm_task_destroy(tf_module_http_alarm_t *p_module_ins)
     }
 }
 
-static char *__token_http_gen(char *key_in)
-{
-    static char token[41] = {0};
-    esp_err_t ret = ESP_OK;
-    const char *eui = NULL;
-    const char *key = key_in;
-    size_t str_len = 0;
-    size_t token_len = 0;
-    char deviceinfo_buf[40];
-
-    if( strlen(token) > 0 ) {
-        return token;
-    }
-
-    eui = factory_info_eui_get();
-    if( eui == NULL || key == NULL ) {
-        ESP_LOGE(TAG, "EUI or key not set");
-        return NULL;
-    }
-
-    memset(deviceinfo_buf, 0, sizeof(deviceinfo_buf));
-    str_len = snprintf(deviceinfo_buf, sizeof(deviceinfo_buf), "%s:%s", eui, key);
-    if( str_len >= 30 ) {
-        ESP_LOGE(TAG, "EUI or key too long");
-        return NULL;
-    }
-    ret = mbedtls_base64_encode(( uint8_t *)token, sizeof(token), &token_len, ( uint8_t *)deviceinfo_buf, str_len);
-    if( ret != 0  ||  token_len < 40 ) {
-        ESP_LOGE(TAG, "mbedtls_base64_encode failed:%d,", ret);
-        return NULL;
-    }
-    return token; 
-}
-
 /*************************************************************************
  * Interface implementation
  ************************************************************************/
@@ -471,7 +441,7 @@ static int __cfg(void *p_module, cJSON *p_json)
         }
         if (local_svc_cfg.token != NULL && strlen(local_svc_cfg.token) > 0) {
             ESP_LOGI(TAG, "got local service cfg, token=%s", local_svc_cfg.token);
-            p_token = __token_http_gen(local_svc_cfg.token);
+            p_token = local_svc_cfg.token;
         }
     } else {
         ESP_LOGI(TAG, "local service disable");
@@ -485,7 +455,11 @@ static int __cfg(void *p_module, cJSON *p_json)
     // token
     if (p_token == NULL) p_token = __token_gen();
     if (p_token) {
-        snprintf(p_module_ins->token, sizeof(p_module_ins->token), "Device %s", p_token);
+        if (local_svc_cfg.enable) {
+            snprintf(p_module_ins->token, sizeof(p_module_ins->token), "%s", p_token);
+        } else {
+            snprintf(p_module_ins->token, sizeof(p_module_ins->token), "Device %s", p_token);
+        }
     } else {
         p_module_ins->token[0] = '\0';
     }
@@ -498,7 +472,7 @@ static int __cfg(void *p_module, cJSON *p_json)
     }
 
     p_module_ins->head[0] = '\0';
-    
+
     __data_lock(p_module_ins);
     __parmas_default(&p_module_ins->params);
     __params_parse(&p_module_ins->params, p_json);
