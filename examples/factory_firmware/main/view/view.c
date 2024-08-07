@@ -163,6 +163,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_EMOJI_DOWLOAD_BAR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_BAR");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 int *emoji_download_per = (int *)event_data;
                 static char download_per[5];
 
@@ -203,6 +204,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_EMOJI_DOWLOAD_FAILED:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_FAILED");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 lv_obj_clear_flag(ui_Page_Emoji, LV_OBJ_FLAG_HIDDEN);
 
                 if(g_group_layer_ == 0)
@@ -355,6 +357,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_WIFI_CONFIG_SYNC:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_WIFI_CONFIG_SYNC");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 int * wifi_config_sync = (int*)event_data;
                 if(lv_scr_act() != ui_Page_Network)_ui_screen_change(&ui_Page_Network, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Network_screen_init);
                 if(* wifi_config_sync == 0)
@@ -430,6 +433,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_ALARM_ON:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_ON");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 struct tf_module_local_alarm_info *alarm_st = (struct tf_module_local_alarm_info *)event_data;
                              
                 view_alarm_on(alarm_st);
@@ -447,6 +451,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_ALARM_OFF:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_ALARM_OFF");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 uint8_t * task_st = (uint8_t *)event_data;
                 view_alarm_off(task_st);
 
@@ -460,6 +465,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 g_tasktype = 1;
                 g_taskdown = 0;
                 g_backpage = 1;
@@ -470,6 +476,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_TASK_FLOW_STOP:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 // event_post_to
                 g_taskdown = 1;
@@ -493,6 +500,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_AI_CAMERA_READY:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_AI_CAMERA_READY");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_ViewLive) && (lv_scr_act() != ui_Page_Revtask) && (lv_scr_act() != ui_Page_ModelOTA))
                 {
                     break;
@@ -528,8 +536,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             }
 
             case VIEW_EVENT_OTA_STATUS:{
-                struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS: %d", ota_st->status);
+                struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 if(lv_scr_act() != ui_Page_OTA && ota_st->status >= 1  && ota_st->status <= 3)
                 {
                     lv_group_remove_all_objs(g_main);
@@ -566,6 +574,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_TASK_FLOW_ERROR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_ERROR");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 const char* error_msg = (const char*)event_data;
                 lv_obj_clear_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_move_foreground(ui_task_error);
@@ -577,7 +586,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_VI_TASKFLOW_PAUSE:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_TASKFLOW_PAUSE");
-
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 
                 g_taskflow_pause = 1;
@@ -592,7 +601,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_VI_RECORDING:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_RECORDING");
-
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 g_is_push2talk = 1;
 
                 view_push2talk_timer_stop();
@@ -619,7 +628,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_VI_ANALYZING:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ANALYZING");
-
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 lv_obj_clear_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
                 
@@ -632,6 +641,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_VI_PLAYING:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAYING");
+                if(lv_scr_act() == ui_Page_OTA){break;}
                 struct view_data_vi_result *push2talk_result = (struct view_data_vi_result *)event_data;
                 ESP_LOGI("push2talk", "result mode : %d", push2talk_result->mode);
                 // mode 0 and mode 2
@@ -698,6 +708,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_VI_PLAY_FINISH:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAY_FINISH");
+                if(lv_scr_act() == ui_Page_OTA){break;}
 
                 if(g_push2talk_timer == 0 )view_push2talk_timer_start();
 
@@ -706,6 +717,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_VI_ERROR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_ERROR");
+                if(lv_scr_act() == ui_Page_OTA){break;}
 
                 view_push2talk_timer_stop();
                 lv_group_remove_all_objs(g_main);
