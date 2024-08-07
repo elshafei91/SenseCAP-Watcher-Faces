@@ -536,8 +536,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             }
 
             case VIEW_EVENT_OTA_STATUS:{
-                ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS: %d", ota_st->status);
+                ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
+                ESP_LOGI(TAG, "VIEW_EVENT_OTA_STATUS: %d", ota_st->status);
+                int push2talk_direct_exit = 0;
                 if(lv_scr_act() != ui_Page_OTA && ota_st->status >= 1  && ota_st->status <= 3)
                 {
                     lv_group_remove_all_objs(g_main);
@@ -569,6 +571,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
                 }
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
                 break;
             }
 
@@ -614,6 +617,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
                 hide_all_overlays();
 
+                lv_obj_set_x(ui_push2talkknob, -17);
+                lv_obj_set_y(ui_push2talkknob, 151);
+                lv_obj_set_align(ui_push2talkknob, LV_ALIGN_CENTER);
+                lv_img_set_src(ui_push2talkknob, &ui_img_pushtotalk_scroll_png);
                 lv_label_set_text(ui_push2talkp2t1, "Scroll to exit talking mode");
                 lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
                 lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0x91BF25), LV_PART_INDICATOR | LV_STATE_DEFAULT);
@@ -722,6 +729,10 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 view_push2talk_timer_stop();
                 lv_group_remove_all_objs(g_main);
 
+                lv_obj_set_x(ui_push2talkknob, -17);
+                lv_obj_set_y(ui_push2talkknob, 151);
+                lv_obj_set_align(ui_push2talkknob, LV_ALIGN_CENTER);
+                lv_img_set_src(ui_push2talkknob, &ui_img_pushtotalk_error_png);
                 lv_obj_clear_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(ui_push2talkpanel3, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);

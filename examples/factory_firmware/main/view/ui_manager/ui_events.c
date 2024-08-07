@@ -174,6 +174,31 @@ static void Page_facreset();
 static void view_info_obtain_early();
 void sensor_date_update();
 
+static lv_coord_t get_angle(const lv_obj_t * obj)
+{
+    lv_arc_t * arc = (lv_arc_t *)obj;
+    uint16_t angle = arc->rotation;
+    if(arc->type == LV_ARC_MODE_NORMAL) {
+        angle += arc->indic_angle_end;
+    }
+    else if(arc->type == LV_ARC_MODE_REVERSE) {
+        angle += arc->indic_angle_start;
+    }
+    else if(arc->type == LV_ARC_MODE_SYMMETRICAL) {
+        int16_t bg_end = arc->bg_angle_end;
+        if(arc->bg_angle_end < arc->bg_angle_start) bg_end = arc->bg_angle_end + 360;
+        int16_t indic_end = arc->indic_angle_end;
+        if(arc->indic_angle_end < arc->indic_angle_start) indic_end = arc->indic_angle_end + 360;
+
+        int32_t angle_midpoint = (int32_t)(arc->bg_angle_start + bg_end) / 2;
+        if(arc->indic_angle_start < angle_midpoint) angle += arc->indic_angle_start;
+        else if(indic_end > angle_midpoint) angle += arc->indic_angle_end;
+        else angle += angle_midpoint;
+    }
+
+    return angle;
+}
+
 static void async_emoji_switch_scr(void *arg)
 {
     lv_img_dsc_t *current_img = (lv_img_dsc_t *)arg;
@@ -1351,6 +1376,16 @@ void push2talkcheck_cb(lv_event_t * e)
 
 void p2tvaluechange_cb(lv_event_t * e)
 {
+    lv_obj_t * arc = lv_event_get_target(e);
+    lv_obj_t * knob = lv_event_get_user_data(e);
+    uint16_t angle = get_angle(arc);
+    lv_coord_t x = lv_obj_get_x(knob);
+    lv_coord_t y = lv_obj_get_y(knob);
+    // ESP_LOGI(TAG, "Object coordinates: x = %d, y = %d", x, y);
+    lv_arc_align_obj_to_angle(arc, knob, 0);
+    // ESP_LOGI(TAG, "arc angle: %d", angle);
+    lv_img_set_angle(knob, angle * 10 + 900);
+
     static int push2talk_direct_exit = 0;
     static int16_t push2talk_arc;
     push2talk_arc = lv_arc_get_value(ui_push2talkarc);

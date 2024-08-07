@@ -277,7 +277,7 @@ void ui_Page_Set_screen_init(void)
     lv_obj_set_x(ui_settimt, 50);
     lv_obj_set_y(ui_settimt, 0);
     lv_obj_set_align(ui_settimt, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_settimt, "Sleep Time");
+    lv_label_set_text(ui_settimt, "Turn Screen Off");
     lv_obj_set_style_text_color(ui_settimt, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_settimt, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_settimt, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
