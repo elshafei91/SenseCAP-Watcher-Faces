@@ -1084,6 +1084,8 @@ esp_err_t app_voice_interaction_init(void)
                                                     __event_handler, 
                                                     p_vi));
 
+    //maybe miss ota status event 
+    p_vi->is_ota = app_ota_is_running();
 
     bsp_set_btn_long_press_cb(__long_press_event_cb);
     bsp_set_btn_long_release_cb(__long_release_event_cb);
