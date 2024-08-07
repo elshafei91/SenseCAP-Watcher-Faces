@@ -82,8 +82,9 @@ static int16_t app_sensor_detect(void)
 
 static int16_t app_sensor_uptate(void)
 {
+    static uint8_t sensor_error_cnt = 0;
     esp_err_t ret = ESP_OK;
-    
+
     struct view_data_sensor view_data;
     view_data.temperature_valid = false;
     view_data.humidity_valid = false;
@@ -108,6 +109,8 @@ static int16_t app_sensor_uptate(void)
                     view_data.humidity_valid = true;
                     view_data.temperature = (float)temperature / 1000;
                     view_data.humidity = (float)humidity / 1000;
+                } else {
+                    sensor_error_cnt ++;
                 }
             } else if (app_sensor_data[i].type == SENSOR_SCD4x) {
                 bool ready_flag = 0;
@@ -133,9 +136,16 @@ static int16_t app_sensor_uptate(void)
                         view_data.co2_valid = true;
                         view_data.co2 = co2 / 1000;
                     }
+                } else {
+                    sensor_error_cnt ++;
                 }
             }
         }
+    }
+
+    if (sensor_error_cnt >= 3 ) {
+        sensor_error_cnt = 0;
+        memset(app_sensor_det_temp, 0xff, APP_SENSOR_SUPPORT_MAX);
     }
 
     app_sensor_update_data = false;
