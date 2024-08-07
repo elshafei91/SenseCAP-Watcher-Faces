@@ -1376,6 +1376,7 @@ void push2talkcheck_cb(lv_event_t * e)
 
 void p2tvaluechange_cb(lv_event_t * e)
 {
+    ESP_LOGI(TAG, "p2tvaluechange_cb");
     lv_obj_t * arc = lv_event_get_target(e);
     lv_obj_t * knob = lv_event_get_user_data(e);
     uint16_t angle = get_angle(arc);
@@ -2468,6 +2469,7 @@ void view_sleep_timer_start()
 
 static void view_push2talk_timer_callback(lv_timer_t *timer)
 {
+    ESP_LOGI(TAG, "view_push2talk_timer_callback");
     static int16_t push2talk_arc;
     static int push2talk_direct_exit = 0;
 
@@ -2614,7 +2616,7 @@ void view_extension_timer_start()
     if (view_extension_timer != NULL) {
         lv_timer_del(view_extension_timer);
     }
-    view_extension_timer = lv_timer_create(view_extension_timer_callback, 3000, NULL);
+    view_extension_timer = lv_timer_create(view_extension_timer_callback, 1000 * 60, NULL);
 
 }
 
