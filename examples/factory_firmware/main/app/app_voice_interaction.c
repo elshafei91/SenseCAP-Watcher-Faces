@@ -33,6 +33,8 @@ struct app_voice_interaction *gp_voice_interaction = NULL;
 #define EVENT_VI_EXIT             BIT3
 
 
+extern const uint8_t sound_push2talk_data[6370];
+
 static void __data_lock(struct app_voice_interaction  *p_vi)
 {
     xSemaphoreTake(p_vi->sem_handle, portMAX_DELAY);
@@ -66,12 +68,12 @@ static void __record_start( struct app_voice_interaction *p_vi)
         ESP_LOGW(TAG, "not support vi on ota mode");
         return;
     }
-    xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_START);
     //Maybe it has already started
     if( p_vi->cur_status !=  VI_STATUS_IDLE ){
         ESP_LOGI(TAG, "vi not idle, stop it first");
         __vi_stop(p_vi);
     }
+    xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_START);
 }
 
 static void __record_stop( struct app_voice_interaction *p_vi)
@@ -172,7 +174,11 @@ static void __url_token_set(struct app_voice_interaction *p_vi)
     // token
     if (p_token == NULL) p_token = __default_token_gen();
     if (p_token) {
-        snprintf(p_vi->token, sizeof(p_vi->token), "Device %s", p_token);
+        if (local_svc_cfg.enable) {
+            snprintf(p_vi->token, sizeof(p_vi->token), "%s", p_token);
+        } else {
+            snprintf(p_vi->token, sizeof(p_vi->token), "Device %s", p_token);
+        }
     } else {
         p_vi->token[0] = '\0';
     }
@@ -208,6 +214,10 @@ static char *__request( const char *url,
     if( token !=NULL && strlen(token) > 0 ) {
         ESP_LOGI(TAG, "token: %s", token);
         esp_http_client_set_header(client, "Authorization", token);
+    }
+    const char *eui = factory_info_eui_get();
+    if( eui ){
+        esp_http_client_set_header(client, "API-OBITER-DEVICE-EUI", eui);
     }
 
     ret = esp_http_client_open(client, len);
@@ -346,7 +356,12 @@ static int __audio_stream_http_connect(struct app_voice_interaction *p_vi)
     esp_http_client_set_header(p_vi->client, "Transfer-Encoding", "chunked");
     esp_http_client_set_header(p_vi->client, "Content-Type", "application/octet-stream");
     esp_http_client_set_header(p_vi->client, "session-id", p_vi->session_id);
-    
+    ESP_LOGI(TAG, "session-id:%s", p_vi->session_id);
+    const char *eui = factory_info_eui_get();
+    if( eui ){
+        esp_http_client_set_header(p_vi->client, "API-OBITER-DEVICE-EUI", eui);
+    }
+
     char *token =  p_vi->token;
     if( token !=NULL && strlen(token) > 0 ) {
         ESP_LOGI(TAG, "token: %s", token);
@@ -412,16 +427,30 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 // check taskflow
                 int engine_status = 0;
                 tf_engine_status_get( &engine_status);
-                if( engine_status == TF_STATUS_RUNNING ) { //maybe will set running TODO
+                if( (engine_status == TF_STATUS_RUNNING) || (engine_status == TF_STATUS_STARTING) ) {
                     p_vi->taskflow_pause =  true;
-                    tf_engine_pause();
                     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                         VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
-                    ESP_LOGI(TAG, "taskflow pause");
+
+                    tf_engine_pause_block(pdMS_TO_TICKS(15000)); // maybe take 17s
+
+                    ESP_LOGI(TAG, "taskflow pause 1");
                 } else {
                     p_vi->taskflow_pause =  false;
                 }
+
+            } else {
+                int engine_status = 0;
+                tf_engine_status_get( &engine_status);
+                if( (engine_status == TF_STATUS_RUNNING) ) {
+                    p_vi->taskflow_pause =  true;
+                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
+                        VIEW_EVENT_VI_TASKFLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+                    tf_engine_pause_block(pdMS_TO_TICKS(15000)); // maybe take 17s
+                    ESP_LOGI(TAG, "taskflow pause 2");
+                }
             }
+            
             p_vi->next_status = VI_STATUS_RECORDING;
 
             break;
@@ -445,7 +474,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                                     VIEW_EVENT_VI_RECORDING, NULL, NULL, pdMS_TO_TICKS(10000));
 
             app_rgb_set(SR, RGB_BREATH_BLUE); //set RGB
-            app_audio_player_file_block(VI_WAKE_FILE_PATH, pdMS_TO_TICKS(600));
+            app_audio_player_mem_block(sound_push2talk_data, sizeof(sound_push2talk_data), false, pdMS_TO_TICKS(390)); //file 370ms
 
             app_audio_recorder_stream_start();
             p_vi->is_connecting = true;
@@ -572,6 +601,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             }
 
             if( stop_send ) {
+                p_vi->next_status = VI_STATUS_STOP; 
                 break;
             }
 
@@ -805,10 +835,15 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 p_vi->client = NULL;
             }
             ESP_LOGE(TAG, "err_code:0x%X", p_vi->err_code);
-            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
-                        VIEW_EVENT_VI_ERROR, &p_vi->err_code, sizeof(p_vi->err_code), pdMS_TO_TICKS(10000));
 
-            p_vi->next_status = VI_STATUS_IDLE;
+            if(__is_need_exit(p_vi)) {
+                p_vi->next_status = VI_STATUS_EXIT;
+                break;
+            } else {
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
+                            VIEW_EVENT_VI_ERROR, &p_vi->err_code, sizeof(p_vi->err_code), pdMS_TO_TICKS(10000));
+                p_vi->next_status = VI_STATUS_IDLE;
+            }
             break;
         }
         case VI_STATUS_TASKFLOW_GET:{
@@ -1078,6 +1113,8 @@ esp_err_t app_voice_interaction_init(void)
                                                     __event_handler, 
                                                     p_vi));
 
+    //maybe miss ota status event 
+    p_vi->is_ota = app_ota_is_running();
 
     bsp_set_btn_long_press_cb(__long_press_event_cb);
     bsp_set_btn_long_release_cb(__long_release_event_cb);

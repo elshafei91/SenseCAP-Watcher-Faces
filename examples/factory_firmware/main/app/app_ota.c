@@ -1510,3 +1510,8 @@ bool app_ota_fw_is_running()
 {
     return atomic_load(&g_ota_fw_running);
 }
+
+bool app_ota_is_running()
+{
+    return atomic_load(&g_ota_running);
+}

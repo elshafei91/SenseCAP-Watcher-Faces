@@ -98,4 +98,4 @@ esp_err_t app_audio_player_file(void *p_filepath);
 esp_err_t app_audio_player_file_block(void *p_filepath, TickType_t xTicksToWait);
 
 esp_err_t app_audio_player_mem(uint8_t *p_buf, size_t len, bool is_need_free);
-
+esp_err_t app_audio_player_mem_block(uint8_t *p_buf, size_t len, bool is_need_free, TickType_t xTicksToWait);

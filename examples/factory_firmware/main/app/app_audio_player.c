@@ -485,6 +485,9 @@ esp_err_t app_audio_player_file_block(void *p_filepath, TickType_t xTicksToWait)
         if( !(bits & EVENT_FILE_MEM_DONE)) {
             ESP_LOGW(TAG, "play timeout");
             audio_player_stop();
+            __data_lock(p_audio_player);
+            p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
+            __data_unlock(p_audio_player); 
         }
     }
     return ret;
@@ -515,3 +518,30 @@ esp_err_t app_audio_player_mem(uint8_t *p_buf, size_t len, bool is_need_free)
     return ESP_FAIL;
 }
 
+esp_err_t app_audio_player_mem_block(uint8_t *p_buf, size_t len, bool is_need_free, TickType_t xTicksToWait)
+{
+    struct app_audio_player * p_audio_player = gp_audio_player;
+    if( p_audio_player == NULL) {
+        return ESP_FAIL;
+    }
+    xEventGroupClearBits(p_audio_player->event_group, EVENT_FILE_MEM_DONE);
+    esp_err_t ret = app_audio_player_mem(p_buf,len, is_need_free);
+    if( ret == ESP_OK ) {
+        EventBits_t bits = xEventGroupWaitBits(p_audio_player->event_group, 
+                            EVENT_FILE_MEM_DONE, pdTRUE, pdTRUE, xTicksToWait);
+        if( !(bits & EVENT_FILE_MEM_DONE)) {
+            ESP_LOGW(TAG, "play timeout");
+            audio_player_stop();
+            
+            __data_lock(p_audio_player);
+            if( p_audio_player->mem_need_free && p_audio_player->p_mem_buf != NULL) {
+                free(p_audio_player->p_mem_buf);
+                p_audio_player->mem_need_free = false;
+                p_audio_player->p_mem_buf = NULL;
+            }
+            p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
+            __data_unlock(p_audio_player);
+        }
+    }
+    return ret;
+}

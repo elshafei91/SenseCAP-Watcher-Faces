@@ -129,6 +129,11 @@ void  app_ota_any_ignore_version_check(bool ignore);
 */
 bool app_ota_fw_is_running();
 
+/*
+ * check if esp32 fw ota or himax fw ota or ai model ota is running 
+*/
+bool app_ota_is_running();
+
 #ifdef __cplusplus
 }
 #endif

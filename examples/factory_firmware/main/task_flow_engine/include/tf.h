@@ -13,7 +13,7 @@ extern "C"
 #endif
 
 #define TF_ENGINE_TASK_STACK_SIZE 1024 * 5
-#define TF_ENGINE_TASK_PRIO 5
+#define TF_ENGINE_TASK_PRIO 13
 #define TF_ENGINE_QUEUE_SIZE 3
 
 // Define status codes for engine state
@@ -130,6 +130,18 @@ esp_err_t tf_engine_restart(void);
  */
 esp_err_t tf_engine_pause(void);
 
+/**
+ * Waiting for the pause engine to complete
+ *
+ * @return The result of pausing the engine. Possible return values are:
+ *         - ESP_OK: The engine was successfully paused.
+ *         - ESP_FAIL: An unspecified error occurred during the pausing process.
+ *
+ * @throws None.
+ *
+ * @comment This function pauses the engine and temporarily stops its operation.
+ */
+esp_err_t tf_engine_pause_block(TickType_t xTicksToWait);
 
 /*
 * Resumes the engine.
@@ -174,6 +186,17 @@ esp_err_t tf_engine_flow_set(const char *p_str, size_t len);
  * @comment This function returns a pointer to the current flow data. The caller is responsible for freeing the memory after use.
  */
 char* tf_engine_flow_get(void);
+
+/*
+ * Retrieves the current flow of the engine with simplified format.
+ *
+ * @return Pointer to the current flow data. Memory needs to be freed after use.
+ *
+ * @throws None.
+ *
+ * @comment This function returns a pointer to the current flow data. The caller is responsible for freeing the memory after use.
+*/
+char* tf_engine_flow_get_with_simplify(void);
 
 /**
  * Retrieves the current thread ID (TID) of the engine.

@@ -45,6 +45,10 @@ int tf_parse_json(const char *p_str,
 
 void tf_parse_free(cJSON *p_json_root, tf_module_item_t *p_head, int num);
 
+
+// can delete audio data in taskflow
+char* tf_parse_util_simplify_json(const char *p_str);
+
 #ifdef __cplusplus
 }
 #endif

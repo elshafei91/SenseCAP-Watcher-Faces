@@ -7,6 +7,26 @@
 
 static const char *TAG = "tf.parse";
 
+static void remove_audio_from_alarm_trigger(cJSON *json) {
+    cJSON *task_flow = cJSON_GetObjectItem(json, "task_flow");
+    if (!cJSON_IsArray(task_flow)) {
+        return;
+    }
+    // Iterate through the task_flow array
+    cJSON *module = NULL;
+    cJSON_ArrayForEach(module, task_flow) {
+        cJSON *type = cJSON_GetObjectItem(module, "type");
+        if (cJSON_IsString(type) && strcmp(type->valuestring, "alarm trigger") == 0) {
+            // Get the params object
+            cJSON *params = cJSON_GetObjectItem(module, "params");
+            if (cJSON_IsObject(params)) {
+                // Delete the audio field
+                cJSON_DeleteItemFromObject(params, "audio");
+            }
+        }
+    }
+}
+
 static void __module_item_free(tf_module_item_t *p_item, int num)
 {
     for (int i = 0; i < num; i++)
@@ -231,3 +251,28 @@ void tf_parse_free(cJSON *p_json_root, tf_module_item_t *p_head, int num)
         tf_free(p_head);
     }
 }
+
+char* tf_parse_util_simplify_json(const char *p_str)
+{
+    esp_err_t ret = ESP_OK;
+    cJSON *p_json_root = NULL;
+    char *p_json = NULL;
+
+    if( p_str == NULL ) {
+        return NULL;
+    }
+    p_json_root = cJSON_ParseWithLength(p_str, strlen(p_str));
+    ESP_GOTO_ON_FALSE(p_json_root, ESP_ERR_INVALID_ARG, err, TAG, "json parse failed");
+
+    remove_audio_from_alarm_trigger(p_json_root);
+
+    p_json = cJSON_PrintUnformatted(p_json_root);
+
+err:
+    if (p_json_root != NULL)
+    {
+        cJSON_Delete(p_json_root);
+    }
+    return p_json;
+}
+

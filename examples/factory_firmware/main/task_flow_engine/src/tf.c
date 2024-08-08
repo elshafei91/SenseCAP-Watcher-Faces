@@ -18,6 +18,7 @@ static tf_engine_t *gp_engine = NULL;
 #define EVENT_PAUSE           BIT3
 #define EVENT_RESUME          BIT4
 #define EVENT_RESTART         BIT5
+#define EVENT_PAUSE_DONE      BIT6
 
 #define MODULE_FLAG_INIT_DONE      BIT0
 #define MODULE_FLAG_INSTANCE_DONE  BIT1
@@ -367,6 +368,11 @@ static void __tf_engine_task(void *p_arg)
             __stop(p_engine);
             pause_flag = true;
             run_flag = false;
+            ESP_LOGI(TAG, "EVENT_PAUSE_DONE");
+            xEventGroupSetBits(gp_engine->event_group, EVENT_PAUSE_DONE);
+        }else if( (bits & EVENT_PAUSE)  != 0) {
+            ESP_LOGI(TAG, "don't pause");
+            xEventGroupSetBits(gp_engine->event_group, EVENT_PAUSE_DONE);
         }
 
         if( (bits & EVENT_RESUME)  != 0 && pause_flag ) {
@@ -446,7 +452,7 @@ esp_err_t tf_engine_init(void)
     esp_event_loop_args_t event_task_args = {
         .queue_size = 32,
         .task_name = "tf_event_task",
-        .task_priority = 10,
+        .task_priority = 14,
         .task_stack_size = 1024 * 3,
         .task_core_id = 1
     };
@@ -555,6 +561,18 @@ esp_err_t tf_engine_pause(void)
     return ESP_OK;
 }
 
+esp_err_t tf_engine_pause_block(TickType_t xTicksToWait)
+{
+    assert(gp_engine);
+    xEventGroupClearBits(gp_engine->event_group, EVENT_PAUSE_DONE);
+    xEventGroupSetBits(gp_engine->event_group, EVENT_PAUSE);
+    EventBits_t bits = xEventGroupWaitBits(gp_engine->event_group, EVENT_PAUSE_DONE, pdTRUE, pdTRUE, xTicksToWait);
+    if( !(bits & EVENT_PAUSE_DONE)) {
+        ESP_LOGW(TAG, "Pause wait timeout");
+    }
+    return ESP_OK;
+}
+
 esp_err_t tf_engine_resume(void)
 {
     assert(gp_engine);
@@ -598,6 +616,20 @@ char* tf_engine_flow_get(void)
     }
     __data_unlock(gp_engine);
     return p_json;
+}
+
+char* tf_engine_flow_get_with_simplify(void)
+{
+    assert(gp_engine);
+    char *p_json = NULL;
+    char *p_json_simplify = NULL;
+    p_json =  tf_engine_flow_get();
+    if( p_json == NULL ) {
+        return NULL;
+    }
+    p_json_simplify = tf_parse_util_simplify_json(p_json);
+    tf_free(p_json);
+    return p_json_simplify;
 }
 
 esp_err_t tf_engine_tid_get(intmax_t *p_tid)
