@@ -22,7 +22,9 @@
 #include "esp_io_expander.h"
 
 /* Timeout of each I2C communication */
-#define I2C_TIMEOUT_MS (10)
+#define I2C_TIMEOUT_MS (30)
+/* Re-try times when I2C communication failed */
+#define I2C_TRY_NUM (3)
 
 #define IO_COUNT (16)
 
@@ -175,8 +177,15 @@ static esp_err_t read_input_reg(esp_io_expander_handle_t handle, uint32_t *value
     // *INDENT-OFF*
     if (pca->int_gpio == -1 || pca->need_update || esp_timer_get_time() > (pca->last_update_time + pca->update_interval_us))
     {
-        ESP_RETURN_ON_ERROR(i2c_master_write_read_device(pca->i2c_num, pca->i2c_address, (uint8_t[]) { INPUT_REG_ADDR }, 1, (uint8_t *)&temp, 2, pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG,
-            "Read input reg failed");
+        for (uint8_t i = 0; i < I2C_TRY_NUM; i++)
+        {
+            if (i2c_master_write_read_device(pca->i2c_num, pca->i2c_address, (uint8_t[]) { INPUT_REG_ADDR }, 1, (uint8_t *)&temp, 2, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == ESP_OK)
+            {
+                break;
+            }
+            ESP_LOGW(TAG, "Read input reg failed, retry %d/%d", i + 1, I2C_TRY_NUM);
+            ESP_RETURN_ON_FALSE(i < I2C_TRY_NUM - 1, ESP_ERR_INVALID_STATE, TAG, "Read input reg failed"); 
+        }
         pca->regs.input = (((uint32_t)temp[1]) << 8) | (temp[0]);
         pca->last_update_time = esp_timer_get_time();
         pca->need_update = false;
@@ -195,7 +204,15 @@ static esp_err_t write_output_reg(esp_io_expander_handle_t handle, uint32_t valu
     esp_io_expander_pca95xx_16bit_t *pca = (esp_io_expander_pca95xx_16bit_t *)__containerof(handle, esp_io_expander_pca95xx_16bit_t, base);
     value &= 0xffff;
     uint8_t data[] = { OUTPUT_REG_ADDR, value & 0xff, value >> 8 };
-    ESP_RETURN_ON_ERROR(i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG, "Write output reg failed");
+    for (uint8_t i = 0; i < I2C_TRY_NUM; i++)
+    {
+        if (i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == ESP_OK)
+        {
+            break;
+        }
+        ESP_LOGW(TAG, "Write output reg failed, retry %d/%d", i + 1, I2C_TRY_NUM);
+        ESP_RETURN_ON_FALSE(i < I2C_TRY_NUM - 1, ESP_ERR_INVALID_STATE, TAG, "Write output reg failed");
+    }
     pca->regs.output = value;
     return ESP_OK;
 }
@@ -214,7 +231,15 @@ static esp_err_t write_direction_reg(esp_io_expander_handle_t handle, uint32_t v
     value &= 0xffff;
 
     uint8_t data[] = { DIRECTION_REG_ADDR, value & 0xff, value >> 8 };
-    ESP_RETURN_ON_ERROR(i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)), TAG, "Write direction reg failed");
+    for (uint8_t i = 0; i < I2C_TRY_NUM; i++)
+    {
+        if (i2c_master_write_to_device(pca->i2c_num, pca->i2c_address, data, sizeof(data), pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == ESP_OK)
+        {
+            break;
+        }
+        ESP_LOGW(TAG, "Write direction reg failed, retry %d/%d", i + 1, I2C_TRY_NUM);
+        ESP_RETURN_ON_FALSE(i < I2C_TRY_NUM - 1, ESP_ERR_INVALID_STATE, TAG, "Write direction reg failed");
+    }
     pca->regs.direction = value;
     return ESP_OK;
 }
