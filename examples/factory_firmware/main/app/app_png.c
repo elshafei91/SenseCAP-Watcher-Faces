@@ -447,37 +447,68 @@ static int is_png_file_for_expression(const char* filename, const char* prefix) 
     return 0;
 }
 
+// Helper function to compare file names based on their numerical suffix
+static int compare_file_names(const void *a, const void *b) {
+    const char **file1 = (const char **)a;
+    const char **file2 = (const char **)b;
+
+    // Extract numerical suffixes from file names
+    int num1 = 0, num2 = 0;
+    sscanf(*file1, "%*[^0-9]%d.png", &num1);
+    sscanf(*file2, "%*[^0-9]%d.png", &num2);
+
+    return num1 - num2;
+}
+
 // Helper function to load images based on prefix
 bool load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
     DIR *dir;
     struct dirent *ent;
     bool loaded = false;
 
+    // Array to store matched file names
+    const char *matched_files[MAX_IMAGES];
+    int matched_count = 0;
+
     if ((dir = opendir("/spiffs")) != NULL) {
         while ((ent = readdir(dir)) != NULL) {
             if (is_png_file_for_expression(ent->d_name, prefix)) {
-                if (*image_count >= MAX_IMAGES) {
+                if (matched_count >= MAX_IMAGES) {
                     ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
                     break;
                 }
-
-                size_t size;
-                char filepath[256];
-                sprintf(filepath, "/spiffs/%s", ent->d_name);
-                void *data = read_png_to_psram(filepath, &size);
-                if (data) {
-                    ESP_LOGI("PNG Load", "Loaded %s into PSRAM", ent->d_name);
-
-                    create_img_dsc(&img_dsc_array[*image_count], data, size);
-                    (*image_count)++;
-                    loaded = true;
-                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
-                }
+                matched_files[matched_count] = strdup(ent->d_name);
+                matched_count++;
             }
         }
         closedir(dir);
     } else {
         ESP_LOGE("SPIFFS", "Failed to open directory /spiffs");
+        return loaded;
+    }
+
+    // Sort matched files based on numerical suffix
+    qsort(matched_files, matched_count, sizeof(char *), compare_file_names);
+
+    for (int i = 0; i < matched_count; i++) {
+        if (*image_count >= MAX_IMAGES) {
+            ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
+            break;
+        }
+
+        size_t size;
+        char filepath[256];
+        sprintf(filepath, "/spiffs/%s", matched_files[i]);
+        void *data = read_png_to_psram(filepath, &size);
+        if (data) {
+            ESP_LOGI("PNG Load", "Loaded %s into PSRAM", matched_files[i]);
+
+            create_img_dsc(&img_dsc_array[*image_count], data, size);
+            (*image_count)++;
+            loaded = true;
+            esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
+        }
+        free((void *)matched_files[i]);
     }
 
     return loaded;
