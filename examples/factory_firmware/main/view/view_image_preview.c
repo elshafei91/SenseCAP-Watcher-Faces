@@ -243,7 +243,12 @@ int view_image_preview_flush(struct tf_module_ai_camera_preview_info *p_info)
                     int w = 0;
                     int h = 0;
                     sscma_client_box_t *p_box = (sscma_client_box_t *)p_info->inference.p_data;
+#ifdef CONFIG_CAMERA_DISPLAY_MIRROR_X
                     x = IMG_WIDTH - p_box[i].x; //x mirror
+#else
+                    x = p_box[i].x;
+#endif
+                    
                     y = p_box[i].y;
                     w = p_box[i].w;
                     h = p_box[i].h;
