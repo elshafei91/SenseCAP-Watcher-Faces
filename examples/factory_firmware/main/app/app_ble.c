@@ -683,6 +683,7 @@ esp_err_t app_ble_adv_pause(void)
     app_ble_adv_switch(0);
     ESP_LOGI(TAG, "ble pause: %d", cnt );
     xSemaphoreGive(g_sem_data);
+    return ESP_OK;
 }
 
 esp_err_t app_ble_adv_resume( int cur_switch )
@@ -698,6 +699,7 @@ esp_err_t app_ble_adv_resume( int cur_switch )
     }
     ESP_LOGI(TAG, "ble resume: %d", cnt);
     xSemaphoreGive(g_sem_data);
+    return ESP_OK;
 }
 
 /**

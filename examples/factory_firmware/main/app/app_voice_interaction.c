@@ -772,6 +772,8 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             ESP_LOGI(TAG, "VI_STATUS_FINISH");
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, \
                         VIEW_EVENT_VI_PLAY_FINISH, NULL, NULL, pdMS_TO_TICKS(10000));
+            
+            app_rgb_set(SR, RGB_OFF);
             // No need for break
         }
         case VI_STATUS_STOP: 
@@ -779,7 +781,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             ESP_LOGI(TAG, "VI_STATUS_STOP");
             esp_http_client_handle_t client = p_vi->client;
 
-            app_rgb_set(SR, RGB_OFF);
+            // No need to turn off RGB, UI will set blue flashing.
 
             if( p_vi->need_delete_client && client != NULL) {
                 p_vi->need_delete_client = false;
@@ -790,9 +792,15 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             p_vi->next_status = VI_STATUS_IDLE;
             break;
         }
+        case VI_STATUS_PRE_EXIT: {
+            ESP_LOGI(TAG, "VI_STATUS_PRE_EXIT");
+            //reserve
+            p_vi->next_status = VI_STATUS_IDLE;
+            break;
+        }
         case VI_STATUS_EXIT: {
             ESP_LOGI(TAG, "VI_STATUS_EXIT");
-
+            app_rgb_set(SR, RGB_OFF);
             p_vi->new_session = true;
             
             //resume ble
@@ -913,6 +921,11 @@ static void __event_handler(void* handler_args,
             {
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_STOP");
                 __vi_stop(p_vi);
+                break;
+            }
+            case VIEW_EVENT_VI_PRE_EXIT:
+            {
+                ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PRE_EXIT");
                 break;
             }
             case VIEW_EVENT_VI_EXIT:
@@ -1066,6 +1079,12 @@ esp_err_t app_voice_interaction_init(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
                                                     VIEW_EVENT_BASE, 
                                                     VIEW_EVENT_VI_STOP, 
+                                                    __event_handler, 
+                                                    p_vi));
+
+    ESP_ERROR_CHECK(esp_event_handler_register_with(app_event_loop_handle, 
+                                                    VIEW_EVENT_BASE, 
+                                                    VIEW_EVENT_VI_PRE_EXIT, 
                                                     __event_handler, 
                                                     p_vi));
 

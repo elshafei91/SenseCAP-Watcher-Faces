@@ -46,6 +46,7 @@ enum app_voice_interaction_status {
     VI_STATUS_PLAYING,
     VI_STATUS_STOP,
     VI_STATUS_FINISH,
+    VI_STATUS_PRE_EXIT,
     VI_STATUS_EXIT,
     VI_STATUS_ERROR,
     VI_STATUS_TASKFLOW_GET,

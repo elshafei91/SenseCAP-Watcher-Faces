@@ -275,6 +275,7 @@ enum {
     VIEW_EVENT_VI_PLAY_FINISH, // NULL
     VIEW_EVENT_VI_ERROR, // int ,voice interaction run error code.
     VIEW_EVENT_VI_STOP,  // NULL,  UI post the event. stop the voice interaction when analyzing or palying 
+    VIEW_EVENT_VI_PRE_EXIT,  //NULL, Prepare to exit voice interaction.
     VIEW_EVENT_VI_EXIT,  // int, 0: Direct exit, 1: Run new taskflow after exit.  UI post the event. Exit the current session
 
     VIEW_EVENT_ALL,
