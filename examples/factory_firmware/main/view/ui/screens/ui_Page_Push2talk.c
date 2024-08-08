@@ -437,7 +437,7 @@ void ui_Page_Push2talk_screen_init(void)
 
 
 
-    lv_obj_add_event_cb(ui_push2talkarc, ui_event_push2talkarc, LV_EVENT_ALL, ui_push2talkknob);
+    lv_obj_add_event_cb(ui_push2talkarc, ui_event_push2talkarc, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_p2tobj, ui_event_p2tobj, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_p2tbehavior, ui_event_p2tbehavior, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_p2tfeat, ui_event_p2tfeat, LV_EVENT_ALL, NULL);
