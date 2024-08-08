@@ -416,13 +416,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 p_vi->new_session = false;
                 
                 //check ble
-                if( get_ble_switch(MAX_CALLER) ) {
-                    p_vi->ble_pause =  true;
-                    app_ble_adv_switch(0);
-                    ESP_LOGI(TAG, "ble pause");
-                } else {
-                    p_vi->ble_pause =  false;
-                }
+                app_ble_adv_pause(); //Don't care whether the current ble state is open
 
                 // check taskflow
                 int engine_status = 0;
@@ -802,11 +796,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             p_vi->new_session = true;
             
             //resume ble
-            if( p_vi->ble_pause ) {
-                ESP_LOGI(TAG, "resume ble");
-                app_ble_adv_switch(1);
-                p_vi->ble_pause = false;
-            }
+            app_ble_adv_resume(get_ble_switch(MAX_CALLER));
 
             // resume taskflow
             if( p_vi->need_get_taskflow ) {
