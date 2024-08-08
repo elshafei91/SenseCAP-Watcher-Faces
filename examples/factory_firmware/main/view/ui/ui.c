@@ -351,6 +351,12 @@ lv_obj_t * ui_extensionbubble4Icon;
 lv_obj_t * ui_extensionbubble4Icon2;
 void ui_event_extensionpanel(lv_event_t * e);
 lv_obj_t * ui_extensionpanel;
+void ui_event_extensionNone(lv_event_t * e);
+lv_obj_t * ui_extensionNone;
+lv_obj_t * ui_extenNonetext;
+lv_obj_t * ui_extenNonetext2;
+void ui_event_extenNoneback(lv_event_t * e);
+lv_obj_t * ui_extenNoneback;
 
 
 // SCREEN: ui_Page_OTA
@@ -1481,6 +1487,22 @@ void ui_event_extensionpanel(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_SHORT_CLICKED) {
         extensionpanel_cb(e);
+    }
+}
+void ui_event_extensionNone(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        extensionpanel_cb(e);
+    }
+}
+void ui_event_extenNoneback(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        backmenu_cb(e);
     }
 }
 void ui_event_otaback(lv_event_t * e)

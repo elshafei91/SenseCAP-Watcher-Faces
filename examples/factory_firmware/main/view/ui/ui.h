@@ -323,6 +323,12 @@ extern lv_obj_t * ui_extensionbubble4Icon;
 extern lv_obj_t * ui_extensionbubble4Icon2;
 void ui_event_extensionpanel(lv_event_t * e);
 extern lv_obj_t * ui_extensionpanel;
+void ui_event_extensionNone(lv_event_t * e);
+extern lv_obj_t * ui_extensionNone;
+extern lv_obj_t * ui_extenNonetext;
+extern lv_obj_t * ui_extenNonetext2;
+void ui_event_extenNoneback(lv_event_t * e);
+extern lv_obj_t * ui_extenNoneback;
 // SCREEN: ui_Page_OTA
 void ui_Page_OTA_screen_init(void);
 extern lv_obj_t * ui_Page_OTA;
