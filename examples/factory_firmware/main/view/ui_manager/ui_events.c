@@ -20,6 +20,7 @@
 #include "app_wifi.h"
 #include "storage.h"
 #include "app_png.h"
+#include "app_rgb.h"
 #include "sensecap-watcher.h"
 
 #define VOLBRI_CFG "volbri-cfg"
@@ -1325,6 +1326,7 @@ void sleepswitch_cb(lv_event_t * e)
 void p2tclick_cb(lv_event_t * e)
 {
     if(g_push2talk_status == EMOJI_SPEAKING || g_push2talk_status == EMOJI_ANALYZING){
+        app_rgb_set(SR, RGB_BLINK_BLUE);
         lv_arc_set_value(ui_push2talkarc, 0);
 
         g_push2talk_timer = 1;
@@ -2471,7 +2473,7 @@ static void view_push2talk_timer_callback(lv_timer_t *timer)
 {
     ESP_LOGI(TAG, "view_push2talk_timer_callback");
     static int16_t push2talk_arc;
-    static int push2talk_direct_exit = 0;
+    static int push2talk_run_taskflow_exit = 1;
 
     if(g_push2talk_timer == 0)
     {
@@ -2480,7 +2482,7 @@ static void view_push2talk_timer_callback(lv_timer_t *timer)
             if(g_push2talk_mode == 2)
             {
                 view_push2talk_timer_stop();
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_run_taskflow_exit, sizeof(push2talk_run_taskflow_exit), pdMS_TO_TICKS(10000));
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
                 push2talk_timer_counter = 0;

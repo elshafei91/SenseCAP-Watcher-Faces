@@ -729,6 +729,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 view_push2talk_timer_stop();
                 lv_group_remove_all_objs(g_main);
 
+                hide_all_overlays();
+
                 lv_obj_set_x(ui_push2talkknob, -17);
                 lv_obj_set_y(ui_push2talkknob, 151);
                 lv_obj_set_align(ui_push2talkknob, LV_ALIGN_CENTER);
