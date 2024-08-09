@@ -479,6 +479,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_TASK_FLOW_STOP:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
                 if(lv_scr_act() == ui_Page_OTA){break;}
+                if(g_taskflow_pause == 1)g_taskflow_pause = 0;
                 lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 // event_post_to
                 g_taskdown = 1;
