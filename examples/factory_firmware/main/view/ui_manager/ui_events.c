@@ -1392,7 +1392,7 @@ void p2tvaluechange_cb(lv_event_t * e)
     static int push2talk_direct_exit = 0;
     static int16_t push2talk_arc;
     push2talk_arc = lv_arc_get_value(ui_push2talkarc);
-    ESP_LOGI(TAG, "push2talk_arc =  %d", push2talk_arc);
+    // ESP_LOGI(TAG, "push2talk_arc =  %d", push2talk_arc);
     if(push2talk_arc == 10)
     {
         view_push2talk_timer_stop();
@@ -1414,6 +1414,7 @@ void p2tvaluechange_cb(lv_event_t * e)
 
         g_taskflow_pause = 0;
         g_is_push2talk = 0;
+        app_rgb_set(SR, RGB_OFF);
     }
 }
 
