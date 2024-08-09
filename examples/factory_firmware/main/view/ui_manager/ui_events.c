@@ -1392,7 +1392,8 @@ void p2tvaluechange_cb(lv_event_t * e)
     static int push2talk_direct_exit = 0;
     static int16_t push2talk_arc;
     push2talk_arc = lv_arc_get_value(ui_push2talkarc);
-    if(push2talk_arc == 9)
+    ESP_LOGI(TAG, "push2talk_arc =  %d", push2talk_arc);
+    if(push2talk_arc == 10)
     {
         view_push2talk_timer_stop();
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
