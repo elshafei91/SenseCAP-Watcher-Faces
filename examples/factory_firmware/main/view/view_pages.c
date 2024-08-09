@@ -232,4 +232,8 @@ void hide_all_overlays(void)
 
     // avatar && preview panel
     lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
+
+    // standby mode
+    lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
+    emoji_timer(EMOJI_STOP);
 }
