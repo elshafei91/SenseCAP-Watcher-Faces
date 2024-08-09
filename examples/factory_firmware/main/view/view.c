@@ -164,6 +164,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_EMOJI_DOWLOAD_BAR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_BAR");
                 if(lv_scr_act() == ui_Page_OTA){break;}
+                int push2talk_direct_exit = 0;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
                 int *emoji_download_per = (int *)event_data;
                 static char download_per[5];
 
