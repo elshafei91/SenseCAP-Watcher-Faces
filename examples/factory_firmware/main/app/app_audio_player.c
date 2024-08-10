@@ -9,6 +9,7 @@
 #include "audio_player.h"
 #include "storage.h"
 
+
 static const char *TAG = "audio_player";
 
 struct app_audio_player *gp_audio_player = NULL;
@@ -110,6 +111,206 @@ static bool __is_wav(struct app_audio_player *p_audio_player, uint8_t *p_buf, si
     return true;
 }
 
+#if defined(CONFIG_AUDIO_PLAYER_ENABLE_MP3_STREAM)
+typedef enum {
+    MP3_DECODE_STATUS_CONTINUE,         /*< data remaining, call decode again */
+    MP3_DECODE_STATUS_NO_DATA_CONTINUE, /*< data remaining but none in this call */
+    MP3_DECODE_STATUS_DONE,             /*< no data remaining to decode */
+    MP3_DECODE_STATUS_ERROR             /*< unrecoverable error */
+} MP3_DECODE_STATUS;
+
+static bool __is_mp3(struct app_audio_player *p_audio_player, uint8_t *p_buf, size_t len)
+{
+    bool is_mp3_file = false;
+
+    if( len < 3) {
+        return false;
+    }
+
+    uint8_t *magic = p_buf;
+    if((magic[0] == 0xFF) &&
+        (magic[1] == 0xFB))
+    {
+        is_mp3_file = true;
+    } else if((magic[0] == 0xFF) &&
+                (magic[1] == 0xF3))
+    {
+        is_mp3_file = true;
+    } else if((magic[0] == 0xFF) &&
+                (magic[1] == 0xF2))
+    {
+        is_mp3_file = true;
+    } else if((magic[0] == 0x49) &&
+                (magic[1] == 0x44) &&
+                (magic[2] == 0x33)) /* 'ID3' */
+    {
+        if( len >   sizeof(audio_mp3_id3_header_v2_t) ) {
+            /* Get ID3 head */
+            audio_mp3_id3_header_v2_t *p_tag = (audio_mp3_id3_header_v2_t *) p_buf;
+            if (memcmp("ID3", (const void *) p_tag, sizeof(p_tag->header)) == 0) {
+                is_mp3_file = true;
+            }
+        }
+    }
+    return is_mp3_file;
+}
+
+static MP3_DECODE_STATUS __stream_mp3_decode_then_play(struct app_audio_player *p_audio_player) 
+{
+    esp_err_t ret = ESP_OK;
+
+    audio_mp3_instance *pInstance = &p_audio_player->mp3_data;
+    HMP3Decoder mp3_decoder = p_audio_player->mp3_decoder;
+    MP3FrameInfo frame_info;
+    uint8_t *p_data = NULL;
+    size_t recv_len = 0;
+    size_t data_write = 0; // useless
+
+    size_t unread_bytes = pInstance->bytes_in_data_buf - (pInstance->read_ptr - pInstance->data_buf);
+
+    if(unread_bytes == 0 && pInstance->eof_reached ) {
+        return MP3_DECODE_STATUS_DONE;
+    }
+
+    /* somewhat arbitrary trigger to refill buffer - should always be enough for a full frame */
+    if (unread_bytes < 1.25 * MAINBUF_SIZE && !pInstance->eof_reached) {
+        uint8_t *write_ptr = pInstance->data_buf + unread_bytes;
+        size_t free_space = pInstance->data_buf_size - unread_bytes;
+
+    	/* move last, small chunk from end of buffer to start,
+           then fill with new data */
+        memmove(pInstance->data_buf, pInstance->read_ptr, unread_bytes);
+
+        size_t nRead = 0;
+        p_data = xRingbufferReceiveUpTo( p_audio_player->rb_handle, &recv_len, pdMS_TO_TICKS(100), free_space);
+        if(p_data != NULL) {
+
+            ESP_LOGI(TAG, "xRingbuffer get: %d", recv_len);
+            nRead = recv_len;
+            memcpy(write_ptr, p_data, recv_len);
+            vRingbufferReturnItem(p_audio_player->rb_handle, p_data);
+
+            __data_lock(p_audio_player);
+            p_audio_player->stream_play_len += recv_len;
+            __data_unlock(p_audio_player);
+
+        }  else {
+            //maybe finished
+            nRead = 0;
+            if( p_audio_player->stream_finished) {
+                ESP_LOGI(TAG, "stream finished: %d", p_audio_player->stream_play_len);
+                pInstance->eof_reached = true;
+            }
+        }
+
+        pInstance->bytes_in_data_buf = unread_bytes + nRead;
+        pInstance->read_ptr = pInstance->data_buf;
+
+        ESP_LOGV(TAG,"nRead %d, eof %d",  nRead, pInstance->eof_reached);
+
+        unread_bytes = pInstance->bytes_in_data_buf;
+    }
+
+    ESP_LOGV(TAG,"data_buf 0x%p, read 0x%p", pInstance->data_buf, pInstance->read_ptr);
+
+    if(unread_bytes == 0) {
+        ESP_LOGD(TAG, "unread_bytes == 0, status done");
+        return MP3_DECODE_STATUS_NO_DATA_CONTINUE;
+    }
+
+
+    /* Find MP3 sync word from read buffer */
+    int offset = MP3FindSyncWord(pInstance->read_ptr, unread_bytes);
+
+    ESP_LOGV(TAG,"unread %d, total %d, offset 0x%x(%d)",
+            unread_bytes, pInstance->bytes_in_data_buf, offset, offset);
+
+    if (offset >= 0) {
+        uint8_t *read_ptr = pInstance->read_ptr + offset; /*!< Data start point */
+        unread_bytes -= offset;
+        ESP_LOGV(TAG,"read 0x%p, unread %d", read_ptr, unread_bytes);
+        int mp3_dec_err = MP3Decode(mp3_decoder, &read_ptr, (int*)&unread_bytes, p_audio_player->p_mp3_decode_buf, 0);
+
+        pInstance->read_ptr = read_ptr;
+
+        if(mp3_dec_err == ERR_MP3_NONE) {
+            /* Get MP3 frame info */
+            MP3GetLastFrameInfo(mp3_decoder, &frame_info);
+
+            int sample_rate = frame_info.samprate;
+            uint32_t bits_per_sample = frame_info.bitsPerSample;
+            uint32_t channels = frame_info.nChans;
+            size_t frame_count = (frame_info.outputSamps / frame_info.nChans);
+            size_t bytes_to_write = frame_count * channels * (bits_per_sample / 8);
+
+
+            if( sample_rate !=  p_audio_player->sample_rate || 
+                bits_per_sample != p_audio_player->bits_per_sample ||
+                channels != p_audio_player->channel) {
+
+                ESP_LOGI(TAG, "need change fs");
+                __data_lock(p_audio_player);
+                p_audio_player->sample_rate = sample_rate;
+                p_audio_player->channel = channels;
+                p_audio_player->bits_per_sample = bits_per_sample;
+                __data_unlock(p_audio_player);
+
+                ret = __audio_player_set_fs(p_audio_player->sample_rate, p_audio_player->bits_per_sample, p_audio_player->channel);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "set fs fail %d!", ret);
+                }
+            }
+            ESP_LOGV(TAG, "decode frame %d, %d, %d, %d, %d", frame_count, bytes_to_write, sample_rate, bits_per_sample, channels);
+            bsp_i2s_write(p_audio_player->p_mp3_decode_buf, bytes_to_write, &data_write, 0); 
+
+        } else {
+            if (pInstance->eof_reached) {
+                ESP_LOGE(TAG, "status error %d, but EOF", mp3_dec_err);
+                return MP3_DECODE_STATUS_DONE;
+            } else if (mp3_dec_err == ERR_MP3_MAINDATA_UNDERFLOW) {
+                // underflow indicates MP3Decode should be called again
+                ESP_LOGD(TAG, "underflow read ptr is 0x%p", read_ptr);
+                return MP3_DECODE_STATUS_NO_DATA_CONTINUE;
+            } else {
+                // NOTE: some mp3 files result in misdetection of mp3 frame headers
+                // and during decode these misdetected frames cannot be
+                // decoded
+                //
+                // Rather than give up on the file by returning
+                // MP3_DECODE_STATUS_ERROR, we ask the caller
+                // to continue to call us, by returning MP3_DECODE_STATUS_NO_DATA_CONTINUE.
+                //
+                // The invalid frame data is skipped over as a search for the next frame
+                // on the subsequent call to this function will start searching
+                // AFTER the misdetected frmame header, dropping the invalid data.
+                //
+                // We may want to consider a more sophisticated approach here at a later time.
+                ESP_LOGE(TAG, "status error %d", mp3_dec_err);
+                return MP3_DECODE_STATUS_NO_DATA_CONTINUE;
+            }
+        }
+    } else {
+        // drop an even count of words
+        size_t words_to_drop = unread_bytes / 2;
+        size_t bytes_to_drop = words_to_drop * 2;
+
+        // if the unread bytes is less than BYTES_IN_WORD, we should drop any unread bytes
+        // to avoid the situation where the file could have a few extra bytes at the end
+        // of the file that isn't at least BYTES_IN_WORD and decoding would get stuck
+        if(unread_bytes < 2) {
+            bytes_to_drop = unread_bytes;
+        }
+
+        // shift the read_ptr to drop the bytes in the buffer
+        pInstance->read_ptr += bytes_to_drop;
+
+        /* Sync word not found in frame. Drop data that was read until a word boundary */
+        ESP_LOGE(TAG, "MP3 sync word not found, dropping %d bytes", bytes_to_drop);
+    }
+
+    return MP3_DECODE_STATUS_CONTINUE;
+}
+#endif
 
 static void app_audio_player_task(void *p_arg)
 {
@@ -134,25 +335,45 @@ static void app_audio_player_task(void *p_arg)
                     ESP_LOGI(TAG, "EVENT_STREAM_STOP");
                     break;
                 }
-                // xRingbufferReceiveUpTo and vRingbufferReturnItem can be interrupted by other tasks.
-                p_data = xRingbufferReceiveUpTo( p_audio_player->rb_handle, &recv_len, pdMS_TO_TICKS(500), AUDIO_PLAYER_RINGBUF_CHUNK_SIZE);
-                if(p_data != NULL) {
-                    bsp_i2s_write(p_data, recv_len, &data_write, 0); // maybe take 500ms to write data
-                    vRingbufferReturnItem(p_audio_player->rb_handle, p_data);
+                switch (p_audio_player->audio_type)
+                {
+                    case AUDIO_TYPE_WAV: {
+                        // xRingbufferReceiveUpTo and vRingbufferReturnItem can be interrupted by other tasks.
+                        p_data = xRingbufferReceiveUpTo( p_audio_player->rb_handle, &recv_len, pdMS_TO_TICKS(500), AUDIO_PLAYER_RINGBUF_CHUNK_SIZE);
+                        if(p_data != NULL) {
+                            bsp_i2s_write(p_data, recv_len, &data_write, 0); // maybe take 500ms to write data
+                            vRingbufferReturnItem(p_audio_player->rb_handle, p_data);
 
-                    __data_lock(p_audio_player);
-                    p_audio_player->stream_play_len += recv_len;
-                    __data_unlock(p_audio_player);
+                            __data_lock(p_audio_player);
+                            p_audio_player->stream_play_len += recv_len;
+                            __data_unlock(p_audio_player);
 
-                } else {
-                    //maybe finished
-                    __data_lock(p_audio_player);
-                    if( p_audio_player->stream_finished) {
-                        p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
-                        is_play_done = true;
-                    }
-                    __data_unlock(p_audio_player);
+                        } else {
+                            //maybe finished
+                            __data_lock(p_audio_player);
+                            if( p_audio_player->stream_finished) {
+                                p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
+                                is_play_done = true;
+                            }
+                            __data_unlock(p_audio_player);
+                        }
+                        break;
+                    }  
+                    case AUDIO_TYPE_MP3: {
+                        MP3_DECODE_STATUS status = 0;
+                        status = __stream_mp3_decode_then_play(p_audio_player);
+                        if(  status == MP3_DECODE_STATUS_DONE)  {
+                            __data_lock(p_audio_player);
+                            p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
+                            is_play_done = true;
+                            __data_unlock(p_audio_player);
+                        }
+                        break;
+                    }  
+                    default:
+                        break;
                 }
+
 
                 if(is_play_done) {  
                     ESP_LOGI(TAG, "play done");
@@ -259,8 +480,40 @@ esp_err_t app_audio_player_init(void)
     ESP_GOTO_ON_FALSE(ret==ESP_OK, ESP_FAIL, err, TAG, "Failed to create audio player");
     audio_player_callback_register(__audio_player_cb, (void *)p_audio_player);
 
-    return ESP_OK;  
+#if defined(CONFIG_AUDIO_PLAYER_ENABLE_MP3_STREAM)
+/** See https://github.com/ultraembedded/libhelix-mp3/blob/0a0e0673f82bc6804e5a3ddb15fb6efdcde747cd/testwrap/main.c#L74 */
+    p_audio_player->mp3_decode_buf_len = MAX_NCHAN * MAX_NGRAN * MAX_NSAMP;
+    p_audio_player->p_mp3_decode_buf = psram_malloc(p_audio_player->mp3_decode_buf_len);
+    ESP_GOTO_ON_FALSE(NULL != p_audio_player->p_mp3_decode_buf, ESP_ERR_NO_MEM, err, TAG, "Failed allocate mp3 decode buffer");
+
+    p_audio_player->mp3_data.data_buf_size = MAINBUF_SIZE * 3;
+    p_audio_player->mp3_data.data_buf = psram_malloc(MAINBUF_SIZE * 3);
+    ESP_GOTO_ON_FALSE(NULL != p_audio_player->mp3_data.data_buf, ESP_ERR_NO_MEM, err, TAG, "Failed allocate mp3 data buffer");
+
+    p_audio_player->mp3_decoder = MP3InitDecoder();
+    ESP_GOTO_ON_FALSE(NULL != p_audio_player->mp3_decoder, ESP_ERR_NO_MEM, err,TAG, "Failed create MP3 decoder");
+
+
+#endif
+
+    return ESP_OK;
+
 err:
+
+#if defined(CONFIG_AUDIO_PLAYER_ENABLE_MP3_STREAM)
+    if(p_audio_player->mp3_decoder) {
+        MP3FreeDecoder(p_audio_player->mp3_decoder);
+        p_audio_player->mp3_decoder = NULL;
+    }
+    if(p_audio_player->mp3_data.data_buf) {
+        free(p_audio_player->mp3_data.data_buf);
+        p_audio_player->mp3_data.data_buf = NULL;
+    }
+    if( p_audio_player->p_mp3_decode_buf ) {
+        free(p_audio_player->p_mp3_decode_buf);
+        p_audio_player->p_mp3_decode_buf = NULL;
+    }
+#endif
     if(p_audio_player->task_handle ) {
         vTaskDelete(p_audio_player->task_handle);
         p_audio_player->task_handle = NULL;
@@ -388,6 +641,19 @@ esp_err_t app_audio_player_stream_send(uint8_t *p_buf,
                 if(xRingbufferSend(p_audio_player->rb_handle, p_buf + header_len, len - header_len, xTicksToWait) == pdTRUE) {
                     return ESP_FAIL;
                 }
+#if defined(CONFIG_AUDIO_PLAYER_ENABLE_MP3_STREAM)
+            } else if( __is_mp3(p_audio_player, p_buf, len)){
+                ESP_LOGI(TAG, "mp3 audio stream");
+                p_audio_player->audio_type = AUDIO_TYPE_MP3;
+
+                p_audio_player->mp3_data.bytes_in_data_buf = 0;
+                p_audio_player->mp3_data.read_ptr = p_audio_player->mp3_data.data_buf;
+                p_audio_player->mp3_data.eof_reached = false;
+
+                if(xRingbufferSend(p_audio_player->rb_handle, p_buf, len, xTicksToWait) == pdTRUE) {
+                    return ESP_FAIL;
+                }
+#endif
             } else {
                 ESP_LOGE(TAG, "unsupport audio stream");
             }
@@ -400,8 +666,9 @@ esp_err_t app_audio_player_stream_send(uint8_t *p_buf,
             break;
         }  
         case AUDIO_TYPE_MP3: {
-            ESP_LOGE(TAG, "unsupport mp3 by stream");
-            //TODO need to decode
+            if(xRingbufferSend(p_audio_player->rb_handle, p_buf, len, xTicksToWait) != pdTRUE) {
+                return ESP_FAIL;
+            }
             break;
         }  
         default:
