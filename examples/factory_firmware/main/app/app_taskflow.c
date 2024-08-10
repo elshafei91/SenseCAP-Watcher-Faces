@@ -423,16 +423,27 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
         
         need_report = false;
         p_json = tf_engine_flow_get_with_simplify();
-        if(  status.engine_status !=  TF_STATUS_STARTING && p_json != NULL ) {
-            size_t len = 0;
-            len = strlen(p_json);
+        if(  status.engine_status !=  TF_STATUS_STARTING) {
+
             
             __report_lock(p_taskflow); 
-            ret = app_sensecraft_mqtt_report_taskflow_info( tid, status.ctd,
-                                                                status.engine_status,
-                                                                p_module_name,
-                                                                status.module_status,
-                                                                p_json, len);
+            if(  p_json != NULL ) {
+                size_t len = 0;
+                len = strlen(p_json);
+                ret = app_sensecraft_mqtt_report_taskflow_info( tid, status.ctd,
+                                                                    status.engine_status,
+                                                                    p_module_name,
+                                                                    status.module_status,
+                                                                    p_json, len);
+                free(p_json);
+                p_json = NULL;
+
+            } else {
+                ret = app_sensecraft_mqtt_report_taskflow_status( tid, status.ctd,
+                                                                    status.engine_status,
+                                                                    p_module_name,
+                                                                    status.module_status);
+            }
             __report_unlock(p_taskflow);
 
             if( ret != ESP_OK ) {
@@ -441,8 +452,7 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
             } else {
                 p_taskflow->report_cnt = 0;
             }
-            free(p_json);
-            p_json = NULL;
+
         }
     } else {
         need_report = true;
