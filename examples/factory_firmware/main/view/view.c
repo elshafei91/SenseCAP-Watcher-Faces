@@ -232,6 +232,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
+            case VIEW_EVENT_SLEEP_TRIGGER:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_SLEEP_TRIGGER");
+                lv_disp_trig_activity(NULL);
+                break;
+            }
+
             case VIEW_EVENT_MODE_STANDBY:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_MODE_STANDBY");
                 
@@ -984,6 +990,10 @@ int view_init(void)
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
                                                             VIEW_EVENT_BASE, VIEW_EVENT_SENSOR, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SLEEP_TRIGGER, 
                                                             __view_event_handler, NULL, NULL));
 
     if((bat_per < 1) && (! is_charging))
