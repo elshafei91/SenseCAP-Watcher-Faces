@@ -2246,8 +2246,9 @@ void extensionpanel_cb(lv_event_t * e)
 void push2talk_init(void)
 {
     push2talk_textarea = lv_textarea_create(ui_Page_Push2talk);
-    lv_obj_set_width(push2talk_textarea, 320);
-    lv_obj_set_height(push2talk_textarea, LV_SIZE_CONTENT);
+    lv_obj_set_width(push2talk_textarea, 250);
+    lv_obj_set_height(push2talk_textarea, 120);
+    // lv_obj_set_height(push2talk_textarea, LV_SIZE_CONTENT);
     lv_obj_set_x(push2talk_textarea, 0);
     lv_obj_set_y(push2talk_textarea, 120);
     lv_obj_set_align(push2talk_textarea, LV_ALIGN_CENTER);
@@ -2262,7 +2263,7 @@ void push2talk_init(void)
     lv_obj_set_style_border_color(push2talk_textarea, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(push2talk_textarea, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_textarea_set_placeholder_text(push2talk_textarea, "");
-    lv_textarea_set_one_line(push2talk_textarea, true);
+    // lv_textarea_set_one_line(push2talk_textarea, true);
     lv_textarea_set_cursor_pos(push2talk_textarea, LV_TEXTAREA_CURSOR_LAST);
     lv_obj_set_scrollbar_mode(push2talk_textarea, LV_SCROLLBAR_MODE_OFF);
 }
@@ -2478,6 +2479,14 @@ void view_sleep_timer_start()
         lv_timer_del(view_sleep_timer);
     }
     view_sleep_timer = lv_timer_create(view_sleep_timer_callback, 1000, NULL); // 1000 ms = 1 second
+}
+
+void view_sleep_timer_stop()
+{
+    if (view_sleep_timer != NULL) {
+        lv_timer_del(view_sleep_timer);
+        view_sleep_timer = NULL;
+    }
 }
 
 static void view_push2talk_timer_callback(lv_timer_t *timer)

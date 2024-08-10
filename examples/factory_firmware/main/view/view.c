@@ -619,6 +619,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 if(lv_scr_act() == ui_Page_OTA){break;}
                 g_is_push2talk = 1;
 
+                view_sleep_timer_stop();
                 view_push2talk_timer_stop();
                 lv_group_remove_all_objs(g_main);
 
@@ -675,7 +676,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     g_push2talk_timer = 0;
 
                     if (push2talk_result->p_audio_text != NULL) {
-                        ESP_LOGI("push2talk", "audio text : %s", push2talk_result->p_audio_text);
+                        // ESP_LOGI("push2talk", "audio text : %s", push2talk_result->p_audio_text);
                         int push2talk_audio_time = push2talk_result->audio_tm_ms;
                         ESP_LOGI("push2talk", "audio time : %d", push2talk_audio_time);
 
@@ -729,7 +730,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAY_FINISH");
                 if(lv_scr_act() == ui_Page_OTA){break;}
 
-                if(g_push2talk_timer == 0 )view_push2talk_timer_start();
+                // if(g_push2talk_timer == 0 )view_push2talk_timer_start();
 
                 break;
             }
@@ -769,6 +770,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
                 break;
 
+            }
+
+            case VIEW_EVENT_VI_EXIT:{
+                view_sleep_timer_start();
+                break;
             }
 
             case VIEW_EVENT_SENSOR:{
@@ -977,6 +983,10 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_VI_PLAYING, 
                                                             __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, 
+                                                            __view_event_handler, NULL, NULL));
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_VI_ERROR, 
@@ -1024,7 +1034,7 @@ int view_init(void)
     read_and_store_selected_pngs("Custom_greeting",    "greeting", g_greet_img_dsc, &g_greet_image_count);
     read_and_store_selected_pngs("Custom_detecting",   "detecting", g_detect_img_dsc, &g_detect_image_count);
     read_and_store_selected_pngs("Custom_detected",    "detected", g_detected_img_dsc, &g_detected_image_count);
-    read_and_store_selected_pngs("Custom_speaking",    "speaking", g_speak_img_dsc, &g_speak_image_count);
+    read_and_store_selected_customed_pngs("Custom_speaking",    "speaking", g_speak_img_dsc, &g_speak_image_count);
     read_and_store_selected_pngs("Custom_listening",   "listening", g_listen_img_dsc, &g_listen_image_count);
     read_and_store_selected_pngs("Custom_analyzing",   "analyzing", g_analyze_img_dsc, &g_analyze_image_count);
     read_and_store_selected_pngs("Custom_standby",     "standby", g_standby_img_dsc, &g_standby_image_count);
