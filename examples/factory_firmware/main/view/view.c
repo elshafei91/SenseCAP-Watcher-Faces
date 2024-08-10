@@ -213,6 +213,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 {
                     pre_foucsed_obj = lv_group_get_focused(g_main);
                 }
+                lv_obj_clear_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(ui_faceper, LV_OBJ_FLAG_HIDDEN);
                 lv_group_add_obj(g_main, ui_emoticonok);
                 lv_group_focus_obj(ui_emoticonok);
                 lv_group_focus_freeze(g_main, true);
