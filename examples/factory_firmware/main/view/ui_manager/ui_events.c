@@ -22,6 +22,7 @@
 #include "app_png.h"
 #include "app_rgb.h"
 #include "sensecap-watcher.h"
+#include "task_flow_engine/include/tf.h"
 
 #define VOLBRI_CFG "volbri-cfg"
 #define MAX_RETRIES 3
@@ -1546,7 +1547,10 @@ void emoticonback_cb(lv_event_t * e)
 void guidebtn1click_cb(lv_event_t * e)
 {
     lv_pm_open_page(g_main, &group_page_guide, PM_ADD_OBJS_TO_GROUP, &ui_Page_Guideavatar, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Guideavatar_screen_init);
-    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+    intmax_t tlid = 0;
+    tf_engine_tid_get(&tlid);
+    // if task is preview, do not send task_flow_pause
+    if(tlid != 4)esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
 }
 
 void guidebtn2click_cb(lv_event_t * e)
