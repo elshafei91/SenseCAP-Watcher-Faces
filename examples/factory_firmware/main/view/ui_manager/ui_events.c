@@ -156,8 +156,8 @@ static lv_timer_t * view_ble_switch_timer;
 #define ACTIVE_THRESHOLD (5000)
 static lv_timer_t * view_sleep_timer;
 static uint32_t inactive_time = 0;
-static int get_inactive_time;
-static int inactive_threshold;
+static int get_inactive_time = 0;
+static int inactive_threshold = 0;
 
 // Push2talk timer
 static lv_timer_t * view_push2talk_timer;
@@ -2361,6 +2361,11 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
 {
     inactive_time = lv_disp_get_inactive_time(NULL);
     get_inactive_time = g_sleep_time;
+    if((inactive_time % (30*1000)) < 2000)
+    {
+        ESP_LOGI("view_inactive", "inactive_time: %d, sleep_time: %d, sleep_mode: %d", inactive_time, g_sleep_time, sleep_mode);
+        ESP_LOGI("view_inactive", "standby_mode: %d, is_taskdown: %d", standby_mode, g_taskdown);
+    }
     // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
     // ESP_LOGD("view_sleep", "sleep switch is : %d, and sleep time is %d", g_sleep_switch, g_sleep_time);
 
@@ -2387,8 +2392,8 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
             inactive_threshold = (24 * 60 * 60 * 1000);
             break;
         default:
-            lvgl_port_unlock();
-            return;
+            inactive_threshold = 0;
+            break;
     }
     // extension scroll play
     if(inactive_time > (60 * 1000) && lv_scr_act()== ui_Page_Extension && (!extension_scroll_mode))
