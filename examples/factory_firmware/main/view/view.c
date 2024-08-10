@@ -558,6 +558,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_obj_add_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
+                    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
                 }else if (ota_st->status == 2)
                 {
                     ESP_LOGI(TAG, "OTA download succeeded");
@@ -575,7 +576,6 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_obj_add_flag(ui_otaspinner, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaback, LV_OBJ_FLAG_HIDDEN);
                 }
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
                 break;
             }
 
