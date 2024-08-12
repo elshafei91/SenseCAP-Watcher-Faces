@@ -323,6 +323,12 @@ extern lv_obj_t * ui_extensionbubble4Icon;
 extern lv_obj_t * ui_extensionbubble4Icon2;
 void ui_event_extensionpanel(lv_event_t * e);
 extern lv_obj_t * ui_extensionpanel;
+void ui_event_extensionNone(lv_event_t * e);
+extern lv_obj_t * ui_extensionNone;
+extern lv_obj_t * ui_extenNonetext;
+extern lv_obj_t * ui_extenNonetext2;
+void ui_event_extenNoneback(lv_event_t * e);
+extern lv_obj_t * ui_extenNoneback;
 // SCREEN: ui_Page_OTA
 void ui_Page_OTA_screen_init(void);
 extern lv_obj_t * ui_Page_OTA;
@@ -355,6 +361,7 @@ void ui_event_push2talkarc(lv_event_t * e);
 extern lv_obj_t * ui_push2talkarc;
 extern lv_obj_t * ui_push2talkp2t1;
 extern lv_obj_t * ui_push2talkp2t2;
+extern lv_obj_t * ui_push2talkknob;
 extern lv_obj_t * ui_push2talkpanel3;
 void ui_event_p2tobj(lv_event_t * e);
 extern lv_obj_t * ui_p2tobj;
@@ -390,6 +397,7 @@ void ui_event_p2tcheck(lv_event_t * e);
 extern lv_obj_t * ui_p2tcheck;
 extern lv_obj_t * ui_p2texit;
 extern lv_obj_t * ui_p2tspeak;
+extern lv_obj_t * ui_push2talkTextArea;
 // SCREEN: ui_Page_Guideavatar
 void ui_Page_Guideavatar_screen_init(void);
 void ui_event_Page_Guideavatar(lv_event_t * e);
@@ -473,6 +481,7 @@ LV_IMG_DECLARE(ui_img_1955521171);    // assets/humidity@1x.png
 LV_IMG_DECLARE(ui_img_529164268);    // assets/co2@1x.png
 LV_IMG_DECLARE(ui_img_1761657674);    // assets/temp@1x.png
 LV_IMG_DECLARE(ui_img_wifiok_png);    // assets/wifiok.png
+LV_IMG_DECLARE(ui_img_pushtotalk_scroll_png);    // assets/pushToTalk_Scroll.png
 LV_IMG_DECLARE(ui_img_guideimg_png);    // assets/guideimg.png
 LV_IMG_DECLARE(ui_img_scroll_down_png);    // assets/scroll_down.png
 LV_IMG_DECLARE(ui_img_fakelivecam_png);    // assets/fakelivecam.png
@@ -487,6 +496,7 @@ LV_IMG_DECLARE(ui_img_gradient_png);    // assets/gradient.png
 LV_IMG_DECLARE(ui_img_1336611536);    // assets/humidity_f@1x.png
 LV_IMG_DECLARE(ui_img_left_png);    // assets/left.png
 LV_IMG_DECLARE(ui_img_onboardclick_png);    // assets/onboardClick.png
+LV_IMG_DECLARE(ui_img_pushtotalk_error_png);    // assets/pushToTalk_Error.png
 LV_IMG_DECLARE(ui_img_2057255035);    // assets/temp_f@1x.png
 LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets/wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets/wifi_1.png

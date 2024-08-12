@@ -46,6 +46,7 @@ enum app_voice_interaction_status {
     VI_STATUS_PLAYING,
     VI_STATUS_STOP,
     VI_STATUS_FINISH,
+    VI_STATUS_PRE_EXIT,
     VI_STATUS_EXIT,
     VI_STATUS_ERROR,
     VI_STATUS_TASKFLOW_GET,
@@ -78,7 +79,6 @@ struct app_voice_interaction {
     bool taskflow_pause;
     bool new_session;
     bool is_ota;
-    bool ble_pause;
 };
 
 esp_err_t app_voice_interaction_init(void);

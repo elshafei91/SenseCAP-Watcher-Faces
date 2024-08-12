@@ -1,5 +1,6 @@
 #include "view_pages.h"
 #include "ui_manager/event.h"
+#include "ui_manager/pm.h"
 
 // view taskflow error
 lv_obj_t * ui_taskerrt2;
@@ -18,6 +19,9 @@ lv_obj_t * ui_facetper;
 lv_obj_t * ui_facetsym;
 lv_obj_t * ui_emoticonok;
 
+extern lv_obj_t *ui_alarm_indicator;
+extern uint8_t g_group_layer_;
+extern lv_obj_t * ui_viewavap;
 // view standby mode
 lv_obj_t * ui_Page_Standby;
 
@@ -211,4 +215,21 @@ void view_standby_mode_init(void)
     lv_obj_set_style_bg_opa(ui_Page_Standby, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_Page_Standby, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_Page_Standby, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
+
+
+void hide_all_overlays(void)
+{
+    // set alarm objs hidden
+    lv_obj_add_flag(ui_viewlivp2, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_alarm_indicator, LV_OBJ_FLAG_HIDDEN);
+
+    // emoji ota
+    g_group_layer_ = 0;
+    lv_obj_add_flag(ui_Page_Emoji, LV_OBJ_FLAG_HIDDEN);
+    lv_group_remove_obj(ui_emoticonok);
+    lv_group_focus_freeze(g_main, false);
+
+    // avatar && preview panel
+    lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
 }

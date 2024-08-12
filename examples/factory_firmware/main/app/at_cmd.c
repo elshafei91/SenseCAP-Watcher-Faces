@@ -1444,7 +1444,7 @@ at_cmd_error_code handle_taskflow_info_query_command(char *params)
     cJSON_AddNumberToObject(root, "code", 0);
     cJSON_AddItemToObject(root, "data", data_rep);
 
-    p_json = tf_engine_flow_get();
+    p_json = tf_engine_flow_get_with_simplify();
     if (p_json == NULL)
     {
         cJSON_AddStringToObject(data_rep, "taskflow", "");

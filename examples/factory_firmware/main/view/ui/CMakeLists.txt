@@ -61,6 +61,7 @@ SET(SOURCES screens/ui_Page_Battery.c
     images/ui_img_529164268.c
     images/ui_img_1761657674.c
     images/ui_img_wifiok_png.c
+    images/ui_img_pushtotalk_scroll_png.c
     images/ui_img_guideimg_png.c
     images/ui_img_scroll_down_png.c
     images/ui_img_fakelivecam_png.c
@@ -75,6 +76,7 @@ SET(SOURCES screens/ui_Page_Battery.c
     images/ui_img_1336611536.c
     images/ui_img_left_png.c
     images/ui_img_onboardclick_png.c
+    images/ui_img_pushtotalk_error_png.c
     images/ui_img_2057255035.c
     images/ui_img_wifi_0_png.c
     images/ui_img_wifi_1_png.c

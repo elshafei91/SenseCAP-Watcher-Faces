@@ -29,6 +29,10 @@ esp_err_t app_ble_adv_switch(bool switch_on);
 int app_ble_get_current_mtu(void);
 esp_err_t app_ble_send_indicate(uint8_t *data, int len);
 
+// note: Must be called in pairs
+esp_err_t app_ble_adv_pause(void);
+esp_err_t app_ble_adv_resume( int cur_switch );
+
 #ifdef __cplusplus
 }
 #endif

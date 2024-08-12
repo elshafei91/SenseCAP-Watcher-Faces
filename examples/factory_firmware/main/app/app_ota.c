@@ -1106,11 +1106,10 @@ static void __mqtt_ota_executor_task(void *p_arg)
 
             bool need_reboot = false;
             
-            if( get_ble_switch(MAX_CALLER) ) {
-                app_ble_adv_switch(0);
-                ble_pause = true;
-                ESP_LOGI(TAG, "ble pause");
-            }
+            //BLE cannot be paused during model OTA, because it may be necessary to obtain the model OTA progress through BLE.
+            ble_pause = true;
+            app_ble_adv_pause(); //Don't care whether the current ble state is open
+
             atomic_store(&g_ota_fw_running, true);
 
             //upgrade himax
@@ -1181,8 +1180,8 @@ static void __mqtt_ota_executor_task(void *p_arg)
 cleanup:
             atomic_store(&g_ota_fw_running, false);
             if( ble_pause ) {
-                ESP_LOGI(TAG, "ble resume");
-                app_ble_adv_switch(get_ble_switch(MAX_CALLER));
+                ble_pause = false;
+                app_ble_adv_resume(get_ble_switch(MAX_CALLER));
             }
 
             //delete the item from Q
@@ -1509,4 +1508,9 @@ void  app_ota_any_ignore_version_check(bool ignore)
 bool app_ota_fw_is_running()
 {
     return atomic_load(&g_ota_fw_running);
+}
+
+bool app_ota_is_running()
+{
+    return atomic_load(&g_ota_running);
 }

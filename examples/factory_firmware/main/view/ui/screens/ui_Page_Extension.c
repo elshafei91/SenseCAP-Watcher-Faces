@@ -229,14 +229,61 @@ void ui_Page_Extension_screen_init(void)
     lv_obj_set_height(ui_extensionpanel, 412);
     lv_obj_set_align(ui_extensionpanel, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_extensionpanel, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_extensionpanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_extensionpanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_extensionpanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_extensionpanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_extensionpanel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_extensionNone = lv_obj_create(ui_Page_Extension);
+    lv_obj_set_width(ui_extensionNone, 412);
+    lv_obj_set_height(ui_extensionNone, 412);
+    lv_obj_set_align(ui_extensionNone, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_extensionNone, LV_OBJ_FLAG_HIDDEN);     /// Flags
+    lv_obj_clear_flag(ui_extensionNone, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_extensionNone, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_extensionNone, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_extensionNone, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_extensionNone, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_extenNonetext = lv_label_create(ui_extensionNone);
+    lv_obj_set_width(ui_extenNonetext, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_extenNonetext, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_x(ui_extenNonetext, 0);
+    lv_obj_set_y(ui_extenNonetext, -80);
+    lv_obj_set_align(ui_extenNonetext, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_extenNonetext, "None");
+    lv_obj_set_style_text_color(ui_extenNonetext, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_extenNonetext, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_extenNonetext, &ui_font_font_bold, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_extenNonetext2 = lv_label_create(ui_extensionNone);
+    lv_obj_set_width(ui_extenNonetext2, 280);
+    lv_obj_set_height(ui_extenNonetext2, 66);
+    lv_obj_set_align(ui_extenNonetext2, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_extenNonetext2, "You can use Grove xxx and xxxx here for displaying the entension value");
+    lv_obj_set_style_text_color(ui_extenNonetext2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_extenNonetext2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_extenNonetext2, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_extenNonetext2, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_extenNoneback = lv_btn_create(ui_extensionNone);
+    lv_obj_set_width(ui_extenNoneback, 90);
+    lv_obj_set_height(ui_extenNoneback, 90);
+    lv_obj_set_x(ui_extenNoneback, 0);
+    lv_obj_set_y(ui_extenNoneback, 120);
+    lv_obj_set_align(ui_extenNoneback, LV_ALIGN_CENTER);
+    lv_obj_set_style_radius(ui_extenNoneback, 59, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_extenNoneback, lv_color_hex(0x202124), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_extenNoneback, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_extenNoneback, &ui_img_setback_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_color(ui_extenNoneback, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(ui_extenNoneback, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_extensionbubble2, ui_event_extensionbubble2, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_extensionbubble3, ui_event_extensionbubble3, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_extensionbubble4, ui_event_extensionbubble4, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_extensionpanel, ui_event_extensionpanel, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_extenNoneback, ui_event_extenNoneback, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_extensionNone, ui_event_extensionNone, LV_EVENT_ALL, NULL);
 
 }

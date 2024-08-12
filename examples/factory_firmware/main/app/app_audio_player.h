@@ -7,6 +7,7 @@
 #include "freertos/semphr.h"
 #include "freertos/ringbuf.h"
 #include "sensecap-watcher.h"
+#include "mp3dec.h"
 
 #define AUDIO_PLAYER_TASK_STACK_SIZE  5*1024
 #define AUDIO_PLAYER_TASK_PRIO        13
@@ -17,6 +18,8 @@
 #define AUDIO_PLAYER_RINGBUF_SIZE         8*32000      
 #define AUDIO_PLAYER_RINGBUF_CACHE_SIZE   1*32000  //If the audio content is large, maybe cache 2s
 #define AUDIO_PLAYER_RINGBUF_CHUNK_SIZE   16000
+
+#define CONFIG_AUDIO_PLAYER_ENABLE_MP3_STREAM
 
 typedef struct {
     // The "RIFF" chunk descriptor
@@ -37,6 +40,48 @@ typedef struct {
     int32_t Subchunk2Size;// Length of the data section, referring to the size of the audio data excluding the header.
 } audio_wav_header_t;
 
+
+#if defined(CONFIG_AUDIO_PLAYER_ENABLE_MP3_STREAM)
+typedef struct {
+    char header[3];     /*!< Always "TAG" */
+    char title[30];     /*!< Audio title */
+    char artist[30];    /*!< Audio artist */
+    char album[30];     /*!< Album name */
+    char year[4];       /*!< Char array of year */
+    char comment[30];   /*!< Extra comment */
+    char genre;         /*!< See "https://en.wikipedia.org/wiki/ID3" */
+} __attribute__((packed)) audio_mp3_id3_header_v1_t;
+
+typedef struct {
+    char header[3];     /*!< Always "ID3" */
+    char ver;           /*!< Version, equals to3 if ID3V2.3 */
+    char revision;      /*!< Revision, should be 0 */
+    char flag;          /*!< Flag byte, use Bit[7..5] only */
+    char size[4];       /*!< TAG size */
+} __attribute__((packed)) audio_mp3_id3_header_v2_t;
+
+typedef struct {
+    // Constants below
+    uint8_t *data_buf;
+
+    /** number of bytes in data_buf */
+    size_t data_buf_size;
+
+    // Values that change at runtime are below
+
+    /**
+     * Total bytes in data_buf,
+     * not the number of bytes remaining after the read_ptr
+     */
+    size_t bytes_in_data_buf;
+
+    /** Pointer to read location in data_buf */
+    uint8_t *read_ptr;
+
+    // set to true if the end of file has been reached
+    bool eof_reached;
+} audio_mp3_instance;
+#endif
 
 enum app_audio_player_status {
     AUDIO_PLAYER_STATUS_IDLE = 0,
@@ -71,6 +116,12 @@ struct app_audio_player {
     bool stream_need_cache;
     bool mem_need_free;
     void *p_mem_buf;
+#if defined(CONFIG_AUDIO_PLAYER_ENABLE_MP3_STREAM)
+    HMP3Decoder mp3_decoder;
+    audio_mp3_instance mp3_data;
+    uint8_t *p_mp3_decode_buf;
+    size_t mp3_decode_buf_len;
+#endif
 };
 
 esp_err_t app_audio_player_init(void);
@@ -98,4 +149,4 @@ esp_err_t app_audio_player_file(void *p_filepath);
 esp_err_t app_audio_player_file_block(void *p_filepath, TickType_t xTicksToWait);
 
 esp_err_t app_audio_player_mem(uint8_t *p_buf, size_t len, bool is_need_free);
-
+esp_err_t app_audio_player_mem_block(uint8_t *p_buf, size_t len, bool is_need_free, TickType_t xTicksToWait);

@@ -351,6 +351,12 @@ lv_obj_t * ui_extensionbubble4Icon;
 lv_obj_t * ui_extensionbubble4Icon2;
 void ui_event_extensionpanel(lv_event_t * e);
 lv_obj_t * ui_extensionpanel;
+void ui_event_extensionNone(lv_event_t * e);
+lv_obj_t * ui_extensionNone;
+lv_obj_t * ui_extenNonetext;
+lv_obj_t * ui_extenNonetext2;
+void ui_event_extenNoneback(lv_event_t * e);
+lv_obj_t * ui_extenNoneback;
 
 
 // SCREEN: ui_Page_OTA
@@ -389,6 +395,7 @@ void ui_event_push2talkarc(lv_event_t * e);
 lv_obj_t * ui_push2talkarc;
 lv_obj_t * ui_push2talkp2t1;
 lv_obj_t * ui_push2talkp2t2;
+lv_obj_t * ui_push2talkknob;
 lv_obj_t * ui_push2talkpanel3;
 void ui_event_p2tobj(lv_event_t * e);
 lv_obj_t * ui_p2tobj;
@@ -424,6 +431,7 @@ void ui_event_p2tcheck(lv_event_t * e);
 lv_obj_t * ui_p2tcheck;
 lv_obj_t * ui_p2texit;
 lv_obj_t * ui_p2tspeak;
+lv_obj_t * ui_push2talkTextArea;
 
 
 // SCREEN: ui_Page_Guideavatar
@@ -1481,6 +1489,22 @@ void ui_event_extensionpanel(lv_event_t * e)
         extensionpanel_cb(e);
     }
 }
+void ui_event_extensionNone(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        extensionpanel_cb(e);
+    }
+}
+void ui_event_extenNoneback(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SHORT_CLICKED) {
+        backmenu_cb(e);
+    }
+}
 void ui_event_otaback(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1621,7 +1645,7 @@ void ui_event_p2tcancel(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
+    if(event_code == LV_EVENT_CLICKED) {
         push2talkcancel_cb(e);
     }
 }
@@ -1629,7 +1653,7 @@ void ui_event_p2tcheck(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
+    if(event_code == LV_EVENT_CLICKED) {
         push2talkcheck_cb(e);
     }
 }

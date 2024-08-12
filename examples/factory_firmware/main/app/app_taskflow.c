@@ -422,17 +422,28 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
     if( p_taskflow->mqtt_connect_flag ) {
         
         need_report = false;
-        p_json = tf_engine_flow_get();
-        if(  status.engine_status !=  TF_STATUS_STARTING && p_json != NULL ) {
-            size_t len = 0;
-            len = strlen(p_json);
+        p_json = tf_engine_flow_get_with_simplify();
+        if(  status.engine_status !=  TF_STATUS_STARTING) {
+
             
             __report_lock(p_taskflow); 
-            ret = app_sensecraft_mqtt_report_taskflow_info( tid, status.ctd,
-                                                                status.engine_status,
-                                                                p_module_name,
-                                                                status.module_status,
-                                                                p_json, len);
+            if(  p_json != NULL ) {
+                size_t len = 0;
+                len = strlen(p_json);
+                ret = app_sensecraft_mqtt_report_taskflow_info( tid, status.ctd,
+                                                                    status.engine_status,
+                                                                    p_module_name,
+                                                                    status.module_status,
+                                                                    p_json, len);
+                free(p_json);
+                p_json = NULL;
+
+            } else {
+                ret = app_sensecraft_mqtt_report_taskflow_status( tid, status.ctd,
+                                                                    status.engine_status,
+                                                                    p_module_name,
+                                                                    status.module_status);
+            }
             __report_unlock(p_taskflow);
 
             if( ret != ESP_OK ) {
@@ -441,15 +452,14 @@ static void __task_flow_status_cb(void *p_arg, intmax_t tid, int engine_status, 
             } else {
                 p_taskflow->report_cnt = 0;
             }
-            free(p_json);
-            p_json = NULL;
+
         }
     } else {
         need_report = true;
     }
 
     if(  need_report ) {
-        p_json = tf_engine_flow_get();
+        p_json = tf_engine_flow_get_with_simplify();
         
         __data_lock(p_taskflow);
         if(p_taskflow->p_taskflow_json != NULL) {
@@ -906,7 +916,7 @@ static void __ctrl_event_handler(void* handler_args,
             status.module_status = 0; // don't care module status.
             strncpy(status.module_name, "unknown", sizeof(status.module_name) - 1); // don't care module name.
  
-            p_json = tf_engine_flow_get();
+            p_json = tf_engine_flow_get_with_simplify();
             
             __data_lock(p_taskflow);
             if(p_taskflow->p_taskflow_json != NULL) {

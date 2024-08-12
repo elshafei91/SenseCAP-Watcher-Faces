@@ -63,11 +63,14 @@ static uint8_t adv_data[31] = {
 static uint8_t ble_mac_addr[6] = {0};
 static uint8_t own_addr_type;
 static SemaphoreHandle_t g_sem_mac_addr;
+static SemaphoreHandle_t g_sem_data;
 static EventGroupHandle_t g_eg_ble;
 static volatile atomic_bool g_ble_synced = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_ble_adv = ATOMIC_VAR_INIT(false);
 static volatile atomic_bool g_ble_connected = ATOMIC_VAR_INIT(false);
 static volatile atomic_int g_curr_mtu = ATOMIC_VAR_INIT(23);
+static volatile atomic_int g_ble_adv_pause_cnt = ATOMIC_VAR_INIT(0);
+
 static uint16_t g_curr_ble_conn_handle = 0xffff;
 
 void ble_store_config_init(void);
@@ -610,6 +613,7 @@ esp_err_t app_ble_init(void)
     esp_err_t ret;
 
     g_sem_mac_addr = xSemaphoreCreateMutex();
+    g_sem_data = xSemaphoreCreateMutex();
     g_eg_ble = xEventGroupCreate();
 
     ret = nimble_port_init();
@@ -668,6 +672,34 @@ int app_ble_get_current_mtu(void)
 {
     int mtu = atomic_load(&g_curr_mtu);
     return mtu;
+}
+
+esp_err_t app_ble_adv_pause(void)
+{
+    
+    xSemaphoreTake(g_sem_data, pdMS_TO_TICKS(10000));
+    int cnt = atomic_load(&g_ble_adv_pause_cnt) + 1 ;
+    atomic_store(&g_ble_adv_pause_cnt, cnt);
+    app_ble_adv_switch(0);
+    ESP_LOGI(TAG, "ble pause: %d", cnt );
+    xSemaphoreGive(g_sem_data);
+    return ESP_OK;
+}
+
+esp_err_t app_ble_adv_resume( int cur_switch )
+{
+    xSemaphoreTake(g_sem_data, pdMS_TO_TICKS(10000));
+    int cnt = atomic_load(&g_ble_adv_pause_cnt);
+    if (cnt > 0) {
+        cnt = cnt - 1;
+        atomic_store(&g_ble_adv_pause_cnt, cnt);
+    }
+    if( cnt == 0) {
+        app_ble_adv_switch(cur_switch);
+    }
+    ESP_LOGI(TAG, "ble resume: %d", cnt);
+    xSemaphoreGive(g_sem_data);
+    return ESP_OK;
 }
 
 /**

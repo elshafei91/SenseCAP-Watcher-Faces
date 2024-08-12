@@ -147,6 +147,7 @@ esp_io_expander_handle_t bsp_io_expander_init()
     {
         return io_exp_handle;
     }
+    esp_err_t ret = ESP_OK;
 
     ESP_LOGI(TAG, "Initialize IO I2C bus");
     BSP_ERROR_CHECK_RETURN_ERR(bsp_i2c_bus_init());
@@ -159,19 +160,21 @@ esp_io_expander_handle_t bsp_io_expander_init()
         .user_ctx = NULL,
     };
 
-    esp_io_expander_new_i2c_pca95xx_16bit_ex(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_exp_config, &io_exp_handle);
+    ret |= esp_io_expander_new_i2c_pca95xx_16bit_ex(BSP_GENERAL_I2C_NUM, ESP_IO_EXPANDER_I2C_PCA9535_ADDRESS_001, &io_exp_config, &io_exp_handle);
 
-    esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
-    esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
-    esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
-    esp_io_expander_set_level(io_exp_handle, BSP_PWR_SYSTEM, 1);
+    ret |= esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
+    ret |= esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
+    ret |= esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
+    ret |= esp_io_expander_set_level(io_exp_handle, BSP_PWR_SYSTEM, 1);
     vTaskDelay(100 / portTICK_PERIOD_MS);
-    esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
+    ret |= esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
     vTaskDelay(50 / portTICK_PERIOD_MS);
 
     uint32_t pin_val = 0;
-    esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
+    ret |= esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
     ESP_LOGI(TAG, "IO expander initialized: %x", DRV_IO_EXP_OUTPUT_MASK | (uint16_t)pin_val);
+
+    assert(ret == ESP_OK);
 
     return io_exp_handle;
 }

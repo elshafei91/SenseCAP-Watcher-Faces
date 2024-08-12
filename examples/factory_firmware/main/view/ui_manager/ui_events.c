@@ -20,6 +20,7 @@
 #include "app_wifi.h"
 #include "storage.h"
 #include "app_png.h"
+#include "app_rgb.h"
 #include "sensecap-watcher.h"
 
 #define VOLBRI_CFG "volbri-cfg"
@@ -39,6 +40,7 @@ uint8_t g_tasktype = 0;     // 0: local task,                   1: remote task
 uint8_t g_backpage = 0;
 uint8_t g_avalivjump = 0;
 uint8_t g_push2talk_timer = 1;// 0: Speaking countdown,         1: Scrolling countdown
+extern uint8_t g_is_push2talk;
 
 uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
 uint8_t standby_mode = 0;    // 0: on;     1: off
@@ -150,7 +152,7 @@ static lv_timer_t * view_extension_timer;
 static lv_timer_t * view_ble_switch_timer;
 
 // Sleep mode scanner
-#define ACTIVE_THRESHOLD (1500)
+#define ACTIVE_THRESHOLD (5000)
 static lv_timer_t * view_sleep_timer;
 static uint32_t inactive_time = 0;
 static int get_inactive_time;
@@ -172,6 +174,31 @@ static void Page_shutdown();
 static void Page_facreset();
 static void view_info_obtain_early();
 void sensor_date_update();
+
+static lv_coord_t get_angle(const lv_obj_t * obj)
+{
+    lv_arc_t * arc = (lv_arc_t *)obj;
+    uint16_t angle = arc->rotation;
+    if(arc->type == LV_ARC_MODE_NORMAL) {
+        angle += arc->indic_angle_end;
+    }
+    else if(arc->type == LV_ARC_MODE_REVERSE) {
+        angle += arc->indic_angle_start;
+    }
+    else if(arc->type == LV_ARC_MODE_SYMMETRICAL) {
+        int16_t bg_end = arc->bg_angle_end;
+        if(arc->bg_angle_end < arc->bg_angle_start) bg_end = arc->bg_angle_end + 360;
+        int16_t indic_end = arc->indic_angle_end;
+        if(arc->indic_angle_end < arc->indic_angle_start) indic_end = arc->indic_angle_end + 360;
+
+        int32_t angle_midpoint = (int32_t)(arc->bg_angle_start + bg_end) / 2;
+        if(arc->indic_angle_start < angle_midpoint) angle += arc->indic_angle_start;
+        else if(indic_end > angle_midpoint) angle += arc->indic_angle_end;
+        else angle += angle_midpoint;
+    }
+
+    return angle;
+}
 
 static void async_emoji_switch_scr(void *arg)
 {
@@ -1299,6 +1326,7 @@ void sleepswitch_cb(lv_event_t * e)
 void p2tclick_cb(lv_event_t * e)
 {
     if(g_push2talk_status == EMOJI_SPEAKING || g_push2talk_status == EMOJI_ANALYZING){
+        app_rgb_set(SR, RGB_BLINK_BLUE);
         lv_arc_set_value(ui_push2talkarc, 0);
 
         g_push2talk_timer = 1;
@@ -1332,6 +1360,7 @@ void push2talkcancel_cb(lv_event_t * e)
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
 
     g_taskflow_pause = 0;
+    g_is_push2talk = 0;
 }
 
 void push2talkcheck_cb(lv_event_t * e)
@@ -1344,10 +1373,22 @@ void push2talkcheck_cb(lv_event_t * e)
                                     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, portMAX_DELAY);
 
     g_taskflow_pause = 0;
+    g_is_push2talk = 0;
 }
 
 void p2tvaluechange_cb(lv_event_t * e)
 {
+    ESP_LOGI(TAG, "p2tvaluechange_cb");
+    lv_obj_t * arc = lv_event_get_target(e);
+    lv_obj_t * knob = lv_event_get_user_data(e);
+    uint16_t angle = get_angle(arc);
+    lv_coord_t x = lv_obj_get_x(knob);
+    lv_coord_t y = lv_obj_get_y(knob);
+    // ESP_LOGI(TAG, "Object coordinates: x = %d, y = %d", x, y);
+    lv_arc_align_obj_to_angle(arc, knob, 0);
+    // ESP_LOGI(TAG, "arc angle: %d", angle);
+    lv_img_set_angle(knob, angle * 10 + 900);
+
     static int push2talk_direct_exit = 0;
     static int16_t push2talk_arc;
     push2talk_arc = lv_arc_get_value(ui_push2talkarc);
@@ -1371,6 +1412,7 @@ void p2tvaluechange_cb(lv_event_t * e)
         }
 
         g_taskflow_pause = 0;
+        g_is_push2talk = 0;
     }
 }
 
@@ -2371,11 +2413,22 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
     }
 
     // sleep mode
-    if(inactive_time > inactive_threshold && inactive_threshold > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar)
+    if(inactive_time > inactive_threshold)
     {
-        ESP_LOGI(TAG, "Sleep mode active");
-        bsp_lcd_brightness_set(0);
-        sleep_mode = 1;
+        if(get_inactive_time > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar)
+        {
+            ESP_LOGI(TAG, "Sleep mode active");
+            bsp_lcd_brightness_set(0);
+            sleep_mode = 1;
+        }
+
+        if(get_inactive_time == 0 && sleep_mode == 1)
+        {
+            ESP_LOGI(TAG, "Sleep mode deactive");
+            int brightness = get_brightness(UI_CALLER);
+            bsp_lcd_brightness_set(brightness);
+            sleep_mode = 0;
+        }
     }
 
 
@@ -2418,8 +2471,9 @@ void view_sleep_timer_start()
 
 static void view_push2talk_timer_callback(lv_timer_t *timer)
 {
+    ESP_LOGI(TAG, "view_push2talk_timer_callback");
     static int16_t push2talk_arc;
-    static int push2talk_direct_exit = 0;
+    static int push2talk_run_taskflow_exit = 1;
 
     if(g_push2talk_timer == 0)
     {
@@ -2428,10 +2482,11 @@ static void view_push2talk_timer_callback(lv_timer_t *timer)
             if(g_push2talk_mode == 2)
             {
                 view_push2talk_timer_stop();
-                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_run_taskflow_exit, sizeof(push2talk_run_taskflow_exit), pdMS_TO_TICKS(10000));
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE,  \
                                     VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, NULL, 0, pdMS_TO_TICKS(10000));
                 push2talk_timer_counter = 0;
+                g_is_push2talk = 0;
             }
             if(g_push2talk_mode == 0)
             {
@@ -2563,7 +2618,7 @@ void view_extension_timer_start()
     if (view_extension_timer != NULL) {
         lv_timer_del(view_extension_timer);
     }
-    view_extension_timer = lv_timer_create(view_extension_timer_callback, 3000, NULL);
+    view_extension_timer = lv_timer_create(view_extension_timer_callback, 1000 * 60, NULL);
 
 }
 
