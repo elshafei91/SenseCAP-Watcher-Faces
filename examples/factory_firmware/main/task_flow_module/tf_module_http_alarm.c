@@ -286,7 +286,7 @@ static int __http_report_warn_event(tf_module_http_alarm_t *p_module_ins,
 
     ret = -1;
     cJSON *code = cJSON_GetObjectItem(json, "code");
-    if (code != NULL && cJSON_IsNumber(code) && code->valueint == 0) {
+    if (code != NULL && cJSON_IsNumber(code) && code->valueint == 200) {
         // TODO
         ret = 0; //success
     } else {
