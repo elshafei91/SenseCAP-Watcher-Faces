@@ -133,6 +133,24 @@ static int esp_jpeg_decoder_one_picture(uint8_t *input_buf, int len, uint8_t *ou
     ret = jpeg_dec_process(jpeg_dec, jpeg_io);
     return ret;
 }
+#ifdef CONFIG_CAMERA_DISPLAY_MIRROR_X
+//15ms
+static  HEAP_IRAM_ATTR void mirror_x(uint16_t *image_ram_buf)
+{
+    uint16_t *p_a;
+    uint16_t *p_b;
+    for (int y = 0; y < IMG_HEIGHT; y++) {
+        uint16_t *row = image_ram_buf + y * IMG_WIDTH;
+        for (int x = 0; x < IMG_WIDTH / 2; x++) {
+            p_a = (uint16_t *)&row[x];
+            p_b = (uint16_t *)&row[(IMG_WIDTH - 1 - x)];
+            *p_a = *p_a ^ *p_b;
+            *p_b = *p_a ^ *p_b;
+            *p_a = *p_a ^ *p_b;
+        }
+    }
+}
+#endif
 
 int view_alarm_init(lv_obj_t *ui_screen)
 {
@@ -231,6 +249,10 @@ int view_alarm_on(struct tf_module_local_alarm_info *alarm_st)
                 ESP_LOGE("view", "Failed to decode jpeg: %d", ret);
                 return ret;
             }
+
+#ifdef CONFIG_CAMERA_DISPLAY_MIRROR_X
+            mirror_x((uint16_t *)image_ram_buf);
+#endif
 
             img_dsc.data = image_ram_buf;
             lv_img_set_src(ui_image, &img_dsc);
