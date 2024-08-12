@@ -43,17 +43,17 @@ uint8_t g_avalivjump = 0;
 uint8_t g_push2talk_timer = 1;// 0: Speaking countdown,         1: Scrolling countdown
 extern uint8_t g_is_push2talk;
 
-uint8_t sleep_mode = 0;     // 0: normal; 1: sleep
+uint8_t screenoff_mode = 0;     // 0: normal; 1: sleep
 uint8_t standby_mode = 0;    // 0: on;     1: off
-int g_sleep_time = 0;
-int g_sleep_switch = 1;
+int g_screenoff_time = 0;
+int g_screenoff_switch = 1;
 extern char *push2talk_item[TASK_CFG_ID_MAX];
 
 uint8_t emoji_switch_scr = NULL;
 extern uint8_t g_dev_binded;
 extern uint8_t g_shutdown;
-extern int g_sleep_time;
-extern int g_sleep_switch;
+extern int g_screenoff_time;
+extern int g_screenoff_switch;
 extern uint8_t g_push2talk_status;
 extern uint8_t g_taskflow_pause;
 extern uint8_t g_push2talk_mode;
@@ -1038,7 +1038,7 @@ void settimec_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "settimec_cb");
     lv_pm_open_page(g_main, &group_page_sleep, PM_ADD_OBJS_TO_GROUP, &ui_Page_Sleep, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Sleep_screen_init);
-    lv_roller_set_selected(ui_sleeptimeroller, g_sleep_time, LV_ANIM_OFF);
+    lv_roller_set_selected(ui_sleeptimeroller, g_screenoff_time, LV_ANIM_OFF);
 }
 
 void settimef_cb(lv_event_t *e)
@@ -1290,8 +1290,8 @@ void sleeptimeset_cb(lv_event_t * e)
     static uint16_t sleep_time_roller_id;
     lv_obj_t * obj = lv_event_get_target(e);
     sleep_time_roller_id = lv_roller_get_selected(obj);
-    set_sleep_time(UI_CALLER, sleep_time_roller_id);
-    g_sleep_time = get_sleep_time(UI_CALLER);
+    set_screenoff_time(UI_CALLER, sleep_time_roller_id);
+    g_screenoff_time = get_screenoff_time(UI_CALLER);
     // ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
 }
 
@@ -1305,20 +1305,20 @@ void sleepswitch_cb(lv_event_t * e)
 {
     ESP_LOGI(CLICK_TAG, "sleepswitch_cb");
     static int btn_state;
-    btn_state = (get_sleep_switch(UI_CALLER));
+    btn_state = (get_screenoff_switch(UI_CALLER));
     switch (btn_state)
     {
         case 0:
             ESP_LOGI(TAG, "sleep_switch: on");
-            set_sleep_switch(UI_CALLER, 1);
+            set_screenoff_switch(UI_CALLER, 1);
             lv_obj_add_state(ui_sleepswitch, LV_STATE_CHECKED);
-            g_sleep_switch = get_sleep_switch(UI_CALLER);
+            g_screenoff_switch = get_screenoff_switch(UI_CALLER);
             break;
         case 1:
             ESP_LOGI(TAG, "sleep_switch: off");
-            set_sleep_switch(UI_CALLER, 0);
+            set_screenoff_switch(UI_CALLER, 0);
             lv_obj_clear_state(ui_sleepswitch, LV_STATE_CHECKED);
-            g_sleep_switch = get_sleep_switch(UI_CALLER);
+            g_screenoff_switch = get_screenoff_switch(UI_CALLER);
             break;
 
         default:
@@ -1797,8 +1797,8 @@ void view_info_obtain()
     retry_get_data((uint8_t* (*)(int))get_sound, UI_CALLER, MAX_RETRIES);
     const uint8_t *rgb_switch = retry_get_data((uint8_t* (*)(int))get_rgb_switch, UI_CALLER, MAX_RETRIES);
     const uint8_t *ble_switch = retry_get_data((uint8_t* (*)(int))get_ble_switch, UI_CALLER, MAX_RETRIES);
-    g_sleep_time = (int *)retry_get_data(get_sleep_time, UI_CALLER, MAX_RETRIES);
-    g_sleep_switch = (int *)retry_get_data(get_sleep_switch, UI_CALLER, MAX_RETRIES);
+    g_screenoff_time = (int *)retry_get_data(get_screenoff_time, UI_CALLER, MAX_RETRIES);
+    g_screenoff_switch = (int *)retry_get_data(get_screenoff_switch, UI_CALLER, MAX_RETRIES);
 
     if(rgb_switch)
     {
@@ -1814,7 +1814,7 @@ void view_info_obtain()
         lv_obj_clear_state(ui_setblesw, LV_STATE_CHECKED);
     }
 
-    if(g_sleep_switch)
+    if(g_screenoff_switch)
     {
         lv_obj_add_state(ui_sleepswitch, LV_STATE_CHECKED);
     }else{
@@ -2384,14 +2384,14 @@ void view_ble_switch_timer_start()
 static void view_sleep_timer_callback(lv_timer_t *timer)
 {
     inactive_time = lv_disp_get_inactive_time(NULL);
-    get_inactive_time = g_sleep_time;
+    get_inactive_time = g_screenoff_time;
     if((inactive_time % (30*1000)) < 2000)
     {
-        ESP_LOGI("view_inactive", "inactive_time: %d, sleep_time: %d, sleep_mode: %d", inactive_time, g_sleep_time, sleep_mode);
+        ESP_LOGI("view_inactive", "inactive_time: %d, sleep_time: %d, screenoff_mode: %d", inactive_time, g_screenoff_time, screenoff_mode);
         ESP_LOGI("view_inactive", "standby_mode: %d, is_taskdown: %d", standby_mode, g_taskdown);
     }
     // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
-    // ESP_LOGD("view_sleep", "sleep switch is : %d, and sleep time is %d", g_sleep_switch, g_sleep_time);
+    // ESP_LOGD("view_sleep", "sleep switch is : %d, and sleep time is %d", g_screenoff_switch, g_screenoff_time);
 
     switch (get_inactive_time) {
         case 0:
@@ -2450,19 +2450,19 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
     // sleep mode
     if(inactive_time > inactive_threshold)
     {
-        if(get_inactive_time > 0 && sleep_mode == 0 && lv_scr_act() != ui_Page_Avatar)
+        if(get_inactive_time > 0 && screenoff_mode == 0 && lv_scr_act() != ui_Page_Avatar)
         {
             ESP_LOGI(TAG, "Sleep mode active");
             bsp_lcd_brightness_set(0);
-            sleep_mode = 1;
+            screenoff_mode = 1;
         }
 
-        if(get_inactive_time == 0 && sleep_mode == 1)
+        if(get_inactive_time == 0 && screenoff_mode == 1)
         {
             ESP_LOGI(TAG, "Sleep mode deactive");
             int brightness = get_brightness(UI_CALLER);
             bsp_lcd_brightness_set(brightness);
-            sleep_mode = 0;
+            screenoff_mode = 0;
         }
     }
 
@@ -2470,12 +2470,12 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
     // deactivate sleep mode and stanby mode
     if(inactive_time < ACTIVE_THRESHOLD)
     {
-        if(sleep_mode != 0)
+        if(screenoff_mode != 0)
         {
             ESP_LOGI(TAG, "Sleep mode deactive");
             int brightness = get_brightness(UI_CALLER);
             bsp_lcd_brightness_set(brightness);
-            sleep_mode = 0;
+            screenoff_mode = 0;
         }
 
         if(standby_mode != 0)

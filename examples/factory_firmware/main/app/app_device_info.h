@@ -59,10 +59,10 @@ esp_err_t set_reset_factory(bool is_need_shutdown);
 esp_err_t set_ble_switch(int caller, int status);
 int get_ble_switch(int caller);
 
-int get_sleep_time(int caller);
-int get_sleep_switch(int caller);
-esp_err_t set_sleep_time(int caller, int status);
-esp_err_t set_sleep_switch(int caller, int status);
+int get_screenoff_time(int caller);
+int get_screenoff_switch(int caller);
+esp_err_t set_screenoff_time(int caller, int status);
+esp_err_t set_screenoff_switch(int caller, int status);
 
 /**
  * all the following size unit is KiB.

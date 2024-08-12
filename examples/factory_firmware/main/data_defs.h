@@ -223,7 +223,7 @@ enum {
     VIEW_EVENT_EMOJI_DOWLOAD_FAILED,    //emoji download failed, dismiss the progress bar
 
     VIEW_EVENT_INFO_OBTAIN,
-    VIEW_EVENT_SLEEP_TRIGGER,
+    VIEW_EVENT_SCREEN_TRIGGER,
 
     VIEW_EVENT_MODE_STANDBY,    // enter standby mode
     

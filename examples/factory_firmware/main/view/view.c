@@ -44,8 +44,8 @@ char *push2talk_item[TASK_CFG_ID_MAX];
 extern lv_obj_t *push2talk_textarea;
 
 // sleep mode
-extern int g_sleep_switch;
-extern uint8_t sleep_mode;
+extern int g_screenoff_switch;
+extern uint8_t screenoff_mode;
 
 extern uint8_t emoji_switch_scr;
 
@@ -234,8 +234,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            case VIEW_EVENT_SLEEP_TRIGGER:{
-                ESP_LOGI(TAG, "event: VIEW_EVENT_SLEEP_TRIGGER");
+            case VIEW_EVENT_SCREEN_TRIGGER:{
+                ESP_LOGI(TAG, "event: VIEW_EVENT_SCREEN_TRIGGER");
                 lv_disp_trig_activity(NULL);
                 break;
             }
@@ -450,7 +450,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 tf_data_buf_free(&(alarm_st->text));
                 tf_data_image_free(&(alarm_st->img));
 
-                if(g_sleep_switch == 1 && sleep_mode == 1)
+                if(g_screenoff_switch == 1 && screenoff_mode == 1)
                 {
                     int brightness = get_brightness(UI_CALLER);
                     bsp_lcd_brightness_set(brightness);
@@ -465,7 +465,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 uint8_t * task_st = (uint8_t *)event_data;
                 view_alarm_off(task_st);
 
-                if(sleep_mode == 1)
+                if(screenoff_mode == 1)
                 {
                     bsp_lcd_brightness_set(0);
                 }
@@ -1007,7 +1007,7 @@ int view_init(void)
                                                             __view_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle,
-                                                            VIEW_EVENT_BASE, VIEW_EVENT_SLEEP_TRIGGER, 
+                                                            VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_TRIGGER, 
                                                             __view_event_handler, NULL, NULL));
 
     if((bat_per < 1) && (! is_charging))
