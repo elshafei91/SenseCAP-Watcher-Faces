@@ -21,6 +21,7 @@ typedef struct
 
 
 void read_and_store_selected_pngs(const char *primary_prefix, const char *secondary_prefix, lv_img_dsc_t **img_dsc_array, int *image_count);
+void read_and_store_selected_customed_pngs(const char *primary_prefix, const char *secondary_prefix, lv_img_dsc_t **img_dsc_array, int *image_count);
 void check_and_download_files();
 
 typedef enum {

@@ -215,6 +215,22 @@ void create_img_dsc(lv_img_dsc_t **img_dsc, void *data, size_t size) {
     (*img_dsc)->data = data;
 }
 
+void create_customed_img_dsc(lv_img_dsc_t **img_dsc, void *data, size_t size) {
+    *img_dsc = (lv_img_dsc_t *)heap_caps_malloc(sizeof(lv_img_dsc_t), MALLOC_CAP_SPIRAM);
+
+    if (*img_dsc == NULL) {
+        ESP_LOGE("Image DSC", "Failed to allocate memory for image descriptor");
+        return;
+    }
+
+    (*img_dsc)->header.always_zero = 0;
+    (*img_dsc)->header.w = 229;
+    (*img_dsc)->header.h = 120;
+    (*img_dsc)->header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
+    (*img_dsc)->data_size = size;
+    (*img_dsc)->data = data;
+}
+
 char* read_json_file(const char *path) {
     FILE *file = fopen(path, "r");
     if (!file) {
@@ -461,7 +477,7 @@ static int compare_file_names(const void *a, const void *b) {
 }
 
 // Helper function to load images based on prefix
-bool load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
+bool load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_count, int img_type) {
     DIR *dir;
     struct dirent *ent;
     bool loaded = false;
@@ -503,7 +519,8 @@ bool load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_co
         if (data) {
             ESP_LOGI("PNG Load", "Loaded %s into PSRAM", matched_files[i]);
 
-            create_img_dsc(&img_dsc_array[*image_count], data, size);
+            if(img_type == 0)create_img_dsc(&img_dsc_array[*image_count], data, size);
+            if(img_type == 1)create_customed_img_dsc(&img_dsc_array[*image_count], data, size);
             (*image_count)++;
             loaded = true;
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
@@ -519,12 +536,36 @@ void read_and_store_selected_pngs(const char *primary_prefix, const char *second
     bool image_loaded = false;
 
     // Try loading images with primary prefix
-    image_loaded = load_images(primary_prefix, img_dsc_array, image_count);
+    image_loaded = load_images(primary_prefix, img_dsc_array, image_count, 0);
 
     // If no images loaded with primary prefix, try secondary prefix
     if (!image_loaded) {
         ESP_LOGW("PNG Load", "No images found with primary prefix %s, trying secondary prefix %s", primary_prefix, secondary_prefix);
-        image_loaded = load_images(secondary_prefix, img_dsc_array, image_count);
+        image_loaded = load_images(secondary_prefix, img_dsc_array, image_count, 0);
+    }
+
+    // If no images loaded with either prefix, create black images with labels
+    if (!image_loaded && *image_count < MAX_IMAGES) {
+        ESP_LOGW("PNG Load", "No images found with either prefix, creating black images with labels");
+        size_t size = 412 * 412 * 3; // Assuming the size for a 412x412 image with alpha channel
+        void *black_data = create_black_image_with_label(size, primary_prefix);
+        if (black_data) {
+            create_img_dsc(&img_dsc_array[*image_count], black_data, size);
+            (*image_count)++;
+        }
+    }
+}
+
+void read_and_store_selected_customed_pngs(const char *primary_prefix, const char *secondary_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
+    bool image_loaded = false;
+
+    // Try loading images with primary prefix
+    image_loaded = load_images(primary_prefix, img_dsc_array, image_count, 1);
+
+    // If no images loaded with primary prefix, try secondary prefix
+    if (!image_loaded) {
+        ESP_LOGW("PNG Load", "No images found with primary prefix %s, trying secondary prefix %s", primary_prefix, secondary_prefix);
+        image_loaded = load_images(secondary_prefix, img_dsc_array, image_count, 1);
     }
 
     // If no images loaded with either prefix, create black images with labels

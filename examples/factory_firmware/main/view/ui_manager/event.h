@@ -100,6 +100,7 @@ void push2talk_start_animation(const char *text, uint32_t duration_ms);
 
 void view_ble_switch_timer_start();
 void view_sleep_timer_start();
+void view_sleep_timer_stop();
 void view_push2talk_timer_start();
 void view_push2talk_timer_stop();
 void view_push2talk_msg_timer_start();
@@ -117,7 +118,8 @@ enum
     SCREEN_AVATAR,  // display emoticon on avatar page
     SCREEN_GUIDE,    // display emoticon on guide page
     SCREEN_STANDBY,  // display emoticon on standby page
-    SCREEN_PUSH2TALK // display emoticon on push2talk page
+    SCREEN_PUSH2TALK, // display emoticon on push2talk page
+    SCREEN_PUSH2TALK_SPEAK
 };
 
 enum
