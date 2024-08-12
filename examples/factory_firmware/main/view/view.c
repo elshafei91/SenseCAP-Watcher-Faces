@@ -44,7 +44,7 @@ char *push2talk_item[TASK_CFG_ID_MAX];
 extern lv_obj_t *push2talk_textarea;
 
 // sleep mode
-extern int g_sleep_switch;
+extern int g_screenoff_switch;
 extern uint8_t sleep_mode;
 
 extern uint8_t emoji_switch_scr;
@@ -450,7 +450,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 tf_data_buf_free(&(alarm_st->text));
                 tf_data_image_free(&(alarm_st->img));
 
-                if(g_sleep_switch == 1 && sleep_mode == 1)
+                if(g_screenoff_switch == 1 && sleep_mode == 1)
                 {
                     int brightness = get_brightness(UI_CALLER);
                     bsp_lcd_brightness_set(brightness);
