@@ -731,7 +731,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAY_FINISH");
                 if(lv_scr_act() == ui_Page_OTA){break;}
 
-                // if(g_push2talk_timer == 0 )view_push2talk_timer_start();
+                if(g_push2talk_timer == 0 )view_push2talk_timer_start();
 
                 break;
             }
