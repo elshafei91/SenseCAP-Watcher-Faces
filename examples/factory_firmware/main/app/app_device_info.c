@@ -804,7 +804,7 @@ static esp_err_t __set_screenoff_time()
                             set_screenofftime_err, TAG, "%s cfg write err", __func__);
         cfg->last.value = cfg->current.value;
         ESP_LOGD(TAG, "%s done: %d", __func__, cfg->last.value);
-        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREENOFF_TRIGGER, NULL, 0, pdMS_TO_TICKS(10000));
+        esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_SCREEN_TRIGGER, NULL, 0, pdMS_TO_TICKS(10000));
     }
 set_screenofftime_err:
     xSemaphoreGive(cfg->mutex);

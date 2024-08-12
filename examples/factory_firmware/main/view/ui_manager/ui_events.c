@@ -1290,8 +1290,8 @@ void sleeptimeset_cb(lv_event_t * e)
     static uint16_t sleep_time_roller_id;
     lv_obj_t * obj = lv_event_get_target(e);
     sleep_time_roller_id = lv_roller_get_selected(obj);
-    set_sleep_time(UI_CALLER, sleep_time_roller_id);
-    g_screenoff_time = get_sleep_time(UI_CALLER);
+    set_screenoff_time(UI_CALLER, sleep_time_roller_id);
+    g_screenoff_time = get_screenoff_time(UI_CALLER);
     // ESP_LOGI(TAG, "roller selected obj's id: %d", sleep_time_roller_id);
 }
 
@@ -1305,20 +1305,20 @@ void sleepswitch_cb(lv_event_t * e)
 {
     ESP_LOGI(CLICK_TAG, "sleepswitch_cb");
     static int btn_state;
-    btn_state = (get_sleep_switch(UI_CALLER));
+    btn_state = (get_screenoff_switch(UI_CALLER));
     switch (btn_state)
     {
         case 0:
             ESP_LOGI(TAG, "sleep_switch: on");
-            set_sleep_switch(UI_CALLER, 1);
+            set_screenoff_switch(UI_CALLER, 1);
             lv_obj_add_state(ui_sleepswitch, LV_STATE_CHECKED);
-            g_screenoff_switch = get_sleep_switch(UI_CALLER);
+            g_screenoff_switch = get_screenoff_switch(UI_CALLER);
             break;
         case 1:
             ESP_LOGI(TAG, "sleep_switch: off");
-            set_sleep_switch(UI_CALLER, 0);
+            set_screenoff_switch(UI_CALLER, 0);
             lv_obj_clear_state(ui_sleepswitch, LV_STATE_CHECKED);
-            g_screenoff_switch = get_sleep_switch(UI_CALLER);
+            g_screenoff_switch = get_screenoff_switch(UI_CALLER);
             break;
 
         default:
@@ -1797,8 +1797,8 @@ void view_info_obtain()
     retry_get_data((uint8_t* (*)(int))get_sound, UI_CALLER, MAX_RETRIES);
     const uint8_t *rgb_switch = retry_get_data((uint8_t* (*)(int))get_rgb_switch, UI_CALLER, MAX_RETRIES);
     const uint8_t *ble_switch = retry_get_data((uint8_t* (*)(int))get_ble_switch, UI_CALLER, MAX_RETRIES);
-    g_screenoff_time = (int *)retry_get_data(get_sleep_time, UI_CALLER, MAX_RETRIES);
-    g_screenoff_switch = (int *)retry_get_data(get_sleep_switch, UI_CALLER, MAX_RETRIES);
+    g_screenoff_time = (int *)retry_get_data(get_screenoff_time, UI_CALLER, MAX_RETRIES);
+    g_screenoff_switch = (int *)retry_get_data(get_screenoff_switch, UI_CALLER, MAX_RETRIES);
 
     if(rgb_switch)
     {
