@@ -118,7 +118,8 @@ enum
     SCREEN_AVATAR,  // display emoticon on avatar page
     SCREEN_GUIDE,    // display emoticon on guide page
     SCREEN_STANDBY,  // display emoticon on standby page
-    SCREEN_PUSH2TALK // display emoticon on push2talk page
+    SCREEN_PUSH2TALK, // display emoticon on push2talk page
+    SCREEN_PUSH2TALK_SPEAK
 };
 
 enum

@@ -70,6 +70,7 @@ static lv_obj_t *virtual_image  = NULL;
 static lv_obj_t *flag_image     = NULL;
 static lv_obj_t *standby_image  = NULL;
 static lv_obj_t *push2talk_image = NULL;
+static lv_obj_t *push2talk_speak_img = NULL;
 
 static int current_img_index = 0;
 static uint8_t vir_load_count = 0;
@@ -224,6 +225,10 @@ static void async_emoji_switch_scr(void *arg)
     {
         lv_img_set_src(push2talk_image, current_img);
     }
+    if(emoji_switch_scr == SCREEN_PUSH2TALK_SPEAK)
+    {
+        lv_img_set_src(push2talk_speak_img, current_img);
+    }
 }
 
 static uint32_t emoji_period[] = {200, 1000, 2000, 500};
@@ -299,12 +304,6 @@ static void emoji_timer_callback(lv_timer_t *timer)
 
 void emoji_timer(uint8_t emoji_type)
 {
-    // if (avatar_image) lv_img_set_src(avatar_image, NULL);
-    // if (virtual_image) lv_img_set_src(virtual_image, NULL);
-    // if (flag_image) lv_img_set_src(flag_image, NULL);
-    // if (standby_image) lv_img_set_src(standby_image, NULL);
-    // if (push2talk_image) lv_img_set_src(push2talk_image, NULL);
-    
     if (g_timer != NULL)
     {
         lv_timer_del(g_timer);
@@ -452,15 +451,18 @@ void virscrload_cb(lv_event_t *e)
     if(flag_image == NULL)flag_image = lv_img_create(ui_Page_Flag);
     if(standby_image == NULL)standby_image = lv_img_create(ui_Page_Standby);
     if(push2talk_image == NULL)push2talk_image = lv_img_create(ui_Page_Push2talk);
+    if(push2talk_speak_img == NULL)push2talk_speak_img = lv_img_create(ui_Page_Push2talk);
     lv_obj_set_align(avatar_image, LV_ALIGN_CENTER);
     lv_obj_set_align(virtual_image, LV_ALIGN_CENTER);
     lv_obj_set_align(flag_image, LV_ALIGN_CENTER);
     lv_obj_set_align(standby_image, LV_ALIGN_CENTER);
     lv_obj_set_align(push2talk_image, LV_ALIGN_CENTER);
+    lv_obj_set_align(push2talk_speak_img, LV_ALIGN_CENTER);
     lv_obj_move_background(flag_image);
     lv_obj_move_background(virtual_image);
     lv_obj_move_background(standby_image);
     lv_obj_move_background(push2talk_image);
+    lv_obj_move_background(push2talk_speak_img);
 }
 
 void virscrunload_cb(lv_event_t * e)
@@ -2246,8 +2248,8 @@ void extensionpanel_cb(lv_event_t * e)
 void push2talk_init(void)
 {
     push2talk_textarea = lv_textarea_create(ui_Page_Push2talk);
-    lv_obj_set_width(push2talk_textarea, 250);
-    lv_obj_set_height(push2talk_textarea, 120);
+    lv_obj_set_width(push2talk_textarea, 280);
+    lv_obj_set_height(push2talk_textarea, 90);
     // lv_obj_set_height(push2talk_textarea, LV_SIZE_CONTENT);
     lv_obj_set_x(push2talk_textarea, 0);
     lv_obj_set_y(push2talk_textarea, 120);
@@ -2261,7 +2263,7 @@ void push2talk_init(void)
     lv_obj_set_style_bg_color(push2talk_textarea, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(push2talk_textarea, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(push2talk_textarea, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(push2talk_textarea, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(push2talk_textarea, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_textarea_set_placeholder_text(push2talk_textarea, "");
     // lv_textarea_set_one_line(push2talk_textarea, true);
     lv_textarea_set_cursor_pos(push2talk_textarea, LV_TEXTAREA_CURSOR_LAST);
@@ -2270,17 +2272,26 @@ void push2talk_init(void)
 
 static void view_push2talk_animation_timer_callback(lv_timer_t *timer)
 {
-    // ESP_LOGI(TAG, "push2talk animation callback");
-    if (push2talk_text && push2talk_text[push2talk_text_index] != '\0' && push2talk_timer_active) {
-        char temp[2];
-        temp[0] = push2talk_text[push2talk_text_index];
-        temp[1] = '\0';
-        lv_textarea_add_text(push2talk_textarea, temp);
+    // static uint32_t last_time = 0;
+    // uint32_t current_time = lv_tick_get();
 
-        push2talk_text_index++;
+    // if (last_time != 0) {
+    //     ESP_LOGI("view_push2talk_animation", "Time since last tick: %u ms\n", current_time - last_time);
+    // }
+    // last_time = current_time;
+
+    if (push2talk_text && push2talk_text[push2talk_text_index] != '\0' && push2talk_timer_active) {
+        char temp[4];
+        int i;
+        for (i = 0; i < 3 && push2talk_text[push2talk_text_index] != '\0'; i++) {
+            temp[i] = push2talk_text[push2talk_text_index];
+            push2talk_text_index++;
+        }
+        temp[i] = '\0';
+        lv_textarea_add_text(push2talk_textarea, temp);
     } else {
-        view_push2talk_animation_timer_stop();
         push2talk_timer_active = false;
+        lv_timer_pause(view_push2talk_animation_timer);
 
         if (push2talk_text) {
             free(push2talk_text);
@@ -2289,25 +2300,34 @@ static void view_push2talk_animation_timer_callback(lv_timer_t *timer)
     }
 }
 
-void view_push2talk_animation_timer_start(int duaration_ms)
+void view_push2talk_animation_timer_start(uint32_t interval_ms)
 {
-    if (view_push2talk_animation_timer != NULL) {
-        lv_timer_del(view_push2talk_animation_timer);
+    if (view_push2talk_animation_timer == NULL) {
+        view_push2talk_animation_timer = lv_timer_create(view_push2talk_animation_timer_callback, interval_ms, NULL);
+    } else {
+        lv_timer_set_period(view_push2talk_animation_timer, interval_ms);
+        lv_timer_resume(view_push2talk_animation_timer);
     }
-    view_push2talk_animation_timer = lv_timer_create(view_push2talk_animation_timer_callback, duaration_ms, NULL);
 }
 
 void view_push2talk_animation_timer_stop()
 {
     if (view_push2talk_animation_timer != NULL) {
-        lv_timer_del(view_push2talk_animation_timer);
-        view_push2talk_animation_timer = NULL;
+        lv_timer_pause(view_push2talk_animation_timer);
     }
 }
 
 void push2talk_start_animation(const char *text, uint32_t duration_ms)
 {
     ESP_LOGI(TAG, "Starting animation with text: %s, duration: %d", text, duration_ms);
+
+    char *formatted_text = strdup(text);
+    if (!formatted_text) return;
+    for (int i = 0; i < strlen(formatted_text); i++) {
+        if (formatted_text[i] == '\n') {
+            formatted_text[i] = ' ';
+        }
+    }
 
     if (text == NULL || text[0] == '\0') {
         ESP_LOGE(TAG, "Invalid parameters for start animation");
@@ -2327,7 +2347,7 @@ void push2talk_start_animation(const char *text, uint32_t duration_ms)
         }
     }
 
-    push2talk_text = strdup(text);
+    push2talk_text = formatted_text;
     if (push2talk_text == NULL) {
         ESP_LOGE(TAG, "Failed to allocate memory for push2talk_text");
         return;
@@ -2338,10 +2358,13 @@ void push2talk_start_animation(const char *text, uint32_t duration_ms)
     lv_textarea_set_text(push2talk_textarea, "");
 
     uint32_t text_length = strlen(text);
-    uint32_t push2talk_anim_interval = (duration_ms) / text_length;
+    uint32_t push2talk_anim_interval = (duration_ms) / (text_length / 3);
+    if (push2talk_anim_interval < 1) {
+        push2talk_anim_interval = 10;
+    }
 
     ESP_LOGI(TAG, "interval: %d, text_length: %d, duration: %dms ", push2talk_anim_interval, text_length, duration_ms);
-    view_push2talk_animation_timer_start(push2talk_anim_interval);
+    view_push2talk_animation_timer_start(push2talk_anim_interval-10);
 }
 /*--------------------------------------------view timer----------------------------------------------------------------*/
 static void view_ble_switch_timer_callback(lv_timer_t *timer)
@@ -2519,6 +2542,7 @@ static void view_push2talk_timer_callback(lv_timer_t *timer)
         lv_arc_set_value(ui_push2talkarc, push2talk_arc+1);
         lv_event_send(ui_push2talkarc, LV_EVENT_VALUE_CHANGED, NULL);
     }
+    ESP_LOGI(TAG, "g_push2talk_timer: %d, g_push2talk_mode: %d, push2talk_timer_counter: %d ", g_push2talk_timer, g_push2talk_mode, push2talk_timer_counter);
 }
 
 void view_push2talk_timer_start()

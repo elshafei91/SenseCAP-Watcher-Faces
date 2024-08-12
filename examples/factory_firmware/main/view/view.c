@@ -620,6 +620,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 g_is_push2talk = 1;
 
                 view_sleep_timer_stop();
+                view_push2talk_animation_timer_stop();
                 view_push2talk_timer_stop();
                 lv_group_remove_all_objs(g_main);
 
@@ -766,6 +767,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 lv_obj_set_style_arc_color(ui_push2talkarc, lv_color_hex(0xD54941), LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
                 lv_arc_set_value(ui_push2talkarc, 0);
+                g_push2talk_timer = 1;
                 view_push2talk_timer_start();
 
                 break;
