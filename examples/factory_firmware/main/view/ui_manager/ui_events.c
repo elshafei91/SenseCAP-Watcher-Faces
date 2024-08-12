@@ -2272,13 +2272,13 @@ void push2talk_init(void)
 
 static void view_push2talk_animation_timer_callback(lv_timer_t *timer)
 {
-    // static uint32_t last_time = 0;
-    // uint32_t current_time = lv_tick_get();
+    static uint32_t last_time = 0;
+    uint32_t current_time = lv_tick_get();
 
-    // if (last_time != 0) {
-    //     ESP_LOGI("view_push2talk_animation", "Time since last tick: %u ms\n", current_time - last_time);
-    // }
-    // last_time = current_time;
+    if (last_time != 0) {
+        ESP_LOGI("view_push2talk_animation", "Time since last tick: %u ms\n", current_time - last_time);
+    }
+    last_time = current_time;
 
     if (push2talk_text && push2talk_text[push2talk_text_index] != '\0' && push2talk_timer_active) {
         char temp[4];
