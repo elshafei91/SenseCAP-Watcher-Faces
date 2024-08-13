@@ -689,7 +689,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
 
-                    emoji_switch_scr = SCREEN_PUSH2TALK;
+                    emoji_switch_scr = SCREEN_PUSH2TALK_SPEAK;
                     emoji_timer(EMOJI_SPEAKING);
                     g_push2talk_status = EMOJI_SPEAKING;
                 }
@@ -781,6 +781,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_SENSOR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_SENSOR");
+                if(lv_scr_act() == ui_Page_Extension)break;
 
                 struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
                 char sensor_temp[6] = "--";
