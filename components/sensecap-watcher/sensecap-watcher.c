@@ -25,6 +25,7 @@ static esp_lcd_touch_handle_t tp_handle = NULL;
 static sdmmc_card_t *card;
 static esp_codec_dev_handle_t play_dev_handle;
 static esp_codec_dev_handle_t record_dev_handle;
+static  SemaphoreHandle_t codec_mutex = NULL;
 
 static i2s_chan_handle_t i2s_tx_chan = NULL;
 static i2s_chan_handle_t i2s_rx_chan = NULL;
@@ -790,6 +791,8 @@ lv_disp_t *bsp_lvgl_init(void)
     cfg.lvgl_port_cfg.task_priority = CONFIG_LVGL_PORT_TASK_PRIORITY;
     cfg.lvgl_port_cfg.task_affinity = CONFIG_LVGL_PORT_TASK_AFFINITY;
     cfg.lvgl_port_cfg.task_stack = CONFIG_LVGL_PORT_TASK_STACK_SIZE;
+    cfg.lvgl_port_cfg.task_max_sleep_ms = CONFIG_LVGL_PORT_TASK_MAX_SLEEP_MS;
+    cfg.lvgl_port_cfg.timer_period_ms = CONFIG_LVGL_PORT_TIMER_PERIOD_MS;
     return bsp_lvgl_init_with_cfg(&cfg);
 }
 
@@ -1074,7 +1077,9 @@ esp_codec_dev_handle_t bsp_audio_codec_microphone_init(void)
 esp_err_t bsp_i2s_read(void *audio_buffer, size_t len, size_t *bytes_read, uint32_t timeout_ms)
 {
     esp_err_t ret = ESP_OK;
+    xSemaphoreTake(codec_mutex, portMAX_DELAY);
     ret = esp_codec_dev_read(record_dev_handle, audio_buffer, len);
+    xSemaphoreGive(codec_mutex);
     *bytes_read = len;
 #if CONFIG_BSP_AUDIO_MIC_VALUE_GAIN > 0
     uint16_t *buffer = (uint16_t *)audio_buffer;
@@ -1089,7 +1094,9 @@ esp_err_t bsp_i2s_read(void *audio_buffer, size_t len, size_t *bytes_read, uint3
 esp_err_t bsp_i2s_write(void *audio_buffer, size_t len, size_t *bytes_written, uint32_t timeout_ms)
 {
     esp_err_t ret = ESP_OK;
+    xSemaphoreTake(codec_mutex, portMAX_DELAY);
     ret = esp_codec_dev_write(play_dev_handle, audio_buffer, len);
+    xSemaphoreGive(codec_mutex);
     *bytes_written = len;
     return ret;
 }
@@ -1104,6 +1111,7 @@ esp_err_t bsp_codec_set_fs(uint32_t rate, uint32_t bits_cfg, i2s_slot_mode_t ch)
         .bits_per_sample = bits_cfg,
     };
 
+    xSemaphoreTake(codec_mutex, portMAX_DELAY);
     if (play_dev_handle)
     {
         ret = esp_codec_dev_close(play_dev_handle);
@@ -1124,6 +1132,7 @@ esp_err_t bsp_codec_set_fs(uint32_t rate, uint32_t bits_cfg, i2s_slot_mode_t ch)
         fs.channel_mask = ESP_CODEC_DEV_MAKE_CHANNEL_MASK(1);
         ret |= esp_codec_dev_open(record_dev_handle, &fs);
     }
+    xSemaphoreGive(codec_mutex);
     return ret;
 }
 
@@ -1139,20 +1148,26 @@ esp_err_t bsp_codec_volume_set(int volume, int *volume_set)
     {
         v = 95;
     }
+    xSemaphoreTake(codec_mutex, portMAX_DELAY);
     ret = esp_codec_dev_set_out_vol(play_dev_handle, (int)v);
+    xSemaphoreGive(codec_mutex);
     return ret;
 }
 
 esp_err_t bsp_codec_mute_set(bool enable)
 {
     esp_err_t ret = ESP_OK;
+    xSemaphoreTake(codec_mutex, portMAX_DELAY);
     ret = esp_codec_dev_set_out_mute(play_dev_handle, enable);
+    xSemaphoreGive(codec_mutex);
     return ret;
 }
 
 esp_err_t bsp_codec_dev_stop(void)
 {
     esp_err_t ret = ESP_OK;
+    
+    xSemaphoreTake(codec_mutex, portMAX_DELAY);
 
     if (play_dev_handle)
     {
@@ -1163,6 +1178,7 @@ esp_err_t bsp_codec_dev_stop(void)
     {
         ret = esp_codec_dev_close(record_dev_handle);
     }
+    xSemaphoreGive(codec_mutex); 
     return ret;
 }
 
@@ -1173,6 +1189,8 @@ esp_err_t bsp_codec_dev_resume(void)
 
 esp_err_t bsp_codec_init(void)
 {
+    codec_mutex =  xSemaphoreCreateMutex();
+
     play_dev_handle = bsp_audio_codec_speaker_init();
     assert((play_dev_handle) && "play_dev_handle not initialized");
 
@@ -1187,7 +1205,9 @@ esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer
 {
     esp_err_t ret = ESP_OK;
 
+    xSemaphoreTake(codec_mutex, portMAX_DELAY);
     ret = esp_codec_dev_read(record_dev_handle, (void *)buffer, buffer_len);
+    xSemaphoreGive(codec_mutex); 
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to read data from codec device");

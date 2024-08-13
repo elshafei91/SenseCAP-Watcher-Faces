@@ -105,7 +105,20 @@ menu "SenseCAP Watcher BSP Configuration"
             depends on LVGL_INPUT_DEVICE_USE_TP
             help
                 "Set the sensitivity of LVGL input device"
+        
+        config LVGL_PORT_TASK_MAX_SLEEP_MS
+            int "LVGL TASK MAX SLEEP MS"
+            range 1 1000
+            default 500
+            help
+                "LVGL task max sleep ms"
 
+        config LVGL_PORT_TIMER_PERIOD_MS
+            int "LVGL TIMER PERIOD MS"
+            range 1 100
+            default 5
+            help
+                "LVGL timer period ms"
     endmenu
 
 
