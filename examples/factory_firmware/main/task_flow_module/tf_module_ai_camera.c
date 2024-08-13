@@ -1303,7 +1303,7 @@ static void ai_camera_task(void *p_arg)
 
                         //update classes
                         __data_lock(p_module_ins);
-                        memccpy(p_module_ins->classes, model_info->classes, 0, i * sizeof(char*));
+                        memcpy(p_module_ins->classes, model_info->classes, i * sizeof(char*));
                         __data_unlock(p_module_ins);
                     } else {
                         ESP_LOGI(TAG, "  N/A");
