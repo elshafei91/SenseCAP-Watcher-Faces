@@ -671,6 +671,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             bool first_chunk = true;
             uint8_t *p_bin_data = NULL;
             size_t bin_len = 0;
+            int play_chunk_time_ms = 0;
 
             memset(&result, 0, sizeof(result));
 
@@ -711,8 +712,11 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                         } else {
                             app_audio_player_stream_send((uint8_t *)recv_buf, read_len, pdMS_TO_TICKS(500));
                         }
+                        ESP_LOGI(TAG, "stream time: %dms", app_audio_player_stream_time_get(content_length -(read_len-bin_len)));
+                        play_chunk_time_ms = app_audio_player_stream_time_get(chunk_len) + 200;
+                        ESP_LOGI(TAG, "play_chunk_time_ms:%d", play_chunk_time_ms);
                     } else {        
-                       app_audio_player_stream_send((uint8_t *)recv_buf, read_len, pdMS_TO_TICKS(500)); 
+                       app_audio_player_stream_send((uint8_t *)recv_buf, read_len, pdMS_TO_TICKS(play_chunk_time_ms)); 
                     }
                 }
                 if(__is_need_stop(p_vi)) {

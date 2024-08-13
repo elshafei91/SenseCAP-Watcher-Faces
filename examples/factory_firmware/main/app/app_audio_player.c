@@ -661,12 +661,14 @@ esp_err_t app_audio_player_stream_send(uint8_t *p_buf,
         }
         case AUDIO_TYPE_WAV: {
             if(xRingbufferSend(p_audio_player->rb_handle, p_buf, len, xTicksToWait) != pdTRUE) {
+                ESP_LOGE(TAG, "WAV send ringbuffer fail");
                 return ESP_FAIL;
             }
             break;
         }  
         case AUDIO_TYPE_MP3: {
             if(xRingbufferSend(p_audio_player->rb_handle, p_buf, len, xTicksToWait) != pdTRUE) {
+                ESP_LOGE(TAG, "MP3 send ringbuffer fail");
                 return ESP_FAIL;
             }
             break;
@@ -714,6 +716,28 @@ esp_err_t app_audio_player_stream_stop(void)
     return ESP_OK;
 }
 
+int app_audio_player_stream_time_get(int len)
+{
+    struct app_audio_player * p_audio_player = gp_audio_player;
+    if( p_audio_player == NULL || len == 0) {
+        return 0;
+    }
+    int ms = 0;
+    switch (p_audio_player->audio_type)
+    {
+        case AUDIO_TYPE_WAV: {
+            ms = (len * 1000) / (p_audio_player->sample_rate * p_audio_player->bits_per_sample * p_audio_player->channel / 8);
+            break;
+        }  
+        case AUDIO_TYPE_MP3: {
+            ms = (len * 1725) / 3456; // Inaccurate calculations. TODO 
+            break;
+        }  
+        default:
+            break;
+    }
+    return ms;
+}
 esp_err_t app_audio_player_file(void *p_filepath)
 {
     struct app_audio_player * p_audio_player = gp_audio_player;
