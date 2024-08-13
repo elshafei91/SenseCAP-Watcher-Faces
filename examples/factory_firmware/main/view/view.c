@@ -782,7 +782,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_SENSOR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_SENSOR");
-                if(lv_scr_act() == ui_Page_Extension)break;
+                if(lv_scr_act() != ui_Page_Extension)break;
 
                 struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
                 char sensor_temp[6] = "--";
