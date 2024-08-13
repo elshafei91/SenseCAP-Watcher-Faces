@@ -15,9 +15,11 @@
 #include "ui_manager/animation.h"
 #include "ui_manager/event.h"
 
-#define PNG_IMG_NUMS 24
-
 static const char *TAG = "view";
+
+extern BuiltInEmojiCount builtin_emoji_count;
+extern CustomEmojiCount custom_emoji_count;
+extern int cur_loaded_png_count;
 
 static int png_loading_count = 0;
 static bool battery_flag_toggle = 0;
@@ -147,14 +149,14 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_PNG_LOADING:{
                 png_loading_count++;
-                int progress_percentage = (png_loading_count * 100) / PNG_IMG_NUMS;
+                int progress_percentage = (png_loading_count * 100) / cur_loaded_png_count;
                 if(progress_percentage <= 100){
                     lv_arc_set_value(ui_Arc1, progress_percentage);
                     static char load_per[5];
                     sprintf(load_per, "%d%%", progress_percentage);
                     lv_label_set_text(ui_loadpert, load_per);
                 }
-                if(progress_percentage>=50)
+                if (progress_percentage % 17 <= 3) 
                 {
                     lv_event_send(ui_Page_Loading, LV_EVENT_SCREEN_LOADED, NULL);
                 }
@@ -1034,6 +1036,10 @@ int view_init(void)
 
     vTaskDelay(pdMS_TO_TICKS(200));
     BSP_ERROR_CHECK_RETURN_ERR(bsp_lcd_brightness_set(50));
+
+    init_builtin_emoji_count(&builtin_emoji_count);
+    init_custom_emoji_count(&custom_emoji_count);
+    count_png_images(&builtin_emoji_count, &custom_emoji_count);
 
     read_and_store_selected_pngs("Custom_greeting",    "greeting", g_greet_img_dsc, &g_greet_image_count);
     read_and_store_selected_pngs("Custom_detecting",   "detecting", g_detect_img_dsc, &g_detect_image_count);
