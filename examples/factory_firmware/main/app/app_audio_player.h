@@ -144,6 +144,8 @@ esp_err_t app_audio_player_stream_finish(void);
 
 esp_err_t app_audio_player_stream_stop(void);
 
+//return ms
+int app_audio_player_stream_time_get(int len);
 
 esp_err_t app_audio_player_file(void *p_filepath);
 esp_err_t app_audio_player_file_block(void *p_filepath, TickType_t xTicksToWait);
