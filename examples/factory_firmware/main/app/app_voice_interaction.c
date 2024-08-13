@@ -73,7 +73,11 @@ static void __record_start( struct app_voice_interaction *p_vi)
         ESP_LOGI(TAG, "vi not idle, stop it first");
         __vi_stop(p_vi);
     }
-    xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_START);
+    if( ! p_vi->is_recording ) {
+        xEventGroupSetBits(p_vi->event_group, EVENT_RECORD_START);
+    } else {
+        ESP_LOGI(TAG, "already record");
+    }
 }
 
 static void __record_stop( struct app_voice_interaction *p_vi)
@@ -468,7 +472,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                                     VIEW_EVENT_VI_RECORDING, NULL, NULL, pdMS_TO_TICKS(10000));
 
             app_rgb_set(SR, RGB_BREATH_BLUE); //set RGB
-            app_audio_player_mem_block(sound_push2talk_data, sizeof(sound_push2talk_data), false, pdMS_TO_TICKS(390)); //file 370ms
+            app_audio_player_mem_block(sound_push2talk_data, sizeof(sound_push2talk_data), false, pdMS_TO_TICKS(570)); //file 370ms, take 562ms.
 
             app_audio_recorder_stream_start();
             p_vi->is_connecting = true;
