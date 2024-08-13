@@ -1583,10 +1583,7 @@ void guidebtn2click_cb(lv_event_t * e)
         g_taskdown = 0;
         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
     }
-    intmax_t tlid = 0;
-    tf_engine_tid_get(&tlid);
-    // if task is preview, do not send task_flow_pause
-    if(tlid != 4)esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_RESUME, NULL, NULL, pdMS_TO_TICKS(10000));
 }
 
 void guide1btn2c_cb(lv_event_t * e)
