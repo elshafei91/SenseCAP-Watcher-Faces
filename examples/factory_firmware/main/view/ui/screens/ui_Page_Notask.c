@@ -42,7 +42,7 @@ void ui_Page_Notask_screen_init(void)
     lv_obj_set_x(ui_Label3, 0);
     lv_obj_set_y(ui_Label3, 43);
     lv_obj_set_align(ui_Label3, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_Label3, "You can use App to send new task");
+    lv_label_set_text(ui_Label3, "You can long press the wheel or use App to send new task");
     lv_obj_set_style_text_color(ui_Label3, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_Label3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_Label3, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
