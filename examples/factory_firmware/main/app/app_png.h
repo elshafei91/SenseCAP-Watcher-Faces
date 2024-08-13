@@ -19,7 +19,31 @@ typedef struct
     size_t size;
 } ImageData;
 
+// buildin emoji png count
+typedef struct {
+    int speaking_count;
+    int listening_count;
+    int greeting_count;
+    int standby_count;
+    int detecting_count;
+    int detected_count;
+    int analyzing_count;
+} BuiltInEmojiCount;
 
+// custom emoji png count
+typedef struct {
+    int custom_speaking_count;
+    int custom_listening_count;
+    int custom_greeting_count;
+    int custom_standby_count;
+    int custom_detecting_count;
+    int custom_detected_count;
+    int custom_analyzing_count;
+} CustomEmojiCount;
+
+void init_builtin_emoji_count(BuiltInEmojiCount *count);
+void init_custom_emoji_count(CustomEmojiCount *count);
+void count_png_images(BuiltInEmojiCount *builtin_count, CustomEmojiCount *custom_count);
 void read_and_store_selected_pngs(const char *primary_prefix, const char *secondary_prefix, lv_img_dsc_t **img_dsc_array, int *image_count);
 void read_and_store_selected_customed_pngs(const char *primary_prefix, const char *secondary_prefix, lv_img_dsc_t **img_dsc_array, int *image_count);
 void check_and_download_files();

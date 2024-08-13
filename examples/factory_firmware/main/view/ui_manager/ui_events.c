@@ -400,25 +400,35 @@ void loadscrload_cb(lv_event_t *e)
 
         sidelines_Animation(ui_Left1, 0);
         secondline_Animation(ui_Left2, 1000);
-        shorttoptobottom_Animation(ui_Left3, 1500);
-        shorttoptobottom_Animation(ui_Left4, 2500);
-        secondline_Animation(ui_Left5, 5000);
-        sidelines_Animation(ui_Left6, 5500);
-        shortbottomtotop_Animation(ui_Left8, 3000);
-        shortbottomtotop_Animation(ui_Left7, 4000);
         loading_flag++;
-    }
-    else if (loading_flag == 1)
+    }else if(loading_flag == 1)
+    {
+        shorttoptobottom_Animation(ui_Left3, 0);
+        shorttoptobottom_Animation(ui_Left4, 1000);
+        shortbottomtotop_Animation(ui_Left8, 1500);
+        shortbottomtotop_Animation(ui_Left7, 2500);
+        loading_flag ++;
+    }else if(loading_flag == 2)
+    {
+        secondline_Animation(ui_Left5, 0);
+        sidelines_Animation(ui_Left6, 500);
+        loading_flag ++;
+    }else if(loading_flag == 3)
     {
         sidelines_Animation(ui_Right1, 0);
         secondline_Animation(ui_Right2, 1000);
-        shorttoptobottom_Animation(ui_Right3, 1500);
-        shorttoptobottom_Animation(ui_Right4, 2500);
-        secondline_Animation(ui_Right5, 5000);
-        sidelines_Animation(ui_Right6, 5500);
-        shortbottomtotop_Animation(ui_Right8, 3000);
-        shortbottomtotop_Animation(ui_Right7, 4000);
-        loading_flag++;
+        loading_flag ++;
+    }else if(loading_flag == 4)
+    {
+        shorttoptobottom_Animation(ui_Right3, 0);
+        shorttoptobottom_Animation(ui_Right4, 1000);
+        shortbottomtotop_Animation(ui_Right8, 1500);
+        shortbottomtotop_Animation(ui_Right7, 2500);
+        loading_flag ++;
+    }else if(loading_flag == 5)
+    {
+        secondline_Animation(ui_Right5, 0);
+        sidelines_Animation(ui_Right6, 300);
     }
 }
 
