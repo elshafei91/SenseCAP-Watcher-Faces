@@ -224,8 +224,8 @@ void create_customed_img_dsc(lv_img_dsc_t **img_dsc, void *data, size_t size) {
     }
 
     (*img_dsc)->header.always_zero = 0;
-    (*img_dsc)->header.w = 229;
-    (*img_dsc)->header.h = 120;
+    (*img_dsc)->header.w = 240;
+    (*img_dsc)->header.h = 240;
     (*img_dsc)->header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
     (*img_dsc)->data_size = size;
     (*img_dsc)->data = data;

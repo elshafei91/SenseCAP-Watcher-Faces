@@ -397,7 +397,6 @@ void ui_event_p2tcheck(lv_event_t * e);
 extern lv_obj_t * ui_p2tcheck;
 extern lv_obj_t * ui_p2texit;
 extern lv_obj_t * ui_p2tspeak;
-extern lv_obj_t * ui_push2talkTextArea;
 // SCREEN: ui_Page_Guideavatar
 void ui_Page_Guideavatar_screen_init(void);
 void ui_event_Page_Guideavatar(lv_event_t * e);
@@ -433,6 +432,7 @@ extern lv_obj_t * ui_guide2img2;
 extern lv_obj_t * ui_guide2t2;
 // SCREEN: ui_Page_Flag
 void ui_Page_Flag_screen_init(void);
+void ui_event_Page_Flag(lv_event_t * e);
 extern lv_obj_t * ui_Page_Flag;
 extern lv_obj_t * ui_guideflagp;
 void ui_event_guidebtn1(lv_event_t * e);

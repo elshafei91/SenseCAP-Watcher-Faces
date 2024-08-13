@@ -1126,6 +1126,8 @@ static esp_err_t __check_reset_factory()
         storage_file_remove("/spiffs/Custom_greeting1.png");
         storage_file_remove("/spiffs/Custom_greeting2.png");
         storage_file_remove("/spiffs/Custom_greeting3.png");
+        storage_file_remove("/spiffs/Custom_greeting4.png");
+        storage_file_remove("/spiffs/Custom_greeting5.png");
 
         storage_file_remove("/spiffs/Custom_detecting1.png");
         storage_file_remove("/spiffs/Custom_detecting2.png");
@@ -1135,13 +1137,21 @@ static esp_err_t __check_reset_factory()
 
         storage_file_remove("/spiffs/Custom_detected1.png");
         storage_file_remove("/spiffs/Custom_detected2.png");
+        storage_file_remove("/spiffs/Custom_detected3.png");
+        storage_file_remove("/spiffs/Custom_detected4.png");
+        storage_file_remove("/spiffs/Custom_detected5.png");
 
         storage_file_remove("/spiffs/Custom_speaking1.png");
         storage_file_remove("/spiffs/Custom_speaking2.png");
         storage_file_remove("/spiffs/Custom_speaking3.png");
+        storage_file_remove("/spiffs/Custom_speaking4.png");
+        storage_file_remove("/spiffs/Custom_speaking5.png");
 
         storage_file_remove("/spiffs/Custom_listening1.png");
         storage_file_remove("/spiffs/Custom_listening2.png");
+        storage_file_remove("/spiffs/Custom_listening3.png");
+        storage_file_remove("/spiffs/Custom_listening4.png");
+        storage_file_remove("/spiffs/Custom_listening5.png");
 
         storage_file_remove("/spiffs/Custom_analyzing1.png");
         storage_file_remove("/spiffs/Custom_analyzing2.png");
@@ -1153,6 +1163,7 @@ static esp_err_t __check_reset_factory()
         storage_file_remove("/spiffs/Custom_standby2.png");
         storage_file_remove("/spiffs/Custom_standby3.png");
         storage_file_remove("/spiffs/Custom_standby4.png");
+        storage_file_remove("/spiffs/Custom_standby5.png");
 
         if( atomic_load(&g_is_need_shutdown) ) {
             ESP_LOGI(TAG, "shutdown...");
