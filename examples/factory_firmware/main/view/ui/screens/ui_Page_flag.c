@@ -81,5 +81,6 @@ void ui_Page_Flag_screen_init(void)
 
     lv_obj_add_event_cb(ui_guidebtn1, ui_event_guidebtn1, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_guidebtn2, ui_event_guidebtn2, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_Page_Flag, ui_event_Page_Flag, LV_EVENT_ALL, NULL);
 
 }

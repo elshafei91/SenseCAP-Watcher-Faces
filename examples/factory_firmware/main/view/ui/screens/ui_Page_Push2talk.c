@@ -16,6 +16,7 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_width(ui_push2talkpanel2, 412);
     lv_obj_set_height(ui_push2talkpanel2, 412);
     lv_obj_set_align(ui_push2talkpanel2, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_push2talkpanel2, LV_OBJ_FLAG_HIDDEN);     /// Flags
     lv_obj_clear_flag(ui_push2talkpanel2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_color(ui_push2talkpanel2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_push2talkpanel2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -26,6 +27,7 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_width(ui_push2talkarc, 320);
     lv_obj_set_height(ui_push2talkarc, 320);
     lv_obj_set_align(ui_push2talkarc, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_push2talkarc, LV_OBJ_FLAG_CLICKABLE);      /// Flags
     lv_arc_set_range(ui_push2talkarc, 0, 10);
     lv_arc_set_value(ui_push2talkarc, 0);
     lv_arc_set_bg_angles(ui_push2talkarc, 0, 340);
@@ -427,15 +429,6 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_style_text_opa(ui_p2tspeak, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_p2tspeak, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_p2tspeak, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_push2talkTextArea = lv_textarea_create(ui_Page_Push2talk);
-    lv_obj_set_width(ui_push2talkTextArea, 228);
-    lv_obj_set_height(ui_push2talkTextArea, 305);
-    lv_obj_set_align(ui_push2talkTextArea, LV_ALIGN_CENTER);
-    lv_textarea_set_placeholder_text(ui_push2talkTextArea, "Placeholder...");
-    lv_obj_add_flag(ui_push2talkTextArea, LV_OBJ_FLAG_HIDDEN);     /// Flags
-
-
 
     lv_obj_add_event_cb(ui_push2talkarc, ui_event_push2talkarc, LV_EVENT_ALL, ui_push2talkknob);
     lv_obj_add_event_cb(ui_p2tobj, ui_event_p2tobj, LV_EVENT_ALL, NULL);

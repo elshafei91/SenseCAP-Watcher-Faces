@@ -431,7 +431,6 @@ void ui_event_p2tcheck(lv_event_t * e);
 lv_obj_t * ui_p2tcheck;
 lv_obj_t * ui_p2texit;
 lv_obj_t * ui_p2tspeak;
-lv_obj_t * ui_push2talkTextArea;
 
 
 // SCREEN: ui_Page_Guideavatar
@@ -473,6 +472,7 @@ lv_obj_t * ui_guide2t2;
 
 // SCREEN: ui_Page_Flag
 void ui_Page_Flag_screen_init(void);
+void ui_event_Page_Flag(lv_event_t * e);
 lv_obj_t * ui_Page_Flag;
 lv_obj_t * ui_guideflagp;
 void ui_event_guidebtn1(lv_event_t * e);
@@ -1741,6 +1741,14 @@ void ui_event_guide2p2(lv_event_t * e)
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_SHORT_CLICKED) {
         guide2liveclick_cb(e);
+    }
+}
+void ui_event_Page_Flag(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_SCREEN_LOADED) {
+        flagloaded_cb(e);
     }
 }
 void ui_event_guidebtn1(lv_event_t * e)

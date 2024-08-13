@@ -223,10 +223,14 @@ static void async_emoji_switch_scr(void *arg)
     }
     if(emoji_switch_scr == SCREEN_PUSH2TALK)
     {
+        lv_obj_add_flag(push2talk_speak_img, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(push2talk_image, LV_OBJ_FLAG_HIDDEN);
         lv_img_set_src(push2talk_image, current_img);
     }
     if(emoji_switch_scr == SCREEN_PUSH2TALK_SPEAK)
     {
+        lv_obj_add_flag(push2talk_image, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(push2talk_speak_img, LV_OBJ_FLAG_HIDDEN);
         lv_img_set_src(push2talk_speak_img, current_img);
     }
 }
@@ -457,6 +461,8 @@ void virscrload_cb(lv_event_t *e)
     lv_obj_set_align(flag_image, LV_ALIGN_CENTER);
     lv_obj_set_align(standby_image, LV_ALIGN_CENTER);
     lv_obj_set_align(push2talk_image, LV_ALIGN_CENTER);
+    lv_obj_set_x(push2talk_speak_img, 0);
+    lv_obj_set_y(push2talk_speak_img, -48);
     lv_obj_set_align(push2talk_speak_img, LV_ALIGN_CENTER);
     lv_obj_move_background(flag_image);
     lv_obj_move_background(virtual_image);
@@ -770,7 +776,6 @@ void loctask3c_cb(lv_event_t *e)
         lv_group_add_obj(g_main, ui_guidebtn2);
         emoji_switch_scr = SCREEN_GUIDE;
         emoji_timer(EMOJI_DETECTING);
-        return;
     }
 
     if(g_guide_disable){
@@ -800,7 +805,6 @@ void loctask4c_cb(lv_event_t *e)
         lv_group_add_obj(g_main, ui_guidebtn2);
         emoji_switch_scr = SCREEN_GUIDE;
         emoji_timer(EMOJI_DETECTING);
-        return;
     }
 
     if(g_guide_disable){
@@ -1546,13 +1550,17 @@ void emoticonback_cb(lv_event_t * e)
     lv_group_focus_obj(pre_foucsed_obj);
 }
 
-void guidebtn1click_cb(lv_event_t * e)
+void flagloaded_cb(lv_event_t * e)
 {
-    lv_pm_open_page(g_main, &group_page_guide, PM_ADD_OBJS_TO_GROUP, &ui_Page_Guideavatar, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Guideavatar_screen_init);
     intmax_t tlid = 0;
     tf_engine_tid_get(&tlid);
     // if task is preview, do not send task_flow_pause
     if(tlid != 4)esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_PAUSE, NULL, NULL, pdMS_TO_TICKS(10000));
+}
+
+void guidebtn1click_cb(lv_event_t * e)
+{
+    lv_pm_open_page(g_main, &group_page_guide, PM_ADD_OBJS_TO_GROUP, &ui_Page_Guideavatar, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Guideavatar_screen_init);
 }
 
 void guidebtn2click_cb(lv_event_t * e)
@@ -1575,6 +1583,7 @@ void guidebtn2click_cb(lv_event_t * e)
         g_taskdown = 0;
         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
     }
+    esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_RESUME, NULL, NULL, pdMS_TO_TICKS(10000));
 }
 
 void guide1btn2c_cb(lv_event_t * e)
@@ -2272,13 +2281,13 @@ void push2talk_init(void)
 
 static void view_push2talk_animation_timer_callback(lv_timer_t *timer)
 {
-    static uint32_t last_time = 0;
-    uint32_t current_time = lv_tick_get();
+    // static uint32_t last_time = 0;
+    // uint32_t current_time = lv_tick_get();
 
-    if (last_time != 0) {
-        ESP_LOGI("view_push2talk_animation", "Time since last tick: %u ms\n", current_time - last_time);
-    }
-    last_time = current_time;
+    // if (last_time != 0) {
+    //     ESP_LOGI("view_push2talk_animation", "Time since last tick: %u ms\n", current_time - last_time);
+    // }
+    // last_time = current_time;
 
     if (push2talk_text && push2talk_text[push2talk_text_index] != '\0' && push2talk_timer_active) {
         char temp[4];
@@ -2364,7 +2373,7 @@ void push2talk_start_animation(const char *text, uint32_t duration_ms)
     }
 
     ESP_LOGI(TAG, "interval: %d, text_length: %d, duration: %dms ", push2talk_anim_interval, text_length, duration_ms);
-    view_push2talk_animation_timer_start(push2talk_anim_interval-10);
+    view_push2talk_animation_timer_start(push2talk_anim_interval - 25);
 }
 /*--------------------------------------------view timer----------------------------------------------------------------*/
 static void view_ble_switch_timer_callback(lv_timer_t *timer)
@@ -2387,11 +2396,9 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
     get_inactive_time = g_screenoff_time;
     if((inactive_time % (30*1000)) < 2000)
     {
-        ESP_LOGI("view_inactive", "inactive_time: %d, sleep_time: %d, screenoff_mode: %d", inactive_time, g_screenoff_time, screenoff_mode);
+        ESP_LOGI("view_inactive", "inactive_time: %d, screenoff_time: %d, screenoff_mode: %d", inactive_time, g_screenoff_time, screenoff_mode);
         ESP_LOGI("view_inactive", "standby_mode: %d, is_taskdown: %d", standby_mode, g_taskdown);
     }
-    // ESP_LOGD("view_sleep", "get sleep time is %d", get_inactive_time);
-    // ESP_LOGD("view_sleep", "sleep switch is : %d, and sleep time is %d", g_screenoff_switch, g_screenoff_time);
 
     switch (get_inactive_time) {
         case 0:
