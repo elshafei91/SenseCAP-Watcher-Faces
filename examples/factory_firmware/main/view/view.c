@@ -191,7 +191,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_obj_add_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);
                     lv_label_set_text(ui_facet, "Uploading\nface...");
                     lv_arc_set_value(ui_facearc, *emoji_download_per);
-                    sprintf(download_per, "%d%%", *emoji_download_per);
+                    sprintf(download_per, "%d", *emoji_download_per);
                     lv_label_set_text(ui_facetper,download_per);
                 }
                 if(*emoji_download_per>=100)
@@ -552,13 +552,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 ESP_LOGI(TAG, "VIEW_EVENT_OTA_STATUS: %d", ota_st->status);
-                hide_all_overlays();
                 int push2talk_direct_exit = 0;
                 if(lv_scr_act() != ui_Page_OTA && ota_st->status >= 1  && ota_st->status <= 3)
                 {
                     lv_group_remove_all_objs(g_main);
                     _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_OTA_screen_init);
-                    lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
+                    hide_all_overlays();
                 }
                 if(ota_st->status == 1)
                 {
@@ -573,6 +572,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 {
                     ESP_LOGI(TAG, "OTA download succeeded");
                     lv_label_set_text(ui_otastatus, "Update\nSuccessful");
+                    lv_obj_set_x(ui_otastatus, 0);
+                    lv_obj_set_y(ui_otastatus, 0);
                     lv_obj_add_flag(ui_otatext, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_otaicon, &ui_img_wifiok_png);

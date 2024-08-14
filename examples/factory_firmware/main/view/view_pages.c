@@ -235,7 +235,7 @@ void hide_all_overlays(void)
 
     // standby mode
     lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
-    emoji_timer(EMOJI_STOP);
+    if(lv_scr_act() == ui_Page_OTA)emoji_timer(EMOJI_STOP);
 
     // taskflow error
     lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);

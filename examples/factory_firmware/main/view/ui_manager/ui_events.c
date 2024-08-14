@@ -1544,6 +1544,10 @@ void guide2avaclick_cb(lv_event_t * e)
         g_guide_step = 3;
         lv_obj_add_flag(ui_guide1p2, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_guide1p3, LV_OBJ_FLAG_HIDDEN);
+        lv_group_remove_all_objs(g_main);
+        lv_group_add_obj(g_main, ui_guide1btn1);
+        lv_group_add_obj(g_main, ui_guide1btn2);
+        lv_group_add_obj(g_main, ui_guide1btn3);
 
         set_usage_guide(UI_CALLER, 1);
         g_guide_disable = get_usage_guide(UI_CALLER);

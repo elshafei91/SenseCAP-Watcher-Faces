@@ -1,4 +1,5 @@
 #include "app_png.h"
+#include "ui/ui.h"
 #include "esp_log.h"
 #include "data_defs.h"
 #include "event_loops.h"
@@ -479,8 +480,8 @@ static int compare_file_names(const void *a, const void *b) {
     return num1 - num2;
 }
 
-// Helper function to load images based on prefix
-bool load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_count, int img_type) {
+bool custom_load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_count, int img_type)
+{
     DIR *dir;
     struct dirent *ent;
     bool loaded = false;
@@ -502,7 +503,7 @@ bool load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_co
         }
         closedir(dir);
     } else {
-        ESP_LOGE("SPIFFS", "Failed to open directory /spiffs");
+        ESP_LOGE("SPIFFS", "Failed to open directory: /spiffs");
         return loaded;
     }
 
@@ -534,6 +535,82 @@ bool load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_co
     return loaded;
 }
 
+// Helper function to load images based on prefix
+bool load_images(const char *prefix, lv_img_dsc_t **img_dsc_array, int *image_count, int img_type) {
+    if (img_type == 1) {
+        bool loaded = false;
+        // Directly load images from LVGL C file code
+        if (strcmp(prefix, "speaking") == 0) {
+            if (*image_count < MAX_IMAGES) {
+                img_dsc_array[*image_count] = &ui_img_speaking1_png;
+                (*image_count)++;
+                loaded = true;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
+            }
+            if (*image_count < MAX_IMAGES) {
+                img_dsc_array[*image_count] = &ui_img_speaking2_png;
+                (*image_count)++;
+                loaded = true;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
+            }
+            ESP_LOGI("LVGL", "Loaded images directly from LVGL C file code for prefix: %s", prefix);
+        }
+        return loaded;
+    } else {
+        DIR *dir;
+        struct dirent *ent;
+        bool loaded = false;
+
+        // Array to store matched file names
+        const char *matched_files[MAX_IMAGES];
+        int matched_count = 0;
+
+        if ((dir = opendir("/spiffs")) != NULL) {
+            while ((ent = readdir(dir)) != NULL) {
+                if (is_png_file_for_expression(ent->d_name, prefix)) {
+                    if (matched_count >= MAX_IMAGES) {
+                        ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
+                        break;
+                    }
+                    matched_files[matched_count] = strdup(ent->d_name);
+                    matched_count++;
+                }
+            }
+            closedir(dir);
+        } else {
+            ESP_LOGE("SPIFFS", "Failed to open directory: /spiffs");
+            return loaded;
+        }
+
+        // Sort matched files based on numerical suffix
+        qsort(matched_files, matched_count, sizeof(char *), compare_file_names);
+
+        for (int i = 0; i < matched_count; i++) {
+            if (*image_count >= MAX_IMAGES) {
+                ESP_LOGW("PNG Load", "Maximum image storage reached, cannot load more images");
+                break;
+            }
+
+            size_t size;
+            char filepath[256];
+            sprintf(filepath, "/spiffs/%s", matched_files[i]);
+            void *data = read_png_to_psram(filepath, &size);
+            if (data) {
+                ESP_LOGI("PNG Load", "Loaded %s into PSRAM", matched_files[i]);
+
+                if(img_type == 0)create_img_dsc(&img_dsc_array[*image_count], data, size);
+                if(img_type == 1)create_customed_img_dsc(&img_dsc_array[*image_count], data, size);
+                (*image_count)++;
+                loaded = true;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_PNG_LOADING, NULL, NULL, pdMS_TO_TICKS(10000));
+            }
+            free((void *)matched_files[i]);
+        }
+
+        return loaded;
+    }
+}
+
 // Function to read and store selected PNG files based on prefix
 void read_and_store_selected_pngs(const char *primary_prefix, const char *secondary_prefix, lv_img_dsc_t **img_dsc_array, int *image_count) {
     bool image_loaded = false;
@@ -563,7 +640,7 @@ void read_and_store_selected_customed_pngs(const char *primary_prefix, const cha
     bool image_loaded = false;
 
     // Try loading images with primary prefix
-    image_loaded = load_images(primary_prefix, img_dsc_array, image_count, 1);
+    image_loaded = custom_load_images(primary_prefix, img_dsc_array, image_count, 1);
 
     // If no images loaded with primary prefix, try secondary prefix
     if (!image_loaded) {

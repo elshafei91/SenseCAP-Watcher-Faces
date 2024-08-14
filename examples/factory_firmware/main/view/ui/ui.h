@@ -502,7 +502,8 @@ LV_IMG_DECLARE(ui_img_wifi_0_png);    // assets/wifi_0.png
 LV_IMG_DECLARE(ui_img_wifi_1_png);    // assets/wifi_1.png
 LV_IMG_DECLARE(ui_img_wifi_2_png);    // assets/wifi_2.png
 LV_IMG_DECLARE(ui_img_wifi_abnormal_png);    // assets/wifi_abnormal.png
-
+LV_IMG_DECLARE(ui_img_speaking1_png);
+LV_IMG_DECLARE(ui_img_speaking2_png);
 
 
 LV_FONT_DECLARE(ui_font_fbold24);
