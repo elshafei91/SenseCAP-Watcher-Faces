@@ -299,7 +299,7 @@ static void emoji_timer_callback(lv_timer_t *timer)
         // if delay 2s and the device is not wifi-configed
         if(vir_load_count > 8)
         {
-            lv_event_send(ui_Page_Avatar, LV_EVENT_SHORT_CLICKED, NULL);
+            lv_event_send(ui_Page_Avatar, LV_EVENT_CLICKED, NULL);
             view_sleep_timer_start();
         }
     }
@@ -843,7 +843,7 @@ void sgesdown_cb(lv_event_t *e)
 void sclick_cb(lv_event_t *e)
 {
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
-    lv_event_send(focused_obj, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
 }
 
 void setsl_cb(lv_event_t * e)
@@ -890,14 +890,14 @@ void mainclick_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "mainclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
-    lv_event_send(focused_obj, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
 }
 
 void lclick_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "lclick_cb");
     lv_obj_t *focused_obj = lv_group_get_focused(g_main);
-    lv_event_send(focused_obj, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_event_send(focused_obj, LV_EVENT_CLICKED, NULL);
 }
 
 void lunlds_cb(lv_event_t *e) { }
@@ -1312,7 +1312,7 @@ void sleeptimeset_cb(lv_event_t * e)
 void setsleepsw_cb(lv_event_t * e)
 {
     // ESP_LOGI(CLICK_TAG, "setsleepsw_cb");
-    lv_event_send(ui_sleepswitch, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_event_send(ui_sleepswitch, LV_EVENT_CLICKED, NULL);
 }
 
 void sleepswitch_cb(lv_event_t * e)
@@ -1932,7 +1932,7 @@ void ui_event_alarm_panel(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
+    if(event_code == LV_EVENT_CLICKED) {
         if(target == ui_viewpbtn1)
         {
             viewp1c_cb(e);
@@ -1980,7 +1980,7 @@ void ui_event_emoticonok(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_SHORT_CLICKED) {
+    if(event_code == LV_EVENT_CLICKED) {
         emoticonback_cb(e);
     }
 }
@@ -2554,7 +2554,7 @@ static void view_push2talk_timer_callback(lv_timer_t *timer)
             }
             if(g_push2talk_mode == 0)
             {
-                lv_event_send(ui_Page_Push2talk, LV_EVENT_SHORT_CLICKED, NULL);
+                lv_event_send(ui_Page_Push2talk, LV_EVENT_CLICKED, NULL);
                 push2talk_timer_counter = 0;
             }
         }
