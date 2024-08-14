@@ -371,6 +371,13 @@ static void app_audio_player_task(void *p_arg)
                         break;
                     }  
                     default:
+                        __data_lock(p_audio_player);
+                        if( p_audio_player->stream_finished) {
+                            p_audio_player->status = AUDIO_PLAYER_STATUS_IDLE;
+                            is_play_done = true;
+                        }
+                        __data_unlock(p_audio_player);
+                        vTaskDelay(pdMS_TO_TICKS(100));
                         break;
                 }
 
