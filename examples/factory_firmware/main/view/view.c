@@ -552,13 +552,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_OTA_STATUS");
                 struct view_data_ota_status * ota_st = (struct view_data_ota_status *)event_data;
                 ESP_LOGI(TAG, "VIEW_EVENT_OTA_STATUS: %d", ota_st->status);
-                hide_all_overlays();
                 int push2talk_direct_exit = 0;
                 if(lv_scr_act() != ui_Page_OTA && ota_st->status >= 1  && ota_st->status <= 3)
                 {
                     lv_group_remove_all_objs(g_main);
                     _ui_screen_change(&ui_Page_OTA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_OTA_screen_init);
-                    lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
+                    hide_all_overlays();
                 }
                 if(ota_st->status == 1)
                 {
