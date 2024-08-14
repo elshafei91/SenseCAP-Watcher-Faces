@@ -376,3 +376,10 @@ void app_rgb_set(int caller, rgb_service_t service)
     __select_service_set_rgb(caller, service);
     __data_unlock();
 }
+
+void app_rgb_status_set(int r, int g, int b, int mode, int step, int delay_time)
+{
+    __data_lock();
+    set_rgb_status(r, g, b, mode, step, delay_time);
+    __data_unlock();
+}

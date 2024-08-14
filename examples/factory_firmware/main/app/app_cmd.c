@@ -22,6 +22,7 @@
 #include "app_audio_player.h"
 
 #include "iperf.h"
+#include "app_rgb.h"
 
 static const char *TAG = "cmd";
 
@@ -801,6 +802,89 @@ static void register_cmd_vi_ctrl(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
+/************* rgb cmd **************/
+static struct {
+    struct arg_int *r;
+    struct arg_int *g;
+    struct arg_int *b;
+    struct arg_int *mode;
+    struct arg_int *step_value;
+    struct arg_int *step_time_ms;
+    struct arg_end *end;
+} rgb_args;
+
+static int rgb_cmd(int argc, char **argv)
+{
+    int r, g, b, mode, step_value, step_time_ms;
+    int nerrors = arg_parse(argc, argv, (void **) &rgb_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, rgb_args.end, argv[0]);
+        return 1;
+    }
+
+    if ( rgb_args.r->count ) {
+        r = rgb_args.r->ival[0]; 
+    } else {
+        r = 0;
+    }
+
+    if ( rgb_args.g->count ) {
+        g = rgb_args.g->ival[0];
+    } else {
+        g = 0;
+    }
+
+    if ( rgb_args.b->count ) {
+        b = rgb_args.b->ival[0];
+    } else {
+        b = 0;
+    }
+
+    if ( rgb_args.mode->count ) {
+        mode = rgb_args.mode->ival[0];
+    } else {
+        mode = 3;
+    }
+
+    if ( rgb_args.step_value->count ) {
+        step_value = rgb_args.step_value->ival[0];
+    } else {
+        step_value = 3;
+    }
+
+    if ( rgb_args.step_time_ms->count ) {
+        step_time_ms = rgb_args.step_time_ms->ival[0];
+    } else {
+        step_time_ms = 5;
+    }
+
+    app_rgb_status_set(r, g, b, mode, step_value, step_time_ms);
+    return 0;
+}
+
+static void register_cmd_rgb(void)
+{
+    rgb_args.r =  arg_int0("r", "red", "<int>", "red value, 0~255");
+    rgb_args.g =  arg_int0("g", "green", "<int>", "green value, 0~255");
+    rgb_args.b =  arg_int0("b", "blue", "<int>", "blue value, 0~255");
+    rgb_args.mode =  arg_int0("m", "mode", "<int>", "1: breath, 2: blink, 3:solid, default 3");
+    rgb_args.step_value =  arg_int0("v", "step_value", "<int>", "RGB step value, default 3");
+    rgb_args.step_time_ms =  arg_int0("t", "step_time_ms", "<int>", "RGB step time(ms), default 5");
+    rgb_args.end = arg_end(6);
+
+    const esp_console_cmd_t cmd = {
+        .command = "rgb",
+        .help = "set rgb value. eg: rgb -r 255 -g 0 -b 0 -m 3",
+        .hint = NULL,
+        .func = &rgb_cmd,
+        .argtable = &rgb_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+
+
+/************* cmd register **************/
 int app_cmd_init(void)
 {
 #if CONFIG_ENABLE_FACTORY_FW_DEBUG_LOG
@@ -826,6 +910,7 @@ int app_cmd_init(void)
     register_cmd_record();
     register_cmd_vi_ctrl();
     register_cmd_iperf();
+    register_cmd_rgb();
 
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
     esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();

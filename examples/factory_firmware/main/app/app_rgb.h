@@ -29,6 +29,8 @@ typedef enum {
 int app_rgb_init(void);
 void app_rgb_set(int caller, rgb_service_t service);
 
+void app_rgb_status_set(int r, int g, int b, int mode, int step, int delay_time);
+
 #ifdef __cplusplus
 }
 #endif
