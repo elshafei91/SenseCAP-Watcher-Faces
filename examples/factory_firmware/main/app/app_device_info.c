@@ -1343,15 +1343,16 @@ void __app_device_info_task(void *pvParameter)
             if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_USAGE_GUIDE_FLAG)) != 0) {
                 __set_usage_guide();
             }
+            if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SCREENOFF_TIME)) != 0){
+                __set_screenoff_time();
+            }
+            if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SCREENOFF_SWITCH)) != 0){
+                __set_screenoff_switch();
+            }
             if ((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_FACTORY_RESET_FLAG)) != 0) {
                 __check_reset_factory();
             }
-            else if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SCREENOFF_TIME)) != 0){
-                __set_screenoff_time();
-            }
-            else if((bits_devicecfg & EVENT_BIT(DEVCFG_TYPE_SCREENOFF_SWITCH)) != 0){
-                __set_screenoff_switch();
-            }
+
         }
         
         if ((bits & EVENT_TIMER_500MS) != 0)
@@ -1536,3 +1537,4 @@ void app_device_info_init()
     timerargs.callback = __timer_cb_every_30s;
     esp_timer_create(&timerargs, &g_timer_every_30s);
 }
+ 
