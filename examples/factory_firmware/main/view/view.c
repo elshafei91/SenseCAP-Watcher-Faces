@@ -191,7 +191,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     lv_obj_add_flag(ui_emoticonok, LV_OBJ_FLAG_HIDDEN);
                     lv_label_set_text(ui_facet, "Uploading\nface...");
                     lv_arc_set_value(ui_facearc, *emoji_download_per);
-                    sprintf(download_per, "%d%%", *emoji_download_per);
+                    sprintf(download_per, "%d", *emoji_download_per);
                     lv_label_set_text(ui_facetper,download_per);
                 }
                 if(*emoji_download_per>=100)

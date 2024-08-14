@@ -65,7 +65,7 @@ void ui_Page_OTA_screen_init(void)
     lv_obj_set_width(ui_otaicon, LV_SIZE_CONTENT);   /// 40
     lv_obj_set_height(ui_otaicon, LV_SIZE_CONTENT);    /// 30
     lv_obj_set_x(ui_otaicon, 0);
-    lv_obj_set_y(ui_otaicon, -80);
+    lv_obj_set_y(ui_otaicon, -120);
     lv_obj_set_align(ui_otaicon, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
     lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
