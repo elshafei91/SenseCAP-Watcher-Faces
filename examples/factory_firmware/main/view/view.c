@@ -572,6 +572,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 {
                     ESP_LOGI(TAG, "OTA download succeeded");
                     lv_label_set_text(ui_otastatus, "Update\nSuccessful");
+                    lv_obj_set_x(ui_otastatus, 0);
+                    lv_obj_set_y(ui_otastatus, 0);
                     lv_obj_add_flag(ui_otatext, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_clear_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);
                     lv_img_set_src(ui_otaicon, &ui_img_wifiok_png);
