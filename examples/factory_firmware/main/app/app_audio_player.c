@@ -719,7 +719,9 @@ esp_err_t app_audio_player_stream_stop(void)
     while ((tmp = xRingbufferReceiveUpTo(p_audio_player->rb_handle, &len, 0, AUDIO_PLAYER_RINGBUF_SIZE))) {
         vRingbufferReturnItem(p_audio_player->rb_handle, tmp);
     }
+#ifndef CONFIG_ENABLE_VI_SR
     bsp_codec_dev_stop(); //TODO
+#endif
     return ESP_OK;
 }
 

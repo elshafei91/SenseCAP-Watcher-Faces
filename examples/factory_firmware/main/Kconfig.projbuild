@@ -45,4 +45,9 @@ menu "Factory Firmware Example Configuration"
         default y
         help
             Enable camera display mirror x.
+    config ENABLE_VI_SR
+        bool "Enable wake-up word and VAD detection (experimental feature)"
+        default n
+        help
+            Enable wake-up word and VAD detection functions, SR is still an experimental feature .
 endmenu

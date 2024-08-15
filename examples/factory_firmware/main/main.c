@@ -18,8 +18,6 @@
 #include "data_defs.h"
 #include "storage.h"
 #include "audio_player.h"
-#include "app_sr.h"
-#include "app_audio.h"
 #include "app_wifi.h"
 #include "app_ble.h"
 #include "app_time.h"
@@ -171,7 +169,6 @@ void app_init(void)
 
     app_audio_player_init();
     app_audio_recorder_init();
-
     app_rgb_init();
     app_device_info_init();
     app_sensecraft_init();
@@ -184,7 +181,6 @@ void app_init(void)
     app_ble_init();
     app_cmd_init();
     app_sensor_init();
-    // app_sr_start(false);
 }
 
 void task_app_init(void *p_arg)

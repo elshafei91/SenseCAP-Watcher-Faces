@@ -26,7 +26,6 @@
 #include "data_defs.h"
 #include "storage.h"
 #include "app_rgb.h"
-#include "app_audio.h"
 #include "audio_player.h"
 #include "app_sensecraft.h"
 #include "app_ble.h"
