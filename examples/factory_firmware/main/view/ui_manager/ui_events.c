@@ -1354,6 +1354,7 @@ void p2tclick_cb(lv_event_t * e)
         lv_obj_add_flag(ui_p2texit, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(push2talk_textarea, LV_OBJ_FLAG_HIDDEN);
 
+        lv_group_remove_all_objs(g_main);
         lv_group_add_obj(g_main, ui_push2talkarc);
 
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
@@ -2563,7 +2564,7 @@ static void view_push2talk_timer_callback(lv_timer_t *timer)
         lv_arc_set_value(ui_push2talkarc, push2talk_arc+1);
         lv_event_send(ui_push2talkarc, LV_EVENT_VALUE_CHANGED, NULL);
     }
-    ESP_LOGI(TAG, "g_push2talk_timer: %d, g_push2talk_mode: %d, push2talk_timer_counter: %d ", g_push2talk_timer, g_push2talk_mode, push2talk_timer_counter);
+    // ESP_LOGI(TAG, "g_push2talk_timer: %d, g_push2talk_mode: %d, push2talk_timer_counter: %d ", g_push2talk_timer, g_push2talk_mode, push2talk_timer_counter);
 }
 
 void view_push2talk_timer_start()
