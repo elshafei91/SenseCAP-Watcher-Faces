@@ -581,6 +581,16 @@ void backmenu_cb(lv_event_t * e)
     {
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
         lv_group_set_wrap(g_main, true);
+
+        if(g_tasktype == 0)
+        {
+            if(local_task_id == 0 || local_task_id == 1 || local_task_id == 2)
+            {
+                g_taskdown = 0;
+                esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_BY_LOCAL, &local_task_id, sizeof(local_task_id), pdMS_TO_TICKS(10000));
+            }
+        }
+
         if(g_tasktype == 1)
         {
             esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_RESUME, NULL, NULL, pdMS_TO_TICKS(10000));
