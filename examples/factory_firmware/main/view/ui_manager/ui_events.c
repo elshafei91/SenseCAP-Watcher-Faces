@@ -300,7 +300,6 @@ static void emoji_timer_callback(lv_timer_t *timer)
         if(vir_load_count > 8)
         {
             lv_event_send(ui_Page_Avatar, LV_EVENT_CLICKED, NULL);
-            view_sleep_timer_start();
         }
     }
     emoji_count ++;
@@ -460,6 +459,8 @@ void virscrload_cb(lv_event_t *e)
 
     viewInfoInit();
     view_info_obtain_early();
+    view_sleep_timer_start();
+    
     if(avatar_image == NULL)avatar_image = lv_img_create(ui_Page_ViewAva);
     if(virtual_image == NULL)virtual_image = lv_img_create(ui_Page_Avatar);
     if(flag_image == NULL)flag_image = lv_img_create(ui_Page_Flag);
