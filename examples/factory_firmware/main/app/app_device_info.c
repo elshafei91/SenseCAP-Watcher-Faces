@@ -1517,14 +1517,6 @@ void app_device_info_init()
     g_eg_task_wakeup = xEventGroupCreate();
     g_eg_devicecfg_change = xEventGroupCreate();
 
-    // init task
-    const int stack_size = 10 * 1024;
-    StackType_t *task_stack = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
-    StaticTask_t *task_tcb = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
-    xTaskCreateStaticPinnedToCore(__app_device_info_task, "app_device_info", stack_size, NULL, 5, task_stack, task_tcb, 1);
-
-    esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, __event_loop_handler, NULL);
-
     // init a timer for sending deviceinfo finally, even if fail to get himax info
     esp_timer_create_args_t timerargs = {.callback = __timer_cb_first_report};
     esp_timer_create(&timerargs, &g_timer_firstreport);
@@ -1535,5 +1527,13 @@ void app_device_info_init()
     esp_timer_create(&timerargs, &g_timer_every_1s);
     timerargs.callback = __timer_cb_every_30s;
     esp_timer_create(&timerargs, &g_timer_every_30s);
+
+    // init task
+    const int stack_size = 10 * 1024;
+    StackType_t *task_stack = (StackType_t *)psram_calloc(1, stack_size * sizeof(StackType_t));
+    StaticTask_t *task_tcb = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+    xTaskCreateStaticPinnedToCore(__app_device_info_task, "app_device_info", stack_size, NULL, 5, task_stack, task_tcb, 1);
+
+    esp_event_handler_register_with(app_event_loop_handle, CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, __event_loop_handler, NULL);
 }
  
