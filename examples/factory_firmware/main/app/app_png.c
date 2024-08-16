@@ -783,10 +783,25 @@ download_task_end:
     vTaskDelete(NULL);
 }
 
+static void delete_old_custom_png_files(const char *base_name) {
+    char file_path[256];
+    for (int i = 1; i <= 5; i++) { // Delete up to 5 Custom PNG files
+        snprintf(file_path, sizeof(file_path), "%s/Custom_%s%d.png", STORAGE_MOUNT_POINT, base_name, i);
+        esp_err_t err = storage_file_remove(file_path);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Deleted old custom PNG file: %s", file_path);
+        } else {
+            ESP_LOGW(TAG, "Failed to delete old custom PNG file or file does not exist: %s", file_path);
+        }
+    }
+}
+
 esp_err_t download_emoji_images(download_summary_t *summary, cJSON *filename, cJSON *url_array, int url_count)
 {
     char *base_name = filename->valuestring;
     ESP_LOGI(TAG, "Starting emoji HTTP download, base file name = %s ...", filename->valuestring);
+
+    delete_old_custom_png_files(base_name);
 
     int64_t total_start_time = esp_timer_get_time();
     download_event_group = xEventGroupCreate();
