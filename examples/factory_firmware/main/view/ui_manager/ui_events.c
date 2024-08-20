@@ -74,7 +74,7 @@ static lv_obj_t *push2talk_speak_img = NULL;
 
 static int current_img_index = 0;
 static uint8_t vir_load_count = 0;
-static uint32_t local_task_id;
+static uint32_t local_task_id = 4;
 static lv_timer_t *g_timer;
 static char *qrcode_content = NULL;
 
@@ -1738,6 +1738,7 @@ static void Task_end()
 {
     g_taskdown = 1;
     g_alarm_p = 0;
+    local_task_id = 4;
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
     esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_STOP, NULL, NULL, pdMS_TO_TICKS(10000));
 
