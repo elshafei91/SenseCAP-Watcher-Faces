@@ -284,6 +284,6 @@ void ui_Page_Extension_screen_init(void)
     lv_obj_add_event_cb(ui_extensionbubble4, ui_event_extensionbubble4, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_extensionpanel, ui_event_extensionpanel, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_extenNoneback, ui_event_extenNoneback, LV_EVENT_ALL, NULL);
-    lv_obj_add_event_cb(ui_extensionNone, ui_event_extensionNone, LV_EVENT_ALL, NULL);
+    // lv_obj_add_event_cb(ui_extensionNone, ui_event_extensionNone, LV_EVENT_ALL, NULL);
 
 }

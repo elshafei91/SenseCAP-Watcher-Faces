@@ -543,7 +543,16 @@ void main2f_cb(lv_event_t *e)
 void main3c_cb(lv_event_t *e)
 {
     ESP_LOGI(CLICK_TAG, "main3c_cb");
-    lv_pm_open_page(g_main, &group_page_extension, PM_ADD_OBJS_TO_GROUP, &ui_Page_Extension, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Extension_screen_init);
+    lv_group_remove_all_objs(g_main);   
+    bool is_hidden = true;
+    is_hidden = lv_obj_has_flag(ui_extensionNone, LV_OBJ_FLAG_HIDDEN);
+    if(!is_hidden)
+    {
+        _ui_screen_change(&ui_Page_Extension, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Extension_screen_init);
+        lv_group_add_obj(g_main, ui_extenNoneback);
+    }else{
+        lv_pm_open_page(g_main, &group_page_extension, PM_ADD_OBJS_TO_GROUP, &ui_Page_Extension, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Extension_screen_init);
+    }
 }
 
 void main3f_cb(lv_event_t *e)

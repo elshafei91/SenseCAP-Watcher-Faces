@@ -793,9 +793,29 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_SENSOR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_SENSOR");
-                if(lv_scr_act() != ui_Page_Extension)break;
-
                 struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
+                uint32_t extension_group_count = lv_group_get_obj_count(g_main);
+                if(sensor_data->co2_valid || sensor_data->humidity_valid || sensor_data->temperature_valid)
+                {
+                    lv_obj_add_flag(ui_extensionNone, LV_OBJ_FLAG_HIDDEN);
+                    if(lv_scr_act() != ui_Page_Extension)break;
+                    if(extension_group_count != 3)
+                    {
+                        lv_group_remove_all_objs(g_main);
+                        lv_group_add_obj(g_main, ui_extensionbubble2);
+                        lv_group_add_obj(g_main, ui_extensionbubble3);
+                        lv_group_add_obj(g_main, ui_extensionbubble4);
+                    }
+                }else{
+                    lv_obj_clear_flag(ui_extensionNone, LV_OBJ_FLAG_HIDDEN);
+                    if(lv_scr_act() != ui_Page_Extension)break;
+                    if(extension_group_count != 1)
+                    {
+                        lv_group_remove_all_objs(g_main);
+                        lv_group_add_obj(g_main, ui_extenNoneback);
+                    }
+                }
+
                 char sensor_temp[6] = "--";
                 char sensor_humi[6] = "--";
                 char sensor_co2[6] = "--";
