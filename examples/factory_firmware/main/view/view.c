@@ -770,8 +770,31 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
 
                 int push2talk_error_code = *(int *)event_data;
-                static char error_code_str[25];
-                snprintf(error_code_str, sizeof(error_code_str), "[ 0x%x ]\nfailed", push2talk_error_code);
+                static char error_code_str[100];
+                const char* error_message;
+
+                switch(push2talk_error_code) {
+                    case ESP_ERR_VI_NO_MEM:
+                        error_message = "MEM ALLOCATION";
+                        break;
+                    case ESP_ERR_VI_HTTP_CONNECT:
+                        error_message = "HTTP CONNECT";
+                        break;
+                    case ESP_ERR_VI_HTTP_WRITE:
+                        error_message = "HTTP WRITE";
+                        break;
+                    case ESP_ERR_VI_HTTP_RESP:
+                        error_message = "HTTP RESPONSE";
+                        break;
+                    case ESP_ERR_VI_NET_CONNECT:
+                        error_message = "WIFI CONNECT";
+                        break;
+                    default:
+                        error_message = "UNKNOW";
+                        break;
+                }
+
+                snprintf(error_code_str, sizeof(error_code_str), "[ 0x%x ]\n%s\nfailed", push2talk_error_code, error_message);
 
                 lv_label_set_text(ui_push2talkp2t1, error_code_str);
                 lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);

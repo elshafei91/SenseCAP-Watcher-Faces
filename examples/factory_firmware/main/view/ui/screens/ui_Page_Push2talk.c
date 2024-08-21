@@ -46,8 +46,8 @@ void ui_Page_Push2talk_screen_init(void)
     lv_obj_set_style_pad_bottom(ui_push2talkarc, 19, LV_PART_KNOB | LV_STATE_DEFAULT);
 
     ui_push2talkp2t1 = lv_label_create(ui_push2talkpanel2);
-    lv_obj_set_width(ui_push2talkp2t1, 170);
-    lv_obj_set_height(ui_push2talkp2t1, 55);
+    lv_obj_set_width(ui_push2talkp2t1, 250);
+    lv_obj_set_height(ui_push2talkp2t1, 70);
     lv_obj_set_x(ui_push2talkp2t1, 4);
     lv_obj_set_y(ui_push2talkp2t1, -20);
     lv_obj_set_align(ui_push2talkp2t1, LV_ALIGN_CENTER);
