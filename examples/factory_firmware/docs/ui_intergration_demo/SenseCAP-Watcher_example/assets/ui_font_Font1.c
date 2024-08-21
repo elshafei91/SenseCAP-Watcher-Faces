@@ -1,9 +1,3 @@
-/*******************************************************************************
- * Size: 38 px
- * Bpp: 1
- * Opts: --bpp 1 --size 38 --font /Users/virgil/seeed/AI_camera/code/UI/indoor_combo/assets/Montserrat-SemiBold.ttf -o /Users/virgil/seeed/AI_camera/code/UI/indoor_combo/assets/ui_font_Font1.c --format lvgl -r 0x20-0x7f --no-compress --no-prefilter
- ******************************************************************************/
-
 #include "../ui.h"
 
 #ifndef UI_FONT_FONT1

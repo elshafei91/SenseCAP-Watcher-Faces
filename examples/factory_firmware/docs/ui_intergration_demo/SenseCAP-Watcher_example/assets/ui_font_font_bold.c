@@ -1,9 +1,3 @@
-/*******************************************************************************
- * Size: 36 px
- * Bpp: 8
- * Opts: --bpp 8 --size 36 --font F:\Seeed_Studio\lvgl\AI_Watcher_412\AI_Watcher_412\assets\Montserrat-SemiBold.ttf -o F:\Seeed_Studio\lvgl\AI_Watcher_412\AI_Watcher_412\assets\ui_font_font_bold.c --format lvgl -r 0x20-0x7f --no-compress --no-prefilter
- ******************************************************************************/
-
 #include "../ui.h"
 
 #ifndef UI_FONT_FONT_BOLD

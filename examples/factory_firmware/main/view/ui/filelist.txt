@@ -77,6 +77,8 @@ images/ui_img_1336611536.c
 images/ui_img_left_png.c
 images/ui_img_onboardclick_png.c
 images/ui_img_pushtotalk_error_png.c
+images/ui_img_speaking1_png.c
+images/ui_img_speaking2_png.c
 images/ui_img_2057255035.c
 images/ui_img_wifi_0_png.c
 images/ui_img_wifi_1_png.c
