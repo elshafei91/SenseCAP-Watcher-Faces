@@ -260,7 +260,7 @@ void ui_Page_Extension_screen_init(void)
     lv_obj_set_width(ui_extenNonetext2, 280);
     lv_obj_set_height(ui_extenNonetext2, 66);
     lv_obj_set_align(ui_extenNonetext2, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_extenNonetext2, "You can use Grove xxx and xxxx here for displaying the entension value");
+    lv_label_set_text(ui_extenNonetext2, "You can use Grove scd4x and sht4x here for displaying the entension value");
     lv_obj_set_style_text_color(ui_extenNonetext2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_extenNonetext2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_extenNonetext2, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
