@@ -153,6 +153,7 @@ static lv_timer_t * view_extension_timer;
 // Bluetooth switch frequency filter
 static lv_timer_t * view_ble_switch_timer;
 
+static lv_timer_t * view_push2talk_expired_timer;
 // Sleep mode scanner
 #define ACTIVE_THRESHOLD (5000)
 static lv_timer_t * view_sleep_timer;
@@ -2715,4 +2716,29 @@ void view_extension_timer_stop()
         lv_timer_del(view_extension_timer);
         view_extension_timer = NULL;
     }
+}
+
+static void view_push2talk_expired_timer_callback(lv_timer_t * timer)
+{
+    ESP_LOGI(TAG, "view_push2talk_expired_timer_callback");
+    lv_event_send(ui_p2tcancel, LV_EVENT_CLICKED, NULL);
+}
+
+void view_push2talkexpired_timer_stop()
+{
+    ESP_LOGI(TAG, "view_push2talkexpired_timer_stop");
+    if (view_push2talk_expired_timer != NULL) {
+        lv_timer_del(view_push2talk_expired_timer);
+        view_push2talk_expired_timer = NULL;
+    }
+}
+
+void view_push2talkexpired_timer_start()
+{
+    ESP_LOGI(TAG, "view_push2talkexpired_timer_start");
+    if (view_push2talk_expired_timer != NULL) {
+        lv_timer_del(view_push2talk_expired_timer);
+    }
+    view_push2talk_expired_timer = lv_timer_create(view_push2talk_expired_timer_callback, 1000 * 600, NULL);
+    lv_timer_set_repeat_count(view_push2talk_expired_timer, 1);
 }

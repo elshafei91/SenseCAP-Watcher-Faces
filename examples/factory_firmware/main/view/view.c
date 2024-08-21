@@ -674,6 +674,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_PLAYING:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAYING");
                 if(ota_st.status == 1){break;}
+                view_push2talkexpired_timer_start();
                 struct view_data_vi_result *push2talk_result = (struct view_data_vi_result *)event_data;
                 ESP_LOGI("push2talk", "result mode : %d", push2talk_result->mode);
                 // mode 0 and mode 2
@@ -811,6 +812,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_EXIT:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_EXIT");
                 view_sleep_timer_start();
+                view_push2talkexpired_timer_stop();
                 break;
             }
 
