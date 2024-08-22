@@ -111,7 +111,6 @@ void view_extension_timer_start();
 void view_extension_timer_stop();
 
 void view_push2talkexpired_timer_start();
-void view_push2talkexpired_timer_stop();
 
 void view_sensor_data_update(const char *data1, const char *data2, const char *data3, const char *data4);
 

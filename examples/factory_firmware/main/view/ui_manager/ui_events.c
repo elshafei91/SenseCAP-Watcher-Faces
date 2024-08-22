@@ -2594,6 +2594,7 @@ void view_push2talk_timer_start()
     if (view_push2talk_timer != NULL) {
         lv_timer_del(view_push2talk_timer);
     }
+    push2talk_timer_counter = 0;
     view_push2talk_timer = lv_timer_create(view_push2talk_timer_callback, 1000, NULL); // 1000 ms = 1 second
 }
 
@@ -2722,15 +2723,7 @@ static void view_push2talk_expired_timer_callback(lv_timer_t * timer)
 {
     ESP_LOGI(TAG, "view_push2talk_expired_timer_callback");
     lv_event_send(ui_p2tcancel, LV_EVENT_CLICKED, NULL);
-}
-
-void view_push2talkexpired_timer_stop()
-{
-    ESP_LOGI(TAG, "view_push2talkexpired_timer_stop");
-    if (view_push2talk_expired_timer != NULL) {
-        lv_timer_del(view_push2talk_expired_timer);
-        view_push2talk_expired_timer = NULL;
-    }
+    view_push2talk_expired_timer = NULL;
 }
 
 void view_push2talkexpired_timer_start()
@@ -2738,7 +2731,14 @@ void view_push2talkexpired_timer_start()
     ESP_LOGI(TAG, "view_push2talkexpired_timer_start");
     if (view_push2talk_expired_timer != NULL) {
         lv_timer_del(view_push2talk_expired_timer);
+        view_push2talk_expired_timer = NULL;
     }
-    view_push2talk_expired_timer = lv_timer_create(view_push2talk_expired_timer_callback, 1000 * 600, NULL);
-    lv_timer_set_repeat_count(view_push2talk_expired_timer, 1);
+
+    view_push2talk_expired_timer = lv_timer_create(view_push2talk_expired_timer_callback, 900 * 600, NULL);
+    if (view_push2talk_expired_timer != NULL) {
+        lv_timer_set_repeat_count(view_push2talk_expired_timer, 1);
+        ESP_LOGI(TAG, "Timer successfully created and started.");
+    } else {
+        ESP_LOGE(TAG, "Failed to create view_push2talk_expired_timer");
+    }
 }
