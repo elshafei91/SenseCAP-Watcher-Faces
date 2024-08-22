@@ -674,6 +674,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_PLAYING:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_PLAYING");
                 if(ota_st.status == 1){break;}
+                view_push2talkexpired_timer_start();
                 struct view_data_vi_result *push2talk_result = (struct view_data_vi_result *)event_data;
                 ESP_LOGI("push2talk", "result mode : %d", push2talk_result->mode);
                 // mode 0 and mode 2
@@ -770,8 +771,31 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 _ui_screen_change(&ui_Page_Push2talk, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Push2talk_screen_init);
 
                 int push2talk_error_code = *(int *)event_data;
-                static char error_code_str[25];
-                snprintf(error_code_str, sizeof(error_code_str), "[ 0x%x ]\nfailed", push2talk_error_code);
+                static char error_code_str[100];
+                const char* error_message;
+
+                switch(push2talk_error_code) {
+                    case ESP_ERR_VI_NO_MEM:
+                        error_message = "MEM ALLOCATION";
+                        break;
+                    case ESP_ERR_VI_HTTP_CONNECT:
+                        error_message = "HTTP CONNECT";
+                        break;
+                    case ESP_ERR_VI_HTTP_WRITE:
+                        error_message = "HTTP WRITE";
+                        break;
+                    case ESP_ERR_VI_HTTP_RESP:
+                        error_message = "HTTP RESPONSE";
+                        break;
+                    case ESP_ERR_VI_NET_CONNECT:
+                        error_message = "WIFI CONNECT";
+                        break;
+                    default:
+                        error_message = "UNKNOW";
+                        break;
+                }
+
+                snprintf(error_code_str, sizeof(error_code_str), "[ 0x%x ]\n%s\nfailed", push2talk_error_code, error_message);
 
                 lv_label_set_text(ui_push2talkp2t1, error_code_str);
                 lv_obj_set_style_text_color(ui_push2talkp2t1, lv_color_hex(0xD54941), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -793,9 +817,29 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_SENSOR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_SENSOR");
-                if(lv_scr_act() != ui_Page_Extension)break;
-
                 struct view_data_sensor * sensor_data = (struct view_data_sensor *) event_data;
+                uint32_t extension_group_count = lv_group_get_obj_count(g_main);
+                if(sensor_data->co2_valid || sensor_data->humidity_valid || sensor_data->temperature_valid)
+                {
+                    lv_obj_add_flag(ui_extensionNone, LV_OBJ_FLAG_HIDDEN);
+                    if(lv_scr_act() != ui_Page_Extension)break;
+                    if(extension_group_count != 3)
+                    {
+                        lv_group_remove_all_objs(g_main);
+                        lv_group_add_obj(g_main, ui_extensionbubble2);
+                        lv_group_add_obj(g_main, ui_extensionbubble3);
+                        lv_group_add_obj(g_main, ui_extensionbubble4);
+                    }
+                }else{
+                    lv_obj_clear_flag(ui_extensionNone, LV_OBJ_FLAG_HIDDEN);
+                    if(lv_scr_act() != ui_Page_Extension)break;
+                    if(extension_group_count != 1)
+                    {
+                        lv_group_remove_all_objs(g_main);
+                        lv_group_add_obj(g_main, ui_extenNoneback);
+                    }
+                }
+
                 char sensor_temp[6] = "--";
                 char sensor_humi[6] = "--";
                 char sensor_co2[6] = "--";
@@ -854,6 +898,19 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                         ESP_LOGE(TAG, "OTA download failed, error code: %d", ota_st_ptr->err_code);
                     }
                 }
+                break;
+            }
+
+            case CTRL_EVENT_MQTT_CONNECTED:{
+                ESP_LOGI(TAG, "CTRL_EVENT_MQTT_CONNECTED");
+                lv_obj_add_flag(ui_wifimqtt, LV_OBJ_FLAG_HIDDEN);
+                break;
+            }
+
+            case CTRL_EVENT_MQTT_DISCONNECTED:{
+                ESP_LOGI(TAG, "CTRL_EVENT_MQTT_DISCONNECTED");
+                lv_obj_clear_flag(ui_wifimqtt, LV_OBJ_FLAG_HIDDEN);
+
                 break;
             }
 
@@ -950,6 +1007,14 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             CTRL_EVENT_BASE, CTRL_EVENT_OTA_AI_MODEL, 
                                                             __view_event_handler, NULL, NULL)); 
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            CTRL_EVENT_BASE, CTRL_EVENT_MQTT_DISCONNECTED, 
+                                                            __view_event_handler, NULL, NULL));
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, 

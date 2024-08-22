@@ -1,9 +1,3 @@
-/*******************************************************************************
- * Size: 24 px
- * Bpp: 4
- * Opts: --bpp 4 --size 24 --font F:\Seeed_Studio\lvgl\AI_Watcher_412\AI_Watcher_412\assets\Montserrat-Bold.otf -o F:\Seeed_Studio\lvgl\AI_Watcher_412\AI_Watcher_412\assets\ui_font_fbold24.c --format lvgl -r 0x20-0x7f --no-compress --no-prefilter
- ******************************************************************************/
-
 #include "../ui.h"
 
 #ifndef UI_FONT_FBOLD24

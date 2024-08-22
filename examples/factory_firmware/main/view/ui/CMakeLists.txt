@@ -77,13 +77,13 @@ SET(SOURCES screens/ui_Page_Battery.c
     images/ui_img_left_png.c
     images/ui_img_onboardclick_png.c
     images/ui_img_pushtotalk_error_png.c
+    images/ui_img_speaking1_png.c
+    images/ui_img_speaking2_png.c
     images/ui_img_2057255035.c
     images/ui_img_wifi_0_png.c
     images/ui_img_wifi_1_png.c
     images/ui_img_wifi_2_png.c
     images/ui_img_wifi_abnormal_png.c
-    images/ui_img_speaking1_png.c
-    images/ui_img_speaking2_png.c
     fonts/ui_font_fbold24.c
     fonts/ui_font_Font1.c
     fonts/ui_font_Font12.c
