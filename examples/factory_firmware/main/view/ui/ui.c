@@ -116,6 +116,7 @@ lv_obj_t * ui_wifip1;
 lv_obj_t * ui_wifiicon;
 lv_obj_t * ui_wifissid;
 lv_obj_t * ui_wifibtnt;
+lv_obj_t * ui_wifimqtt;
 lv_obj_t * ui_wifip3;
 lv_obj_t * ui_wifitext3;
 lv_obj_t * ui_wifilogo;

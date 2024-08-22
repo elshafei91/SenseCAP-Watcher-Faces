@@ -110,6 +110,7 @@ extern lv_obj_t * ui_wifip1;
 extern lv_obj_t * ui_wifiicon;
 extern lv_obj_t * ui_wifissid;
 extern lv_obj_t * ui_wifibtnt;
+extern lv_obj_t * ui_wifimqtt;
 extern lv_obj_t * ui_wifip3;
 extern lv_obj_t * ui_wifitext3;
 extern lv_obj_t * ui_wifilogo;

@@ -902,6 +902,19 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
+            case CTRL_EVENT_MQTT_CONNECTED:{
+                ESP_LOGI(TAG, "CTRL_EVENT_MQTT_CONNECTED");
+                lv_obj_add_flag(ui_wifimqtt, LV_OBJ_FLAG_HIDDEN);
+                break;
+            }
+
+            case CTRL_EVENT_MQTT_DISCONNECTED:{
+                ESP_LOGI(TAG, "CTRL_EVENT_MQTT_DISCONNECTED");
+                lv_obj_clear_flag(ui_wifimqtt, LV_OBJ_FLAG_HIDDEN);
+
+                break;
+            }
+
             default:
                 break;
         }
@@ -995,6 +1008,14 @@ int view_init(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             CTRL_EVENT_BASE, CTRL_EVENT_OTA_AI_MODEL, 
                                                             __view_event_handler, NULL, NULL)); 
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            CTRL_EVENT_BASE, CTRL_EVENT_MQTT_CONNECTED, 
+                                                            __view_event_handler, NULL, NULL));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
+                                                            CTRL_EVENT_BASE, CTRL_EVENT_MQTT_DISCONNECTED, 
+                                                            __view_event_handler, NULL, NULL));
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register_with(app_event_loop_handle, 
                                                             VIEW_EVENT_BASE, VIEW_EVENT_TASK_FLOW_START_CURRENT_TASK, 
