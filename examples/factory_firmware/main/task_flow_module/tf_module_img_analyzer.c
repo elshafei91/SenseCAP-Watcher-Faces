@@ -172,7 +172,8 @@ static char *__request( const char *url,
                         const char *token, 
                         const char *content_type,
                         const char *head, 
-                        uint8_t *data, size_t len)
+                        uint8_t *data, size_t len,
+                        int timeout_ms )
 {
     esp_err_t  ret = ESP_OK;
     char *result = NULL;
@@ -180,7 +181,7 @@ static char *__request( const char *url,
     esp_http_client_config_t config = {
         .url = url,
         .method = method,
-        .timeout_ms = 30000,
+        .timeout_ms = timeout_ms,
         .crt_bundle_attach = esp_crt_bundle_attach,
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -280,7 +281,8 @@ static int __https_upload_image(tf_module_img_analyzer_t             *p_module_i
                        p_module_ins->token,
                        "application/json",
                        p_module_ins->head, 
-                       (uint8_t *)json_str, strlen(json_str));
+                       (uint8_t *)json_str, strlen(json_str),
+                       p_module_ins->timeout_ms);
     free(json_str);
 
     if (p_resp == NULL) {
@@ -502,6 +504,9 @@ static int __start(void *p_module)
             ESP_LOGI(TAG, "got local service cfg, token=%s", local_svc_cfg.token);
             p_token = local_svc_cfg.token;
         }
+        p_module_ins->timeout_ms = 2*60000; // Private deployment of services takes more time. 
+    } else {
+        p_module_ins->timeout_ms = 30000;
     }
 
     // host
@@ -652,6 +657,7 @@ tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins
     p_module_ins->p_output_evt_id = NULL;
     p_module_ins->output_evt_num = 0;
     p_module_ins->input_evt_id = 0;
+    p_module_ins->timeout_ms = 30000;
 
     p_module_ins->sem_handle = xSemaphoreCreateMutex();
     ESP_GOTO_ON_FALSE(NULL != p_module_ins->sem_handle, ESP_ERR_NO_MEM, err, TAG, "Failed to create semaphore");

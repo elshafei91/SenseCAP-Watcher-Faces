@@ -79,6 +79,7 @@ struct app_voice_interaction {
     bool taskflow_pause;
     bool new_session;
     bool is_ota;
+    bool use_local_svc;
 };
 
 esp_err_t app_voice_interaction_init(void);

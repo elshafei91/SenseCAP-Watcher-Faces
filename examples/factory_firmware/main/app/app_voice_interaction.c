@@ -168,6 +168,9 @@ static void __url_token_set(struct app_voice_interaction *p_vi)
             ESP_LOGI(TAG, "got local service cfg, token=%s", local_svc_cfg.token);
             p_token = local_svc_cfg.token;
         }
+        p_vi->use_local_svc = true;
+    } else {
+        p_vi->use_local_svc = false;
     }
 
     // host
@@ -488,8 +491,8 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 ESP_LOGI(TAG, "http connect success");
                 client = p_vi->client;
             }
-
             
+            esp_http_client_set_timeout_ms(client, 5000);
             start = esp_timer_get_time();
             p_vi->is_recording = true;
             while(1) {
@@ -627,6 +630,12 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
             esp_http_client_handle_t client = p_vi->client;
             int code = 0;
 
+            if( p_vi->use_local_svc ) {
+                esp_http_client_set_timeout_ms(client, 60000 * 2);
+            } else {
+                esp_http_client_set_timeout_ms(client, 30000);
+            }
+            
             p_vi->is_wait_resp = true;
             start = esp_timer_get_time();
             int content_length = esp_http_client_fetch_headers(client);
@@ -688,6 +697,7 @@ static void __status_machine_handle(struct app_voice_interaction *p_vi)
                 break;
             }   
 
+            esp_http_client_set_timeout_ms(client, 10000);
             start = esp_timer_get_time();
             app_audio_player_stream_init(content_length);
             while (read_total_len < content_length) {

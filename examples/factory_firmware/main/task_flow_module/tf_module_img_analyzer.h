@@ -86,6 +86,7 @@ typedef struct tf_module_img_analyzer
     char url[256];
     char token[128];
     char head[128];
+    int timeout_ms;
 } tf_module_img_analyzer_t;
 
 tf_module_t * tf_module_img_analyzer_init(tf_module_img_analyzer_t *p_module_ins);
