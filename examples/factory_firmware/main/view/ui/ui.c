@@ -401,6 +401,10 @@ void ui_event_p2tobj(lv_event_t * e);
 lv_obj_t * ui_p2tobj;
 lv_obj_t * ui_p2tobj1;
 lv_obj_t * ui_p2tobj2;
+void ui_event_p2tcomparison(lv_event_t * e);
+lv_obj_t * ui_p2tcomparison;
+lv_obj_t * ui_p2tcomparison1;
+lv_obj_t * ui_p2tcomparison2;
 void ui_event_p2tbehavior(lv_event_t * e);
 lv_obj_t * ui_p2tbehavior;
 lv_obj_t * ui_p2tbehavior1;
@@ -409,10 +413,6 @@ void ui_event_p2tfeat(lv_event_t * e);
 lv_obj_t * ui_p2tfeat;
 lv_obj_t * ui_p2tfeat1;
 lv_obj_t * ui_p2tfeat2;
-void ui_event_p2tcomparison(lv_event_t * e);
-lv_obj_t * ui_p2tcomparison;
-lv_obj_t * ui_p2tcomparison1;
-lv_obj_t * ui_p2tcomparison2;
 void ui_event_p2tnotify(lv_event_t * e);
 lv_obj_t * ui_p2tnotify;
 lv_obj_t * ui_p2tnotify1;
@@ -1567,6 +1567,17 @@ void ui_event_p2tobj(lv_event_t * e)
         abdndf_cb(e);
     }
 }
+void ui_event_p2tcomparison(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_FOCUSED) {
+        abdnf_cb(e);
+    }
+    if(event_code == LV_EVENT_DEFOCUSED) {
+        abdndf_cb(e);
+    }
+}
 void ui_event_p2tbehavior(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
@@ -1579,17 +1590,6 @@ void ui_event_p2tbehavior(lv_event_t * e)
     }
 }
 void ui_event_p2tfeat(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_FOCUSED) {
-        abdnf_cb(e);
-    }
-    if(event_code == LV_EVENT_DEFOCUSED) {
-        abdndf_cb(e);
-    }
-}
-void ui_event_p2tcomparison(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
