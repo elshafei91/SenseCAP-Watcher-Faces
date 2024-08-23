@@ -155,7 +155,7 @@ void count_png_images(BuiltInEmojiCount *builtin_count, CustomEmojiCount *custom
     }
 
     if(custom_count->custom_speaking_count == 0){
-        cur_loaded_png_count += builtin_count->speaking_count;
+        cur_loaded_png_count += builtin_count->speaking_count - 1;
     }else
     {
         cur_loaded_png_count += custom_count->custom_speaking_count;
