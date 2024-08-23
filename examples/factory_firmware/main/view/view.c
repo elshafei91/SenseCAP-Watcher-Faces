@@ -821,6 +821,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_EXIT:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_EXIT");
                 view_sleep_timer_start();
+                view_push2talkexpired_timer_stop();
                 break;
             }
 

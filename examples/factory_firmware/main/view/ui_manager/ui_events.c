@@ -2727,6 +2727,15 @@ static void view_push2talk_expired_timer_callback(lv_timer_t * timer)
     view_push2talk_expired_timer = NULL;
 }
 
+void view_push2talkexpired_timer_stop()
+{
+    ESP_LOGI(TAG, "view_push2talkexpired_timer_stop");
+    if (view_push2talk_expired_timer != NULL) {
+        lv_timer_del(view_push2talk_expired_timer);
+        view_push2talk_expired_timer = NULL;
+    }
+}
+
 void view_push2talkexpired_timer_start()
 {
     ESP_LOGI(TAG, "view_push2talkexpired_timer_start");
