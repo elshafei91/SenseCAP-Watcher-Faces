@@ -429,6 +429,7 @@ void loadscrload_cb(lv_event_t *e)
     {
         secondline_Animation(ui_Right5, 0);
         sidelines_Animation(ui_Right6, 300);
+        loading_flag ++;
     }
 }
 

@@ -149,27 +149,34 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 break;
             }
 
-            case VIEW_EVENT_PNG_LOADING:{
+            case VIEW_EVENT_PNG_LOADING: {
                 png_loading_count++;
+                static bool load_flag;
+                
                 int progress_percentage = (png_loading_count * 100) / cur_loaded_png_count;
-                if(progress_percentage <= 100){
+                static int last_event_sent_percentage = 0;
+                
+                if (progress_percentage <= 100) {
                     lv_arc_set_value(ui_Arc1, progress_percentage);
+                    
                     static char load_per[5];
                     sprintf(load_per, "%d%%", progress_percentage);
                     lv_label_set_text(ui_loadpert, load_per);
                 }
-                if (progress_percentage % 17 <= 3) 
-                {
+                
+                if (progress_percentage / 16 > last_event_sent_percentage / 16) {
                     lv_event_send(ui_Page_Loading, LV_EVENT_SCREEN_LOADED, NULL);
+                    last_event_sent_percentage = progress_percentage;
                 }
+                
                 break;
             }
 
             case VIEW_EVENT_EMOJI_DOWLOAD_BAR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_EMOJI_DOWLOAD_BAR");
-                if(ota_st.status == 1){break;}
                 int push2talk_direct_exit = 0;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
+                if(ota_st.status == 1){break;}
                 int *emoji_download_per = (int *)event_data;
                 static char download_per[5];
 
@@ -490,11 +497,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_TASK_FLOW_STOP:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_STOP");
-                if(ota_st.status == 1){break;}
                 if(g_taskflow_pause == 1)g_taskflow_pause = 0;
+                g_taskdown = 1;
+                if(ota_st.status == 1){break;}
                 lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 // event_post_to
-                g_taskdown = 1;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
                 if(g_tasktype == 0)
                 {
@@ -599,6 +606,8 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_TASK_FLOW_ERROR:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_TASK_FLOW_ERROR");
+                if(g_taskflow_pause == 1)g_taskflow_pause = 0;
+                g_taskdown = 1;
                 if(ota_st.status == 1){break;}
                 const char* error_msg = (const char*)event_data;
                 lv_obj_clear_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
@@ -611,11 +620,11 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
 
             case VIEW_EVENT_VI_TASKFLOW_PAUSE:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_TASKFLOW_PAUSE");
-                if(ota_st.status == 1){break;}
-                lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
-                
                 g_taskflow_pause = 1;
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
+
+                if(ota_st.status == 1){break;}
+                lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 
                 lv_label_set_text(ui_revtext, "Task pausing\nfor push to talk");
                 lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
