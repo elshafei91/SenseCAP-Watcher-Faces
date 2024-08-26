@@ -225,12 +225,12 @@ static bool __condition_check(tf_module_ai_camera_t                     *p_modul
         return true;
     }
 
-    bool trigge_flag = true;
+    bool trigger_flag = true;
 
     if (p_params->conditions_combo == TF_MODULE_AI_CAMERA_CONDITIONS_COMBO_AND ) {
-        trigge_flag = true;
+        trigger_flag = true;
     } else {
-        trigge_flag = false;
+        trigger_flag = false;
     }
 
     for(int i = 0; i < p_params->condition_num; i++) {
@@ -311,18 +311,18 @@ static bool __condition_check(tf_module_ai_camera_t                     *p_modul
         }
 
         if (p_params->conditions_combo == TF_MODULE_AI_CAMERA_CONDITIONS_COMBO_AND ) {
-            trigge_flag = trigge_flag && is_match;
+            trigger_flag = trigger_flag && is_match;
         } else {
-            trigge_flag = trigge_flag || is_match;
+            trigger_flag = trigger_flag || is_match;
         }   
     }
-    return trigge_flag;
+    return trigger_flag;
 }
 
 static bool __condition_check_whith_filter(tf_module_ai_camera_t *p_module_ins, struct tf_data_inference_info *p_inference)
 {
     struct tf_module_ai_camera_params *p_params = &p_module_ins->params;
-    int trigge_cnt = 0;
+    int trigger_cnt = 0;
     bool ret =  __condition_check(p_module_ins, p_inference);
 
     p_module_ins->condition_trigger_buf[p_module_ins->condition_trigger_buf_idx] = ret;
@@ -336,13 +336,13 @@ static bool __condition_check_whith_filter(tf_module_ai_camera_t *p_module_ins, 
     for(int i = 0; i < CONFIG_TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_BUF_SIZE; i++) {
         esp_log_write(ESP_LOG_VERBOSE, TAG,"%d, ", p_module_ins->condition_trigger_buf[i]);
         if( p_module_ins->condition_trigger_buf[i]) {
-            trigge_cnt++;
+            trigger_cnt++;
         }
     }
     esp_log_write(ESP_LOG_VERBOSE, TAG,"]\n");
 
-    if( trigge_cnt >= CONFIG_TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_THRESHOLD) {
-        ESP_LOGI(TAG, "Condition pass, trigge_cnt: %d", trigge_cnt);
+    if( trigger_cnt >= CONFIG_TF_MODULE_AI_CAMERA_CONDITION_TRIGGER_THRESHOLD) {
+        ESP_LOGI(TAG, "Condition pass, trigger_cnt: %d", trigger_cnt);
         return true;
     } else {
         return false;
