@@ -732,6 +732,7 @@ static void sscma_ota_process(uint32_t ota_type, char *url)
 
 sscma_ota_end:
     if (http_client_config) free(http_client_config);
+    if (http_client) esp_http_client_close(http_client);
     if (http_client) esp_http_client_cleanup(http_client);
     g_sscma_writer_userdata.http_client = NULL;
 
