@@ -91,7 +91,7 @@ void ui_Page_Connect_screen_init(void)
     lv_obj_set_x(ui_connp13, 0);
     lv_obj_set_y(ui_connp13, -39);
     lv_obj_set_align(ui_connp13, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_connp13, "Download\nSenseCAP");
+    lv_label_set_text(ui_connp13, "Download\nSenseCraft");
     lv_obj_set_style_text_color(ui_connp13, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_connp13, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_connp13, &ui_font_fbold24, LV_PART_MAIN | LV_STATE_DEFAULT);
