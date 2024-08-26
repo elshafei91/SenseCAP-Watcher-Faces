@@ -115,6 +115,8 @@ void view_push2talkexpired_timer_stop();
 
 void view_sensor_data_update(const char *data1, const char *data2, const char *data3, const char *data4);
 
+void emoji_timer_stop();
+
 enum
 {
     SCREEN_VIRTUAL, // display emoticon on virtual page
