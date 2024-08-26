@@ -532,6 +532,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     if(g_guide_disable)
                     {
                         if(lv_scr_act() != ui_Page_ViewAva)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewAva, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewAva_screen_init);
+                        lv_group_focus_obj(ui_Page_ViewAva);
                     }else{
                         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
                         lv_group_remove_all_objs(g_main);
@@ -545,6 +546,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     if(g_guide_disable)
                     {
                         if(lv_scr_act() != ui_Page_ViewLive)lv_pm_open_page(g_main, &group_page_view, PM_ADD_OBJS_TO_GROUP, &ui_Page_ViewLive, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ViewLive_screen_init);
+                        lv_group_focus_obj(ui_Page_ViewLive);
                     }else{
                         _ui_screen_change(&ui_Page_Flag, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Flag_screen_init);
                         lv_group_remove_all_objs(g_main);
@@ -624,11 +626,12 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_ALARM_OFF, &g_taskdown, sizeof(uint8_t), pdMS_TO_TICKS(10000));
 
                 if(ota_st.status == 1){break;}
+                lv_group_remove_all_objs(g_main);
                 lv_obj_add_flag(ui_viewavap, LV_OBJ_FLAG_HIDDEN);
                 
                 lv_label_set_text(ui_revtext, "Task pausing\nfor push to talk");
                 lv_obj_add_flag(ui_task_error, LV_OBJ_FLAG_HIDDEN);
-                _ui_screen_change(&ui_Page_Revtask, LV_SCR_LOAD_ANIM_FADE_ON, 100, 0, &ui_Page_Revtask_screen_init);
+                _ui_screen_change(&ui_Page_Revtask, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Page_Revtask_screen_init);
 
                 break;
             }
@@ -821,6 +824,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
             case VIEW_EVENT_VI_EXIT:{
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_EXIT");
                 view_sleep_timer_start();
+                view_push2talkexpired_timer_stop();
                 break;
             }
 

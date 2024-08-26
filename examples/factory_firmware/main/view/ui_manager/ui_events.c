@@ -306,6 +306,14 @@ static void emoji_timer_callback(lv_timer_t *timer)
     emoji_count ++;
 }
 
+void emoji_timer_stop()
+{
+    if((lv_scr_act() != ui_Page_Avatar) && (lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_Guideavatar) && (lv_scr_act() != ui_Page_Standby) && (lv_scr_act() != ui_Page_Push2talk))
+    {
+        emoji_timer(EMOJI_STOP);
+    }
+}
+
 void emoji_timer(uint8_t emoji_type)
 {
     if (g_timer != NULL)
@@ -439,15 +447,15 @@ void virclick_cb(lv_event_t *e)
     if(vir_load_count < 8)return;
     if(!g_dev_binded)   // if the device is not wifi-configed, then appear panel
     {
-        lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
         lv_group_remove_all_objs(g_main);
+        lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
         lv_group_add_obj(g_main, ui_virbtn1);
         lv_group_add_obj(g_main, ui_virbtn2);
-        emoji_timer(EMOJI_STOP);    // stop timer
+        emoji_timer_stop();
         vir_load_count = 0;
     }else{              // else the device is wifi-configed, jump to Home page
         if(lv_scr_act() == ui_Page_Avatar)lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-        emoji_timer(EMOJI_STOP);    // stop timer
+        emoji_timer_stop();    // stop timer
     }
 }
 
@@ -492,7 +500,7 @@ void virscrunload_cb(lv_event_t * e)
 void virb1c_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virb1c_cb");
-    emoji_timer(EMOJI_STOP);
+    emoji_timer_stop();
     lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
 }
@@ -500,7 +508,7 @@ void virb1c_cb(lv_event_t *e)
 void virb2c_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virb2c_cb");
-    emoji_timer(EMOJI_STOP);
+    emoji_timer_stop();
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
@@ -704,7 +712,7 @@ void viewasl_cb(lv_event_t *e)
 
 void viewasul_cb(lv_event_t *e)
 {
-    emoji_timer(EMOJI_STOP);
+    emoji_timer_stop();
 }
 
 void viewlc_cb(lv_event_t *e)
@@ -1439,7 +1447,6 @@ void p2tvaluechange_cb(lv_event_t * e)
         lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
         lv_group_set_editing(g_main, false);
 
-        // TODO
         esp_event_post_to(app_event_loop_handle, VIEW_EVENT_BASE, VIEW_EVENT_VI_EXIT, &push2talk_direct_exit, sizeof(push2talk_direct_exit), pdMS_TO_TICKS(10000));
 
         if(g_taskflow_pause == 1)
@@ -2487,7 +2494,7 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
 
         emoji_switch_scr = SCREEN_AVATAR;
         lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
-        emoji_timer(EMOJI_STOP);
+        emoji_timer_stop();
 
         standby_mode = 0;
     }
@@ -2528,7 +2535,7 @@ static void view_sleep_timer_callback(lv_timer_t *timer)
             ESP_LOGI(TAG, "Standby mode deactive");
 
             lv_obj_add_flag(ui_Page_Standby, LV_OBJ_FLAG_HIDDEN);
-            emoji_timer(EMOJI_STOP);
+            emoji_timer_stop();
 
             standby_mode = 0;
         }
@@ -2725,6 +2732,15 @@ static void view_push2talk_expired_timer_callback(lv_timer_t * timer)
     ESP_LOGI(TAG, "view_push2talk_expired_timer_callback");
     lv_event_send(ui_p2tcancel, LV_EVENT_CLICKED, NULL);
     view_push2talk_expired_timer = NULL;
+}
+
+void view_push2talkexpired_timer_stop()
+{
+    ESP_LOGI(TAG, "view_push2talkexpired_timer_stop");
+    if (view_push2talk_expired_timer != NULL) {
+        lv_timer_del(view_push2talk_expired_timer);
+        view_push2talk_expired_timer = NULL;
+    }
 }
 
 void view_push2talkexpired_timer_start()
