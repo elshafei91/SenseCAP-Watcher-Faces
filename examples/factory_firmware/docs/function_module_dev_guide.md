@@ -356,7 +356,7 @@ Mark down the event id of the up-stream FM for future use, and register an event
 
 In the [software architecture](architecture.md) we learned that the data flow is driven by an event loop. Basically a FM will receive data from its event handler, then it consumes the data, does calculations, gets some result. It needs to post the result into the event loop in the end - the target is the down-stream FMs who's interested in the data of this FM.
 
-In this `uart alarmer` example, we consume data from an alarm trigger FM which has the output data type `TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT`.  Since the uart data preparation is simple, we do all the data generation in the event loop handler. This is not recommended though, if your data processing is time consuming or IO eager. In that case, you need to create a worker task (thread) to do the background processing.
+In this `uart alarmer` example, we consume data from an alarm trigger FM which has the output data type `TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT`.  Since the uart data preparation is simple, we do all the data generation in the event loop handler. This is not recommended though, if your data processing is time consuming or IO eager. In that case, you need to create a worker task (thread) to do the background processing.
 
 We prepare a binary output buffer or a JSON string according to the input parameter `output_format`. Finally we write these data into the UART. Our FM has only one output which is the hardware, not another FM, in this reason our `msgs_pub_set` is dummy one. In the end, we need to release the data coming from the event loop, the reason will be explained in the next section.
 
