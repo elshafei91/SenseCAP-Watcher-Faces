@@ -825,6 +825,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                 ESP_LOGI(TAG, "event: VIEW_EVENT_VI_EXIT");
                 view_sleep_timer_start();
                 view_push2talkexpired_timer_stop();
+                emoji_timer_stop();
                 break;
             }
 
@@ -897,7 +898,7 @@ static void __view_event_handler(void* handler_args, esp_event_base_t base, int3
                     {
                         lv_group_remove_all_objs(g_main);
                         _ui_screen_change(&ui_Page_ModelOTA, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_ModelOTA_screen_init);
-                        lv_obj_move_background(ui_viewavap);
+                        hide_all_overlays();
                     }
                     struct view_data_ota_status * ota_st_ptr = (struct view_data_ota_status *)event_data;
                     lv_obj_add_flag(ui_otaicon, LV_OBJ_FLAG_HIDDEN);

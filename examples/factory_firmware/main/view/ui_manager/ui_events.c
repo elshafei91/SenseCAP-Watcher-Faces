@@ -249,7 +249,6 @@ static void emoji_timer_callback(lv_timer_t *timer)
     eomji_interval = emoji_period[emoji_count];
     uint32_t * user_data = (uint32_t *)timer->user_data;
     const lv_img_dsc_t *current_img = NULL;
-    // ESP_LOGI(TAG, "user_data is %d", *user_data);
 
     if(*user_data == EMOJI_GREETING)
     {
@@ -286,7 +285,7 @@ static void emoji_timer_callback(lv_timer_t *timer)
         current_img_index = (current_img_index + 1) % g_standby_image_count;
         current_img = g_standby_img_dsc[current_img_index];
     }
-
+    // ESP_LOGI(TAG, "current image index is %d", current_img_index + 1);
     if(current_img != NULL)
     {
         lv_async_call(async_emoji_switch_scr, (void *)current_img);
@@ -323,6 +322,7 @@ void emoji_timer(uint8_t emoji_type)
     }
     emoji_user_data = emoji_type;
     if(emoji_user_data != EMOJI_STOP){
+        current_img_index = -1;
         g_timer = lv_timer_create(emoji_timer_callback, 500, &emoji_user_data);
         emoji_timer_callback(g_timer);
     }
