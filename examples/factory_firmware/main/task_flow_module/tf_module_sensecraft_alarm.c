@@ -49,7 +49,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     ESP_LOGI(TAG, "Input shutter");
 
     uint32_t type = ((uint32_t *)p_event_data)[0];
-    if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT) {
+    if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT) {
         ESP_LOGW(TAG, "unsupport type %d", type);
         tf_data_free(p_event_data);
         return;

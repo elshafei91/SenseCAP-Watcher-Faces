@@ -25,7 +25,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     tf_module_uart_alarm_t *p_module_ins = (tf_module_uart_alarm_t *)handler_args;
    
     uint32_t type = ((uint32_t *)p_event_data)[0];
-    if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT) {
+    if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT) {
         ESP_LOGW(TAG, "unsupported type %d", type);
         tf_data_free(p_event_data);
         return;
@@ -80,7 +80,12 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
             //json output
             cJSON_AddItemToObject(json, "big_image", cJSON_CreateString((char *)p_data->img_large.p_buf));
         }
-    }
+    } else if( p_module_ins->output_format == 0 ) {
+        uint32_t big_image_len = 0;
+        buffer = psram_realloc(buffer, total_len  + 4);
+        memcpy(buffer + total_len, &big_image_len, 4);
+        total_len+=4;
+    } 
 
     //small image
     if (p_module_ins->include_small_image) {
@@ -96,24 +101,153 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
             //json output
             cJSON_AddItemToObject(json, "small_image", cJSON_CreateString((char *)p_data->img_small.p_buf));
         }
-    }
+    } else if( p_module_ins->output_format == 0 ) {
+        uint32_t small_image_len = 0;
+        buffer = psram_realloc(buffer, total_len  + 4);
+        memcpy(buffer + total_len, &small_image_len, 4);
+        total_len+=4;
+    } 
 
-    // TODO: wait for data structure TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT including boxes
-#if 0
-    //boxes
-    if (p_module_ins->include_boxes) {
+    //inference
+    if (p_data->inference.is_valid) {
+
         if (p_module_ins->output_format == 0) {
-            //binary output
-        } else {
-            //json output
-            cJSON boxes = cJSON_CreateArray();
-            for (size_t i = 0; i < count; i++)
+
+            switch (p_data->inference.type)
             {
+                case INFERENCE_TYPE_BOX:
+                {
+                    uint8_t inference_type = 1;
+                    uint32_t boxes_cnt =  p_data->inference.cnt ;
+                    buffer = psram_realloc(buffer, total_len + boxes_cnt*10 + 4 + 1);
+                    memcpy(buffer + total_len, &inference_type, 1);
+                    memcpy(buffer + total_len + 1 , &boxes_cnt, 4);
+                    for (size_t i = 0; i < boxes_cnt; i++)
+                    {
+                        sscma_client_box_t *p_box =  &p_data->inference.p_data[i];
+                        uint16_t x = p_box->x;
+                        uint16_t y = p_box->y;
+                        uint16_t w = p_box->w;
+                        uint16_t h = p_box->h;
+                        uint8_t score = p_box->score;
+                        uint8_t target = p_box->target;
+
+                        memcpy(buffer + total_len + 5 + i*10 + 0, &x, 2);
+                        memcpy(buffer + total_len + 5 + i*10 + 2, &y, 2);
+                        memcpy(buffer + total_len + 5 + i*10 + 4, &w, 2);
+                        memcpy(buffer + total_len + 5 + i*10 + 6, &h, 2);
+                        memcpy(buffer + total_len + 5 + i*10 + 8, &score, 1);
+                        memcpy(buffer + total_len + 5 + i*10 + 9, &target, 1);
+                    }
+                    total_len +=  boxes_cnt*10 + 4 + 1;
+                    break;
+                }
+                case INFERENCE_TYPE_CLASS:
+                {
+                    uint8_t inference_type = 2;
+                    uint32_t classes_cnt =  p_data->inference.cnt ;
+                    buffer = psram_realloc(buffer, total_len + classes_cnt*2 + 4 + 1);
+                    memcpy(buffer + total_len, &inference_type, 1);
+                    memcpy(buffer + total_len + 1 , &classes_cnt, 4);
+                    for (size_t i = 0; i < classes_cnt; i++)
+                    {
+                        sscma_client_class_t *p_class =  &p_data->inference.p_data[i];
+                        uint8_t score = p_class->score;
+                        uint8_t target = p_class->target;
+                        memcpy(buffer + total_len + 5 + i*2 + 0, &score, 1);
+                        memcpy(buffer + total_len + 5 + i*2 + 1, &target, 1);
+                    }
+                    total_len +=  classes_cnt*10 + 4 + 1;
+                    break;
+                }
+               default:
+                    uint8_t inference_type = 3;
+                    uint32_t cnt = 0;
+                    buffer = psram_realloc(buffer, total_len + 4 + 1);
+                    memcpy(buffer + total_len, &inference_type, 1);
+                    memcpy(buffer + total_len + 1 , &cnt, 4);
+                    ESP_LOGE(TAG, "unsupport inference type: %d", p_data->inference.type);
+                    break;
             }
-            cJSON_AddItemToObject(json, "boxes", boxes);
+            uint32_t name_cnt = 0;
+            int classes_name_len = 0; 
+            for (size_t i = 0; p_data->inference.classes[i] != NULL; i++)
+            {
+                name_cnt++;
+                classes_name_len += strlen(p_data->inference.classes[i]) + 1;
+            }
+            
+            buffer = psram_realloc(buffer, total_len + classes_name_len + 4);
+            memcpy(buffer + total_len, &name_cnt, 4);
+            
+            int index = 4; 
+            for (size_t i = 0; p_data->inference.classes[i] != NULL; i++)
+            {
+                strcpy((char *)(buffer + total_len + index), p_data->inference.classes[i]);
+                index += strlen(p_data->inference.classes[i]);
+                buffer[total_len + index] = '\0';
+                index += 1;
+            }
+        
+            total_len +=  (classes_name_len + 4);
+        } else {
+
+            cJSON *inference = cJSON_CreateObject();
+            cJSON_AddItemToObject(json, "inference", inference);
+
+            switch (p_data->inference.type)
+            {
+                case INFERENCE_TYPE_BOX:
+                {
+                    cJSON *boxes = cJSON_CreateArray();
+                    cJSON_AddItemToObject(inference, "boxes", boxes);
+                    sscma_client_box_t *p_boxs = (sscma_client_box_t *)p_data->inference.p_data;
+                    for (size_t i = 0; i < p_data->inference.cnt; i++)
+                    {
+                        sscma_client_box_t *p_box =  &p_boxs[i];   
+                        cJSON *box = cJSON_CreateArray();
+                        cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->x));
+                        cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->y));
+                        cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->w));
+                        cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->h));
+                        cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->score));
+                        cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->target));
+                        cJSON_AddItemToArray(boxes, box);
+                    }
+                    break;
+                }
+                case INFERENCE_TYPE_CLASS:
+                {
+                    cJSON *classes = cJSON_CreateArray();
+                    cJSON_AddItemToObject(inference, "classes", classes);
+                    sscma_client_class_t *p_classes = (sscma_client_class_t *)p_data->inference.p_data;
+                    for (size_t i = 0; i < p_data->inference.cnt; i++)
+                    {
+                        sscma_client_class_t *p_class =  &p_classes[i]; 
+                        cJSON *class = cJSON_CreateArray();
+                        cJSON_AddItemToArray(class, cJSON_CreateNumber(p_class->score));
+                        cJSON_AddItemToArray(class, cJSON_CreateNumber(p_class->target));
+                        cJSON_AddItemToArray(classes, class);
+                    }
+                    break;
+                }
+                default:
+                    ESP_LOGE(TAG, "unsupport inference type: %d", p_data->inference.type);
+                    break;
+            }
+            cJSON *classes = cJSON_CreateArray();
+            cJSON_AddItemToObject(inference, "classes_name", classes);
+            for (size_t i = 0; p_data->inference.classes[i] != NULL; i++)
+            {
+                cJSON_AddItemToArray(classes, cJSON_CreateString(p_data->inference.classes[i]));
+            }            
         }
-    }
-#endif
+    } else if( p_module_ins->output_format == 0 ) {
+        uint8_t inference_type = 0;
+        buffer = psram_realloc(buffer, total_len  + 1);
+        memcpy(buffer + total_len, &inference_type, 1);
+        total_len+=1;
+    } 
 
     //output the packet
     if (p_module_ins->output_format == 0) {
@@ -162,7 +296,7 @@ static int __cfg(void *p_module, cJSON *p_json)
     if (output_format == NULL || !cJSON_IsNumber(output_format))
     {
         ESP_LOGE(TAG, "params output_format missing, default 0 (binary output)");
-        p_module_ins->output_format = 0;
+        p_module_ins->output_format = 1;
     } else {
         ESP_LOGI(TAG, "params output_format=%d", output_format->valueint);
         p_module_ins->output_format = output_format->valueint;
@@ -198,15 +332,6 @@ static int __cfg(void *p_module, cJSON *p_json)
         p_module_ins->include_small_image = tf_cJSON_IsGeneralTrue(include_small_image);
     }
 
-    cJSON *include_boxes = cJSON_GetObjectItem(p_json, "include_boxes");
-    if (include_boxes == NULL || !tf_cJSON_IsGeneralBool(include_boxes))
-    {
-        ESP_LOGE(TAG, "params include_boxes missing, default false");
-        p_module_ins->include_boxes = false;
-    } else {
-        ESP_LOGI(TAG, "params include_boxes=%s", tf_cJSON_IsGeneralTrue(include_boxes)?"true":"false");
-        p_module_ins->include_boxes = tf_cJSON_IsGeneralTrue(include_boxes);
-    }
     return 0;
 }
 

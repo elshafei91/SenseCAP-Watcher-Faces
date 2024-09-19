@@ -23,7 +23,7 @@ enum {
     TF_DATA_TYPE_TIME,
     TF_DATA_TYPE_BUFFER,
     TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE,
-    TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT,
+    TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT,
 };
 
 struct tf_data_buf
@@ -91,9 +91,10 @@ typedef struct tf_data_dualimage_with_inference
 
 typedef struct tf_data_dualimage_with_audio_text
 {
-    uint32_t type; // TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT
+    uint32_t type; // TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT
     struct tf_data_image img_small;
     struct tf_data_image img_large;
+    struct tf_data_inference_info inference;
     struct tf_data_buf   audio;
     struct tf_data_buf   text;
 } tf_data_dualimage_with_audio_text_t;

@@ -78,11 +78,12 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     struct tf_module_alarm_trigger_params *p_params = &p_module_ins->params;
     tf_data_dualimage_with_inference_t *p_data = (tf_data_dualimage_with_inference_t *)p_event_data;
     tf_data_dualimage_with_audio_text_t output_data;
-    output_data.type = TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT;
+    output_data.type = TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT;
     __data_lock(p_module_ins);
     for (int i = 0; i < p_module_ins->output_evt_num; i++) {
         tf_data_image_copy(&output_data.img_small, &p_data->img_small);
         tf_data_image_copy(&output_data.img_large, &p_data->img_large);
+        tf_data_inference_copy(&output_data.inference, &p_data->inference);
         tf_data_buf_copy(&output_data.audio, &p_params->audio);
         tf_data_buf_copy(&output_data.text, &p_params->text);
         ret = tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), pdMS_TO_TICKS(100));

@@ -9,7 +9,7 @@ const char * tf_data_type_to_str(uint32_t type)
     case TF_DATA_TYPE_TIME: return "TIME"; break;
     case TF_DATA_TYPE_BUFFER: return "BUFFER"; break;
     case TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE: return "DUALIMAGE_WITH_INFERENCE"; break;
-    case TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT: return "DUALIMAGE_WITH_AUDIO_TEXT"; break;
+    case TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT: return "DUALIMAGE_WITH_AUDIO_TEXT"; break;
     default:
         break;
     }
@@ -34,12 +34,13 @@ void tf_data_free(void *event_data)
         tf_data_inference_free(&p_data->inference);
         break;
     }
-    case TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT:{
+    case TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT:{
         tf_data_dualimage_with_audio_text_t * p_data = (tf_data_dualimage_with_audio_text_t *)event_data;
         tf_data_image_free(&p_data->img_small);
         tf_data_image_free(&p_data->img_large);
         tf_data_buf_free(&p_data->audio);
         tf_data_buf_free(&p_data->text);
+        tf_data_inference_free(&p_data->inference);
         break;
     }
 

@@ -413,7 +413,7 @@ static void img_analyzer_task(void *p_arg)
                 // output
                 ESP_LOGI(TAG, "img_analyzer result: %d", result.status);
                 if( result.type == TF_MODULE_IMG_ANALYZER_TYPE_RECOGNIZE || result.status == 1) {
-                    output_data.type = TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT;
+                    output_data.type = TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT;
                     struct tf_data_buf   text;
                     text.p_buf = (uint8_t *)p_params->p_audio_txt;
                     text.len = strlen(p_params->p_audio_txt) + 1; // add \0
@@ -426,6 +426,7 @@ static void img_analyzer_task(void *p_arg)
                             tf_data_image_copy(&output_data.img_small, &data.img_small);
                         }
                         tf_data_image_copy(&output_data.img_large, &data.img_large);
+                        tf_data_inference_copy(&output_data.inference, &data.inference);
                         tf_data_buf_copy(&output_data.audio, &result.audio);
                         tf_data_buf_copy(&output_data.text, &text);
                         ret = tf_event_post(p_module_ins->p_output_evt_id[i], &output_data, sizeof(output_data), pdMS_TO_TICKS(10000));

@@ -28,11 +28,18 @@ extern "C"
 /**
  * The packet structure of binary output
  * 
- * +------------------+----------------+------------+---------------+-----------+-----------------+-------------+
- * | PKT_MAGIC_HEADER | Prompt Str Len | Prompt Str | Big Image Len | Big Image | Small Image Len | Small Image |
- * +------------------+----------------+------------+---------------+-----------+-----------------+-------------+ + 
- * | "SEEED"(5bytes)  | 4bytes         | X bytes    | 4bytes        | Y bytes   | 4bytes          | Z bytes     |
- * +------------------+----------------+------------+---------------+-----------+-----------------+-------------+
+ * +------------------+----------------+------------+---------------+-----------+-----------------+-------------+----------------+-----------------+--------------+
+ * | PKT_MAGIC_HEADER | Prompt Str Len | Prompt Str | Big Image Len | Big Image | Small Image Len | Small Image | inference type |  Boxes/classes  | classes name |
+ * +------------------+----------------+------------+---------------+-----------+-----------------+-------------+----------------+-----------------+--------------+
+ * | "SEEED"(5bytes)  | 4bytes         | X bytes    | 4bytes        | Y bytes   | 4bytes          | Z bytes     |      1byte     |       4~N       |    0~M       |
+ * +------------------+----------------+------------+---------------+-----------+-----------------+-------------+----------------+-----------------+--------------+
+ *                                                                                                              |       <---   Inference info  --->               |
+ * Inference type:
+ *  - 0: No inference information, no data behind it.
+ *  - 1: Boxes inference, Followed by boxes structure and classes name structures.
+ *  - 2: Classes inference, Followed by classes structure and classes name structures.
+ * 
+ * Boxes structure:
  * +-------------+------------------------+---------------+---------------+---------------+
  * | Boxes Count |         Box 1          |     Box 2     |      ...      |     Box N     |
  * +-------------+------------------------+---------------+---------------+---------------+
@@ -47,19 +54,43 @@ extern "C"
  * | uint16_t | uint16_t | uint16_t | uint16_t | uint8_t | uint8_t         |
  * +----------+----------+----------+----------+---------+-----------------+
  * 
+ * classes structure:
+ * +---------------+-------------------------+-----------------+-----------------+-----------------+
+ * | classes Count |         class 1         |     class 2     |      ...        |     class N     |
+ * +---------------+-------------------------+-----------------+-----------------+-----------------+
+ * | 4bytes        | class Structure(2bytes) | class Structure | class Structure | class Structure |
+ * +---------------+-------------------------+-----------------+-----------------+-----------------+
+ *               /                           \
+ *              /                             \
+ *               +---------+-----------------+
+ *               |  score  | target class id |
+ *               +---------+-----------------+
+ *               | 1byte   | 1byte           |
+ *               | uint8_t | uint8_t         |
+ *               +---------+-----------------+
+ * 
+ * classes name structure:
+ * +---------------+---------------+----- ---------+-----------------+-------------------+
+ * | name cnt      | class name 1  | class name 2  |      ...        |     class name N  |
+ * +---------------+---------------+---------------+-----------------+-------------------+
+ * | 4bytes        | str+\0        | str+\0        |    str+\0       |    str+\0         |
+ * +---------------+---------------+---------------+-----------------+-------------------+
+ * 
+ * 
+ * 
  * This is the full packet with all fields enabled.
  * 
  * - Prompt Str: a string for shortly explaining what task the watcher is doing, if the `text` parameter is set, this would be the `text` parameter.
  * - Big Image: 640 * 480 image, base64 encoded JPG image, without boxes of detected objects.
  * - Small Image: 240 * 240 image, base64 encoded JPG image, with boxes drawn for detected objects.
- * - Box: An area which holds the detected object, with its coordinates and score.
+ * - Inference info: An area which holds the detected object, with its coordinates and score.
  * 
  * Please note, Big Image and Small Image buffer has no string terminator '\0'. All the 4bytes length and count fields are uint32_t in little-endian.
  * 
  * Some of the fields can be controlled by configuration of the function module, see the comments for 
  * `tf_module_uart_alarm_t` below. 
  * 
- * `include_big_image`, `include_small_image` and `include_boxes` are disabled by default. So if you don't apply
+ * `include_big_image` and `include_small_image`  are disabled by default. So if you don't apply
  * any configuration to the function module, the default output packet will only include the following fields:
  * PKT_MAGIC_HEADER + Prompt Str Len + Prompt Str
  * 
@@ -83,16 +114,17 @@ extern "C"
  *      "prompt": "monitor a cat",
  *      "big_image": "base64 encoded JPG image, if include_big_image is enabled, otherwise this field is omitted",
  *      "small_image": "base64 encoded JPG image, if include_small_image is enabled, otherwise this field is omitted",
- *      "boxes": [
- *          {
- *              "x": 100,
- *              "y": 100,
- *              "w": 50,
- *              "h": 60,
- *              "score": 0.8,
- *              "target_cls_id": 1 
- *          }
- *      ]
+ *      "inference":{
+ *          "boxes": [
+ *              [145, 326, 240, 208, 50, 0]
+ *          ],
+ *          "classes": [
+ *              [50, 0]
+ *          ],
+ *          "classes_name": [
+ *              "person"
+ *          ]
+ *      }
  * }
  * 
  */
@@ -125,7 +157,6 @@ typedef struct {
     char *text;                 //default: NULL
     bool include_big_image;     //default: false
     bool include_small_image;   //default: false
-    bool include_boxes;         //default: false, coming soon
 } tf_module_uart_alarm_t;
 
 

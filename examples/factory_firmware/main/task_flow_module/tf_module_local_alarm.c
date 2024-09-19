@@ -108,7 +108,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     struct tf_module_local_alarm_params *p_params = &p_module_ins->params;
    
     uint32_t type = ((uint32_t *)p_event_data)[0];
-    if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT) {
+    if( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT) {
         ESP_LOGW(TAG, "unsupport type %d", type);
         tf_data_free(p_event_data);
         return;
@@ -188,7 +188,8 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     if( !audio_used ) {
         tf_data_buf_free(&p_data->audio);
     }
-
+    
+    tf_data_inference_free(&p_data->inference);
 #if TF_MODULE_LOCAL_ALARM_TIMER_ENABLE
     // esp_timer_start_once(p_module_ins->timer_handle, p_params->duration * 1000000);
 #endif

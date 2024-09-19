@@ -212,7 +212,61 @@ static int __http_report_warn_event(tf_module_http_alarm_t *p_module_ins,
     cJSON *data = NULL;
     data = cJSON_CreateObject();
     cJSON_AddItemToObject(events, "data", data);
-    
+
+    //inference
+    if (p_data->inference.is_valid) {
+
+        cJSON *inference = cJSON_CreateObject();
+        cJSON_AddItemToObject(data, "inference", inference);
+
+        switch (p_data->inference.type)
+        {
+            case INFERENCE_TYPE_BOX:
+            {
+                cJSON *boxes = cJSON_CreateArray();
+                cJSON_AddItemToObject(inference, "boxes", boxes);
+                sscma_client_box_t *p_boxs = (sscma_client_box_t *)p_data->inference.p_data;
+                for (size_t i = 0; i < p_data->inference.cnt; i++)
+                {
+                    sscma_client_box_t *p_box =  &p_boxs[i];   
+                    cJSON *box = cJSON_CreateArray();
+                    cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->x));
+                    cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->y));
+                    cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->w));
+                    cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->h));
+                    cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->score));
+                    cJSON_AddItemToArray(box, cJSON_CreateNumber(p_box->target));
+                    cJSON_AddItemToArray(boxes, box);
+                }
+                break;
+            }
+            case INFERENCE_TYPE_CLASS:
+            {
+                cJSON *classes = cJSON_CreateArray();
+                cJSON_AddItemToObject(inference, "classes", classes);
+                sscma_client_class_t *p_classes = (sscma_client_class_t *)p_data->inference.p_data;
+                for (size_t i = 0; i < p_data->inference.cnt; i++)
+                {
+                    sscma_client_class_t *p_class =  &p_classes[i]; 
+                    cJSON *class = cJSON_CreateArray();
+                    cJSON_AddItemToArray(class, cJSON_CreateNumber(p_class->score));
+                    cJSON_AddItemToArray(class, cJSON_CreateNumber(p_class->target));
+                    cJSON_AddItemToArray(classes, class);
+                }
+                break;
+            }
+            default:
+                ESP_LOGE(TAG, "unsupport inference type: %d", p_data->inference.type);
+                break;
+        }
+        cJSON *classes = cJSON_CreateArray();
+        cJSON_AddItemToObject(inference, "classes_name", classes);
+        for (size_t i = 0; p_data->inference.classes[i] != NULL; i++)
+        {
+            cJSON_AddItemToArray(classes, cJSON_CreateString(p_data->inference.classes[i]));
+        }
+    }
+
     if (p_params->sensor_en) {
         double temp = 0;
         uint32_t humi = 0, co2 = 0;
@@ -308,7 +362,7 @@ static void __event_handler(void *handler_args, esp_event_base_t base, int32_t i
     ESP_LOGI(TAG, "Input shutter");
 
     uint32_t type = ((uint32_t *)p_event_data)[0];
-    if ( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT) {
+    if ( type !=  TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT) {
         ESP_LOGW(TAG, "unsupport type %d", type);
         tf_data_free(p_event_data);
         return;
