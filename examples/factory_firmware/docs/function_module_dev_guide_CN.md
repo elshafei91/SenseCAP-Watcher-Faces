@@ -356,7 +356,7 @@ static int __msgs_sub_set(void *p_module, int evt_id)
 
 在[软件架构](architecture_CN.md)中，我们了解到数据流由事件循环驱动。基本上，FM将从其事件处理程序接收数据，然后消耗数据，进行计算并得到一些结果。最后，它需要将结果发布到事件循环中，目标是对此FM数据感兴趣的下游FM。
 
-在这个`uart alarmer`的示例中，我们从一个警报触发器FM中获取数据，该FM的输出数据类型为`TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT`。由于UART数据准备很简单，我们在事件循环处理程序中完成所有数据生成工作。不过，如果您的数据处理耗时较长或者对IO有较高要求，建议创建一个工作任务（线程）来进行后台处理。
+在这个`uart alarmer`的示例中，我们从一个警报触发器FM中获取数据，该FM的输出数据类型为`TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT`。由于UART数据准备很简单，我们在事件循环处理程序中完成所有数据生成工作。不过，如果您的数据处理耗时较长或者对IO有较高要求，建议创建一个工作任务（线程）来进行后台处理。
 
 我们根据输入参数`output_format`准备一个二进制输出缓冲区或JSON字符串。最后，我们将这些数据写入UART。我们的FM只有一个输出，即硬件，而不是另一个FM，因此我们的`msgs_pub_set`是虚拟的。最后，我们需要释放来自事件循环的数据，下一节将解释原因。
 

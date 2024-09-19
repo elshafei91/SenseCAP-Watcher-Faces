@@ -310,7 +310,7 @@ SenseCAP Watcher的软件架构如下图所示, 主要分成三部分: APP应用
       <td>包含大图、小图以及推理信息</td>
     </tr>
     <tr>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
       <td>tf_data_dualimage_with_audio_text_t</td>
       <td>包含大图、小图、告警音频以及告警文本</td>
     </tr>
@@ -407,31 +407,31 @@ typedef struct tf_module_mgmt {
       <td rowspan="2" >触发模块</td>
       <td>alarm trigger</td>
       <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
       <td>Y</td>
     </tr>
     <tr>
       <td>image analyzer</td>
       <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
       <td>Y</td>
     </tr>
     <tr>
       <td rowspan="3" >告警模块</td>
       <td>local alarm</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
       <td>-</td>
       <td>N</td>
     </tr>
     <tr>
       <td>sensecraft alarm</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
       <td>-</td>
       <td>Y</td>
     </tr>
     <tr>
       <td>uart alarm</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
       <td>-</td>
       <td>Y</td>
     </tr>
@@ -639,8 +639,8 @@ alarm trigger 块可能是ai camera的下一级块，主要作用是附带一些
     </tr>
     <tr>
       <td>输出</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
-      <td>输出大图、小图、告警mp3音频和文本</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
+      <td>输出大图、小图、推理信息、告警mp3音频和文本</td>
     </tr>
   </tbody>
 </table>
@@ -693,8 +693,8 @@ image analyzer 块可能是ai camera的下一级块，主要是调用LLM 进行�
     </tr>
     <tr>
       <td>输出</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
-      <td>输出大图、小图、告警mp3音频和文本</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
+      <td>输出大图、小图、推理信息、告警mp3音频和文本</td>
     </tr>
   </tbody>
 </table>
@@ -739,7 +739,7 @@ local alarm 块为一个告警块, 主要实现设备报警，如控制RGB闪烁
   <tbody>
     <tr>
       <td>输入</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
       <td>上一级触发块所输出的数据</td>
     </tr>
     <tr>
@@ -784,7 +784,7 @@ sensecraft alarm 块为一个告警块,主要是将告警信息通知到SenseCra
   <tbody>
     <tr>
       <td>输入</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
       <td>上一级触发块所输出的数据</td>
     </tr>
     <tr>
@@ -840,7 +840,7 @@ uart alarm 块为一个告警块；主要实现的是通过串口的方式输出
   <tbody>
     <tr>
       <td>输入</td>
-      <td>TF_DATA_TYPE_DUALIMAGE_WITH_AUDIO_TEXT</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
       <td>上一级触发块所输出的数据</td>
     </tr>
     <tr>
@@ -850,6 +850,7 @@ uart alarm 块为一个告警块；主要实现的是通过串口的方式输出
     </tr>
   </tbody>
 </table>
+
 ![image-20240711103247227](img/image-uart.png)
 
 uart alarm将从SenseCAP Watcher背后的串口输出数据包，接线方法如上图所示。串口的参数为：
@@ -866,18 +867,51 @@ uart alarm将从SenseCAP Watcher背后的串口输出数据包，接线方法如
 
 二进制数据包的格式如下所示：
 
-![image-20240711105254366](img/image-uart-packet-binary.png)
+| PKT_MAGIC_HEADER | Prompt Str Len | Prompt Str | Big Image Len | Big Image | Small Image Len | Small Image | inference type | Boxes/classes  | classes name |
+|------------------|----------------|------------|---------------|-----------|-----------------|-------------|-----------------|----------------|--------------|
+| "SEEED"(5bytes)  | 4bytes         | X bytes    | 4bytes        | Y bytes   | 4bytes          | Z bytes     | 1byte           | 4~N            | 0~M           |
+
 
 字段：
 - Packet Magic Header - 包头，5个字节 "SEEED"
 - Prompt Str Len - 提示词长度
 - Prompt Str - 提示词，或者告警文本，当设置了参数`text`时，它是`text`参数的拷贝，如果没有设置`text`参数，它将被自动填充一句简短的用于描述任务用途的文本（由云服务的任务编制接口生成）
-- Big Image Len - 大图片base64编码后字符串的字节长度
+- Big Image Len - 大图片base64编码后字符串的字节长度, `include_big_image=0` 时, 值为0. 
 - Big Image - 大图片JPG经过base64编码之后的字符串
-- Small Image Len - 小图片base64编码后字符串的字节长度
+- Small Image Len - 小图片base64编码后字符串的字节长度, `include_small_image=0` 时, 值为0. 
 - Small Image - 小图片JPG经过base64编码之后的字符串
+- Inference type - 推理结果类型; 0:表示没有推理信息,1:表示输出的为box推理推理，2: 表示输出的是class推理结果
+- Boxes/classes - 推理结果.
+- Classes name - 类名.
 
 以上字段中，`Packet Magic Header`,`Prompt Str Len`和`Prompt Str`字段为必然输出字段，其他字段则受参数使能控制。例如参数中设置了`include_big_image: 1`，则二进制数据包中将追加`Big Image Len`和`Big Image` 字段。
+
+Boxes 信息:
+| Boxes Count | Box 1 | Box 2 | ... | Box N |
+|-------------|--------|-------|-----|-------|
+| 4bytes      | 10bytes | 10bytes | ... | 10bytes |
+
+每个box的信息:
+| x | y | w | h | score | target class id |
+|---|---|---|---|-------|-----------------|
+| 2bytes | 2bytes | 2bytes | 2bytes | 1byte | 1byte |
+
+Classes 信息
+| classes Count | class 1 | class 2 | ... | class N |
+|---------------|----------|---------|-----|---------|
+| 4bytes        | 2bytes   | 2bytes  | ... | 2bytes  |
+
+每个class的信息:
+| score | target class id |
+|-------|-----------------|
+| 1byte  | 1byte           |
+
+
+类名信息:
+| name cnt | class name 1 | class name 2 | ... | class name N |
+|-----------|--------------|--------------|-----|--------------|
+| 4bytes    | str+\0       | str+\0       | ... | str+\0       |
+
 
 **B. JSON格式**
 
@@ -894,15 +928,77 @@ packet object:
 {
      "prompt": "monitor a cat",
      "big_image": "base64 encoded JPG image, if include_big_image is enabled, otherwise this field is omitted",
-     "small_image": "base64 encoded JPG image, if include_small_image is enabled, otherwise this field is omitted"
+     "small_image": "base64 encoded JPG image, if include_small_image is enabled, otherwise this field is omitted",
+     "inference":{
+        "boxes": [
+            [145, 326, 240, 208, 50, 0]
+        ],
+        "classes": [
+            [50, 0]
+        ],
+        "classes_name": [
+          "person"
+        ]
+  }
 } 
 ```
 
 同样地，"prompt"字段为必然输出字段，"big_image"和"small_image"字段受参数控制。
 
 
+#### 2.2.7 http alarm
 
+http alarm 块为一个告警块, 主要实现将告警信息转发到HTTP服务器上； 参数定义如下:
 
+```json
+{
+    "id":"",
+    "type": "http alarm",
+    "version": "1.0.0",
+    "params": {
+        "silence_duration": 5,
+        "time_en": 1,
+        "text_en": 1,
+        "image_en": 1, 
+        "sensor_en": 1, 
+        "text": ""
+    }
+}
+```
+
+配置参数如下：
+
+* **params**: 包含设备参数的对象。
+  * **silence_duration**: 静默时间,单位秒。
+  * **time_en**: 使能时间戳，1 表示开启，0 表示关闭。
+  * **text_en**: 使能告警文本，1 表示开启，0 表示关闭。
+  * **image_en**: 使能图像，1 表示开启，0 表示关闭。
+  * **sensor_en**: 使能传感器，1 表示开启，0 表示关闭。
+  * **text**: 告警文本
+
+连接端子说明:
+
+<table>
+  <thead>
+    <tr>
+      <th>端子</th>
+      <th>数据类型</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>输入</td>
+      <td>TF_DATA_TYPE_DUALIMAGE_WITH_INFERENCE_AUDIO_TEXT</td>
+      <td>上一级触发块所输出的数据</td>
+    </tr>
+    <tr>
+      <td>输出</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
 
 
 
