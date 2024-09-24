@@ -307,7 +307,7 @@ static void emoji_timer_callback(lv_timer_t *timer)
 
 void emoji_timer_stop()
 {
-    if((lv_scr_act() != ui_Page_Avatar) && (lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_Guideavatar) && (lv_scr_act() != ui_Page_Standby) && (lv_scr_act() != ui_Page_Push2talk))
+    if((lv_scr_act() != ui_Page_ViewAva) && (lv_scr_act() != ui_Page_Guideavatar) && (lv_scr_act() != ui_Page_Standby) && (lv_scr_act() != ui_Page_Push2talk))
     {
         emoji_timer(EMOJI_STOP);
     }
@@ -445,17 +445,16 @@ void virclick_cb(lv_event_t *e)
 {
     // ESP_LOGI(CLICK_TAG, "virtc_cb");
     if(vir_load_count < 8)return;
+    emoji_timer_stop();
     if(!g_dev_binded)   // if the device is not wifi-configed, then appear panel
     {
         lv_group_remove_all_objs(g_main);
         lv_obj_clear_flag(ui_virp, LV_OBJ_FLAG_HIDDEN);
         lv_group_add_obj(g_main, ui_virbtn1);
         lv_group_add_obj(g_main, ui_virbtn2);
-        emoji_timer_stop();
         vir_load_count = 0;
     }else{              // else the device is wifi-configed, jump to Home page
         if(lv_scr_act() == ui_Page_Avatar)lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
-        emoji_timer_stop();    // stop timer
     }
 }
 
@@ -499,16 +498,12 @@ void virscrunload_cb(lv_event_t * e)
 
 void virb1c_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "virb1c_cb");
-    emoji_timer_stop();
     lv_pm_open_page(g_main, &group_page_connectapp, PM_ADD_OBJS_TO_GROUP, &ui_Page_Connect, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Connect_screen_init);
     Page_ConnAPP_Mate();
 }
 
 void virb2c_cb(lv_event_t *e)
 {
-    // ESP_LOGI(CLICK_TAG, "virb2c_cb");
-    emoji_timer_stop();
     lv_pm_open_page(g_main, &group_page_main, PM_ADD_OBJS_TO_GROUP, &ui_Page_Home, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Page_Home_screen_init);
 }
 
