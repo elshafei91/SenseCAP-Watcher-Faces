@@ -280,9 +280,6 @@ void app_main(void)
         printf("UUID: %s\n", model->uuid ? model->uuid : "N/A");
         printf("Name: %s\n", model->name ? model->name : "N/A");
         printf("Version: %s\n", model->ver ? model->ver : "N/A");
-        printf("Category: %s\n", model->category ? model->category : "N/A");
-        printf("Algorithm: %s\n", model->algorithm ? model->algorithm : "N/A");
-        printf("Description: %s\n", model->description ? model->description : "N/A");
 
         printf("Classes:\n");
         if (model->classes[0] != NULL)
@@ -296,10 +293,6 @@ void app_main(void)
         {
             printf("  N/A\n");
         }
-
-        printf("Token: %s\n", model->token ? model->token : "N/A");
-        printf("URL: %s\n", model->url ? model->url : "N/A");
-        printf("Manufacturer: %s\n", model->manufacturer ? model->manufacturer : "N/A");
     }
     else
     {
