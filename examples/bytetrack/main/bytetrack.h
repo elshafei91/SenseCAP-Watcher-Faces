@@ -7,24 +7,24 @@
 #pragma once
 
 /** Major version number (X.x.x) */
-#define HELLO_WORLD_VERSION_MAJOR 0
+#define BYTETRACK_VERSION_MAJOR 0
 /** Minor version number (x.X.x) */
-#define HELLO_WORLD_VERSION_MINOR 0
+#define BYTETRACK_VERSION_MINOR 0
 /** Patch version number (x.x.X) */
-#define HELLO_WORLD_VERSION_PATCH 1
+#define BYTETRACK_VERSION_PATCH 1
 
 /**
  * Macro to convert version number into an integer
  *
- * To be used in comparisons, such as HELLO_WORLD_VERSION >= HELLO_WORLD_VERSION_VAL(4, 0, 0)
+ * To be used in comparisons, such as BYTETRACK_VERSION >= BYTETRACK_VERSION_VAL(4, 0, 0)
  */
-#define HELLO_WORLD_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
+#define BYTETRACK_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
 
 /**
  * Current version, as an integer
  *
- * To be used in comparisons, such as HELLO_WORLD_VERSION >= HELLO_WORLD_VERSION_VAL(4, 0, 0)
+ * To be used in comparisons, such as BYTETRACK_VERSION >= BYTETRACK_VERSION_VAL(4, 0, 0)
  */
-#define HELLO_WORLD_VERSION HELLO_WORLD_VERSION_VAL(HELLO_WORLD_VERSION_MAJOR, \
-                                                    HELLO_WORLD_VERSION_MINOR, \
-                                                    HELLO_WORLD_VERSION_PATCH)
+#define BYTETRACK_VERSION BYTETRACK_VERSION_VAL(BYTETRACK_VERSION_MAJOR, \
+                                                    BYTETRACK_VERSION_MINOR, \
+                                                    BYTETRACK_VERSION_PATCH)
