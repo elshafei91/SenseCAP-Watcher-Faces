@@ -42,6 +42,8 @@ void oai_wifi(void) {
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_start());
 
+  ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(34));
+
   ESP_LOGI(LOG_TAG, "Connecting to WiFi SSID: %s", WIFI_SSID);
   wifi_config_t wifi_config;
   memset(&wifi_config, 0, sizeof(wifi_config));
