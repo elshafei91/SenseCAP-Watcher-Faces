@@ -47,6 +47,7 @@ void oai_audio_decode(uint8_t *data, size_t size) {
   
   if( size > 26) {
     printf("size: %d, decode size: %d\r\n", size, decoded_size);
+    ui_switch_speaking();
   }
   if (decoded_size > 0) {
     esp_codec_dev_write(play_dev_handle, output_buffer, BUFFER_SAMPLES_CNT * sizeof(opus_int16));           

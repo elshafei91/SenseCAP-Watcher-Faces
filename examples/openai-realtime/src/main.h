@@ -1,5 +1,8 @@
 #include <peer.h>
 #include "sensecap-watcher.h"
+extern "C" {
+#include "ui.h"
+}
 
 #define LOG_TAG "realtimeapi-sdk"
 #define MAX_HTTP_OUTPUT_BUFFER 2048

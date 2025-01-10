@@ -12,8 +12,6 @@ extern "C" void board_init(void)
   assert(lvgl_disp != NULL);
   bsp_rgb_init();
   bsp_codec_init();
-
-  // bsp_rtc_init();
   bsp_codec_volume_set(100, NULL);
 }
 
@@ -29,6 +27,7 @@ extern "C" void app_main(void) {
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   
   board_init();
+  ui_init();
   oai_wifi_init();
   cmd_init();
   peer_init();
