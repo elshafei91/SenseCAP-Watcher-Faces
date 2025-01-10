@@ -14,10 +14,16 @@
 #define OPUS_ENCODER_BITRATE 30000
 #define OPUS_ENCODER_COMPLEXITY 0
 
+static esp_codec_dev_handle_t play_dev_handle;
+static esp_codec_dev_handle_t record_dev_handle;
+
 void oai_init_audio_capture() {
   bsp_codec_mute_set(true);
   bsp_codec_mute_set(false);
   bsp_codec_volume_set(100, NULL);
+
+  play_dev_handle = bsp_codec_speaker_get();
+  record_dev_handle = bsp_codec_microphone_get();
   return;
 }
 
@@ -38,10 +44,12 @@ void oai_audio_decode(uint8_t *data, size_t size) {
   
   int decoded_size =
       opus_decode(opus_decoder, data, size, output_buffer, BUFFER_SAMPLES_CNT, 0);
-  // printf("size: %d, decode size: %d\r\n", size, decoded_size);
+  
+  if( size > 26) {
+    printf("size: %d, decode size: %d\r\n", size, decoded_size);
+  }
   if (decoded_size > 0) {
-    size_t bytes_written = 0;
-    bsp_i2s_write(output_buffer,  BUFFER_SAMPLES_CNT * sizeof(opus_int16), &bytes_written, portMAX_DELAY);             
+    esp_codec_dev_write(play_dev_handle, output_buffer, BUFFER_SAMPLES_CNT * sizeof(opus_int16));           
   }
 }
 
@@ -72,16 +80,14 @@ void oai_init_audio_encoder() {
 }
 
 void oai_send_audio(PeerConnection *peer_connection) {
-  size_t bytes_read = 0;
 
-  bsp_i2s_read(encoder_input_buffer, BUFFER_SAMPLES, &bytes_read,
-           portMAX_DELAY);
+  esp_codec_dev_read(record_dev_handle, encoder_input_buffer, BUFFER_SAMPLES);
 
   auto encoded_size =
       opus_encode(opus_encoder, encoder_input_buffer, BUFFER_SAMPLES_CNT,
                   encoder_output_buffer, OPUS_OUT_BUFFER_SIZE);
 
-  // printf("size: %d, encoded_size : %ld\r\n", bytes_read, encoded_size);
+  // printf("size: %d, encoded_size : %ld\r\n", BUFFER_SAMPLES, encoded_size);
   peer_connection_send_audio(peer_connection, encoder_output_buffer,
                              encoded_size);
 }

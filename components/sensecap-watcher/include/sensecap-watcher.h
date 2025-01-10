@@ -340,6 +340,8 @@ esp_err_t bsp_codec_dev_stop(void);
 esp_err_t bsp_codec_dev_resume(void);
 
 esp_err_t bsp_codec_init(void);
+esp_codec_dev_handle_t bsp_codec_speaker_get(void);
+esp_codec_dev_handle_t bsp_codec_microphone_get(void);
 esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer_len);
 int bsp_get_feed_channel(void);
 

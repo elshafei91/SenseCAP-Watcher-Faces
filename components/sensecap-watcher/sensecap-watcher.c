@@ -1201,6 +1201,15 @@ esp_err_t bsp_codec_init(void)
     return ESP_OK;
 }
 
+esp_codec_dev_handle_t bsp_codec_speaker_get(void)
+{
+    return play_dev_handle;
+}
+esp_codec_dev_handle_t bsp_codec_microphone_get(void)
+{
+    return record_dev_handle;
+}
+
 esp_err_t bsp_get_feed_data(bool is_get_raw_channel, int16_t *buffer, int buffer_len)
 {
     esp_err_t ret = ESP_OK;
