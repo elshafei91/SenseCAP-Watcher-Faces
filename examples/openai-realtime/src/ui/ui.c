@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "esp_lvgl_port.h"
 
 // Assume that the images have been converted to C arrays and included
 extern const lv_img_dsc_t speaking_A;
@@ -29,7 +30,7 @@ static const lv_img_dsc_t *listening_images[] = {
     &listening_D,
     &listening_E
 };
-
+static lv_obj_t *label;
 static lv_obj_t *img; // Image object
 static uint8_t current_image_index = 0; // Index of the currently displayed image
 static bool is_speaking = false; // Whether the speaking images are currently displayed
@@ -54,17 +55,18 @@ static void timer1_callback(lv_timer_t *timer)
 // Switch to speaking images
 void ui_switch_speaking(void)
 {
+    lvgl_port_lock(0);
     if (!is_speaking) {
         // If not currently displaying speaking images, switch to speaking images
         is_speaking = true;
         current_image_index = 0;
         lv_img_set_src(img, speaking_images[current_image_index]); // Set the initial image
 
-        // Start Timer 1 (switch to listening after 2.5s)
+        // Start Timer 1 (switch to listening after 1s)
         if (timer1) {
             lv_timer_reset(timer1);
         } else {
-            timer1 = lv_timer_create(timer1_callback, 2500, NULL); // 2.5s timer
+            timer1 = lv_timer_create(timer1_callback, 1000, NULL); // 1s timer
         }
 
     } else {
@@ -73,15 +75,42 @@ void ui_switch_speaking(void)
             lv_timer_reset(timer1);
         }
     }
+    lvgl_port_unlock();
+}
+
+void ui_listening(void)
+{
+    lvgl_port_lock(0);
+    img = lv_img_create(lv_scr_act());
+    lv_img_set_src(img, listening_images[current_image_index]); // Set the initial image to listening
+    lv_obj_align(img, LV_ALIGN_CENTER, 0, 0); // Center the image
+    timer2 = lv_timer_create(timer2_callback, 300, NULL); // 500ms timer
+    lv_timer_set_repeat_count(timer2, -1);
+    lvgl_port_unlock();
+}
+
+void ui_wifi_connecting(void)
+{
+    lvgl_port_lock(0);
+    if (label) {
+        lv_label_set_text(label, "Wi-Fi Connecting...");
+        lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+    }
+    lvgl_port_unlock();
 }
 
 void ui_init(void)
 {
-    img = lv_img_create(lv_scr_act());
-    lv_img_set_src(img, listening_images[current_image_index]); // Set the initial image to listening
-    lv_obj_align(img, LV_ALIGN_CENTER, 0, 0); // Center the image
+    lvgl_port_lock(0);
+    label = lv_label_create(lv_scr_act()); // Create a label on the active screen
+    lv_label_set_text(label, "Configure Wifi and OpenAI key via serial port.");
+    
+    // Set the label width to screen width (to enable scrolling)
+    lv_obj_set_width(label, LV_PCT(100)); // 100% of parent width
+    // Enable long mode for scrolling
+    lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); // Circular scroll
 
-    timer2 = lv_timer_create(timer2_callback, 300, NULL); // 500ms timer
-    lv_timer_set_repeat_count(timer2, -1);
+    // Align the label to the center of the screen
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0); // Center alignment with no offset
+    lvgl_port_unlock();
 }
-

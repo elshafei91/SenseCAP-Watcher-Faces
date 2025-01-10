@@ -64,6 +64,7 @@ void oai_wifi(void) {
       }
     #endif
   }
+  ui_wifi_connecting();
 
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_start());

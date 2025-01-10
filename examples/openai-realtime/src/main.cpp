@@ -34,5 +34,6 @@ extern "C" void app_main(void) {
   oai_init_audio_capture();
   oai_init_audio_decoder();
   oai_wifi();
+  ui_listening();
   oai_webrtc();
 }
