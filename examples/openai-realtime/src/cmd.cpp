@@ -16,7 +16,7 @@ static const char *TAG = "cmd";
 #define STORAGE_NAMESPACE "SenseCAP"
 #define OPENAI_API_KEY_STORAGE  "openaikey"
 
-char g_openai_api_key_buf[128] = {0,};
+char g_openai_api_key_buf[165] = {0,};
 
 static int max(int a, int b) {
     return (a > b) ? a : b;
@@ -174,15 +174,15 @@ static int openai_api_key_set(int argc, char **argv)
         arg_print_errors(stderr, openai_api_key_args.end, argv[0]);
         return 1;
     }
-    char key_buf[128] = {0,};
+    char key_buf[165] = {0,};
     size_t len = 0;
     if (openai_api_key_args.key->count) {
-        int len = strlen(openai_api_key_args.key->sval[0]);
-        if( len > sizeof(key_buf)) {
-            ESP_LOGE(TAG,  "out of 52 bytes :%s", openai_api_key_args.key->sval[0]);
+        len = strlen(openai_api_key_args.key->sval[0]);
+        if( len >= sizeof(key_buf)) {
+            ESP_LOGE(TAG,  "out of 164 bytes :%s", openai_api_key_args.key->sval[0]);
             return -1;
         }
-        strncpy( key_buf, openai_api_key_args.key->sval[0], 128 );
+        strncpy( key_buf, openai_api_key_args.key->sval[0], len );
 
         ESP_LOGI(TAG,"wirte openai api key:%s", key_buf);
         storage_write(OPENAI_API_KEY_STORAGE, (void *)key_buf, sizeof(key_buf));

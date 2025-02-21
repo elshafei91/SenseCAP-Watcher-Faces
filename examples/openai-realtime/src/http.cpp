@@ -8,7 +8,7 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-extern char g_openai_api_key_buf[128];
+extern char g_openai_api_key_buf[165];
 
 esp_err_t oai_http_event_handler(esp_http_client_event_t *evt) {
   static int output_len;
