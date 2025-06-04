@@ -4,3 +4,5 @@ dependencies:
 
   sensecap-watcher:
     override_path: "../../../components/sensecap-watcher"
+    
+  espressif/esp-sr: ">=1.6.0"
