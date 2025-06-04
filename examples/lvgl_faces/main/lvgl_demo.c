@@ -11,7 +11,7 @@
 #include "sensecap-watcher.h"
 
 // #include "lv_demos.h"
-#include "ui/happy_face.c"
+#include "ui/sad_face.c"
 
 
 
@@ -33,7 +33,7 @@ void app_main(void)
     {
         // lv_demo_widgets(); /* A widgets example */
         lv_obj_t *img = lv_img_create(lv_scr_act());
-        lv_img_set_src(img, &happy_face);
+        lv_img_set_src(img, &sad_face);
         lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
         // lv_demo_music(); /* A modern, smartphone-like music player demo. */
         // lv_demo_stress();       /* A stress test for LVGL. */
