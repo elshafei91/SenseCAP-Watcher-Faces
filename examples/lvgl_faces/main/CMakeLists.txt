@@ -1,6 +1,6 @@
 idf_component_register(
     SRCS
-        "lvgl_demo.c"
+        "lvgl_demo.c" "playwav.c"
     INCLUDE_DIRS
         "." "./ui")
 
